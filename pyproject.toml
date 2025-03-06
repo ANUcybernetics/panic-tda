@@ -1,0 +1,22 @@
+[project]
+name = "trajectory-tracer"
+version = "0.1.0"
+description = "A package to collect traces of different AI trajectories under different initial conditions"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pillow>=11.1.0",
+    "pydantic>=2.10.6",
+    "pytest>=8.3.5",
+    "rich>=13.9.4",
+    "sqlite-vec>=0.1.6",
+    "transformers>=4.49.0",
+]
+
+[tool.pytest]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+]
