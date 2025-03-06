@@ -1,4 +1,3 @@
-from dataclasses import field
 from datetime import datetime
 from typing import List, Union
 from uuid import UUID, uuid4
@@ -6,8 +5,8 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, field_validator
 
 
-class Network:
-    models: List[str] = field(default_factory=list)
+class Network(BaseModel):
+    models: List[str] = Field(default_factory=list)
 
 
 class Invocation(BaseModel):
