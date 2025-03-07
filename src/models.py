@@ -56,3 +56,31 @@ def flux_dev_t2i(prompt: str) -> Image:
     ).images[0]
 
     return image
+
+
+def dummy_i2t(image: Image) -> str:
+    """
+    A dummy function that mimics the signature of moondream_i2t but returns a fixed text.
+
+    Args:
+        image: A PIL Image object (not used)
+
+    Returns:
+        str: A dummy text caption
+    """
+    return "dummy text caption"
+
+
+def dummy_t2i(prompt: str) -> Image:
+    """
+    A dummy function that mimics the signature of flux_dev_t2i but returns a fixed image.
+
+    Args:
+        prompt: A text description (not used)
+
+    Returns:
+        Image.Image: A dummy blank image
+    """
+    # Create a blank white image
+    dummy_image = Image.new('RGB', (512, 512), color='white')
+    return dummy_image
