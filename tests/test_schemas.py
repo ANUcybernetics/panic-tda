@@ -135,3 +135,46 @@ def test_experiment_config():
     finally:
         # Clean up the temporary file
         config_path.unlink()
+
+
+def test_experiment_config_invalid_values():
+    """Test that ExperimentConfig raises errors for invalid values."""
+    # Test empty list validation
+    with pytest.raises(ValueError, match="List cannot be empty"):
+        ExperimentConfig(
+            networks=[],
+            seeds=[42],
+            prompts=["test"],
+            embedders=["test"],
+            run_length=5
+        )
+
+    # Test zero run_length validation
+    with pytest.raises(ValueError, match="Run length must be greater than 0"):
+        ExperimentConfig(
+            networks=[["model1"]],
+            seeds=[42],
+            prompts=["test"],
+            embedders=["test"],
+            run_length=0
+        )
+
+    # Test negative run_length validation
+    with pytest.raises(ValueError, match="Run length must be greater than 0"):
+        ExperimentConfig(
+            networks=[["model1"]],
+            seeds=[42],
+            prompts=["test"],
+            embedders=["test"],
+            run_length=-5
+        )
+
+    # Test missing required field
+    with pytest.raises(ValueError):
+        ExperimentConfig(
+            networks=[["model1"]],
+            seeds=[42],
+            prompts=["test"],
+            # Missing embedders
+            run_length=5
+        )
