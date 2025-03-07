@@ -2,7 +2,9 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 import pytest
-from src.schemas import Embedding, Invocation, Network, Run
+from PIL import Image
+
+from src.schemas import ContentType, Embedding, Invocation, Network, Run
 
 
 def test_invocation_creation():
@@ -36,8 +38,8 @@ def test_invocation_type_detection():
         run_id=1
     )
 
-    assert invocation.type("text content") == "text"
-    assert invocation.type(b"image bytes") == "image"
+    assert invocation.type("text content") == ContentType.TEXT
+    assert invocation.type(Image.Image()) == ContentType.IMAGE
 
 
 def test_run_validation_success():
