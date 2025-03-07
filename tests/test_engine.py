@@ -68,7 +68,7 @@ def test_perform_run(test_db, test_models):
     # Set test parameters
     MODEL_SEED = 42
     prompt = "test prompt"
-    run_length = 3
+    run_length = 100
 
     # Perform the test run
     invocations = list(perform_run(network, prompt, MODEL_SEED, run_length))
@@ -90,12 +90,8 @@ def test_perform_run(test_db, test_models):
     # Verify the starting model
     assert invocations[0].model == "dummy_t2i"
 
-    # Process invocations to check expected types
-    for inv in invocations[:run_length-1]:
-        next_inv = invoke_and_yield_next(inv)
-        assert next_inv is not None
-
-        # Verify output type based on model type
+    # Verify output types based on model type without re-processing
+    for inv in invocations:
         if "t2i" in inv.model:
             assert isinstance(inv.output, Image.Image)
         elif "i2t" in inv.model:
