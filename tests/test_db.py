@@ -17,7 +17,7 @@ from src.schemas import ContentType, Embedding, Invocation, Network
 def test_invocation_operations():
     with db_sandbox():
         # Test saving and retrieving a text-to-text invocation
-        test_id = uuid.uuid4()
+        test_id = uuid.uuid7()
         text_invocation = Invocation(
             id=test_id,
             timestamp=datetime.datetime.now(),
@@ -45,7 +45,7 @@ def test_invocation_operations():
         assert retrieved.network.models == ["model1", "model2"]
 
         # Test saving and retrieving an image-to-text invocation
-        image_id = uuid.uuid4()
+        image_id = uuid.uuid7()
         test_image = Image.new('RGB', (100, 100), color='red')
         image_invocation = Invocation(
             id=image_id,

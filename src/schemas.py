@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Union
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
@@ -18,7 +18,7 @@ class Network(BaseModel):
 
 
 class Invocation(BaseModel):
-    id: UUID = Field(default_factory=uuid4)
+    id: UUID = Field(default_factory=uuid7)
     timestamp: datetime = Field(default_factory=datetime.now)
     model: str
     input: Union[str, Image.Image]

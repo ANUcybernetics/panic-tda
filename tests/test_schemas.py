@@ -2,7 +2,7 @@ import json
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID, uuid7
 
 import pytest
 from PIL import Image
@@ -78,7 +78,7 @@ def test_run_validation_error():
 
 def test_embedding_creation():
     """Test Embedding creation and dimension property."""
-    invocation_id = uuid4()
+    invocation_id = uuid7()
     vector = [0.1, 0.2, 0.3, 0.4]
 
     embedding = Embedding(
