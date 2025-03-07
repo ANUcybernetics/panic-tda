@@ -7,10 +7,12 @@ requires-python = ">=3.13"
 dependencies = [
     "accelerate>=1.4.0",
     "diffusers>=0.32.2",
+    "einops>=0.8.1",
     "pillow>=11.1.0",
     "protobuf>=6.30.0",
     "pydantic>=2.10.6",
     "pytest>=8.3.5",
+    "pyvips>=2.2.3",
     "rich>=13.9.4",
     "sentencepiece>=0.2.0",
     "sqlite-vec>=0.1.6",
