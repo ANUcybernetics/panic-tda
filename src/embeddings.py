@@ -1,5 +1,3 @@
-import io
-
 import torch
 import torch.nn.functional as F
 from PIL import Image
@@ -19,8 +17,8 @@ def nomic_embed_text(invocation: Invocation) -> Embedding:
         An Embedding object with the calculated vector
     """
     # Only works with text inputs
-    if isinstance(invocation.input, bytes):
-        raise ValueError("Cannot embed binary input with nomic-embed-text")
+    if isinstance(invocation.input, Image.Image):
+        raise ValueError("Cannot embed image input with nomic-embed-text")
 
     def mean_pooling(model_output, attention_mask):
         token_embeddings = model_output[0]
@@ -78,8 +76,8 @@ def nomic_embed_vision(invocation: Invocation) -> Embedding:
     vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
     vision_model.eval()
 
-    # Convert bytes to PIL Image
-    image = Image.open(io.BytesIO(invocation.input))
+    # The input is already a PIL Image, so we can use it directly
+    image = invocation.input
 
     # Process the image
     inputs = processor(image, return_tensors="pt")
