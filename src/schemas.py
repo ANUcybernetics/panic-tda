@@ -4,7 +4,7 @@ from typing import List, Union
 from uuid import UUID, uuid4
 
 from PIL import Image
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator
 
 
 class ContentType(Enum):
@@ -14,12 +14,10 @@ class ContentType(Enum):
 
 
 class Network(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     models: List[str] = Field(default_factory=list)
 
 
 class Invocation(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     id: UUID = Field(default_factory=uuid4)
     timestamp: datetime = Field(default_factory=datetime.now)
     model: str
@@ -29,6 +27,7 @@ class Invocation(BaseModel):
     run_id: int
     network: Network = Field(default_factory=Network)
     sequence_number: int = 0
+
 
     # Helper method to detect content type
     def type(self, content: Union[str, Image.Image]) -> ContentType:
@@ -47,7 +46,6 @@ class Invocation(BaseModel):
 
 
 class Run(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     invocations: List[Invocation] = Field(default_factory=list)
 
     @field_validator('invocations')
@@ -62,7 +60,6 @@ class Run(BaseModel):
 
 
 class Embedding(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     invocation_id: UUID
     embedding_model: str
     vector: List[float]
