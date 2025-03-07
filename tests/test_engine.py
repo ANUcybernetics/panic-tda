@@ -1,6 +1,7 @@
 import pytest
 from PIL import Image
 
+from src.db import get_invocation
 from src.engine import MODEL_REGISTRY, invoke_and_yield_next, invoke_model, perform_run
 from src.models import dummy_i2t, dummy_t2i
 from src.schemas import Invocation, Network
@@ -96,3 +97,37 @@ def test_perform_run(test_db, test_models):
             assert isinstance(inv.output, Image.Image)
         elif "i2t" in inv.model:
             assert isinstance(inv.output, str)
+
+
+def test_perform_run_persistence(test_db, test_models):
+    """Test that invocations created by perform_run are persisted to the database correctly."""
+
+    # Create a test network with dummy models
+    network = Network(models=["dummy_t2i", "dummy_i2t"])
+
+    # Set test parameters
+    MODEL_SEED = 42
+    prompt = "test persistence"
+    run_length = 3
+
+    # Perform the test run
+    invocations = list(perform_run(network, prompt, MODEL_SEED, run_length))
+
+    # Verify each invocation was persisted to the database
+    for invocation in invocations:
+        # Retrieve the invocation from the database
+        retrieved = get_invocation(invocation.id)
+
+        # Verify the retrieved invocation matches the original
+        assert retrieved is not None
+        assert retrieved.id == invocation.id
+        assert retrieved.model == invocation.model
+        assert retrieved.run_id == invocation.run_id
+        assert retrieved.sequence_number == invocation.sequence_number
+
+        # Check content based on model type
+        if "t2i" in invocation.model:
+            assert isinstance(retrieved.output, Image.Image)
+        elif "i2t" in invocation.model:
+            assert isinstance(retrieved.output, str)
+            assert retrieved.output == invocation.output
