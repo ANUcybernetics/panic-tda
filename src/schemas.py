@@ -71,3 +71,42 @@ class Embedding(BaseModel):
     @property
     def dimension(self) -> int:
         return len(self.vector)
+
+
+class ExperimentConfig(BaseModel):
+    """Configuration for a trajectory tracer experiment."""
+    networks: List[List[str]] = Field(..., description="List of networks (each network is a list of model names)")
+    seeds: List[int] = Field(..., description="List of random seeds to use")
+    prompts: List[str] = Field(..., description="List of initial text prompts")
+    embedders: List[str] = Field(..., description="List of embedding model names")
+    run_length: int = Field(..., description="Number of invocations in each run")
+
+    @field_validator('networks', 'seeds', 'prompts', 'embedders')
+    @classmethod
+    def check_non_empty_lists(cls, value):
+        if not value:
+            raise ValueError("List cannot be empty")
+        return value
+
+    @field_validator('run_length')
+    @classmethod
+    def check_positive_run_length(cls, value):
+        if value <= 0:
+            raise ValueError("Run length must be greater than 0")
+        return value
+
+    def validate_equal_lengths(self):
+        """Validate that all parameter lists have the same length."""
+        lengths = [
+            len(self.networks),
+            len(self.seeds),
+            len(self.prompts),
+            len(self.embedders)
+        ]
+        if len(set(lengths)) > 1:
+            raise ValueError(
+                f"All parameter lists must have the same length. "
+                f"Got: networks={len(self.networks)}, seeds={len(self.seeds)}, "
+                f"prompts={len(self.prompts)}, embedders={len(self.embedders)}"
+            )
+        return True

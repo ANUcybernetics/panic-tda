@@ -1,10 +1,20 @@
+import json
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 from PIL import Image
 
-from src.schemas import ContentType, Embedding, Invocation, Network, Run
+from src.schemas import (
+    ContentType,
+    Embedding,
+    ExperimentConfig,
+    Invocation,
+    Network,
+    Run,
+)
 
 
 def test_invocation_creation():
@@ -81,3 +91,47 @@ def test_embedding_creation():
     assert embedding.embedding_model == "text-embedding-ada-002"
     assert embedding.vector == vector
     assert embedding.dimension == 4
+
+def test_experiment_config():
+    """Test that ExperimentConfig can be properly loaded and validated."""
+
+    config_data = {
+        "networks": [["model1", "model2"], ["model3"]],
+        "seeds": [42, 123],
+        "prompts": ["First prompt", "Second prompt"],
+        "embedders": ["embedder1", "embedder2"],
+        "run_length": 5
+    }
+
+    # Create a temporary JSON file
+    with tempfile.NamedTemporaryFile(suffix=".json", mode="w+", delete=False) as f:
+        json.dump(config_data, f)
+        config_path = Path(f.name)
+
+    try:
+        # Load the config from the file
+        with open(config_path, "r") as f:
+            loaded_data = json.load(f)
+
+        config = ExperimentConfig(**loaded_data)
+
+        # Validate the config
+        assert config.validate_equal_lengths() is True
+        assert len(config.networks) == 2
+        assert config.networks[0] == ["model1", "model2"]
+        assert config.seeds == [42, 123]
+        assert config.prompts == ["First prompt", "Second prompt"]
+        assert config.embedders == ["embedder1", "embedder2"]
+        assert config.run_length == 5
+
+        # Test validation error with unequal list lengths
+        invalid_data = config_data.copy()
+        invalid_data["seeds"] = [42]  # Only one seed now
+
+        with pytest.raises(ValueError):
+            config = ExperimentConfig(**invalid_data)
+            config.validate_equal_lengths()
+
+    finally:
+        # Clean up the temporary file
+        config_path.unlink()
