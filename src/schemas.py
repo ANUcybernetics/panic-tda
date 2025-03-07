@@ -3,6 +3,7 @@ from enum import Enum
 from typing import List, Union
 from uuid import UUID, uuid4
 
+from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -20,16 +21,16 @@ class Invocation(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     timestamp: datetime = Field(default_factory=datetime.now)
     model: str
-    input: Union[str, bytes]
-    output: Union[str, bytes]
+    input: Union[str, Image.Image]
+    output: Union[str, Image.Image]
     seed: int
     run_id: int
     network: Network = Field(default_factory=Network)
     sequence_number: int = 0
 
     # Helper method to detect content type
-    def type(self, content: Union[str, bytes]) -> ContentType:
-        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is bytes."""
+    def type(self, content: Union[str, Image.Image]) -> ContentType:
+        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is a PIL Image."""
         return ContentType.TEXT if isinstance(content, str) else ContentType.IMAGE
 
     @property
