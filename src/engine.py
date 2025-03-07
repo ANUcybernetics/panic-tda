@@ -42,20 +42,15 @@ def invoke_model(model_name: str, content: Union[str, Image.Image]) -> Union[str
         logger.error(f"Error invoking model {model_name}: {e}")
         raise
 
-def invoke_and_yield_next(invocation: Invocation) -> Optional[Invocation]:
+def process_invocation(invocation: Invocation) -> Invocation:
     """
-    Process an invocation by running its model on the input,
-    saving the result, and creating the next invocation.
+    Process a single invocation by running its model and storing the result.
 
     Args:
         invocation: The invocation to process
 
     Returns:
-        The next invocation in the sequence with:
-        - Input set to the output of the current invocation
-        - Model set to the next model in the network
-        - Sequence number incremented
-        Or None if the invocation output is None
+        The processed invocation with output set
     """
     # Invoke the model
     try:
@@ -70,6 +65,18 @@ def invoke_and_yield_next(invocation: Invocation) -> Optional[Invocation]:
     save_invocation(invocation)
     logger.info(f"Completed invocation {invocation.sequence_number} with model {invocation.model}")
 
+    return invocation
+
+def create_next_invocation(invocation: Invocation) -> Optional[Invocation]:
+    """
+    Create the next invocation in the sequence based on a completed invocation.
+
+    Args:
+        invocation: The completed invocation
+
+    Returns:
+        The next invocation in the sequence or None if cannot proceed
+    """
     # If output is None, can't proceed
     if invocation.output is None:
         logger.warning(f"No output from invocation {invocation.sequence_number}, cannot create next invocation")
@@ -92,6 +99,51 @@ def invoke_and_yield_next(invocation: Invocation) -> Optional[Invocation]:
 
     return next_invocation
 
+def create_initial_invocation(network: Network, prompt: str, seed: int) -> Invocation:
+    """
+    Create the initial invocation for a run.
+
+    Args:
+        network: The network containing models to cycle through
+        prompt: The initial text prompt
+        seed: Random seed for reproducibility
+
+    Returns:
+        The initial invocation
+    """
+    # Generate a UUID4 for the first invocation and use it for run_id
+    invocation_id = uuid4()
+
+    # Create the initial invocation with the first model
+    initial_invocation = Invocation(
+        id=invocation_id,  # Set the UUID explicitly
+        model=network.models[0],
+        input=prompt,
+        output=None,  # Will be set during processing
+        seed=seed,
+        run_id=int(str(invocation_id.int)[:10]),  # Convert UUID to integer and use first 10 digits
+        network=network,
+    )
+
+    return initial_invocation
+
+def invoke_and_yield_next(invocation: Invocation) -> Optional[Invocation]:
+    """
+    Process an invocation by running its model on the input,
+    saving the result, and creating the next invocation.
+
+    Args:
+        invocation: The invocation to process
+
+    Returns:
+        The next invocation in the sequence or None if cannot proceed
+    """
+    # Process the invocation
+    processed_invocation = process_invocation(invocation)
+
+    # Create and return the next invocation
+    return create_next_invocation(processed_invocation)
+
 def perform_run(network: Network, prompt: str, seed: int, run_length: int) -> Iterator[Invocation]:
     """
     Perform a run through a network starting with a text prompt.
@@ -111,36 +163,24 @@ def perform_run(network: Network, prompt: str, seed: int, run_length: int) -> It
     # Set random seeds for reproducibility
     np.random.seed(seed)
     torch.manual_seed(seed)
-    # Generate a UUID4 for the first invocation and use it for both id and run_id
-    invocation_id = uuid4()
 
-    # Create the initial invocation with the first model
-    initial_invocation = Invocation(
-        id=invocation_id,  # Set the UUID explicitly
-        model=network.models[0],
-        input=prompt,
-        output=None,  # Will be set during processing
-        seed=seed,
-        run_id=int(str(invocation_id.int)[:10]),  # Convert UUID to integer and use first 10 digits
-        network=network,
-    )
-    logger.info(f"Starting run {invocation_id} with seed {seed} and {len(network.models)} models")
+    # Create the initial invocation
+    current_invocation = create_initial_invocation(network, prompt, seed)
 
-    current_invocation = initial_invocation
+    logger.info(f"Starting run {current_invocation.id} with seed {seed} and {len(network.models)} models")
 
     # Process each invocation in sequence up to run_length
     for i in range(run_length):
         # Skip if the current invocation is None (which would happen if the previous invocation failed)
         if current_invocation is None:
-            logger.warning(f"Run {invocation_id} ended early after {i} invocations due to None invocation")
+            logger.warning(f"Run ended early after {i} invocations due to None invocation")
             break
 
         # Yield the current invocation before processing
         yield current_invocation
 
         # Process the current invocation and get the next one
-        # Note: invoke_and_yield_next already saves the invocation to the database
         current_invocation = invoke_and_yield_next(current_invocation)
 
     completed_count = run_length if current_invocation is not None else run_length - 1
-    logger.info(f"Completed run {invocation_id} with {completed_count} invocations")
+    logger.info(f"Completed run with {completed_count} invocations")

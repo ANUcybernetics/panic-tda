@@ -1,25 +1,10 @@
-from unittest.mock import patch
-
 import pytest
 from PIL import Image
 
-from src.db import get_in_memory_engine
 from src.engine import MODEL_REGISTRY, invoke_and_yield_next, invoke_model, perform_run
 from src.models import dummy_i2t, dummy_t2i
 from src.schemas import Invocation, Network
 
-
-@pytest.fixture(scope="function")
-def in_memory_db():
-    """Setup an in-memory database for testing."""
-    # Get the engine instance for the in-memory database
-    engine = get_in_memory_engine()
-
-    # Patch the get_engine function to return our in-memory engine
-    with patch("src.db.get_engine", return_value=engine):
-        yield engine
-
-    # No cleanup needed - in-memory DB disappears when the connection is closed
 
 @pytest.fixture(scope="function")
 def test_models():
@@ -47,7 +32,7 @@ def test_invoke_model(test_models):
     text = invoke_model("dummy_i2t", test_image)
     assert text == "dummy text caption"
 
-def test_invoke_and_yield_next(in_memory_db, test_models):
+def test_invoke_and_yield_next(test_db, test_models):
     """Test that invoke_and_yield_next processes an invocation and creates the next one correctly."""
     # Create a test network
     network = Network(models=["dummy_t2i", "dummy_i2t"])
@@ -75,7 +60,7 @@ def test_invoke_and_yield_next(in_memory_db, test_models):
     assert isinstance(next_invocation.input, Image.Image)
     assert next_invocation.sequence_number == 1
 
-def test_perform_run(in_memory_db, test_models, monkeypatch):
+def test_perform_run(test_db, test_models):
     """Test that perform_run generates a sequence of invocations correctly."""
     # Create a test network with dummy models
     network = Network(models=["dummy_t2i", "dummy_i2t"])
@@ -85,20 +70,16 @@ def test_perform_run(in_memory_db, test_models, monkeypatch):
     prompt = "test prompt"
     run_length = 3
 
-    # Use monkeypatch to ensure a consistent run_id generation
-    stable_hash_value = 12345
-    monkeypatch.setattr("src.engine.hash", lambda x: stable_hash_value)
-
     # Perform the test run
     invocations = list(perform_run(network, prompt, MODEL_SEED, run_length))
 
     # Verify we got the expected number of invocations
     assert len(invocations) == run_length
 
-    # Get the expected run_id from the engine's logic
-    expected_run_id = abs(stable_hash_value % (10**10))
+    # Get the run_id from the first invocation
+    expected_run_id = invocations[0].run_id
 
-    # Verify all invocations have the same expected run_id
+    # Verify all invocations have the same run_id
     for inv in invocations:
         assert inv.run_id == expected_run_id
 
