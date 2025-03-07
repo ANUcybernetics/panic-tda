@@ -1,6 +1,9 @@
 from PIL import Image
 from transformers import AutoModelForCausalLM
 
+# Image size for all image operations
+IMAGE_SIZE = 1024
+
 
 def moondream_i2t(image: Image) -> str:
     """
@@ -47,8 +50,8 @@ def flux_dev_t2i(prompt: str) -> Image:
     # Generate the image with standard parameters
     image = pipe(
         prompt,
-        height=1024,
-        width=1024,
+        height=IMAGE_SIZE,
+        width=IMAGE_SIZE,
         guidance_scale=3.5,
         num_inference_steps=50,
         max_sequence_length=512,
@@ -82,5 +85,5 @@ def dummy_t2i(prompt: str) -> Image:
         Image.Image: A dummy blank image
     """
     # Create a blank white image
-    dummy_image = Image.new('RGB', (512, 512), color='white')
+    dummy_image = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), color='white')
     return dummy_image
