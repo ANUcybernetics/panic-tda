@@ -2,7 +2,7 @@ from PIL import Image
 from transformers import AutoModelForCausalLM
 
 # Image size for all image operations
-IMAGE_SIZE = 1024
+IMAGE_SIZE = 512
 
 
 def moondream_i2t(image: Image) -> str:
