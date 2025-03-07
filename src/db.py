@@ -25,6 +25,15 @@ def get_engine(db_path: Path = DB_PATH):
         _engine = create_engine(f"sqlite:///{db_path}")
     return _engine
 
+def get_in_memory_engine():
+    """Get a SQLAlchemy engine for an in-memory database."""
+    # Create an in-memory SQLite database
+    engine = create_engine("sqlite:///:memory:")
+
+    # Create all tables in the in-memory database
+    SQLModel.metadata.create_all(engine)
+
+    return engine
 
 # SQLModel models
 class DBInvocation(SQLModel, table=True):
@@ -229,13 +238,13 @@ def get_run(run_id: int) -> Optional[Run]:
 
 
 # For testing
-def setup_test_db():
+def setup_test_db(suffix=""):
     """Set up a test database and return its path."""
     import os
     import tempfile
 
     # Create unique test database path
-    db_path = Path(tempfile.gettempdir()) / f"test_db_{os.getpid()}.sqlite"
+    db_path = Path(tempfile.gettempdir()) / f"test_db_{os.getpid()}{suffix}.sqlite"
 
     # Delete if exists
     if db_path.exists():
@@ -246,12 +255,13 @@ def setup_test_db():
     return db_path
 
 
-def cleanup_test_db():
+def cleanup_test_db(db_path=None):
     """Clean up the test database."""
     import os
 
     # Get the test database path
-    db_path = Path(DB_PATH)
+    if db_path is None:
+        db_path = Path(DB_PATH)
 
     # Delete if exists
     if db_path.exists() and "test_db_" in str(db_path):  # Safety check

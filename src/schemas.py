@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
-from typing import List, Union
-from uuid import UUID, uuid7
+from typing import List, Optional, Union
+from uuid import UUID, uuid4
 
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
@@ -18,11 +18,11 @@ class Network(BaseModel):
 
 
 class Invocation(BaseModel):
-    id: UUID = Field(default_factory=uuid7)
+    id: UUID = Field(default_factory=uuid4)
     timestamp: datetime = Field(default_factory=datetime.now)
     model: str
     input: Union[str, Image.Image]
-    output: Union[str, Image.Image]
+    output: Optional[Union[str, Image.Image]] = None
     seed: int
     run_id: int
     network: Network = Field(default_factory=Network)
@@ -34,8 +34,10 @@ class Invocation(BaseModel):
     }
 
     # Helper method to detect content type
-    def type(self, content: Union[str, Image.Image]) -> ContentType:
-        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is a PIL Image."""
+    def type(self, content: Optional[Union[str, Image.Image]]) -> Optional[ContentType]:
+        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is a PIL Image, None if content is None."""
+        if content is None:
+            return None
         return ContentType.TEXT if isinstance(content, str) else ContentType.IMAGE
 
     @property
@@ -44,7 +46,7 @@ class Invocation(BaseModel):
         return self.type(self.input)
 
     @property
-    def output_type(self) -> ContentType:
+    def output_type(self) -> Optional[ContentType]:
         """Get the type of the output content."""
         return self.type(self.output)
 
