@@ -28,6 +28,10 @@ class Invocation(BaseModel):
     network: Network = Field(default_factory=Network)
     sequence_number: int = 0
 
+    # Configure the model to allow arbitrary types like PIL.Image
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
 
     # Helper method to detect content type
     def type(self, content: Union[str, Image.Image]) -> ContentType:
