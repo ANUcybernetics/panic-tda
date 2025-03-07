@@ -1,168 +1,58 @@
-from pathlib import Path
-from typing import Union
+from PIL import Image
+from transformers import AutoModelForCausalLM
 
-import torch
-from schemas import Invocation, InvocationType
-from transformers import Pipeline, pipeline
 
-# Global cache for models to avoid reloading
-_MODEL_CACHE = {}
-
-def get_pipeline(model_name: str, task_type: InvocationType) -> Pipeline:
+def moondream_i2t(image: Image) -> str:
     """
-    Get a HuggingFace pipeline for the specified model and task type.
-    Caches models to avoid reloading.
+    Generate a text caption for an input image using the Moondream model.
 
     Args:
-        model_name: The HuggingFace model name
-        task_type: The type of task (text or image)
+        image: A PIL Image object to caption
 
     Returns:
-        A HuggingFace pipeline
+        str: The generated caption
     """
-    cache_key = f"{model_name}_{task_type.value}"
+    model = AutoModelForCausalLM.from_pretrained(
+        "vikhyatk/moondream2",
+        revision="2025-01-09",
+        trust_remote_code=True,
+    )
 
-    if cache_key in _MODEL_CACHE:
-        return _MODEL_CACHE[cache_key]
+    # Generate a normal-length caption for the provided image
+    result = model.caption(image, length="normal")
 
-    if task_type == InvocationType.TEXT:
-        # Configure text generation pipeline
-        pipe = pipeline(
-            "text-generation",
-            model=model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-    elif task_type == InvocationType.IMAGE:
-        # Configure image generation pipeline
-        pipe = pipeline(
-            "image-to-image" if "image-to-image" in model_name else "text-to-image",
-            model=model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-        )
-    else:
-        raise ValueError(f"Unsupported invocation type: {task_type}")
+    return result["caption"]
 
-    _MODEL_CACHE[cache_key] = pipe
-    return pipe
 
-def save_output(output: Union[str, torch.Tensor], invocation: Invocation) -> Union[str, Path]:
+def flux_dev_t2i(prompt: str) -> Image:
     """
-    Save the model output to a file if needed or return as string.
+    Generate an image from a text prompt using the FLUX.1-dev model.
 
     Args:
-        output: The model output (string or image tensor)
-        invocation: The invocation object
+        prompt: A text description of the image to generate
 
     Returns:
-        Either the string output or path to saved file
+        Image.Image: The generated PIL Image
     """
-    if invocation.type == InvocationType.TEXT:
-        return output
-    elif invocation.type == InvocationType.IMAGE:
-        # For images, save to a file
-        output_dir = Path("outputs")
-        output_dir.mkdir(exist_ok=True)
+    import torch
+    from diffusers import FluxPipeline
 
-        # Create a unique filename based on invocation ID
-        filename = output_dir / f"{invocation.id}.png"
+    # Initialize the model with appropriate settings
+    pipe = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16
+    )
+    pipe.enable_model_cpu_offload()  # Save VRAM by offloading to CPU
 
-        # Save the image
-        output.save(filename)
-        return filename
-    else:
-        raise ValueError(f"Unsupported invocation type: {invocation.type}")
+    # Generate the image with standard parameters
+    image = pipe(
+        prompt,
+        height=1024,
+        width=1024,
+        guidance_scale=3.5,
+        num_inference_steps=50,
+        max_sequence_length=512,
+        generator=torch.Generator("cpu").manual_seed(0)
+    ).images[0]
 
-def invoke(invocation: Invocation) -> Invocation:
-    """
-    Execute a model invocation and update the invocation with the output.
-
-    Args:
-        invocation: An Invocation object with model, input, and parameters
-
-    Returns:
-        The updated Invocation with output field filled
-    """
-    # Get the appropriate pipeline
-    pipe = get_pipeline(invocation.model, invocation.type)
-
-    # Prepare input
-    input_content = invocation.input
-    if isinstance(input_content, Path) and input_content.exists():
-        if invocation.type == InvocationType.IMAGE:
-            # Load image from file
-            from PIL import Image
-            input_content = Image.open(input_content)
-        else:
-            # Load text from file
-            with open(input_content, 'r') as f:
-                input_content = f.read()
-
-    # Set generation parameters
-    gen_kwargs = {"seed": invocation.seed}
-
-    if invocation.type == InvocationType.TEXT:
-        gen_kwargs.update({
-            "max_new_tokens": 256,
-            "do_sample": True,
-            "temperature": 0.7,
-        })
-
-    # Run the model
-    with torch.random.fork_rng():
-        torch.manual_seed(invocation.seed)
-        if invocation.type == InvocationType.TEXT:
-            result = pipe(input_content, **gen_kwargs)
-            output = result[0]["generated_text"]
-            # Often we want just the new content, not the input repeated
-            if output.startswith(input_content):
-                output = output[len(input_content):]
-        else:
-            result = pipe(input_content, **gen_kwargs)
-            output = result[0]  # Usually a PIL Image for image pipelines
-
-    # Save output and update invocation
-    output_path_or_str = save_output(output, invocation)
-    invocation.output = output_path_or_str
-
-    return invocation
-
-def generate_caption_with_moondream(image_path: Union[str, Path]) -> str:
-    """
-    Generate a caption for an image using the Moondream 2 model.
-
-    Args:
-        image_path: Path to the image file
-
-    Returns:
-        Generated caption as a string
-    """
-    # Import here to avoid circular imports
-    from PIL import Image
-    from transformers import AutoModelForCausalLM
-
-    # Load image
-    if isinstance(image_path, str):
-        image_path = Path(image_path)
-
-    image = Image.open(image_path)
-
-    # Use cache if available
-    cache_key = "moondream2_captioning"
-    if cache_key not in _MODEL_CACHE:
-        model = AutoModelForCausalLM.from_pretrained(
-            "vikhyatk/moondream2",
-            revision="2025-01-09",
-            trust_remote_code=True,
-            device_map="auto",
-            torch_dtype=torch.float16
-        )
-        _MODEL_CACHE[cache_key] = model
-
-    model = _MODEL_CACHE[cache_key]
-
-    # Generate caption
-    caption = model.caption(image, length="normal")["caption"]
-
-    return caption
+    return image
