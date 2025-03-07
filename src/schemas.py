@@ -1,8 +1,15 @@
 from datetime import datetime
+from enum import Enum
 from typing import List, Union
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
+
+
+class ContentType(Enum):
+    """Enum representing possible content types for invocation inputs/outputs."""
+    TEXT = "text"
+    IMAGE = "image"
 
 
 class Network(BaseModel):
@@ -21,9 +28,19 @@ class Invocation(BaseModel):
     sequence_number: int = 0
 
     # Helper method to detect content type
-    def type(self, content: Union[str, bytes]) -> str:
-        """Returns 'text' if content is a string, 'image' if content is bytes."""
-        return "text" if isinstance(content, str) else "image"
+    def type(self, content: Union[str, bytes]) -> ContentType:
+        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is bytes."""
+        return ContentType.TEXT if isinstance(content, str) else ContentType.IMAGE
+
+    @property
+    def input_type(self) -> ContentType:
+        """Get the type of the input content."""
+        return self.type(self.input)
+
+    @property
+    def output_type(self) -> ContentType:
+        """Get the type of the output content."""
+        return self.type(self.output)
 
 
 class Run(BaseModel):
