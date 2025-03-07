@@ -101,3 +101,25 @@ def nomic_embed_vision(invocation: Invocation) -> Embedding:
 # - https://huggingface.co/nvidia/MM-Embed
 # - https://huggingface.co/jinaai/jina-clip-v2
 # - https://huggingface.co/nielsr/imagebind-huge
+
+def dummy_embedding(invocation: Invocation) -> Embedding:
+    """
+    Generate a random embedding vector for testing purposes.
+
+    Args:
+        invocation: The Invocation object to generate an embedding for
+
+    Returns:
+        An Embedding object with a random vector of dimension 768
+    """
+    import numpy as np
+
+    # Generate a random vector of dimension 768
+    vector = np.random.rand(768).tolist()
+
+    # Return the embedding
+    return Embedding(
+        invocation_id=invocation.id,
+        embedding_model="dummy-embedding",
+        vector=vector
+    )
