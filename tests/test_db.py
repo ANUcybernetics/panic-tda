@@ -1,83 +1,82 @@
-import datetime
-import uuid
+from uuid import UUID
 
 import numpy as np
 from PIL import Image
 
-from trajectory_tracer.db import (
-    get_embeddings_for_invocation,
-    get_invocation,
-    save_embedding,
-    save_invocation,
-)
-from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Network
+from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
-def test_invocation_operations(test_db):
-    # Test saving and retrieving a text-to-text invocation
-    test_id = uuid.uuid4()
-    text_invocation = Invocation(
-        id=test_id,
-        timestamp=datetime.datetime.now(),
-        model="test_model",
-        input="test input text",
-        output="test output text",
-        seed=42,
-        run_id=1,
-        network=Network(models=["model1", "model2"]),
-        sequence_number=0
-    )
+def test_run_creation(session, sample_run):
+    """Test creating a Run object."""
+    session.add(sample_run)
+    session.commit()
 
-    save_invocation(text_invocation)
-    retrieved = get_invocation(test_id)
+    # Retrieve the run from the database
+    retrieved_run = session.get(Run, sample_run.id)
+
+    assert retrieved_run is not None
+    assert retrieved_run.id == sample_run.id
+    assert retrieved_run.network == ["model1", "model2"]
+    assert retrieved_run.seed == 42
+    assert retrieved_run.length == 5
+
+def test_text_invocation(session, sample_run, sample_text_invocation):
+    """Test creating a text Invocation."""
+    session.add(sample_run)
+    session.add(sample_text_invocation)
+    session.commit()
+
+    # Retrieve the invocation from the database
+    retrieved = session.get(Invocation, sample_text_invocation.id)
 
     assert retrieved is not None
-    assert retrieved.id == test_id
-    assert retrieved.model == "test_model"
-    assert retrieved.input == "test input text"
-    assert retrieved.output == "test output text"
-    assert retrieved.input_type == InvocationType.TEXT
-    assert retrieved.output_type == InvocationType.TEXT
-    assert retrieved.seed == 42
-    assert retrieved.run_id == 1
-    assert retrieved.network.models == ["model1", "model2"]
+    assert retrieved.type == InvocationType.TEXT
+    assert retrieved.output_text == "Sample output text"
+    assert retrieved.output == "Sample output text"  # Test the property
 
-    # Test saving and retrieving an image-to-text invocation
-    image_id = uuid.uuid4()
-    test_image = Image.new('RGB', (100, 100), color='red')
-    image_invocation = Invocation(
-        id=image_id,
-        timestamp=datetime.datetime.now(),
-        model="image_model",
-        input=test_image,
-        output="image description",
-        seed=123,
-        run_id=2,
-        sequence_number=0
+def test_image_invocation(session, sample_run):
+    """Test creating an image Invocation."""
+    # Create a simple test image
+    img = Image.new('RGB', (60, 30), color = 'red')
+
+    invocation = Invocation(
+        id=UUID('00000000-0000-0000-0000-000000000001'),
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=2
     )
+    invocation.output = img  # Test the output property setter for images
 
-    save_invocation(image_invocation)
-    retrieved_image_inv = get_invocation(image_id)
+    session.add(sample_run)
+    session.add(invocation)
+    session.commit()
 
-    assert retrieved_image_inv is not None
-    assert retrieved_image_inv.input_type == InvocationType.IMAGE
-    assert retrieved_image_inv.output_type == InvocationType.TEXT
-    assert isinstance(retrieved_image_inv.input, Image.Image)
-    assert retrieved_image_inv.output == "image description"
+    # Retrieve the invocation from the database
+    retrieved = session.get(Invocation, invocation.id)
 
-    # Test embedding persistence
-    test_embedding = Embedding(
-        invocation_id=test_id,
-        embedding_model="test_embedding_model",
-        vector=[0.1, 0.2, 0.3, 0.4, 0.5]
-    )
+    assert retrieved is not None
+    assert retrieved.type == InvocationType.IMAGE
+    assert retrieved.output_text is None
+    assert retrieved.output_image_data is not None
 
-    save_embedding(test_embedding)
-    retrieved_embeddings = get_embeddings_for_invocation(test_id)
+    # Test that we can get the image back
+    output_image = retrieved.output
+    assert isinstance(output_image, Image.Image)
+    assert output_image.width == 60
+    assert output_image.height == 30
 
-    assert len(retrieved_embeddings) == 1
-    assert retrieved_embeddings[0].invocation_id == test_id
-    assert retrieved_embeddings[0].embedding_model == "test_embedding_model"
-    assert len(retrieved_embeddings[0].vector) == 5
-    assert np.isclose(retrieved_embeddings[0].vector[0], 0.1)
-    assert np.isclose(retrieved_embeddings[0].vector[-1], 0.5)
+def test_embedding(session, sample_text_invocation, sample_embedding):
+    """Test creating and retrieving an Embedding."""
+    session.add(sample_text_invocation)
+    session.add(sample_embedding)
+    session.commit()
+
+    # Retrieve the embedding from the database
+    retrieved = session.get(Embedding, sample_embedding.id)
+
+    assert retrieved is not None
+    assert isinstance(retrieved.vector, np.ndarray)
+    assert retrieved.vector.shape == (3,)
+    assert np.allclose(retrieved.vector, np.array([0.1, 0.2, 0.3], dtype=np.float32))
