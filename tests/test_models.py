@@ -5,7 +5,7 @@ from PIL import Image
 @pytest.mark.slow
 def test_flux_dev_t2i():
     """Test that flux_dev_t2i returns an image with the expected dimensions."""
-    from src.models import IMAGE_SIZE, flux_dev_t2i
+    from trajectory_tracer.models import IMAGE_SIZE, flux_dev_t2i
 
     prompt = "A beautiful mountain landscape at sunset"
     image = flux_dev_t2i(prompt)
@@ -20,7 +20,7 @@ def test_flux_dev_t2i():
 @pytest.mark.slow
 def test_moondream_i2t():
     """Test that moondream_i2t returns a text caption for an input image."""
-    from src.models import moondream_i2t
+    from trajectory_tracer.models import moondream_i2t
 
     # Create a simple test image
     image = Image.new('RGB', (100, 100), color='red')
@@ -32,7 +32,7 @@ def test_moondream_i2t():
 
 def test_dummy_i2t():
     """Test that dummy_i2t returns a fixed text caption."""
-    from src.models import IMAGE_SIZE, dummy_i2t
+    from trajectory_tracer.models import IMAGE_SIZE, dummy_i2t
 
     # Create a test image
     image = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), color='blue')
@@ -45,7 +45,7 @@ def test_dummy_i2t():
 
 def test_dummy_t2i():
     """Test that dummy_t2i returns a fixed blank image with correct dimensions."""
-    from src.models import IMAGE_SIZE, dummy_t2i
+    from trajectory_tracer.models import IMAGE_SIZE, dummy_t2i
 
     prompt = "This prompt will be ignored"
     image = dummy_t2i(prompt)

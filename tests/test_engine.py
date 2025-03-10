@@ -1,10 +1,15 @@
 import pytest
 from PIL import Image
 
-from src.db import get_invocation
-from src.engine import MODEL_REGISTRY, invoke_and_yield_next, invoke_model, perform_run
-from src.models import dummy_i2t, dummy_t2i
-from src.schemas import Invocation, Network
+from trajectory_tracer.db import get_invocation
+from trajectory_tracer.engine import (
+    MODEL_REGISTRY,
+    invoke_and_yield_next,
+    invoke_model,
+    perform_run,
+)
+from trajectory_tracer.models import dummy_i2t, dummy_t2i
+from trajectory_tracer.schemas import Invocation, Network
 
 
 @pytest.fixture(scope="function")

@@ -4,13 +4,13 @@ import uuid
 import numpy as np
 from PIL import Image
 
-from src.db import (
+from trajectory_tracer.db import (
     get_embeddings_for_invocation,
     get_invocation,
     save_embedding,
     save_invocation,
 )
-from src.schemas import Embedding, Invocation, InvocationType, Network
+from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Network
 
 
 def test_invocation_operations(test_db):

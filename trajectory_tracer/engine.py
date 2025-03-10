@@ -6,9 +6,9 @@ import numpy as np
 import torch
 from PIL import Image
 
-from src.db import save_invocation
-from src.models import flux_dev_t2i, moondream_i2t
-from src.schemas import Invocation, Network
+from trajectory_tracer.db import save_invocation
+from trajectory_tracer.models import flux_dev_t2i, moondream_i2t
+from trajectory_tracer.schemas import Invocation, Network
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

@@ -3,7 +3,7 @@ import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 
-from src.db import DB_PATH, _engine, init_db
+from trajectory_tracer.db import DB_PATH, _engine, init_db
 
 
 @contextmanager

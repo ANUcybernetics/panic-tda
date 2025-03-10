@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.schemas import (
+from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,

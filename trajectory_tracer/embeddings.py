@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
-from src.schemas import Embedding, Invocation
+from trajectory_tracer.schemas import Embedding, Invocation
 
 
 def nomic_embed_text(invocation: Invocation) -> Embedding:

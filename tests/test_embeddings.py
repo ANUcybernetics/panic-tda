@@ -1,7 +1,7 @@
 import uuid
 
-from src.embeddings import dummy_embedding
-from src.schemas import Invocation
+from trajectory_tracer.embeddings import dummy_embedding
+from trajectory_tracer.schemas import Invocation
 
 
 def test_dummy_embedding():
