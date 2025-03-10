@@ -10,7 +10,7 @@ from src.db import (
     save_embedding,
     save_invocation,
 )
-from src.schemas import ContentType, Embedding, Invocation, Network
+from src.schemas import Embedding, Invocation, InvocationType, Network
 
 
 def test_invocation_operations(test_db):
@@ -36,8 +36,8 @@ def test_invocation_operations(test_db):
     assert retrieved.model == "test_model"
     assert retrieved.input == "test input text"
     assert retrieved.output == "test output text"
-    assert retrieved.input_type == ContentType.TEXT
-    assert retrieved.output_type == ContentType.TEXT
+    assert retrieved.input_type == InvocationType.TEXT
+    assert retrieved.output_type == InvocationType.TEXT
     assert retrieved.seed == 42
     assert retrieved.run_id == 1
     assert retrieved.network.models == ["model1", "model2"]
@@ -60,8 +60,8 @@ def test_invocation_operations(test_db):
     retrieved_image_inv = get_invocation(image_id)
 
     assert retrieved_image_inv is not None
-    assert retrieved_image_inv.input_type == ContentType.IMAGE
-    assert retrieved_image_inv.output_type == ContentType.TEXT
+    assert retrieved_image_inv.input_type == InvocationType.IMAGE
+    assert retrieved_image_inv.output_type == InvocationType.TEXT
     assert isinstance(retrieved_image_inv.input, Image.Image)
     assert retrieved_image_inv.output == "image description"
 

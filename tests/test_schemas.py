@@ -4,99 +4,118 @@ from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
+import numpy as np
 import pytest
 from PIL import Image
 
 from src.schemas import (
-    ContentType,
     Embedding,
     ExperimentConfig,
     Invocation,
-    Network,
+    InvocationType,
     Run,
 )
 
 
 def test_invocation_creation():
     """Test basic Invocation creation with required fields."""
+    run_id = uuid4()
     invocation = Invocation(
-        model="gpt-4",
-        input="Hello world",
-        output="Hi there!",
+        model_type="DummyI2T",
+        type=InvocationType.TEXT,
         seed=42,
-        run_id=1
+        run_id=run_id,
+        output_text="Hi there!"
     )
 
     assert isinstance(invocation.id, UUID)
-    assert isinstance(invocation.timestamp, datetime)
-    assert invocation.model == "gpt-4"
-    assert invocation.input == "Hello world"
+    assert isinstance(invocation.started_at, datetime)
+    assert isinstance(invocation.completed_at, datetime)
+    assert invocation.model_type == "DummyI2T"
+    assert invocation.model == "DummyI2T"
     assert invocation.output == "Hi there!"
     assert invocation.seed == 42
-    assert invocation.run_id == 1
+    assert invocation.run_id == run_id
     assert invocation.sequence_number == 0
-    assert isinstance(invocation.network, Network)
 
 
-def test_invocation_type_detection():
-    """Test that type() method correctly identifies content types."""
-    invocation = Invocation(
-        model="gpt-4",
-        input="Hello world",
-        output="Hi there!",
+def test_invocation_output_property():
+    """Test that output property correctly handles different types."""
+    run_id = uuid4()
+
+    # Test text output
+    text_invocation = Invocation(
+        model_type="DummyI2T",
+        type=InvocationType.TEXT,
         seed=42,
-        run_id=1
+        run_id=run_id,
+        output_text="Text output"
     )
+    assert text_invocation.output == "Text output"
 
-    assert invocation.type("text content") == ContentType.TEXT
-    assert invocation.type(Image.Image()) == ContentType.IMAGE
+    # Test image output
+    test_image = Image.new('RGB', (100, 100), color='red')
+    image_invocation = Invocation(
+        model_type="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=run_id
+    )
+    image_invocation.output = test_image
+
+    # Output should be a PIL Image
+    assert isinstance(image_invocation.output, Image.Image)
 
 
 def test_run_validation_success():
     """Test Run validation with correctly ordered invocations."""
+    run_id = uuid4()
+    network = ["DummyI2T", "DummyT2I"]
+
     invocations = [
-        Invocation(model="gpt-4", input="First", output="First response", seed=1, run_id=1, sequence_number=0),
-        Invocation(model="gpt-4", input="Second", output="Second response", seed=1, run_id=1, sequence_number=1),
-        Invocation(model="gpt-4", input="Third", output="Third response", seed=1, run_id=1, sequence_number=2),
+        Invocation(model_type="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=0),
+        Invocation(model_type="DummyT2I", type=InvocationType.IMAGE, seed=1, run_id=run_id, sequence_number=1),
+        Invocation(model_type="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=2),
     ]
 
-    run = Run(invocations=invocations)
+    run = Run(id=run_id, seed=1, length=3, network=network, invocations=invocations)
     assert len(run.invocations) == 3
-
-
-def test_run_validation_error():
-    """Test Run validation fails with incorrectly ordered invocations."""
-    invocations = [
-        Invocation(model="gpt-4", input="First", output="First response", seed=1, run_id=1, sequence_number=0),
-        Invocation(model="gpt-4", input="Second", output="Second response", seed=1, run_id=1, sequence_number=2),  # Wrong sequence
-        Invocation(model="gpt-4", input="Third", output="Third response", seed=1, run_id=1, sequence_number=1),
-    ]
-
-    with pytest.raises(ValueError):
-        Run(invocations=invocations)
 
 
 def test_embedding_creation():
     """Test Embedding creation and dimension property."""
     invocation_id = uuid4()
-    vector = [0.1, 0.2, 0.3, 0.4]
+    vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
 
     embedding = Embedding(
         invocation_id=invocation_id,
         embedding_model="text-embedding-ada-002",
-        vector=vector
     )
+    embedding.vector = vector
 
     assert embedding.invocation_id == invocation_id
     assert embedding.embedding_model == "text-embedding-ada-002"
-    assert embedding.vector == vector
+    np.testing.assert_array_equal(embedding.vector, vector)
     assert embedding.dimension == 4
+
+
+def test_run_network_property():
+    """Test the network property serializes and deserializes correctly."""
+    network = ["DummyI2T", "DummyT2I"]
+    run = Run(seed=1, length=3, network=network)
+
+    # Test that we can get the network back as model classes
+    retrieved_network = run.network
+    assert len(retrieved_network) == 2
+    assert retrieved_network[0] == "DummyI2T"
+    assert retrieved_network[1] == "DummyT2I"
+
 
 def test_experiment_config():
     """Test that ExperimentConfig can be properly loaded and validated."""
 
     config_data = {
-        "networks": [["model1", "model2"], ["model3"]],
+        "networks": [["DummyI2T", "DummyT2I"], ["DummyT2I"]],
         "seeds": [42, 123],
         "prompts": ["First prompt", "Second prompt"],
         "embedders": ["embedder1", "embedder2"],
@@ -118,7 +137,7 @@ def test_experiment_config():
         # Validate the config
         assert config.validate_equal_lengths() is True
         assert len(config.networks) == 2
-        assert config.networks[0] == ["model1", "model2"]
+        assert config.networks[0] == ["DummyI2T", "DummyT2I"]
         assert config.seeds == [42, 123]
         assert config.prompts == ["First prompt", "Second prompt"]
         assert config.embedders == ["embedder1", "embedder2"]
@@ -152,7 +171,7 @@ def test_experiment_config_invalid_values():
     # Test zero run_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
-            networks=[["model1"]],
+            networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedders=["test"],
@@ -162,7 +181,7 @@ def test_experiment_config_invalid_values():
     # Test negative run_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
-            networks=[["model1"]],
+            networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedders=["test"],
@@ -172,7 +191,7 @@ def test_experiment_config_invalid_values():
     # Test missing required field
     with pytest.raises(ValueError):
         ExperimentConfig(
-            networks=[["model1"]],
+            networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             # Missing embedders

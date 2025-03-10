@@ -1,81 +1,130 @@
+import io
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Union
 from uuid import UUID, uuid4
 
+import numpy
 from PIL import Image
-from pydantic import BaseModel, Field, field_validator
+from pydantic import field_validator
+from sqlmodel import JSON, Field, Relationship, SQLModel
 
 
-class ContentType(Enum):
-    """Enum representing possible content types for invocation inputs/outputs."""
+class InvocationType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
 
 
-class Network(BaseModel):
-    models: List[str] = Field(default_factory=list)
+class Invocation(SQLModel, table=True):
+    model_config = {"arbitrary_types_allowed": True}
 
-
-class Invocation(BaseModel):
-    id: UUID = Field(default_factory=uuid4)
-    timestamp: datetime = Field(default_factory=datetime.now)
-    model: str
-    input: Union[str, Image.Image]
-    output: Optional[Union[str, Image.Image]] = None
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: datetime = Field(default_factory=datetime.now)
+    model_type: str  # Store the class name
+    type: InvocationType
     seed: int
-    run_id: int
-    network: Network = Field(default_factory=Network)
+    run_id: UUID = Field(foreign_key="run.id")
     sequence_number: int = 0
+    input_invocation_id: Optional[UUID] = Field(default=None, foreign_key="invocation.id")
+    output_text: Optional[str] = None
+    output_image_data: Optional[bytes] = None
 
-    # Configure the model to allow arbitrary types like PIL.Image
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
-
-    # Helper method to detect content type
-    def type(self, content: Optional[Union[str, Image.Image]]) -> Optional[ContentType]:
-        """Returns ContentType.TEXT if content is a string, ContentType.IMAGE if content is a PIL Image, None if content is None."""
-        if content is None:
-            return None
-        return ContentType.TEXT if isinstance(content, str) else ContentType.IMAGE
+    # Relationship attributes
+    run: "Run" = Relationship(back_populates="invocations")
+    embeddings: List["Embedding"] = Relationship(back_populates="invocation")
+    input_invocation: Optional["Invocation"] = Relationship(
+        sa_relationship_kwargs={"remote_side": "Invocation.id"}
+    )
 
     @property
-    def input_type(self) -> ContentType:
-        """Get the type of the input content."""
-        return self.type(self.input)
+    def model(self) -> str:
+        """Get the model type (class name)"""
+        return self.model_type
+
+    @model.setter
+    def model(self, value: str):
+        """Store the class name"""
+        if isinstance(value, str):
+            self.model_type = value
+        else:
+            # If a class was passed, store its name
+            self.model_type = value.__name__
 
     @property
-    def output_type(self) -> Optional[ContentType]:
-        """Get the type of the output content."""
-        return self.type(self.output)
+    def output(self) -> Union[str, Image.Image, None]:
+        if self.type == InvocationType.TEXT:
+            return self.output_text
+        elif self.type == InvocationType.IMAGE and self.output_image_data:
+            return Image.open(io.BytesIO(self.output_image_data))
+        return None
+
+    @output.setter
+    def output(self, value: Union[str, Image.Image, None]) -> None:
+        if value is None:
+            self.output_text = None
+            self.output_image_data = None
+        elif isinstance(value, str):
+            self.output_text = value
+            self.output_image_data = None
+        elif isinstance(value, Image.Image):
+            self.output_text = None
+            buffer = io.BytesIO()
+            value.save(buffer, format="WEBP")
+            self.output_image_data = buffer.getvalue()
+        else:
+            raise TypeError(f"Expected str, Image, or None, got {type(value)}")
 
 
-class Run(BaseModel):
-    invocations: List[Invocation] = Field(default_factory=list)
+class Run(SQLModel, table=True):
+    model_config = {"arbitrary_types_allowed": True}
 
-    @field_validator('invocations')
-    @classmethod
-    def validate_invocations(cls, invocations: List[Invocation]) -> List[Invocation]:
-        # Validate sequence_number matches position
-        for i, invocation in enumerate(invocations):
-            if invocation.sequence_number != i:
-                raise ValueError(f"Invocation at position {i} has sequence_number {invocation.sequence_number}")
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    network: List[str] = Field(default=[], sa_type=JSON)
+    seed: int
+    length: int
+    invocations: List[Invocation] = Relationship(
+        back_populates="run",
+        sa_relationship_kwargs={"order_by": "Invocation.sequence_number"}
+    )
 
-        return invocations
 
+class Embedding(SQLModel, table=True):
+    model_config = {"arbitrary_types_allowed": True}
 
-class Embedding(BaseModel):
-    invocation_id: UUID
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    invocation_id: UUID = Field(foreign_key="invocation.id")
     embedding_model: str
-    vector: List[float]
+    vector_bytes: bytes = Field(default=b"")
+
+    # Relationship attribute
+    invocation: Invocation = Relationship(back_populates="embeddings")
+
+    @property
+    def vector(self) -> "numpy.ndarray":
+        import numpy as np
+        if not self.vector_bytes:
+            return np.array([], dtype=np.float32)
+        return np.frombuffer(self.vector_bytes, dtype=np.float32)
+
+    @vector.setter
+    def vector(self, value: "numpy.ndarray"):
+        import numpy as np
+        if value is None:
+            self.vector_bytes = b""
+        else:
+            # Ensure it's float32
+            arr = np.asarray(value, dtype=np.float32)
+            self.vector_bytes = arr.tobytes()
 
     @property
     def dimension(self) -> int:
         return len(self.vector)
 
 
-class ExperimentConfig(BaseModel):
+class ExperimentConfig(SQLModel):
+    model_config = {"arbitrary_types_allowed": True}
+
     """Configuration for a trajectory tracer experiment."""
     networks: List[List[str]] = Field(..., description="List of networks (each network is a list of model names)")
     seeds: List[int] = Field(..., description="List of random seeds to use")
@@ -83,14 +132,14 @@ class ExperimentConfig(BaseModel):
     embedders: List[str] = Field(..., description="List of embedding model names")
     run_length: int = Field(..., description="Number of invocations in each run")
 
-    @field_validator('networks', 'seeds', 'prompts', 'embedders')
+    @field_validator('networks', 'seeds', 'prompts', 'embedders', check_fields=False)
     @classmethod
     def check_non_empty_lists(cls, value):
         if not value:
             raise ValueError("List cannot be empty")
         return value
 
-    @field_validator('run_length')
+    @field_validator('run_length', check_fields=False)
     @classmethod
     def check_positive_run_length(cls, value):
         if value <= 0:
