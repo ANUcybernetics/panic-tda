@@ -23,6 +23,7 @@ def session(in_memory_db):
 def sample_run():
     """Create a sample Run object."""
     return Run(
+        initial_prompt="once upon a...",
         id=uuid4(),
         network=["model1", "model2"],
         seed=42,

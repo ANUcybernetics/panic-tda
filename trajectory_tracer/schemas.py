@@ -100,6 +100,7 @@ class Run(SQLModel, table=True):
     network: List[str] = Field(default=[], sa_type=JSON)
     seed: int
     length: int
+    initial_prompt: str
     invocations: List[Invocation] = Relationship(
         back_populates="run",
         sa_relationship_kwargs={"order_by": "Invocation.sequence_number"}
