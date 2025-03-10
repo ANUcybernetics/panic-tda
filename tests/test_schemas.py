@@ -67,11 +67,11 @@ def test_invocation_output_property():
     assert isinstance(image_invocation.output, Image.Image)
 
 
-def test_invocation_output_setter_validation():
-    """Test that output setter validates input types."""
+def test_text_invocation_output_setter_validation():
+    """Test that output setter validates input types for text invocations."""
     run_id = uuid4()
 
-    # Create basic invocation
+    # Create text invocation
     invocation = Invocation(
         model="DummyI2T",
         type=InvocationType.TEXT,
@@ -86,6 +86,27 @@ def test_invocation_output_setter_validation():
     # Test setting to text
     invocation.output = "Hello world"
     assert invocation.output == "Hello world"
+
+    # Test error on invalid type
+    with pytest.raises(TypeError, match="Expected str, Image, or None"):
+        invocation.output = 12345
+
+
+def test_image_invocation_output_setter_validation():
+    """Test that output setter validates input types for image invocations."""
+    run_id = uuid4()
+
+    # Create image invocation
+    invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=run_id
+    )
+
+    # Test setting to None
+    invocation.output = None
+    assert invocation.output is None
 
     # Test setting to image
     test_image = Image.new('RGB', (100, 100), color='blue')
