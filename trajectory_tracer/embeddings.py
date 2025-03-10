@@ -4,8 +4,12 @@ from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType
 
+# other potential multimodal embedding models:
+# - https://huggingface.co/nvidia/MM-Embed
+# - https://huggingface.co/jinaai/jina-clip-v2
+# - https://huggingface.co/nielsr/imagebind-huge
 
-def nomic_embed_text(invocation: Invocation) -> Embedding:
+def nomic_text(invocation: Invocation) -> Embedding:
     """
     Calculate an embedding for the output text of an invocation using the nomic-embed-text model.
 
@@ -55,7 +59,7 @@ def nomic_embed_text(invocation: Invocation) -> Embedding:
     )
 
 
-def nomic_embed_vision(invocation: Invocation) -> Embedding:
+def nomic_vision(invocation: Invocation) -> Embedding:
     """
     Calculate an embedding for an image output of an invocation using the nomic-embed-vision model.
 
@@ -95,12 +99,29 @@ def nomic_embed_vision(invocation: Invocation) -> Embedding:
         vector=vector
     )
 
-# other potential multimodal embedding models:
-# - https://huggingface.co/nvidia/MM-Embed
-# - https://huggingface.co/jinaai/jina-clip-v2
-# - https://huggingface.co/nielsr/imagebind-huge
 
-def dummy_embedding(invocation: Invocation) -> Embedding:
+def nomic(invocation: Invocation) -> Embedding:
+    """
+    Dispatch to the appropriate nomic embedding function based on the invocation type.
+
+    Args:
+        invocation: The Invocation object to embed
+
+    Returns:
+        An Embedding object with the calculated vector
+
+    Raises:
+        ValueError: If the invocation type is not supported
+    """
+    if invocation.type == InvocationType.TEXT:
+        return nomic_text(invocation)
+    elif invocation.type == InvocationType.IMAGE:
+        return nomic_vision(invocation)
+    else:
+        raise ValueError(f"Unsupported invocation type for nomic embedding: {invocation.type}")
+
+
+def dummy(invocation: Invocation) -> Embedding:
     """
     Generate a random embedding vector for testing purposes.
 
