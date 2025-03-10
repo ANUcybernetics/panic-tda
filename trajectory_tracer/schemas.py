@@ -32,6 +32,7 @@ class InvocationType(str, Enum):
     IMAGE = "image"
 
 
+# NOTE: output can't be passed to the constructor, has to be set afterwards (otherwise the setter won't work)
 class Invocation(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
