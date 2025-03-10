@@ -21,7 +21,7 @@ def test_invocation_creation():
     """Test basic Invocation creation with required fields."""
     run_id = uuid4()
     invocation = Invocation(
-        model_type="DummyI2T",
+        model="DummyI2T",
         type=InvocationType.TEXT,
         seed=42,
         run_id=run_id,
@@ -31,7 +31,7 @@ def test_invocation_creation():
     assert isinstance(invocation.id, UUID)
     assert isinstance(invocation.started_at, datetime)
     assert isinstance(invocation.completed_at, datetime)
-    assert invocation.model_type == "DummyI2T"
+    assert invocation.model == "DummyI2T"
     assert invocation.model == "DummyI2T"
     assert invocation.output == "Hi there!"
     assert invocation.seed == 42
@@ -45,7 +45,7 @@ def test_invocation_output_property():
 
     # Test text output
     text_invocation = Invocation(
-        model_type="DummyI2T",
+        model="DummyI2T",
         type=InvocationType.TEXT,
         seed=42,
         run_id=run_id,
@@ -56,7 +56,7 @@ def test_invocation_output_property():
     # Test image output
     test_image = Image.new('RGB', (100, 100), color='red')
     image_invocation = Invocation(
-        model_type="DummyT2I",
+        model="DummyT2I",
         type=InvocationType.IMAGE,
         seed=42,
         run_id=run_id
@@ -73,9 +73,9 @@ def test_run_validation_success():
     network = ["DummyI2T", "DummyT2I"]
 
     invocations = [
-        Invocation(model_type="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=0),
-        Invocation(model_type="DummyT2I", type=InvocationType.IMAGE, seed=1, run_id=run_id, sequence_number=1),
-        Invocation(model_type="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=2),
+        Invocation(model="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=0),
+        Invocation(model="DummyT2I", type=InvocationType.IMAGE, seed=1, run_id=run_id, sequence_number=1),
+        Invocation(model="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=2),
     ]
 
     run = Run(id=run_id, seed=1, length=3, network=network, invocations=invocations)

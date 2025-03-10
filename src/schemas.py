@@ -21,7 +21,7 @@ class Invocation(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     started_at: datetime = Field(default_factory=datetime.now)
     completed_at: datetime = Field(default_factory=datetime.now)
-    model_type: str  # Store the class name
+    model: str  # Store the model class name
     type: InvocationType
     seed: int
     run_id: UUID = Field(foreign_key="run.id")
@@ -40,16 +40,16 @@ class Invocation(SQLModel, table=True):
     @property
     def model(self) -> str:
         """Get the model type (class name)"""
-        return self.model_type
+        return self.model
 
     @model.setter
     def model(self, value: str):
         """Store the class name"""
         if isinstance(value, str):
-            self.model_type = value
+            self.model = value
         else:
             # If a class was passed, store its name
-            self.model_type = value.__name__
+            self.model = value.__name__
 
     @property
     def output(self) -> Union[str, Image.Image, None]:
