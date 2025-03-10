@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+from PIL import Image
 from sqlmodel import Session, SQLModel, create_engine
 
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
@@ -40,7 +41,22 @@ def sample_text_invocation(sample_run):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="Sample output text"
+        output="Sample output text"
+    )
+
+
+@pytest.fixture
+def sample_image_invocation(sample_run):
+    """Create a sample image Invocation object."""
+
+    return Invocation(
+        id=uuid4(),
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=2,
+        output=Image.new('RGB', (100, 100), color='red')
     )
 
 @pytest.fixture

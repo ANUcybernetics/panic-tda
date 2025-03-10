@@ -55,20 +55,6 @@ class Invocation(SQLModel, table=True):
     )
 
     @property
-    def model(self) -> str:
-        """Get the model type (class name)"""
-        return self.model
-
-    @model.setter
-    def model(self, value: str):
-        """Store the class name"""
-        if isinstance(value, str):
-            self.model = value
-        else:
-            # If a class was passed, store its name
-            self.model = value.__name__
-
-    @property
     def output(self) -> Union[str, Image.Image, None]:
         if self.type == InvocationType.TEXT:
             return self.output_text
