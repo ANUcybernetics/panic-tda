@@ -4,10 +4,27 @@ from enum import Enum
 from typing import List, Optional, Union
 from uuid import UUID, uuid4
 
-import numpy
+import numpy as np
 from PIL import Image
 from pydantic import field_validator
+from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
+
+
+class NumpyArrayType(TypeDecorator):
+    """SQLAlchemy type for storing numpy arrays as binary data."""
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        return np.asarray(value, dtype=np.float32).tobytes()
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return np.frombuffer(value, dtype=np.float32)
 
 
 class InvocationType(str, Enum):
@@ -95,30 +112,15 @@ class Embedding(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     invocation_id: UUID = Field(foreign_key="invocation.id")
     embedding_model: str
-    vector_bytes: bytes = Field(default=b"")
+    vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
     # Relationship attribute
     invocation: Invocation = Relationship(back_populates="embeddings")
 
     @property
-    def vector(self) -> "numpy.ndarray":
-        import numpy as np
-        if not self.vector_bytes:
-            return np.array([], dtype=np.float32)
-        return np.frombuffer(self.vector_bytes, dtype=np.float32)
-
-    @vector.setter
-    def vector(self, value: "numpy.ndarray"):
-        import numpy as np
-        if value is None:
-            self.vector_bytes = b""
-        else:
-            # Ensure it's float32
-            arr = np.asarray(value, dtype=np.float32)
-            self.vector_bytes = arr.tobytes()
-
-    @property
     def dimension(self) -> int:
+        if self.vector is None:
+            return 0
         return len(self.vector)
 
 

@@ -1,39 +1,38 @@
 import torch
 import torch.nn.functional as F
-from PIL import Image
 from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
-from trajectory_tracer.schemas import Embedding, Invocation
+from trajectory_tracer.schemas import Embedding, Invocation, InvocationType
 
 
 def nomic_embed_text(invocation: Invocation) -> Embedding:
     """
-    Calculate an embedding for the input text of an invocation using the nomic-embed-text model.
+    Calculate an embedding for the output text of an invocation using the nomic-embed-text model.
 
     Args:
-        invocation: The Invocation object containing the input to embed
+        invocation: The Invocation object containing the text output to embed
 
     Returns:
         An Embedding object with the calculated vector
     """
-    # Only works with text inputs
-    if isinstance(invocation.input, Image.Image):
-        raise ValueError("Cannot embed image input with nomic-embed-text")
+    # Only works with text outputs
+    if invocation.type != InvocationType.TEXT or not invocation.output_text:
+        raise ValueError("Cannot embed non-text output with nomic-embed-text")
 
     def mean_pooling(model_output, attention_mask):
         token_embeddings = model_output[0]
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-    # Prepare input text with the required prefix for RAG
-    text_with_prefix = f"search_query: {invocation.input}"
+    # Prepare output text with the required prefix for RAG
+    text_with_prefix = f"search_query: {invocation.output_text}"
 
     # Load the model and tokenizer
     tokenizer = AutoTokenizer.from_pretrained('nomic-ai/nomic-embed-text-v1.5')
     model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1.5', trust_remote_code=True)
     model.eval()
 
-    # Tokenize the input
+    # Tokenize the output
     encoded_input = tokenizer([text_with_prefix], padding=True, truncation=True, return_tensors='pt')
 
     # Calculate embeddings
@@ -45,8 +44,8 @@ def nomic_embed_text(invocation: Invocation) -> Embedding:
     embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
     embeddings = F.normalize(embeddings, p=2, dim=1)
 
-    # Convert to list for storage
-    vector = embeddings[0].tolist()
+    # Convert to numpy array for storage
+    vector = embeddings[0].numpy()
 
     # Return the embedding
     return Embedding(
@@ -58,26 +57,25 @@ def nomic_embed_text(invocation: Invocation) -> Embedding:
 
 def nomic_embed_vision(invocation: Invocation) -> Embedding:
     """
-    Calculate an embedding for an image input of an invocation using the nomic-embed-vision model.
+    Calculate an embedding for an image output of an invocation using the nomic-embed-vision model.
 
     Args:
-        invocation: The Invocation object containing the image input to embed
+        invocation: The Invocation object containing the image output to embed
 
     Returns:
         An Embedding object with the calculated vector
     """
-    # Only works with image inputs
-    if isinstance(invocation.input, str):
-        raise ValueError("Cannot embed text input with nomic-embed-vision")
-
+    # Only works with image outputs
+    if invocation.type != InvocationType.IMAGE or not invocation.output_image_data:
+        raise ValueError("Cannot embed non-image output with nomic-embed-vision")
 
     # Load the model and processor
     processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
     vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
     vision_model.eval()
 
-    # The input is already a PIL Image, so we can use it directly
-    image = invocation.input
+    # Get the image from output property
+    image = invocation.output
 
     # Process the image
     inputs = processor(image, return_tensors="pt")
@@ -87,8 +85,8 @@ def nomic_embed_vision(invocation: Invocation) -> Embedding:
         img_emb = vision_model(**inputs).last_hidden_state
         img_embeddings = F.normalize(img_emb[:, 0], p=2, dim=1)
 
-    # Convert to list for storage
-    vector = img_embeddings[0].tolist()
+    # Convert to numpy array for storage
+    vector = img_embeddings[0].numpy()
 
     # Return the embedding
     return Embedding(
@@ -115,7 +113,7 @@ def dummy_embedding(invocation: Invocation) -> Embedding:
     import numpy as np
 
     # Generate a random vector of dimension 768
-    vector = np.random.rand(768).tolist()
+    vector = np.random.rand(768).astype(np.float32)
 
     # Return the embedding
     return Embedding(
