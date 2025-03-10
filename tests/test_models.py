@@ -5,10 +5,10 @@ from PIL import Image
 @pytest.mark.slow
 def test_flux_dev_t2i():
     """Test that flux_dev_t2i returns an image with the expected dimensions."""
-    from trajectory_tracer.models import IMAGE_SIZE, flux_dev_t2i
+    from trajectory_tracer.models import IMAGE_SIZE, FluxDevT2I
 
     prompt = "A beautiful mountain landscape at sunset"
-    image = flux_dev_t2i(prompt)
+    image = FluxDevT2I.invoke(prompt)
 
     assert isinstance(image, Image.Image)
 
@@ -20,24 +20,24 @@ def test_flux_dev_t2i():
 @pytest.mark.slow
 def test_moondream_i2t():
     """Test that moondream_i2t returns a text caption for an input image."""
-    from trajectory_tracer.models import moondream_i2t
+    from trajectory_tracer.models import MoondreamI2T
 
     # Create a simple test image
     image = Image.new('RGB', (100, 100), color='red')
 
-    caption = moondream_i2t(image)
+    caption = MoondreamI2T.invoke(image)
 
     assert isinstance(caption, str)
     assert len(caption) > 0  # Caption should not be empty
 
 def test_dummy_i2t():
     """Test that dummy_i2t returns a fixed text caption."""
-    from trajectory_tracer.models import IMAGE_SIZE, dummy_i2t
+    from trajectory_tracer.models import IMAGE_SIZE, DummyI2T
 
     # Create a test image
     image = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), color='blue')
 
-    caption = dummy_i2t(image)
+    caption = DummyI2T.invoke(image)
 
     assert isinstance(caption, str)
     assert caption == "dummy text caption"
@@ -45,10 +45,10 @@ def test_dummy_i2t():
 
 def test_dummy_t2i():
     """Test that dummy_t2i returns a fixed blank image with correct dimensions."""
-    from trajectory_tracer.models import IMAGE_SIZE, dummy_t2i
+    from trajectory_tracer.models import IMAGE_SIZE, DummyT2I
 
     prompt = "This prompt will be ignored"
-    image = dummy_t2i(prompt)
+    image = DummyT2I.invoke(prompt)
 
     assert isinstance(image, Image.Image)
     assert image.width == IMAGE_SIZE
