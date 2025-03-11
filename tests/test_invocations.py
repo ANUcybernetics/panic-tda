@@ -51,6 +51,7 @@ def test_invocation_duration():
         seed=12345
     )
 
+    invocation.started_at = datetime.now()
     time.sleep(0.1)  # Small delay
     invocation.completed_at = datetime.now()
 

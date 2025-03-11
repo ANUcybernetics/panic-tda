@@ -1,6 +1,5 @@
 import json
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -29,8 +28,8 @@ def test_invocation_creation():
     )
 
     assert isinstance(invocation.id, UUID)
-    assert isinstance(invocation.started_at, datetime)
-    assert isinstance(invocation.completed_at, datetime)
+    assert invocation.started_at is None
+    assert invocation.completed_at is None
     assert invocation.model == "DummyI2T"
     assert invocation.model == "DummyI2T"
     assert invocation.output == "Hi there!"

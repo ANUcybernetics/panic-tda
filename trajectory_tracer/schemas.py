@@ -99,8 +99,8 @@ class Invocation(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: datetime = Field(default_factory=datetime.now)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
     model: str  # Store the model class name
     type: InvocationType
     seed: int
@@ -144,6 +144,8 @@ class Invocation(SQLModel, table=True):
     @property
     def duration(self) -> float:
         """Return the duration of the embedding computation in seconds."""
+        if self.started_at is None or self.completed_at is None:
+            return 0.0
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
 
@@ -167,8 +169,8 @@ class Embedding(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: datetime = Field(default_factory=datetime.now)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
 
     invocation_id: UUID = Field(foreign_key="invocation.id")
     embedding_model: str
@@ -186,6 +188,8 @@ class Embedding(SQLModel, table=True):
     @property
     def duration(self) -> float:
         """Return the duration of the embedding computation in seconds."""
+        if self.started_at is None or self.completed_at is None:
+            return 0.0
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
 
@@ -194,8 +198,8 @@ class PersistenceDiagram(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: datetime = Field(default_factory=datetime.now)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
 
     generators: List[np.ndarray] = Field(
         default=[],
@@ -212,6 +216,8 @@ class PersistenceDiagram(SQLModel, table=True):
     @property
     def duration(self) -> float:
         """Return the duration of the embedding computation in seconds."""
+        if self.started_at is None or self.completed_at is None:
+            return 0.0
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
 
