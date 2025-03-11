@@ -141,6 +141,12 @@ class Invocation(SQLModel, table=True):
         else:
             raise TypeError(f"Expected str, Image, or None, got {type(value)}")
 
+    @property
+    def duration(self) -> float:
+        """Return the duration of the embedding computation in seconds."""
+        delta = self.completed_at - self.started_at
+        return delta.total_seconds()
+
 
 class Run(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
@@ -161,6 +167,9 @@ class Embedding(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: datetime = Field(default_factory=datetime.now)
+
     invocation_id: UUID = Field(foreign_key="invocation.id")
     embedding_model: str
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
@@ -174,11 +183,20 @@ class Embedding(SQLModel, table=True):
             return 0
         return len(self.vector)
 
+    @property
+    def duration(self) -> float:
+        """Return the duration of the embedding computation in seconds."""
+        delta = self.completed_at - self.started_at
+        return delta.total_seconds()
+
 
 class PersistenceDiagram(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: datetime = Field(default_factory=datetime.now)
+
     generators: List[np.ndarray] = Field(
         default=[],
         sa_column=Column(NumpyArrayListType)
@@ -190,6 +208,12 @@ class PersistenceDiagram(SQLModel, table=True):
     def get_generators_as_arrays(self) -> List[np.ndarray]:
         """Return generators as numpy arrays."""
         return self.generators  # Already numpy arrays
+
+    @property
+    def duration(self) -> float:
+        """Return the duration of the embedding computation in seconds."""
+        delta = self.completed_at - self.started_at
+        return delta.total_seconds()
 
 
 class ExperimentConfig(SQLModel):
