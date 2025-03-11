@@ -19,3 +19,6 @@
 - accelerate the models with CUDA
 
 - work on parallelism (with shared GPU, and with multi-GPU)
+
+- switch to uuidv7 (would be nice so that the ids are sorted, e.g. if we use
+  them in image filenames)
