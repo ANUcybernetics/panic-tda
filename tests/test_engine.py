@@ -4,7 +4,13 @@ from PIL import Image
 from sqlmodel import Session
 
 from trajectory_tracer.embeddings import dummy
-from trajectory_tracer.engine import create_invocation, embed_invocation, perform_run
+from trajectory_tracer.engine import (
+    create_invocation,
+    create_run,
+    embed_invocation,
+    embed_run,
+    perform_run,
+)
 from trajectory_tracer.schemas import Invocation, InvocationType, Run
 
 
@@ -179,3 +185,35 @@ def test_embed_invocation(db_session: Session):
     db_session.refresh(invocation)
     assert len(invocation.embeddings) == 1
     assert invocation.embeddings[0].id == embedding.id
+
+
+def test_embed_run(db_session: Session):
+    """Test that embed_run correctly generates embeddings for all invocations in a run."""
+
+    # Create a test run
+    network = ["DummyT2I", "DummyI2T"]
+    initial_prompt = "Test prompt for embedding run"
+    seed = 42
+
+    # Create and perform the run
+    run = create_run(network=network, initial_prompt=initial_prompt, seed=seed, session=db_session)
+    run.length = 6  # Override length to have multiple cycles through the network
+    db_session.add(run)
+    db_session.commit()
+
+    run = perform_run(run, db_session)
+
+    # Verify run was created with correct number of invocations
+    assert len(run.invocations) == 6
+
+    # Create embeddings for all invocations
+    embeddings = embed_run(run, dummy, db_session)
+
+    # Check that embeddings were created for each invocation
+    assert len(embeddings) == 6
+
+    # Verify each invocation has an embedding
+    for invocation in run.invocations:
+        assert len(invocation.embeddings) == 1
+        assert invocation.embeddings[0].embedding_model == "dummy-embedding"
+        assert invocation.embeddings[0].dimension == 768

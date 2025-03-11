@@ -154,6 +154,41 @@ def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Op
         raise
 
 
+def embed_run(run: Run, embedding_fn: Callable, session: Session) -> List[Embedding]:
+    """
+    Generate embeddings for all invocations in a run using the specified embedding function.
+
+    Args:
+        run: The Run object containing invocations to embed
+        embedding_fn: Function that takes an invocation and returns an Embedding
+        session: SQLModel Session for database operations
+
+    Returns:
+        List of created Embedding objects
+    """
+    try:
+        logger.info(f"Embedding all invocations for run {run.id}")
+        embeddings = []
+
+        # Ensure invocations are loaded
+        if not run.invocations:
+            session.refresh(run)
+
+        # Generate embeddings for each invocation
+        for invocation in run.invocations:
+            embedding = embed_invocation(invocation, embedding_fn, session)
+            session.add(embedding)
+            embeddings.append(embedding)
+
+        # Commit all embeddings to database
+        session.commit()
+
+        logger.info(f"Successfully embedded {len(embeddings)} invocations for run {run.id}")
+        return embeddings
+
+    except Exception as e:
+        logger.error(f"Error embedding run {run.id}: {e}")
+        raise
 def create_run(network: List[str], initial_prompt: str, seed: int = 42, session: Session = None) -> Run:
     """
     Create a new run with the specified parameters.
