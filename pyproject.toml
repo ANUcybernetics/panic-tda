@@ -8,6 +8,7 @@ dependencies = [
     "accelerate>=1.4.0",
     "diffusers>=0.32.2",
     "einops>=0.8.1",
+    "giotto-ph>=0.2.4",
     "pillow>=11.1.0",
     "protobuf>=6.30.0",
     "pydantic>=2.10.6",
