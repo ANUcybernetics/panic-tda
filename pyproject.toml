@@ -28,3 +28,7 @@ addopts = "-m 'not slow'"
 
 [dependency-groups]
 dev = ["pytest>=8.3.5"]
+
+[tool.ruff.format]
+# Enable preview style formatting.
+preview = true
