@@ -4,7 +4,6 @@ from typing import Callable, List, Optional, Union
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.db import db
 from trajectory_tracer.models import invoke
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
@@ -17,9 +16,9 @@ def create_invocation(
     input: Union[str, Image.Image],
     run_id: str,
     sequence_number: int,
+    session: Session,
     input_invocation_id: Optional[str] = None,
-    seed: int = 42,
-    session: Optional[Session] = None
+    seed: int = 42
 ) -> Invocation:
     """
     Create an invocation object based on model type and input.
@@ -29,9 +28,9 @@ def create_invocation(
         input: Either a text prompt or an image
         run_id: The associated run ID
         sequence_number: Order in the run sequence
+        session: SQLModel Session for database operations
         input_invocation_id: Optional ID of the input invocation
         seed: Random seed for reproducibility
-        session: SQLModel Session for database operations
 
     Returns:
         A new Invocation object
@@ -49,9 +48,15 @@ def create_invocation(
         seed=seed
     )
 
+    # Save to database
+    session.add(invocation)
+    session.commit()
+    session.refresh(invocation)
+
+    logger.info(f"Created invocation with ID: {invocation.id}")
     return invocation
 
-def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], session: Optional[Session] = None) -> Invocation:
+def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], session: Session) -> Invocation:
     """
     Perform the actual model invocation and update the invocation object with the result.
 
@@ -67,9 +72,52 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
         logger.info(f"Invoking model {invocation.model} with {type(input).__name__} input")
         result = invoke(invocation.model, input)
         invocation.output = result
+
+        # Save changes to database
+        session.add(invocation)
+        session.commit()
+        session.refresh(invocation)
+
         return invocation
     except Exception as e:
         logger.error(f"Error invoking model {invocation.model}: {e}")
+        raise
+
+
+def create_run(network: List[str], initial_prompt: str, session: Session, seed: int = 42) -> Run:
+    """
+    Create a new run with the specified parameters.
+
+    Args:
+        network: List of model names to use in sequence
+        initial_prompt: The text prompt to start the run with
+        seed: Random seed for reproducibility
+        session: SQLModel Session for database operations
+
+    Returns:
+        The created Run object
+    """
+    try:
+        logger.info(f"Creating new run with network: {network}")
+
+        # Create run object
+        run = Run(
+            network=network,
+            initial_prompt=initial_prompt,
+            seed=seed,
+            length=len(network)
+        )
+
+        # Save to database
+        session.add(run)
+        session.commit()
+        session.refresh(run)
+
+        logger.info(f"Created run with ID: {run.id}")
+        return run
+
+    except Exception as e:
+        logger.error(f"Error creating run: {e}")
         raise
 
 
@@ -112,10 +160,6 @@ def perform_run(run: Run, session: Session) -> Run:
             # Execute the invocation
             invocation = perform_invocation(invocation, current_input, session=session)
 
-            # Save to database
-            session.add(invocation)
-            session.commit()
-
             # Set up for next invocation
             current_input = invocation.output
             previous_invocation_id = invocation.id
@@ -133,7 +177,7 @@ def perform_run(run: Run, session: Session) -> Run:
         raise
 
 
-def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Optional[Session] = None) -> Embedding:
+def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Session) -> Embedding:
     """
     Generate an embedding for an invocation using the specified embedding function.
 
@@ -148,6 +192,12 @@ def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Op
     try:
         logger.info(f"Creating embedding for invocation {invocation.id} with {embedding_fn.__name__}")
         embedding = embedding_fn(invocation)
+
+        # Save to database
+        session.add(embedding)
+        session.commit()
+        session.refresh(embedding)
+
         return embedding
     except Exception as e:
         logger.error(f"Error creating embedding for invocation {invocation.id}: {e}")
@@ -177,56 +227,11 @@ def embed_run(run: Run, embedding_fn: Callable, session: Session) -> List[Embedd
         # Generate embeddings for each invocation
         for invocation in run.invocations:
             embedding = embed_invocation(invocation, embedding_fn, session)
-            session.add(embedding)
             embeddings.append(embedding)
-
-        # Commit all embeddings to database
-        session.commit()
 
         logger.info(f"Successfully embedded {len(embeddings)} invocations for run {run.id}")
         return embeddings
 
     except Exception as e:
         logger.error(f"Error embedding run {run.id}: {e}")
-        raise
-def create_run(network: List[str], initial_prompt: str, seed: int = 42, session: Session = None) -> Run:
-    """
-    Create a new run with the specified parameters.
-
-    Args:
-        network: List of model names to use in sequence
-        initial_prompt: The text prompt to start the run with
-        seed: Random seed for reproducibility
-        session: SQLModel Session for database operations
-
-    Returns:
-        The created Run object
-    """
-    try:
-        logger.info(f"Creating new run with network: {network}")
-
-        # Create run object
-        run = Run(
-            network=network,
-            initial_prompt=initial_prompt,
-            seed=seed,
-            length=len(network)
-        )
-
-        # Save to database
-        if session:
-            session.add(run)
-            session.commit()
-            session.refresh(run)
-        else:
-            with db.create_session() as temp_session:
-                temp_session.add(run)
-                temp_session.commit()
-                temp_session.refresh(run)
-
-        logger.info(f"Created run with ID: {run.id}")
-        return run
-
-    except Exception as e:
-        logger.error(f"Error creating run: {e}")
         raise
