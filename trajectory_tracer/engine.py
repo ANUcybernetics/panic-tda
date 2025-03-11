@@ -68,6 +68,7 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image]) -
         logger.error(f"Error invoking model {invocation.model}: {e}")
         raise
 
+
 def perform_run(run: Run) -> Run:
     """
     Execute a complete run based on the specified network of models.
@@ -86,9 +87,14 @@ def perform_run(run: Run) -> Run:
             # Initialize with the first prompt
             current_input = run.initial_prompt
             previous_invocation_id = None
+            network_length = len(run.network)
 
-            # Process each model in the network sequence
-            for sequence_number, model_name in enumerate(run.network):
+            # Process each invocation in the run
+            for sequence_number in range(run.length):
+                # Get the next model in the network (cycling if necessary)
+                model_index = sequence_number % network_length
+                model_name = run.network[model_index]
+
                 # Create invocation
                 invocation = create_invocation(
                     model=model_name,
@@ -109,10 +115,7 @@ def perform_run(run: Run) -> Run:
                 current_input = invocation.output
                 previous_invocation_id = invocation.id
 
-                logger.info(f"Completed invocation {sequence_number+1}/{len(run.network)}: {model_name}")
-
-            # Refresh run to include all invocations
-            run = db.get_by_id(session, Run, run.id)
+                logger.info(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
 
         logger.info(f"Run {run.id} completed successfully")
         return run
@@ -120,6 +123,7 @@ def perform_run(run: Run) -> Run:
     except Exception as e:
         logger.error(f"Error performing run {run.id}: {e}")
         raise
+
 
 def embed_invocation(invocation: Invocation, embedding_fn: Callable) -> Embedding:
     """

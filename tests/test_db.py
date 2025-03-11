@@ -6,13 +6,20 @@ from PIL import Image
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
-def test_run_creation(session, sample_run):
+def test_run_creation(db_session):
     """Test creating a Run object."""
-    session.add(sample_run)
-    session.commit()
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        length=5
+    )
+    db_session.add(sample_run)
+    db_session.commit()
 
     # Retrieve the run from the database
-    retrieved_run = session.get(Run, sample_run.id)
+    retrieved_run = db_session.get(Run, sample_run.id)
 
     assert retrieved_run is not None
     assert retrieved_run.id == sample_run.id
@@ -20,22 +27,49 @@ def test_run_creation(session, sample_run):
     assert retrieved_run.seed == 42
     assert retrieved_run.length == 5
 
-def test_text_invocation(session, sample_run, sample_text_invocation):
+
+def test_text_invocation(db_session):
     """Test creating a text Invocation."""
-    session.add(sample_run)
-    session.add(sample_text_invocation)
-    session.commit()
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        length=5
+    )
+
+    # Create a sample text invocation
+    sample_text_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="Sample output text"
+    )
+
+    db_session.add(sample_run)
+    db_session.add(sample_text_invocation)
+    db_session.commit()
 
     # Retrieve the invocation from the database
-    retrieved = session.get(Invocation, sample_text_invocation.id)
+    retrieved = db_session.get(Invocation, sample_text_invocation.id)
 
     assert retrieved is not None
     assert retrieved.type == InvocationType.TEXT
     assert retrieved.output_text == "Sample output text"
     assert retrieved.output == "Sample output text"  # Test the property
 
-def test_image_invocation(session, sample_run):
+def test_image_invocation(db_session):
     """Test creating an image Invocation."""
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        length=5
+    )
+
     # Create a simple test image
     img = Image.new('RGB', (60, 30), color = 'red')
 
@@ -49,12 +83,12 @@ def test_image_invocation(session, sample_run):
     )
     invocation.output = img  # Test the output property setter for images
 
-    session.add(sample_run)
-    session.add(invocation)
-    session.commit()
+    db_session.add(sample_run)
+    db_session.add(invocation)
+    db_session.commit()
 
     # Retrieve the invocation from the database
-    retrieved = session.get(Invocation, invocation.id)
+    retrieved = db_session.get(Invocation, invocation.id)
 
     assert retrieved is not None
     assert retrieved.type == InvocationType.IMAGE
@@ -67,14 +101,40 @@ def test_image_invocation(session, sample_run):
     assert output_image.width == 60
     assert output_image.height == 30
 
-def test_embedding(session, sample_text_invocation, sample_embedding):
+def test_embedding(db_session):
     """Test creating and retrieving an Embedding."""
-    session.add(sample_text_invocation)
-    session.add(sample_embedding)
-    session.commit()
+    # Create a sample text invocation
+    sample_run = Run(
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        length=5
+    )
+
+    sample_text_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="Sample output text"
+    )
+
+    # Create a sample embedding
+    vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+    sample_embedding = Embedding(
+        invocation_id=sample_text_invocation.id,
+        embedding_model="test-embedding-model"
+    )
+    sample_embedding.vector = vector
+
+    db_session.add(sample_run)
+    db_session.add(sample_text_invocation)
+    db_session.add(sample_embedding)
+    db_session.commit()
 
     # Retrieve the embedding from the database
-    retrieved = session.get(Embedding, sample_embedding.id)
+    retrieved = db_session.get(Embedding, sample_embedding.id)
 
     assert retrieved is not None
     assert isinstance(retrieved.vector, np.ndarray)
