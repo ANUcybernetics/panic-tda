@@ -3,8 +3,9 @@ from uuid import uuid4
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.engine import create_invocation, perform_run
-from trajectory_tracer.schemas import Invocation, Run
+from trajectory_tracer.embeddings import dummy
+from trajectory_tracer.engine import create_invocation, embed_invocation, perform_run
+from trajectory_tracer.schemas import Invocation, InvocationType, Run
 
 
 def test_create_text_invocation():
@@ -62,7 +63,6 @@ def test_create_image_invocation():
 def test_perform_invocation_text():
     """Test that perform_invocation correctly handles text input with a dummy model."""
     from trajectory_tracer.engine import perform_invocation
-    from trajectory_tracer.schemas import InvocationType
 
     run_id = str(uuid4())
     text_input = "A test prompt"
@@ -87,7 +87,6 @@ def test_perform_invocation_text():
 def test_perform_invocation_image():
     """Test that perform_invocation correctly handles image input with a dummy model."""
     from trajectory_tracer.engine import perform_invocation
-    from trajectory_tracer.schemas import InvocationType
 
     run_id = str(uuid4())
     image_input = Image.new('RGB', (100, 100), color='blue')
@@ -146,3 +145,37 @@ def test_perform_run(db_session: Session):
             assert invocation.model == "DummyT2I"
         else:
             assert invocation.model == "DummyI2T"
+
+def test_embed_invocation(db_session: Session):
+    """Test that embed_invocation correctly generates and associates an embedding with an invocation."""
+    # Create a test invocation
+    input_text = "This is test text for embedding"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=uuid4(),
+        sequence_number=0,
+        seed=42
+    )
+    invocation.output_text = "This is test text for embedding"
+    db_session.add(invocation)
+    db_session.commit()
+
+    # Create an embedding for the invocation
+    embedding = embed_invocation(invocation, dummy, db_session)
+
+    # Check that the embedding was created correctly
+    assert embedding is not None
+    assert embedding.invocation_id == invocation.id
+    assert embedding.embedding_model == "dummy-embedding"
+    assert embedding.vector is not None
+    assert embedding.dimension == 768  # dummy embeddings are 768-dimensional
+
+    # Add and commit the embedding
+    db_session.add(embedding)
+    db_session.commit()
+
+    # Verify the relationship is established correctly
+    db_session.refresh(invocation)
+    assert len(invocation.embeddings) == 1
+    assert invocation.embeddings[0].id == embedding.id
