@@ -193,6 +193,49 @@ def test_embed_invocation(db_session: Session):
     assert invocation.embeddings[0].id == embedding.id
 
 
+def test_multiple_embeddings_per_invocation(db_session: Session):
+    """Test that multiple embedding models can be used on the same invocation."""
+    from trajectory_tracer.embeddings import dummy, dummy2
+
+    # Create a test invocation
+    input_text = "This is test text for multiple embeddings"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=uuid4(),
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation.output = "This is test text for multiple embeddings"
+    db_session.add(invocation)
+    db_session.commit()
+    db_session.refresh(invocation)
+
+    # Create first embedding using dummy
+    _embedding1 = embed_invocation(invocation, dummy, db_session)
+
+    # Create second embedding using dummy2
+    _embedding2 = embed_invocation(invocation, dummy2, db_session)
+
+    # Refresh invocation to see updated relationships
+    db_session.refresh(invocation)
+
+    # Check that both embeddings were created correctly
+    assert len(invocation.embeddings) == 2
+
+    # Check that we have one of each embedding model type
+    embedding_models = [e.embedding_model for e in invocation.embeddings]
+    assert "dummy-embedding" in embedding_models
+    assert "dummy2-embedding" in embedding_models
+
+    # Verify each embedding has correct properties
+    for embedding in invocation.embeddings:
+        assert embedding.invocation_id == invocation.id
+        assert embedding.vector is not None
+        assert embedding.dimension == 768
+
+
 def test_embed_run(db_session: Session):
     """Test that embed_run correctly generates embeddings for all invocations in a run."""
 

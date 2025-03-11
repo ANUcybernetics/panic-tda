@@ -121,6 +121,8 @@ def nomic(invocation: Invocation) -> Embedding:
         raise ValueError(f"Unsupported invocation type for nomic embedding: {invocation.type}")
 
 
+## from here these ones used for testing
+
 def dummy(invocation: Invocation) -> Embedding:
     """
     Generate a random embedding vector for testing purposes.
@@ -140,5 +142,28 @@ def dummy(invocation: Invocation) -> Embedding:
     return Embedding(
         invocation_id=invocation.id,
         embedding_model="dummy-embedding",
+        vector=vector
+    )
+
+
+def dummy2(invocation: Invocation) -> Embedding:
+    """
+    Generate a(nother) random embedding vector for testing purposes.
+
+    Args:
+        invocation: The Invocation object to generate an embedding for
+
+    Returns:
+        An Embedding object with a random vector of dimension 768
+    """
+    import numpy as np
+
+    # Generate a random vector of dimension 768
+    vector = np.random.rand(768).astype(np.float32)
+
+    # Return the embedding
+    return Embedding(
+        invocation_id=invocation.id,
+        embedding_model="dummy2-embedding",
         vector=vector
     )
