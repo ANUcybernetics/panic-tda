@@ -1,4 +1,4 @@
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import numpy as np
 from PIL import Image
@@ -142,3 +142,43 @@ def test_embedding(db_session: Session):
     assert isinstance(retrieved.vector, np.ndarray)
     assert retrieved.vector.shape == (3,)
     assert np.allclose(retrieved.vector, np.array([0.1, 0.2, 0.3], dtype=np.float32))
+
+
+def test_persistence_diagram_storage(db_session: Session):
+    """Test storing and retrieving PersistenceDiagram objects."""
+    from trajectory_tracer.schemas import PersistenceDiagram
+
+    # Create arrays of different shapes/dimensions
+    array1 = np.array([[0.1, 0.5], [0.2, 0.7], [0.4, 0.9]])
+    array2 = np.array([[0.3, 0.8]])
+    array3 = np.array([[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]])
+
+    # Create a persistence diagram with these arrays
+    diagram = PersistenceDiagram(
+        run_id=uuid4(),
+        generators=[array1, array2, array3]
+    )
+
+    db_session.add(diagram)
+    db_session.commit()
+
+    # Retrieve the diagram from the database
+    retrieved = db_session.get(PersistenceDiagram, diagram.id)
+
+    assert retrieved is not None
+
+    # Get the generators as arrays
+    retrieved_arrays = retrieved.get_generators_as_arrays()
+
+    # Verify we have the right number of arrays
+    assert len(retrieved_arrays) == 3
+
+    # Verify the arrays have correct shapes
+    assert retrieved_arrays[0].shape == (3, 2)
+    assert retrieved_arrays[1].shape == (1, 2)
+    assert retrieved_arrays[2].shape == (2, 3)
+
+    # Verify the array contents
+    assert np.allclose(retrieved_arrays[0], array1)
+    assert np.allclose(retrieved_arrays[1], array2)
+    assert np.allclose(retrieved_arrays[2], array3)

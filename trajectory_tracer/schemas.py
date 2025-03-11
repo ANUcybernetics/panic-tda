@@ -27,6 +27,65 @@ class NumpyArrayType(TypeDecorator):
         return np.frombuffer(value, dtype=np.float32)
 
 
+class NumpyArrayListType(TypeDecorator):
+    """SQLAlchemy type for storing a list of numpy arrays as binary data."""
+    impl = LargeBinary
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+
+        buffer = io.BytesIO()
+        # Save the number of arrays
+        num_arrays = len(value)
+        buffer.write(np.array([num_arrays], dtype=np.int32).tobytes())
+
+        # For each array, save its shape, dtype, and data
+        for arr in value:
+            arr_np = np.asarray(arr, dtype=np.float32)  # Ensure it's a numpy array with float32 dtype
+            shape = np.array(arr_np.shape, dtype=np.int32)
+
+            # Save shape dimensions
+            shape_length = len(shape)
+            buffer.write(np.array([shape_length], dtype=np.int32).tobytes())
+            buffer.write(shape.tobytes())
+
+            # Save the array data
+            buffer.write(arr_np.tobytes())
+
+        return buffer.getvalue()
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return []
+
+        buffer = io.BytesIO(value)
+        # Read the number of arrays
+        num_arrays_bytes = buffer.read(4)  # int32 is 4 bytes
+        num_arrays = np.frombuffer(num_arrays_bytes, dtype=np.int32)[0]
+
+        arrays = []
+        for _ in range(num_arrays):
+            # Read shape information
+            shape_length_bytes = buffer.read(4)  # int32 is 4 bytes
+            shape_length = np.frombuffer(shape_length_bytes, dtype=np.int32)[0]
+
+            shape_bytes = buffer.read(4 * shape_length)  # Each dimension is an int32 (4 bytes)
+            shape = tuple(np.frombuffer(shape_bytes, dtype=np.int32))
+
+            # Calculate number of elements and bytes needed
+            n_elements = np.prod(shape)
+            n_bytes = n_elements * 4  # float32 is 4 bytes per element
+
+            # Read array data
+            array_bytes = buffer.read(n_bytes)
+            array_data = np.frombuffer(array_bytes, dtype=np.float32)
+            arrays.append(array_data.reshape(shape))
+
+        return arrays
+
+
 class InvocationType(str, Enum):
     TEXT = "text"
     IMAGE = "image"
@@ -92,6 +151,7 @@ class Run(SQLModel, table=True):
         back_populates="run",
         sa_relationship_kwargs={"order_by": "Invocation.sequence_number"}
     )
+    persistence_diagrams: List["PersistenceDiagram"] = Relationship(back_populates="run")
 
 
 class Embedding(SQLModel, table=True):
@@ -157,16 +217,14 @@ class PersistenceDiagram(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    generators: List[np.ndarray] = Field(default=[], sa_column=Column(JSON))
+    generators: List[np.ndarray] = Field(
+        default=[],
+        sa_column=Column(NumpyArrayListType)
+    )
 
-    @field_validator('generators', check_fields=False)
-    @classmethod
-    def convert_arrays(cls, value):
-        if value is None:
-            return []
-        # Convert numpy arrays to lists for JSON serialization
-        return [arr.tolist() if isinstance(arr, np.ndarray) else arr for arr in value]
+    run_id: UUID = Field(foreign_key="run.id")
+    run: Run = Relationship(back_populates="persistence_diagrams")
 
     def get_generators_as_arrays(self) -> List[np.ndarray]:
         """Return generators as numpy arrays."""
-        return [np.array(gen) if isinstance(gen, list) else gen for gen in self.generators]
+        return self.generators  # Already numpy arrays
