@@ -151,3 +151,22 @@ class ExperimentConfig(SQLModel):
                 f"prompts={len(self.prompts)}, embedders={len(self.embedders)}"
             )
         return True
+
+
+class PersistenceDiagram(SQLModel, table=True):
+    model_config = {"arbitrary_types_allowed": True}
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    generators: List[np.ndarray] = Field(default=[], sa_column=Column(JSON))
+
+    @field_validator('generators', check_fields=False)
+    @classmethod
+    def convert_arrays(cls, value):
+        if value is None:
+            return []
+        # Convert numpy arrays to lists for JSON serialization
+        return [arr.tolist() if isinstance(arr, np.ndarray) else arr for arr in value]
+
+    def get_generators_as_arrays(self) -> List[np.ndarray]:
+        """Return generators as numpy arrays."""
+        return [np.array(gen) if isinstance(gen, list) else gen for gen in self.generators]
