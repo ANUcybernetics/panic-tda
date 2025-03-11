@@ -2,6 +2,7 @@ import logging
 from typing import Callable, List, Optional, Union
 
 from PIL import Image
+from sqlmodel import Session
 
 from trajectory_tracer.db import db
 from trajectory_tracer.models import invoke
@@ -17,7 +18,8 @@ def create_invocation(
     run_id: str,
     sequence_number: int,
     input_invocation_id: Optional[str] = None,
-    seed: int = 42
+    seed: int = 42,
+    session: Optional[Session] = None
 ) -> Invocation:
     """
     Create an invocation object based on model type and input.
@@ -29,6 +31,7 @@ def create_invocation(
         sequence_number: Order in the run sequence
         input_invocation_id: Optional ID of the input invocation
         seed: Random seed for reproducibility
+        session: SQLModel Session for database operations
 
     Returns:
         A new Invocation object
@@ -48,13 +51,14 @@ def create_invocation(
 
     return invocation
 
-def perform_invocation(invocation: Invocation, input: Union[str, Image.Image]) -> Invocation:
+def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], session: Optional[Session] = None) -> Invocation:
     """
     Perform the actual model invocation and update the invocation object with the result.
 
     Args:
         invocation: The invocation object to update
         input: The input data for the model
+        session: SQLModel Session for database operations
 
     Returns:
         The updated invocation with output
@@ -69,12 +73,13 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image]) -
         raise
 
 
-def perform_run(run: Run) -> Run:
+def perform_run(run: Run, session: Session) -> Run:
     """
     Execute a complete run based on the specified network of models.
 
     Args:
         run: The Run object containing configuration
+        session: SQLModel Session for database operations
 
     Returns:
         The updated Run with completed invocations
@@ -82,40 +87,43 @@ def perform_run(run: Run) -> Run:
     try:
         logger.info(f"Starting run {run.id} with seed {run.seed}")
 
-        # Create a database session
-        with db.create_session() as session:
-            # Initialize with the first prompt
-            current_input = run.initial_prompt
-            previous_invocation_id = None
-            network_length = len(run.network)
+        # Initialize with the first prompt
+        current_input = run.initial_prompt
+        previous_invocation_id = None
+        network_length = len(run.network)
 
-            # Process each invocation in the run
-            for sequence_number in range(run.length):
-                # Get the next model in the network (cycling if necessary)
-                model_index = sequence_number % network_length
-                model_name = run.network[model_index]
+        # Process each invocation in the run
+        for sequence_number in range(run.length):
+            # Get the next model in the network (cycling if necessary)
+            model_index = sequence_number % network_length
+            model_name = run.network[model_index]
 
-                # Create invocation
-                invocation = create_invocation(
-                    model=model_name,
-                    input=current_input,
-                    run_id=run.id,
-                    sequence_number=sequence_number,
-                    input_invocation_id=previous_invocation_id,
-                    seed=run.seed
-                )
+            # Create invocation
+            invocation = create_invocation(
+                model=model_name,
+                input=current_input,
+                run_id=run.id,
+                sequence_number=sequence_number,
+                input_invocation_id=previous_invocation_id,
+                seed=run.seed,
+                session=session
+            )
 
-                # Execute the invocation
-                invocation = perform_invocation(invocation, current_input)
+            # Execute the invocation
+            invocation = perform_invocation(invocation, current_input, session=session)
 
-                # Save to database
-                db.create(session, invocation)
+            # Save to database
+            session.add(invocation)
+            session.commit()
 
-                # Set up for next invocation
-                current_input = invocation.output
-                previous_invocation_id = invocation.id
+            # Set up for next invocation
+            current_input = invocation.output
+            previous_invocation_id = invocation.id
 
-                logger.info(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
+            logger.info(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
+
+        # Refresh the run to include the invocations
+        session.refresh(run)
 
         logger.info(f"Run {run.id} completed successfully")
         return run
@@ -125,13 +133,14 @@ def perform_run(run: Run) -> Run:
         raise
 
 
-def embed_invocation(invocation: Invocation, embedding_fn: Callable) -> Embedding:
+def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Optional[Session] = None) -> Embedding:
     """
     Generate an embedding for an invocation using the specified embedding function.
 
     Args:
         invocation: The invocation to embed
         embedding_fn: Function that takes an invocation and returns an Embedding
+        session: SQLModel Session for database operations
 
     Returns:
         The created Embedding object
@@ -145,7 +154,7 @@ def embed_invocation(invocation: Invocation, embedding_fn: Callable) -> Embeddin
         raise
 
 
-def create_run(network: List[str], initial_prompt: str, seed: int = 42) -> Run:
+def create_run(network: List[str], initial_prompt: str, seed: int = 42, session: Session = None) -> Run:
     """
     Create a new run with the specified parameters.
 
@@ -153,6 +162,7 @@ def create_run(network: List[str], initial_prompt: str, seed: int = 42) -> Run:
         network: List of model names to use in sequence
         initial_prompt: The text prompt to start the run with
         seed: Random seed for reproducibility
+        session: SQLModel Session for database operations
 
     Returns:
         The created Run object
@@ -169,8 +179,15 @@ def create_run(network: List[str], initial_prompt: str, seed: int = 42) -> Run:
         )
 
         # Save to database
-        with db.create_session() as session:
-            db.create(session, run)
+        if session:
+            session.add(run)
+            session.commit()
+            session.refresh(run)
+        else:
+            with db.create_session() as temp_session:
+                temp_session.add(run)
+                temp_session.commit()
+                temp_session.refresh(run)
 
         logger.info(f"Created run with ID: {run.id}")
         return run

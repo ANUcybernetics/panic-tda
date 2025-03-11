@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from PIL import Image
-from sqlmodel import select
+from sqlmodel import Session
 
 from trajectory_tracer.engine import create_invocation, perform_run
 from trajectory_tracer.schemas import Invocation, Run
@@ -62,7 +62,7 @@ def test_create_image_invocation():
 def test_perform_invocation_text():
     """Test that perform_invocation correctly handles text input with a dummy model."""
     from trajectory_tracer.engine import perform_invocation
-    from trajectory_tracer.schemas import Invocation, InvocationType
+    from trajectory_tracer.schemas import InvocationType
 
     run_id = str(uuid4())
     text_input = "A test prompt"
@@ -87,7 +87,7 @@ def test_perform_invocation_text():
 def test_perform_invocation_image():
     """Test that perform_invocation correctly handles image input with a dummy model."""
     from trajectory_tracer.engine import perform_invocation
-    from trajectory_tracer.schemas import Invocation, InvocationType
+    from trajectory_tracer.schemas import InvocationType
 
     run_id = str(uuid4())
     image_input = Image.new('RGB', (100, 100), color='blue')
@@ -109,7 +109,7 @@ def test_perform_invocation_image():
     assert result.output == "dummy text caption"
 
 
-def test_perform_run(db_session):
+def test_perform_run(db_session: Session):
     """Test that perform_run correctly executes a complete run with the specified network of models."""
     # Create a simple run with DummyT2I and DummyI2T models
     network = ["DummyT2I", "DummyI2T"]
@@ -128,16 +128,15 @@ def test_perform_run(db_session):
     db_session.refresh(run)
 
     # Perform the run
-    perform_run(run)
+    perform_run(run, db_session)
 
-    invocations_query = select(Invocation).where(Invocation.run_id == run.id).order_by(Invocation.sequence_number)
-    invocations = db_session.exec(invocations_query).all()
+
 
     # Check that the run completed successfully and has the correct number of invocations
-    assert len(invocations) == run.length
+    assert len(run.invocations) == run.length
 
     # Verify the sequence of invocations
-    for i, invocation in enumerate(invocations):
+    for i, invocation in enumerate(run.invocations):
         assert invocation.sequence_number == i
         assert invocation.run_id == run.id
         assert invocation.seed == seed

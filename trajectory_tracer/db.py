@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from typing import List, Optional, Type, TypeVar
 from uuid import UUID
 
@@ -15,6 +16,19 @@ class Database:
     def create_session(self) -> Session:
         """Create and return a new database session."""
         return Session(self.engine)
+
+    @contextmanager
+    def get_session(self):
+        """Provide a transactional scope around a series of operations."""
+        session = self.create_session()
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     def create(self, session: Session, model: SQLModel) -> None:
         """Create a new record in the database."""

@@ -2,11 +2,12 @@ from uuid import UUID
 
 import numpy as np
 from PIL import Image
+from sqlmodel import Session
 
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
-def test_run_creation(db_session):
+def test_run_creation(db_session: Session):
     """Test creating a Run object."""
     # Create a sample run
     sample_run = Run(
@@ -28,7 +29,7 @@ def test_run_creation(db_session):
     assert retrieved_run.length == 5
 
 
-def test_text_invocation(db_session):
+def test_text_invocation(db_session: Session):
     """Test creating a text Invocation."""
     # Create a sample run
     sample_run = Run(
@@ -60,7 +61,8 @@ def test_text_invocation(db_session):
     assert retrieved.output_text == "Sample output text"
     assert retrieved.output == "Sample output text"  # Test the property
 
-def test_image_invocation(db_session):
+
+def test_image_invocation(db_session: Session):
     """Test creating an image Invocation."""
     # Create a sample run
     sample_run = Run(
@@ -101,7 +103,7 @@ def test_image_invocation(db_session):
     assert output_image.width == 60
     assert output_image.height == 30
 
-def test_embedding(db_session):
+def test_embedding(db_session: Session):
     """Test creating and retrieving an Embedding."""
     # Create a sample text invocation
     sample_run = Run(
