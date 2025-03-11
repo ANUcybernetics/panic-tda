@@ -27,6 +27,7 @@ def test_create_text_invocation():
     assert text_invocation.sequence_number == sequence_number
     assert text_invocation.seed == seed
     assert text_invocation.input_invocation_id is None
+    assert text_invocation.output is None
 
 
 def test_create_image_invocation():
@@ -53,3 +54,4 @@ def test_create_image_invocation():
     assert image_invocation.sequence_number == sequence_number
     assert image_invocation.seed == seed
     assert image_invocation.input_invocation_id == input_invocation_id
+    assert image_invocation.output is None
