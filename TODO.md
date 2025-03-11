@@ -8,11 +8,6 @@
   - write out the images for an invocation (or run) with prompt & other info in
     metadata
 
-- add a tda module which can
-
-  - generate a PersistanceDiagram for a Run
-  - calculate the persistance entropy for a PersistanceDiagram
-
 - add data analysis & vis code
 
   - pull a run or series of runs (experiment? or just everything) into a polars
