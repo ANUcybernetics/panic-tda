@@ -9,6 +9,7 @@ dependencies = [
     "diffusers>=0.32.2",
     "einops>=0.8.1",
     "giotto-ph>=0.2.4",
+    "persim>=0.3.7",
     "pillow>=11.1.0",
     "protobuf>=6.30.0",
     "pydantic>=2.10.6",
