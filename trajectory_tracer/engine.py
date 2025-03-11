@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Callable, List, Optional, Union
 
 from PIL import Image
@@ -70,7 +71,9 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
     """
     try:
         logger.info(f"Invoking model {invocation.model} with {type(input).__name__} input")
+        invocation.started_at = datetime.now()
         result = invoke(invocation.model, input)
+        invocation.completed_at = datetime.now()
         invocation.output = result
 
         # Save changes to database
@@ -191,7 +194,10 @@ def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Se
     """
     try:
         logger.info(f"Creating embedding for invocation {invocation.id} with {embedding_fn.__name__}")
+        started_at_ts = datetime.now()
         embedding = embedding_fn(invocation)
+        embedding.completed_at = datetime.now()
+        embedding.started_at = started_at_ts
 
         # Save to database
         session.add(embedding)

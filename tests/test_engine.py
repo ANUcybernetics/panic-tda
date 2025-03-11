@@ -95,6 +95,9 @@ def test_perform_invocation_text(db_session: Session):
     # Check the result
     assert result.output is not None
     assert isinstance(result.output, Image.Image)
+    assert result.started_at is not None  # Check that started_at is set
+    assert result.completed_at is not None  # Check that completed_at is set
+    assert result.completed_at >= result.started_at  # Completion should be after or equal to start
 
 
 def test_perform_invocation_image(db_session: Session):
@@ -121,6 +124,9 @@ def test_perform_invocation_image(db_session: Session):
     # Check the result
     assert result.output is not None
     assert result.output == "dummy text caption"
+    assert result.started_at is not None  # Check that started_at is set
+    assert result.completed_at is not None  # Check that completed_at is set
+    assert result.completed_at >= result.started_at  # Completion should be after or equal to start
 
 
 def test_perform_run(db_session: Session):
@@ -153,6 +159,9 @@ def test_perform_run(db_session: Session):
         assert invocation.sequence_number == i
         assert invocation.run_id == run.id
         assert invocation.seed == seed
+        assert invocation.started_at is not None  # Check that started_at is set
+        assert invocation.completed_at is not None  # Check that completed_at is set
+        assert invocation.completed_at >= invocation.started_at  # Completion should be after or equal to start
 
         # Check the model alternation pattern
         if i % 2 == 0:
@@ -186,6 +195,9 @@ def test_embed_invocation(db_session: Session):
     assert embedding.embedding_model == "dummy-embedding"
     assert embedding.vector is not None
     assert embedding.dimension == 768  # dummy embeddings are 768-dimensional
+    assert embedding.started_at is not None  # Check that started_at is set
+    assert embedding.completed_at is not None  # Check that completed_at is set
+    assert embedding.completed_at >= embedding.started_at  # Completion should be after or equal to start
 
     # Verify the relationship is established correctly
     db_session.refresh(invocation)
@@ -213,16 +225,26 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
     db_session.refresh(invocation)
 
     # Create first embedding using dummy
-    _embedding1 = embed_invocation(invocation, dummy, db_session)
+    embedding1 = embed_invocation(invocation, dummy, db_session)
 
     # Create second embedding using dummy2
-    _embedding2 = embed_invocation(invocation, dummy2, db_session)
+    embedding2 = embed_invocation(invocation, dummy2, db_session)
 
     # Refresh invocation to see updated relationships
     db_session.refresh(invocation)
 
     # Check that both embeddings were created correctly
     assert len(invocation.embeddings) == 2
+
+    # Check timestamps for first embedding
+    assert embedding1.started_at is not None
+    assert embedding1.completed_at is not None
+    assert embedding1.completed_at >= embedding1.started_at
+
+    # Check timestamps for second embedding
+    assert embedding2.started_at is not None
+    assert embedding2.completed_at is not None
+    assert embedding2.completed_at >= embedding2.started_at
 
     # Check that we have one of each embedding model type
     embedding_models = [e.embedding_model for e in invocation.embeddings]
@@ -234,6 +256,9 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
         assert embedding.invocation_id == invocation.id
         assert embedding.vector is not None
         assert embedding.dimension == 768
+        assert embedding.started_at is not None
+        assert embedding.completed_at is not None
+        assert embedding.completed_at >= embedding.started_at
 
 
 def test_embed_run(db_session: Session):
@@ -262,8 +287,17 @@ def test_embed_run(db_session: Session):
     # Check that embeddings were created for each invocation
     assert len(embeddings) == 6
 
+    # Verify each embedding has timestamps
+    for embedding in embeddings:
+        assert embedding.started_at is not None
+        assert embedding.completed_at is not None
+        assert embedding.completed_at >= embedding.started_at
+
     # Verify each invocation has an embedding
     for invocation in run.invocations:
         assert len(invocation.embeddings) == 1
         assert invocation.embeddings[0].embedding_model == "dummy-embedding"
         assert invocation.embeddings[0].dimension == 768
+        assert invocation.embeddings[0].started_at is not None
+        assert invocation.embeddings[0].completed_at is not None
+        assert invocation.embeddings[0].completed_at >= invocation.embeddings[0].started_at
