@@ -1,12 +1,25 @@
 # TODO
 
-- add the README stuff back in
-
-- have a nicer way of mapping model names to invocation functions
-
 - add working (slow) tests for the nomic embedding modules
 
-- doesn't seem like the schemas are actually using sqlmodel - need to update
-  that
+- add helper functions for (either to engine, or to db):
 
-- (maybe) nest src/ inside a trajectory_tracer folder
+  - fetch a run from the db by id, and again by seed/prompt/network
+  - write out the images for an invocation (or run) with prompt & other info in
+    metadata
+
+- add a tda module which can
+
+  - generate a PersistanceDiagram for a Run
+  - calculate the persistance entropy for a PersistanceDiagram
+
+- add data analysis & vis code
+
+  - pull a run or series of runs (experiment? or just everything) into a polars
+    df
+  - do some basic vis with altair
+  - do some statistical tests with e.g. scikit.learn
+
+- accelerate the models with CUDA
+
+- work on parallelism (with shared GPU, and with multi-GPU)
