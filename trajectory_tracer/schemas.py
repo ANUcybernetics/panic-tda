@@ -10,6 +10,7 @@ from pydantic import field_validator
 from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
 
+## numpy storage helper classes
 
 class NumpyArrayType(TypeDecorator):
     """SQLAlchemy type for storing numpy arrays as binary data."""
@@ -85,6 +86,8 @@ class NumpyArrayListType(TypeDecorator):
 
         return arrays
 
+
+## main DB classes
 
 class InvocationType(str, Enum):
     TEXT = "text"
@@ -172,6 +175,23 @@ class Embedding(SQLModel, table=True):
         return len(self.vector)
 
 
+class PersistenceDiagram(SQLModel, table=True):
+    model_config = {"arbitrary_types_allowed": True}
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    generators: List[np.ndarray] = Field(
+        default=[],
+        sa_column=Column(NumpyArrayListType)
+    )
+
+    run_id: UUID = Field(foreign_key="run.id")
+    run: Run = Relationship(back_populates="persistence_diagrams")
+
+    def get_generators_as_arrays(self) -> List[np.ndarray]:
+        """Return generators as numpy arrays."""
+        return self.generators  # Already numpy arrays
+
+
 class ExperimentConfig(SQLModel):
     model_config = {"arbitrary_types_allowed": True}
 
@@ -211,20 +231,3 @@ class ExperimentConfig(SQLModel):
                 f"prompts={len(self.prompts)}, embedders={len(self.embedders)}"
             )
         return True
-
-
-class PersistenceDiagram(SQLModel, table=True):
-    model_config = {"arbitrary_types_allowed": True}
-
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
-    generators: List[np.ndarray] = Field(
-        default=[],
-        sa_column=Column(NumpyArrayListType)
-    )
-
-    run_id: UUID = Field(foreign_key="run.id")
-    run: Run = Relationship(back_populates="persistence_diagrams")
-
-    def get_generators_as_arrays(self) -> List[np.ndarray]:
-        """Return generators as numpy arrays."""
-        return self.generators  # Already numpy arrays
