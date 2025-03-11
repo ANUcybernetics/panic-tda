@@ -14,10 +14,8 @@
     df
   - do some basic vis with altair
   - do some statistical tests with e.g. scikit.learn
+  - wall-clock time plots (so we see what's taking so long)
 
 - accelerate the models with CUDA
 
 - work on parallelism (with shared GPU, and with multi-GPU)
-
-- add begin + end timestamps for any calculation (so that we can do timings
-  later)
