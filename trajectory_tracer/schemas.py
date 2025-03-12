@@ -174,7 +174,7 @@ class Embedding(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(default=None)
 
     invocation_id: UUID = Field(foreign_key="invocation.id")
-    embedding_model: str
+    embedding_model: str  # Store the embedding model class name
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
     # Relationship attribute
@@ -230,7 +230,7 @@ class ExperimentConfig(SQLModel):
     networks: List[List[str]] = Field(..., description="List of networks (each network is a list of model names)")
     seeds: List[int] = Field(..., description="List of random seeds to use")
     prompts: List[str] = Field(..., description="List of initial text prompts")
-    embedders: List[str] = Field(..., description="List of embedding model names")
+    embedders: List[str] = Field(..., description="List of embedding model class names")
     run_length: int = Field(..., description="Number of invocations in each run")
 
     @field_validator('networks', 'seeds', 'prompts', 'embedders', check_fields=False)

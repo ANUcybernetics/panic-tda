@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
-from typing import Callable, List, Optional, Union
+from typing import List, Optional, Union
 
 from PIL import Image
 from sqlmodel import Session
 
+from trajectory_tracer.embeddings import embed
 from trajectory_tracer.models import invoke
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
@@ -180,22 +181,22 @@ def perform_run(run: Run, session: Session) -> Run:
         raise
 
 
-def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Session) -> Embedding:
+def embed_invocation(invocation: Invocation, embedding_model: str, session: Session) -> Embedding:
     """
-    Generate an embedding for an invocation using the specified embedding function.
+    Generate an embedding for an invocation using the specified embedding model.
 
     Args:
         invocation: The invocation to embed
-        embedding_fn: Function that takes an invocation and returns an Embedding
+        embedding_model: Name of the embedding model to use
         session: SQLModel Session for database operations
 
     Returns:
         The created Embedding object
     """
     try:
-        logger.info(f"Creating embedding for invocation {invocation.id} with {embedding_fn.__name__}")
+        logger.info(f"Creating embedding for invocation {invocation.id} with {embedding_model}")
         started_at_ts = datetime.now()
-        embedding = embedding_fn(invocation)
+        embedding = embed(embedding_model, invocation)
         embedding.completed_at = datetime.now()
         embedding.started_at = started_at_ts
 
@@ -210,13 +211,13 @@ def embed_invocation(invocation: Invocation, embedding_fn: Callable, session: Se
         raise
 
 
-def embed_run(run: Run, embedding_fn: Callable, session: Session) -> List[Embedding]:
+def embed_run(run: Run, embedding_model: str, session: Session) -> List[Embedding]:
     """
-    Generate embeddings for all invocations in a run using the specified embedding function.
+    Generate embeddings for all invocations in a run using the specified embedding model.
 
     Args:
         run: The Run object containing invocations to embed
-        embedding_fn: Function that takes an invocation and returns an Embedding
+        embedding_model: Name of the embedding model to use
         session: SQLModel Session for database operations
 
     Returns:
@@ -232,7 +233,7 @@ def embed_run(run: Run, embedding_fn: Callable, session: Session) -> List[Embedd
 
         # Generate embeddings for each invocation
         for invocation in run.invocations:
-            embedding = embed_invocation(invocation, embedding_fn, session)
+            embedding = embed_invocation(invocation, embedding_model, session)
             embeddings.append(embedding)
 
         logger.info(f"Successfully embedded {len(embeddings)} invocations for run {run.id}")

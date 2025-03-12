@@ -2,7 +2,6 @@ from PIL import Image
 from sqlmodel import Session
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.embeddings import dummy
 from trajectory_tracer.engine import (
     create_invocation,
     create_run,
@@ -186,7 +185,7 @@ def test_embed_invocation(db_session: Session):
     db_session.refresh(invocation)
 
     # Create an embedding for the invocation
-    embedding = embed_invocation(invocation, dummy, db_session)
+    embedding = embed_invocation(invocation, "Dummy", db_session)
 
     # Check that the embedding was created correctly
     assert embedding is not None
@@ -206,8 +205,6 @@ def test_embed_invocation(db_session: Session):
 
 def test_multiple_embeddings_per_invocation(db_session: Session):
     """Test that multiple embedding models can be used on the same invocation."""
-    from trajectory_tracer.embeddings import dummy, dummy2
-
     # Create a test invocation
     input_text = "This is test text for multiple embeddings"
     invocation = create_invocation(
@@ -223,11 +220,11 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
     db_session.commit()
     db_session.refresh(invocation)
 
-    # Create first embedding using dummy
-    embedding1 = embed_invocation(invocation, dummy, db_session)
+    # Create first embedding using Dummy
+    embedding1 = embed_invocation(invocation, "Dummy", db_session)
 
-    # Create second embedding using dummy2
-    embedding2 = embed_invocation(invocation, dummy2, db_session)
+    # Create second embedding using Dummy2
+    embedding2 = embed_invocation(invocation, "Dummy2", db_session)
 
     # Refresh invocation to see updated relationships
     db_session.refresh(invocation)
@@ -281,7 +278,7 @@ def test_embed_run(db_session: Session):
     assert len(run.invocations) == 6
 
     # Create embeddings for all invocations
-    embeddings = embed_run(run, dummy, db_session)
+    embeddings = embed_run(run, "Dummy", db_session)
 
     # Check that embeddings were created for each invocation
     assert len(embeddings) == 6
