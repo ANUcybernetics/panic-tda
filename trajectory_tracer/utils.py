@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from io import BytesIO
@@ -51,10 +52,11 @@ def export_run_images(run: Run, session: Session, output_dir: str = "image_outpu
             # Get prompt text from invocation's input property
             prompt_text = invocation.input
 
-            # Prepare file path
-            file_path = os.path.join(output_dir, f"{invocation.id}.webp")
+            # Prepare file path for image
+            # Use JPEG format instead of WebP for better EXIF support
+            file_path = os.path.join(output_dir, f"{invocation.id}.jpg")
 
-            # Save image with metadata
+            # Create metadata
             metadata = {
                 "prompt": prompt_text,
                 "model": invocation.model,
@@ -62,11 +64,19 @@ def export_run_images(run: Run, session: Session, output_dir: str = "image_outpu
                 "seed": str(invocation.seed)
             }
 
-            # Convert to RGB mode for WebP format
+            # Convert to RGB mode for JPEG format
             img_with_metadata = img.convert("RGB")
-            img_with_metadata.save(file_path, format="WEBP", lossless=True, quality=100)
 
-            logger.info(f"Saved image for invocation {invocation.id} to {file_path}")
+            # Create EXIF data with metadata
+            exif_data = img_with_metadata.getexif()
+
+            # Store metadata in EXIF - UserComment tag (0x9286)
+            exif_data[0x9286] = json.dumps(metadata).encode('utf-8')
+
+            # Save image with EXIF metadata
+            img_with_metadata.save(file_path, format="JPEG", quality=95, exif=exif_data)
+
+            logger.info(f"Saved image with embedded metadata for invocation {invocation.id} to {file_path}")
 
         except Exception as e:
             logger.error(f"Error exporting image for invocation {invocation.id}: {e}")

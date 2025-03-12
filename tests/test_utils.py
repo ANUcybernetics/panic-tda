@@ -1,3 +1,5 @@
+import json
+
 from PIL import Image
 from sqlmodel import Session
 
@@ -31,7 +33,7 @@ def test_export_run_images(db_session: Session, tmp_path):
     export_run_images(run, db_session, output_dir=str(output_dir))
 
     # Check that image files were created
-    image_files = list(output_dir.glob("*.webp"))
+    image_files = list(output_dir.glob("*.jpg"))
 
     # We should have image outputs from DummyT2I (at positions 0, 2, 4)
     assert len(image_files) == 3
@@ -42,3 +44,21 @@ def test_export_run_images(db_session: Session, tmp_path):
         # Try opening the image to make sure it's valid
         img = Image.open(image_file)
         assert img.size == (IMAGE_SIZE, IMAGE_SIZE)  # Check it matches our IMAGE_SIZE constant
+
+        # Get EXIF data from the image
+        exif_data = img.getexif()
+        assert 0x9286 in exif_data  # UserComment tag should exist
+
+        # Parse metadata from EXIF
+        metadata_bytes = exif_data[0x9286]
+        metadata = json.loads(metadata_bytes.decode('utf-8'))
+
+        # Verify metadata content
+        assert "prompt" in metadata
+        assert "model" in metadata
+        assert "sequence_number" in metadata
+        assert "seed" in metadata
+
+        # Verify specific metadata values
+        assert metadata["seed"] == str(seed)
+        assert metadata["model"] == "DummyT2I"  # Image invocations come from DummyT2I in this test
