@@ -18,12 +18,12 @@ class NumpyArrayType(TypeDecorator):
     impl = LargeBinary
     cache_ok = True
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: Optional[np.ndarray], dialect) -> Optional[bytes]:
         if value is None:
             return None
         return np.asarray(value, dtype=np.float32).tobytes()
 
-    def process_result_value(self, value, dialect):
+    def process_result_value(self, value: Optional[bytes], dialect) -> Optional[np.ndarray]:
         if value is None:
             return None
         return np.frombuffer(value, dtype=np.float32)
@@ -34,7 +34,7 @@ class NumpyArrayListType(TypeDecorator):
     impl = LargeBinary
     cache_ok = True
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: Optional[List[np.ndarray]], dialect) -> Optional[bytes]:
         if value is None:
             return None
 
@@ -58,7 +58,7 @@ class NumpyArrayListType(TypeDecorator):
 
         return buffer.getvalue()
 
-    def process_result_value(self, value, dialect):
+    def process_result_value(self, value: Optional[bytes], dialect) -> List[np.ndarray]:
         if value is None:
             return []
 
@@ -102,18 +102,21 @@ class Invocation(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
-    model: str  # Store the model class name
+    model: str = Field(..., description="Model class name")
     type: InvocationType
     seed: int
-    run_id: UUID = Field(foreign_key="run.id")
+    run_id: UUID = Field(foreign_key="run.id", index=True)
     sequence_number: int = 0
-    input_invocation_id: Optional[UUID] = Field(default=None, foreign_key="invocation.id")
+    input_invocation_id: Optional[UUID] = Field(default=None, foreign_key="invocation.id", index=True)
     output_text: Optional[str] = None
     output_image_data: Optional[bytes] = None
 
     # Relationship attributes
     run: "Run" = Relationship(back_populates="invocations")
-    embeddings: List["Embedding"] = Relationship(back_populates="invocation")
+    embeddings: List["Embedding"] = Relationship(
+        back_populates="invocation",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
     input_invocation: Optional["Invocation"] = Relationship(
         sa_relationship_kwargs={"remote_side": "Invocation.id"}
     )
@@ -161,9 +164,15 @@ class Run(SQLModel, table=True):
     initial_prompt: str
     invocations: List[Invocation] = Relationship(
         back_populates="run",
-        sa_relationship_kwargs={"order_by": "Invocation.sequence_number"}
+        sa_relationship_kwargs={
+            "order_by": "Invocation.sequence_number",
+            "cascade": "all, delete-orphan"
+        }
     )
-    persistence_diagrams: List["PersistenceDiagram"] = Relationship(back_populates="run")
+    persistence_diagrams: List["PersistenceDiagram"] = Relationship(
+        back_populates="run",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
 
 class Embedding(SQLModel, table=True):
@@ -173,8 +182,8 @@ class Embedding(SQLModel, table=True):
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 
-    invocation_id: UUID = Field(foreign_key="invocation.id")
-    embedding_model: str  # Store the embedding model class name
+    invocation_id: UUID = Field(foreign_key="invocation.id", index=True)
+    embedding_model: str = Field(..., description="Embedding model class name")
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
     # Relationship attribute
@@ -207,7 +216,7 @@ class PersistenceDiagram(SQLModel, table=True):
         sa_column=Column(NumpyArrayListType)
     )
 
-    run_id: UUID = Field(foreign_key="run.id")
+    run_id: UUID = Field(foreign_key="run.id", index=True)
     run: Run = Relationship(back_populates="persistence_diagrams")
 
     def get_generators_as_arrays(self) -> List[np.ndarray]:
@@ -246,19 +255,3 @@ class ExperimentConfig(BaseModel):
         if value <= 0:
             raise ValueError("Run length must be greater than 0")
         return value
-
-    def validate_equal_lengths(self):
-        """Validate that all parameter lists have the same length."""
-        lengths = [
-            len(self.networks),
-            len(self.seeds),
-            len(self.prompts),
-            len(self.embedders)
-        ]
-        if len(set(lengths)) > 1:
-            raise ValueError(
-                f"All parameter lists must have the same length. "
-                f"Got: networks={len(self.networks)}, seeds={len(self.seeds)}, "
-                f"prompts={len(self.prompts)}, embedders={len(self.embedders)}"
-            )
-        return True

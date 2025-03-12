@@ -186,7 +186,6 @@ def test_experiment_config():
         config = ExperimentConfig(**loaded_data)
 
         # Validate the config
-        assert config.validate_equal_lengths() is True
         assert len(config.networks) == 2
         assert config.networks[0] == ["DummyI2T", "DummyT2I"]
         assert config.seeds == [42, 123]
@@ -196,11 +195,10 @@ def test_experiment_config():
 
         # Test validation error with unequal list lengths
         invalid_data = config_data.copy()
-        invalid_data["seeds"] = [42]  # Only one seed now
+        invalid_data["seeds"] = []  # no seeds now
 
         with pytest.raises(ValueError):
             config = ExperimentConfig(**invalid_data)
-            config.validate_equal_lengths()
 
     finally:
         # Clean up the temporary file
