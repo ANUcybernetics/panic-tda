@@ -28,11 +28,14 @@ class MoondreamI2T(AIModel):
         Returns:
             str: The generated caption
         """
+        # Check if CUDA is available and use it
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
         model = AutoModelForCausalLM.from_pretrained(
             "vikhyatk/moondream2",
             revision="2025-01-09",
-            trust_remote_code=True,
-        )
+            trust_remote_code=True
+        ).to(device)
 
         # Generate a normal-length caption for the provided image
         result = model.caption(image, length="normal")
@@ -54,13 +57,18 @@ class FluxDevT2I(AIModel):
         Returns:
             Image.Image: The generated PIL Image
         """
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
 
-        # Initialize the model with appropriate settings
+        # Initialize the model with appropriate settings for GPU
         pipe = FluxPipeline.from_pretrained(
             "black-forest-labs/FLUX.1-dev",
             torch_dtype=torch.bfloat16
         )
-        pipe.enable_model_cpu_offload()  # Save VRAM by offloading to CPU
+
+        # Explicitly move to CUDA
+        pipe = pipe.to("cuda")
 
         # Generate the image with standard parameters
         image = pipe(
@@ -70,7 +78,7 @@ class FluxDevT2I(AIModel):
             guidance_scale=3.5,
             num_inference_steps=50,
             max_sequence_length=512,
-            generator=torch.Generator("cpu").manual_seed(0)
+            generator=torch.Generator("cuda").manual_seed(0)  # Use CUDA for generation
         ).images[0]
 
         return image
@@ -124,6 +132,10 @@ def invoke(model_name: str, input: Union[str, Image]):
     Raises:
         ValueError: If the model doesn't exist or input type is incompatible
     """
+    # Check if CUDA is available before attempting to use models
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required but not available")
+
     current_module = sys.modules[__name__]
 
     # Try to find the model class in this module
