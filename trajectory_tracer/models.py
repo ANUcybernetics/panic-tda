@@ -1,11 +1,12 @@
 import sys
 from typing import Union
 
+
 import torch
-from diffusers import FluxPipeline
+from diffusers import FluxPipeline, AutoPipelineForText2Image
 from PIL import Image
 from pydantic import BaseModel
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, Blip2Processor, Blip2ForConditionalGeneration
 
 # Image size for all image operations
 IMAGE_SIZE = 512
@@ -57,6 +58,48 @@ class FluxDevT2I(AIModel):
         return image
 
 
+class SDXLTurbo(AIModel):
+    @staticmethod
+    def invoke(prompt: str) -> Image:
+        """
+        Generate an image from a text prompt using the SDXL-Turbo model.
+
+        Args:
+            prompt: A text description of the image to generate
+
+        Returns:
+            Image.Image: The generated PIL Image
+        """
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Import diffusers components here to avoid import errors when CUDA is not available
+
+        # Initialize the model with appropriate settings for GPU
+        pipe = AutoPipelineForText2Image.from_pretrained(
+            "stabilityai/sdxl-turbo",
+            torch_dtype=torch.float16,
+            variant="fp16"
+        )
+
+        # Explicitly move to CUDA
+        pipe = pipe.to("cuda")
+
+        # Generate the image with SDXL-Turbo parameters
+        # SDXL-Turbo is designed for fast inference with fewer steps
+        image = pipe(
+            prompt=prompt,
+            height=IMAGE_SIZE,
+            width=IMAGE_SIZE,
+            num_inference_steps=4,  # SDXL-Turbo works with very few steps
+            guidance_scale=0.0,     # Typically uses zero guidance scale
+            generator=torch.Generator("cuda").manual_seed(0)
+        ).images[0]
+
+        return image
+
+
 # Image2Text models
 
 class MoondreamI2T(AIModel):
@@ -87,6 +130,41 @@ class MoondreamI2T(AIModel):
         result = model.caption(image, length="normal")
 
         return result["caption"]
+
+
+class BLIP2I2T(AIModel):
+    @staticmethod
+    def invoke(image: Image) -> str:
+        """
+        Generate a text caption for an input image using the BLIP-2 model with OPT-2.7b.
+
+        Args:
+            image: A PIL Image object to caption
+
+        Returns:
+            str: The generated caption
+        """
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+
+        # Initialize the model with half-precision
+        processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+        model = Blip2ForConditionalGeneration.from_pretrained(
+            "Salesforce/blip2-opt-2.7b",
+            torch_dtype=torch.float16,
+            device_map="auto"
+        )
+
+        # Process the input image
+        inputs = processor(image, return_tensors="pt").to("cuda", torch.float16)
+
+        # Generate the caption
+        generated_ids = model.generate(**inputs, max_length=50)
+        caption = processor.decode(generated_ids[0], skip_special_tokens=True)
+
+        return caption
 
 class DummyI2T(AIModel):
     # name = "dummy image2text"

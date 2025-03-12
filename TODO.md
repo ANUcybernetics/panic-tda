@@ -25,3 +25,5 @@
 
 - idea: have multiple "models" for each model, with (in i2t case) different
   captions, or (in t2i case) different num_steps or similar
+
+- naming: do we need t2i or i2t in names?
