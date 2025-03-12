@@ -2,7 +2,7 @@ from uuid import UUID
 
 from PIL import Image
 
-from trajectory_tracer.schemas import Invocation, InvocationType
+from trajectory_tracer.schemas import Invocation, InvocationType, Run
 
 
 def test_create_initial_invocation():
@@ -57,3 +57,99 @@ def test_invocation_duration():
 
     assert invocation.duration > 0.0
     assert invocation.duration < 0.5  # Should be small but positive
+
+
+def test_invocation_input_property():
+
+    # Test case for sequence_number=0
+    run = Run(
+        network=["ModelA", "ModelB"],
+        seed=12345,
+        length=5,
+        initial_prompt="test prompt"
+    )
+
+    initial_invocation = Invocation(
+        model="ModelA",
+        type=InvocationType.TEXT,
+        seed=12345,
+        sequence_number=0,
+        run=run
+    )
+
+    # For sequence_number=0, input should be the run's initial_prompt
+    assert initial_invocation.input == "test prompt"
+
+    # Test case for sequence_number > 0
+    input_invocation = Invocation(
+        model="ModelB",
+        type=InvocationType.TEXT,
+        seed=12345,
+        sequence_number=0,
+        run=run
+    )
+    input_invocation.output = "output from previous invocation"
+
+    second_invocation = Invocation(
+        model="ModelA",
+        type=InvocationType.TEXT,
+        seed=12345,
+        sequence_number=1,
+        run=run,
+        input_invocation=input_invocation
+    )
+
+    # For sequence_number > 0, input should be the output of the previous invocation
+    assert second_invocation.input == "output from previous invocation"
+
+    # Test when input_invocation is None for sequence_number > 0
+    orphan_invocation = Invocation(
+        model="ModelA",
+        type=InvocationType.TEXT,
+        seed=12345,
+        sequence_number=1,
+        run=run
+    )
+
+    assert orphan_invocation.input is None
+
+
+def test_invocation_input_property_with_images():
+    # Create a Run
+    run = Run(
+        network=["ModelA", "ModelB"],
+        seed=12345,
+        length=5,
+        initial_prompt="test prompt"
+    )
+
+    # Create an image input invocation
+    input_invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=12345,
+        sequence_number=0,
+        run=run
+    )
+
+    # Set an image as output
+    test_image = Image.new('RGB', (100, 100), color='blue')
+    input_invocation.output = test_image
+
+    # Create a second invocation that takes the first as input
+    second_invocation = Invocation(
+        model="DummyI2T",
+        type=InvocationType.TEXT,
+        seed=12345,
+        sequence_number=1,
+        run=run,
+        input_invocation=input_invocation
+    )
+
+    # Test that the input property returns an image
+    input_image = second_invocation.input
+    assert isinstance(input_image, Image.Image)
+
+    # Check basic properties of the image
+    assert input_image.width == 100
+    assert input_image.height == 100
