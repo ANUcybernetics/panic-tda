@@ -153,3 +153,33 @@ def test_invocation_input_property_with_images():
     # Check basic properties of the image
     assert input_image.width == 100
     assert input_image.height == 100
+
+
+def test_invocation_type():
+    # Test TEXT type invocation
+    text_invocation = Invocation(
+        model="DummyT2T",
+        type=InvocationType.TEXT,
+        seed=12345
+    )
+
+    assert text_invocation.type == InvocationType.TEXT
+
+    # Test IMAGE type invocation
+    image_invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=12345
+    )
+
+    assert image_invocation.type == InvocationType.IMAGE
+
+    # Test setting output based on type
+    text_invocation.output = "text output"
+    assert text_invocation.output_text == "text output"
+    assert text_invocation.output_image_data is None
+
+    test_image = Image.new('RGB', (50, 50), color='green')
+    image_invocation.output = test_image
+    assert image_invocation.output_text is None
+    assert image_invocation.output_image_data is not None

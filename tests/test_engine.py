@@ -14,31 +14,32 @@ from trajectory_tracer.engine import (
 from trajectory_tracer.schemas import ExperimentConfig, Invocation, InvocationType, Run
 
 
-def test_create_text_invocation(db_session: Session):
-    """Test that create_invocation correctly initializes an invocation object with text input."""
+def test_create_image_to_text_invocation(db_session: Session):
+    """Test that create_invocation correctly initializes an invocation object with image input."""
     run_id = uuid7()
-    text_input = "A test prompt"
-    model = "DummyT2I"
+    # Create a test image as input instead of text
+    image_input = Image.new('RGB', (100, 100), color='red')
+    model = "DummyI2T"  # DummyI2T is an Image-to-Text model
     sequence_number = 0
     seed = 12345
 
-    text_invocation = create_invocation(
+    image_to_text_invocation = create_invocation(
         model=model,
-        input=text_input,
+        input=image_input,
         run_id=run_id,
         sequence_number=sequence_number,
         session=db_session,
         seed=seed
     )
 
-    assert text_invocation.model == model
-    assert text_invocation.type == "text"
-    assert text_invocation.run_id == run_id
-    assert text_invocation.sequence_number == sequence_number
-    assert text_invocation.seed == seed
-    assert text_invocation.input_invocation_id is None
-    assert text_invocation.output is None
-    assert text_invocation.id is not None  # Should have an ID since it was saved to DB
+    assert image_to_text_invocation.model == model
+    assert image_to_text_invocation.type == InvocationType.TEXT
+    assert image_to_text_invocation.run_id == run_id
+    assert image_to_text_invocation.sequence_number == sequence_number
+    assert image_to_text_invocation.seed == seed
+    assert image_to_text_invocation.input_invocation_id is None
+    assert image_to_text_invocation.output is None
+    assert image_to_text_invocation.id is not None  # Should have an ID since it was saved to DB
 
 
 def test_create_image_invocation(db_session: Session):
@@ -165,8 +166,11 @@ def test_perform_run(db_session: Session):
         # Check the model alternation pattern
         if i % 2 == 0:
             assert invocation.model == "DummyT2I"
+            assert invocation.type == InvocationType.IMAGE
         else:
             assert invocation.model == "DummyI2T"
+            assert invocation.type == InvocationType.TEXT
+
 
 def test_embed_invocation(db_session: Session):
     """Test that embed_invocation correctly generates and associates an embedding with an invocation."""

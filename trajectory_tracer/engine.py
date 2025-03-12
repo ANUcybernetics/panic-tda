@@ -7,12 +7,11 @@ from PIL import Image
 from sqlmodel import Session
 
 from trajectory_tracer.embeddings import embed
-from trajectory_tracer.models import invoke
+from trajectory_tracer.models import get_output_type, invoke
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
-    InvocationType,
     Run,
 )
 
@@ -45,7 +44,7 @@ def create_invocation(
         A new Invocation object
     """
     # Determine invocation type based on input data
-    invocation_type = InvocationType.TEXT if isinstance(input, str) else InvocationType.IMAGE
+    invocation_type = get_output_type(model)
 
     # Create invocation without output (will be set later)
     invocation = Invocation(

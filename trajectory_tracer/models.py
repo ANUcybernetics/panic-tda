@@ -1,24 +1,31 @@
 import sys
-from typing import Union
-
+from typing import ClassVar, Union
 
 import torch
-from diffusers import FluxPipeline, AutoPipelineForText2Image
+from diffusers import AutoPipelineForText2Image, FluxPipeline
 from PIL import Image
 from pydantic import BaseModel
-from transformers import AutoModelForCausalLM, Blip2Processor, Blip2ForConditionalGeneration
+from transformers import (
+    AutoModelForCausalLM,
+    Blip2ForConditionalGeneration,
+    Blip2Processor,
+)
+
+from trajectory_tracer.schemas import InvocationType
 
 # Image size for all image operations
 IMAGE_SIZE = 512
 
+
 class AIModel(BaseModel):
-    pass
+    output_type: ClassVar[InvocationType] = None
 
 # Text2Image models
 
 class FluxDevT2I(AIModel):
     # name = "FLUX.1-dev"
     # url = "https://huggingface.co/black-forest-labs/FLUX.1-dev"
+    output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @staticmethod
     def invoke(prompt: str) -> Image:
@@ -59,6 +66,8 @@ class FluxDevT2I(AIModel):
 
 
 class SDXLTurbo(AIModel):
+    output_type: ClassVar[InvocationType] = InvocationType.IMAGE
+
     @staticmethod
     def invoke(prompt: str) -> Image:
         """
@@ -105,6 +114,7 @@ class SDXLTurbo(AIModel):
 class MoondreamI2T(AIModel):
     # name = "Moondream 2"
     # url = "https://huggingface.co/vikhyatk/moondream2"
+    output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @staticmethod
     def invoke(image: Image) -> str:
@@ -133,6 +143,8 @@ class MoondreamI2T(AIModel):
 
 
 class BLIP2I2T(AIModel):
+    output_type: ClassVar[InvocationType] = InvocationType.TEXT
+
     @staticmethod
     def invoke(image: Image) -> str:
         """
@@ -168,6 +180,7 @@ class BLIP2I2T(AIModel):
 
 class DummyI2T(AIModel):
     # name = "dummy image2text"
+    output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @staticmethod
     def invoke(image: Image) -> str:
@@ -184,6 +197,7 @@ class DummyI2T(AIModel):
 
 class DummyT2I(AIModel):
     # name = "dummy text2image"
+    output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @staticmethod
     def invoke(prompt: str) -> Image:
@@ -235,3 +249,34 @@ def invoke(model_name: str, input: Union[str, Image]):
 
     # Call the invoke method
     return model_class.invoke(input)
+
+
+def get_output_type(model_name: str) -> str:
+    """
+    Gets the output type of the specified model.
+
+    Args:
+        model_name: The name of the model class
+
+    Returns:
+        The output type (InvocationType.TEXT or InvocationType.IMAGE)
+
+    Raises:
+        ValueError: If the model doesn't exist or is not an AIModel subclass
+    """
+    current_module = sys.modules[__name__]
+
+    # Try to find the model class in this module
+    if not hasattr(current_module, model_name):
+        raise ValueError(f"Model '{model_name}' not found. Available models: "
+                         f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}")
+
+    # Get the model class
+    model_class = getattr(current_module, model_name)
+
+    # Check if it's a subclass of AIModel
+    if not issubclass(model_class, AIModel):
+        raise ValueError(f"'{model_name}' is not an AIModel subclass")
+
+    # Return the output_type
+    return model_class.output_type
