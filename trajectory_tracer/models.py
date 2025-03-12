@@ -1,5 +1,8 @@
+import sys
 from typing import Union
 
+import torch
+from diffusers import FluxPipeline
 from PIL import Image
 from pydantic import BaseModel
 from transformers import AutoModelForCausalLM
@@ -51,8 +54,6 @@ class FluxDevT2I(AIModel):
         Returns:
             Image.Image: The generated PIL Image
         """
-        import torch
-        from diffusers import FluxPipeline
 
         # Initialize the model with appropriate settings
         pipe = FluxPipeline.from_pretrained(
@@ -123,7 +124,6 @@ def invoke(model_name: str, input: Union[str, Image]):
     Raises:
         ValueError: If the model doesn't exist or input type is incompatible
     """
-    import sys
     current_module = sys.modules[__name__]
 
     # Try to find the model class in this module
