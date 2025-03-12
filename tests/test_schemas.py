@@ -1,5 +1,6 @@
 import json
 import tempfile
+from datetime import datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
@@ -13,6 +14,7 @@ from trajectory_tracer.schemas import (
     ExperimentConfig,
     Invocation,
     InvocationType,
+    PersistenceDiagram,
     Run,
 )
 
@@ -246,3 +248,83 @@ def test_experiment_config_invalid_values():
             # Missing embedders
             run_length=5
         )
+
+
+def test_invocation_duration_property():
+    """Test the duration property of Invocation."""
+    run_id = uuid7()
+    invocation = Invocation(
+        model="DummyI2T",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run_id
+    )
+
+    # With no timestamps, duration should be 0
+    assert invocation.duration == 0.0
+
+    # Set timestamps 2 seconds apart
+    now = datetime.now()
+    invocation.started_at = now
+    invocation.completed_at = now + timedelta(seconds=2)
+
+    assert invocation.duration == 2.0
+
+
+def test_embedding_duration_property():
+    """Test the duration property of Embedding."""
+    invocation_id = uuid7()
+    embedding = Embedding(
+        invocation_id=invocation_id,
+        embedding_model="test-embedding"
+    )
+
+    # With no timestamps, duration should be 0
+    assert embedding.duration == 0.0
+
+    # Set timestamps 1.5 seconds apart
+    now = datetime.now()
+    embedding.started_at = now
+    embedding.completed_at = now + timedelta(seconds=1.5)
+
+    assert embedding.duration == 1.5
+
+
+def test_persistence_diagram_creation():
+    """Test PersistenceDiagram creation and generators property."""
+    run_id = uuid7()
+
+    # Create some test generators (birth-death pairs)
+    generators = [
+        np.array([[0.1, 0.5], [0.2, 0.7]], dtype=np.float32),
+        np.array([[0.3, 0.6], [0.4, 0.9]], dtype=np.float32)
+    ]
+
+    diagram = PersistenceDiagram(
+        run_id=run_id,
+        generators=generators
+    )
+
+    assert diagram.run_id == run_id
+    assert len(diagram.generators) == 2
+
+    retrieved_generators = diagram.get_generators_as_arrays()
+    assert len(retrieved_generators) == 2
+    np.testing.assert_array_equal(retrieved_generators[0], generators[0])
+    np.testing.assert_array_equal(retrieved_generators[1], generators[1])
+
+
+def test_persistence_diagram_duration_property():
+    """Test the duration property of PersistenceDiagram."""
+    run_id = uuid7()
+    diagram = PersistenceDiagram(run_id=run_id)
+
+    # With no timestamps, duration should be 0
+    assert diagram.duration == 0.0
+
+    # Set timestamps 3 seconds apart
+    now = datetime.now()
+    diagram.started_at = now
+    diagram.completed_at = now + timedelta(seconds=3)
+
+    assert diagram.duration == 3.0
