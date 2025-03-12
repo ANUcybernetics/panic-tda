@@ -13,34 +13,7 @@ IMAGE_SIZE = 512
 class AIModel(BaseModel):
     pass
 
-class MoondreamI2T(AIModel):
-    # name = "Moondream 2"
-    # url = "https://huggingface.co/vikhyatk/moondream2"
-
-    @staticmethod
-    def invoke(image: Image) -> str:
-        """
-        Generate a text caption for an input image using the Moondream model.
-
-        Args:
-            image: A PIL Image object to caption
-
-        Returns:
-            str: The generated caption
-        """
-        # Check if CUDA is available and use it
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-
-        model = AutoModelForCausalLM.from_pretrained(
-            "vikhyatk/moondream2",
-            revision="2025-01-09",
-            trust_remote_code=True
-        ).to(device)
-
-        # Generate a normal-length caption for the provided image
-        result = model.caption(image, length="normal")
-
-        return result["caption"]
+# Text2Image models
 
 class FluxDevT2I(AIModel):
     # name = "FLUX.1-dev"
@@ -82,6 +55,38 @@ class FluxDevT2I(AIModel):
         ).images[0]
 
         return image
+
+
+# Image2Text models
+
+class MoondreamI2T(AIModel):
+    # name = "Moondream 2"
+    # url = "https://huggingface.co/vikhyatk/moondream2"
+
+    @staticmethod
+    def invoke(image: Image) -> str:
+        """
+        Generate a text caption for an input image using the Moondream model.
+
+        Args:
+            image: A PIL Image object to caption
+
+        Returns:
+            str: The generated caption
+        """
+        # Check if CUDA is available and use it
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        model = AutoModelForCausalLM.from_pretrained(
+            "vikhyatk/moondream2",
+            revision="2025-01-09",
+            trust_remote_code=True
+        ).to(device)
+
+        # Generate a normal-length caption for the provided image
+        result = model.caption(image, length="normal")
+
+        return result["caption"]
 
 class DummyI2T(AIModel):
     # name = "dummy image2text"
