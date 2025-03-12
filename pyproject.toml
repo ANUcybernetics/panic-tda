@@ -17,7 +17,6 @@ dependencies = [
     "pyvips>=2.2.3",
     "rich>=13.9.4",
     "sentencepiece>=0.2.0",
-    "sqlite-vec>=0.1.6",
     "sqlmodel>=0.0.23",
     "torch>=2.6.0",
     "transformers>=4.49.0",
