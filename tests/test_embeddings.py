@@ -1,8 +1,10 @@
 import io
+
 import numpy as np
+import pytest
+from PIL import Image
 from uuid_v7.base import uuid7
 
-from PIL import Image
 from trajectory_tracer.embeddings import embed
 from trajectory_tracer.schemas import Invocation, InvocationType
 
@@ -38,6 +40,7 @@ def test_dummy_embedding(db_session):
     assert not np.array_equal(embedding.vector, embedding2.vector)
 
 
+@pytest.mark.slow
 def test_nomic_text_embedding(db_session):
     """Test that the nomic text embedding returns a valid embedding vector."""
     # Create a sample invocation
@@ -65,6 +68,7 @@ def test_nomic_text_embedding(db_session):
     assert not np.all(embedding.vector == 0)  # Should not be all zeros
 
 
+@pytest.mark.slow
 def test_nomic_vision_embedding(db_session):
     """Test that the nomic vision embedding returns a valid embedding vector."""
     import io
@@ -102,6 +106,7 @@ def test_nomic_vision_embedding(db_session):
     assert not np.all(embedding.vector == 0)  # Should not be all zeros
 
 
+@pytest.mark.slow
 def test_jina_clip_text_embedding(db_session):
     """Test that the JinaClip embedding returns a valid embedding vector for text."""
     # Create a sample invocation
@@ -129,6 +134,7 @@ def test_jina_clip_text_embedding(db_session):
     assert not np.all(embedding.vector == 0)  # Should not be all zeros
 
 
+@pytest.mark.slow
 def test_jina_clip_image_embedding(db_session):
     """Test that the JinaClip embedding returns a valid embedding vector for images."""
 
