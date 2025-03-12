@@ -1,3 +1,4 @@
+import itertools
 import logging
 from datetime import datetime
 from typing import List, Optional, Union
@@ -7,7 +8,13 @@ from sqlmodel import Session
 
 from trajectory_tracer.embeddings import embed
 from trajectory_tracer.models import invoke
-from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
+from trajectory_tracer.schemas import (
+    Embedding,
+    ExperimentConfig,
+    Invocation,
+    InvocationType,
+    Run,
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -88,7 +95,7 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
         raise
 
 
-def create_run(network: List[str], initial_prompt: str, session: Session, seed: int = 42) -> Run:
+def create_run(network: List[str], initial_prompt: str, session: Session, seed: int = 42, run_length: int = None) -> Run:
     """
     Create a new run with the specified parameters.
 
@@ -97,6 +104,7 @@ def create_run(network: List[str], initial_prompt: str, session: Session, seed: 
         initial_prompt: The text prompt to start the run with
         seed: Random seed for reproducibility
         session: SQLModel Session for database operations
+        run_length: Length of the run
 
     Returns:
         The created Run object
@@ -109,7 +117,7 @@ def create_run(network: List[str], initial_prompt: str, session: Session, seed: 
             network=network,
             initial_prompt=initial_prompt,
             seed=seed,
-            length=len(network)
+            length=run_length
         )
 
         # Save to database
@@ -242,3 +250,54 @@ def embed_run(run: Run, embedding_model: str, session: Session) -> List[Embeddin
     except Exception as e:
         logger.error(f"Error embedding run {run.id}: {e}")
         raise
+
+
+def perform_experiment(config: ExperimentConfig, session: Session) -> None:
+    """
+    Create and execute runs for all combinations defined in the ExperimentConfig.
+
+    Args:
+        config: The experiment configuration containing network definitions,
+               seeds, prompts, and embedding model specifications
+        session: SQLModel Session for database operations
+    """
+    # Generate cartesian product of all parameters
+    combinations = list(itertools.product(
+        config.networks,
+        config.seeds,
+        config.prompts,
+        config.embedders
+    ))
+
+    total_combinations = len(combinations)
+    logger.info(f"Starting experiment with {total_combinations} total run configurations")
+
+    # Process each combination
+    successful_runs = 0
+    for i, (network, seed, prompt, embedding_model) in enumerate(combinations):
+        try:
+            # Create the run
+            logger.info(f"Creating run {i+1}/{total_combinations}: {network} with seed {seed}")
+            run = create_run(
+                network=network,
+                initial_prompt=prompt,
+                seed=seed,
+                session=session,
+                run_length=config.run_length
+            )
+
+            # Execute the run
+            run = perform_run(run, session)
+
+            # Generate embeddings for the run
+            embeddings = embed_run(run, embedding_model, session)
+            logger.info(f"Generated {len(embeddings)} embeddings with model {embedding_model}")
+
+            successful_runs += 1
+            logger.info(f"Completed run {i+1}/{total_combinations}")
+
+        except Exception as e:
+            logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
+            # Continue with next run even if this one fails
+
+    logger.info(f"Experiment completed with {successful_runs} successful runs")

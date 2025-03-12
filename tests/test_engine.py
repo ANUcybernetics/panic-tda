@@ -1,5 +1,5 @@
 from PIL import Image
-from sqlmodel import Session
+from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.engine import (
@@ -10,7 +10,7 @@ from trajectory_tracer.engine import (
     perform_invocation,
     perform_run,
 )
-from trajectory_tracer.schemas import Invocation, InvocationType
+from trajectory_tracer.schemas import Invocation, InvocationType, Run
 
 
 def test_create_text_invocation(db_session: Session):
@@ -138,10 +138,10 @@ def test_perform_run(db_session: Session):
     run = create_run(
         network=network,
         initial_prompt=initial_prompt,
+        run_length=10,
         seed=seed,
         session=db_session
     )
-    run.length = 10  # Override length for testing
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
@@ -266,8 +266,7 @@ def test_embed_run(db_session: Session):
     seed = 42
 
     # Create and perform the run
-    run = create_run(network=network, initial_prompt=initial_prompt, session=db_session, seed=seed)
-    run.length = 6  # Override length to have multiple cycles through the network
+    run = create_run(network=network, initial_prompt=initial_prompt, run_length=6, session=db_session, seed=seed)
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
@@ -297,3 +296,61 @@ def test_embed_run(db_session: Session):
         assert invocation.embeddings[0].started_at is not None
         assert invocation.embeddings[0].completed_at is not None
         assert invocation.embeddings[0].completed_at >= invocation.embeddings[0].started_at
+
+
+def test_perform_experiment(db_session: Session):
+    """Test that a small experiment with multiple runs can be executed successfully."""
+    from trajectory_tracer.engine import perform_experiment
+    from trajectory_tracer.schemas import ExperimentConfig
+
+    # Create a small experiment configuration
+    config = ExperimentConfig(
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyI2T", "DummyT2I"]
+        ],
+        seeds=[42, 43],
+        prompts=["Test prompt 1", "Test prompt 2"],
+        embedders=["Dummy", "Dummy2"],
+        run_length=10 # Short run length for testing
+    )
+
+    # Perform the experiment
+    perform_experiment(config, db_session)
+
+    # Query the database to verify created objects
+
+    # Check that runs were created
+    runs = db_session.exec(select(Run)).all()
+    assert len(runs) == 16  # 2 networks × 2 seeds × 2 prompts × 2 embedders = 16 runs
+
+    # Check that each run has the correct properties and relationships
+    for run in runs:
+        # Verify run properties
+        assert run.length == 10
+        assert run.seed in [42, 43]
+        assert run.initial_prompt in ["Test prompt 1", "Test prompt 2"]
+        assert len(run.network) == 2
+        assert run.network in [["DummyT2I", "DummyI2T"], ["DummyI2T", "DummyT2I"]]
+
+        # Verify invocations for this run
+        assert len(run.invocations) == 10
+
+        # Check invocation sequence and timing
+        for i, invocation in enumerate(run.invocations):
+            assert invocation.sequence_number == i
+            assert invocation.started_at is not None
+            assert invocation.completed_at is not None
+            assert invocation.completed_at >= invocation.started_at
+
+            # Check that each invocation has an embedding
+            assert len(invocation.embeddings) == 1
+
+            # Check embedding properties
+            for embedding in invocation.embeddings:
+                assert embedding.embedding_model in ["dummy-embedding", "dummy2-embedding"]
+                assert embedding.vector is not None
+                assert embedding.dimension == 768
+                assert embedding.started_at is not None
+                assert embedding.completed_at is not None
+                assert embedding.completed_at >= embedding.started_at
