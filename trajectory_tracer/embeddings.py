@@ -37,7 +37,7 @@ class NomicText(EmbeddingModel):
 
         model = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
         sentences = [f"clustering: {invocation.output}"]
-        vector = model.encode(sentences)
+        vector = model.encode(sentences)[0]  # Get first element to flatten (1, 768) to (768,)
 
         # Return the embedding
         return Embedding(
