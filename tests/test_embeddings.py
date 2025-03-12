@@ -61,3 +61,40 @@ def test_nomic_text_embedding(db_session):
     # Verify it's a proper embedding vector
     assert embedding.vector.dtype == np.float32
     assert not np.all(embedding.vector == 0)  # Should not be all zeros
+
+
+def test_nomic_vision_embedding(db_session):
+    """Test that the nomic vision embedding returns a valid embedding vector."""
+    import io
+
+    from PIL import Image
+
+    # Create a sample image (red square)
+    image = Image.new('RGB', (100, 100), color='red')
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    image_data = img_byte_arr.getvalue()
+
+    # Create a sample image invocation
+    sample_image_invocation = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=42,
+        output_image_data=image_data,
+        run_id=uuid7()
+    )
+    db_session.add(sample_image_invocation)
+    db_session.commit()
+
+    # Get the embedding using the actual model
+    embedding = embed("NomicVision", sample_image_invocation)
+
+    # Check that the embedding has the correct properties
+    assert embedding.invocation_id == sample_image_invocation.id
+    assert embedding.embedding_model == "nomic-embed-vision-v1.5"
+    assert embedding.vector is not None
+    assert len(embedding.vector) == 768
+
+    # Verify it's a proper embedding vector
+    assert embedding.vector.dtype == np.float32
+    assert not np.all(embedding.vector == 0)  # Should not be all zeros
