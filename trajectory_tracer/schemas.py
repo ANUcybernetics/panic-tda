@@ -6,7 +6,7 @@ from uuid import UUID
 
 import numpy as np
 from PIL import Image
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
 from uuid_v7.base import uuid7
@@ -223,7 +223,7 @@ class PersistenceDiagram(SQLModel, table=True):
         return delta.total_seconds()
 
 
-class ExperimentConfig(SQLModel):
+class ExperimentConfig(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     """Configuration for a trajectory tracer experiment."""
