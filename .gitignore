@@ -15,3 +15,4 @@ mise.local.toml
 
 # the main output db - this is important, but shouldn't go in the repo
 trajectory_tracer.db
+test.db
