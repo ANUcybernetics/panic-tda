@@ -1,7 +1,6 @@
-from uuid import uuid4
-
 from PIL import Image
 from sqlmodel import Session
+from uuid_v7.base import uuid7
 
 from trajectory_tracer.embeddings import dummy
 from trajectory_tracer.engine import (
@@ -17,7 +16,7 @@ from trajectory_tracer.schemas import Invocation, InvocationType
 
 def test_create_text_invocation(db_session: Session):
     """Test that create_invocation correctly initializes an invocation object with text input."""
-    run_id = uuid4()
+    run_id = uuid7()
     text_input = "A test prompt"
     model = "DummyT2I"
     sequence_number = 0
@@ -44,12 +43,12 @@ def test_create_text_invocation(db_session: Session):
 
 def test_create_image_invocation(db_session: Session):
     """Test that create_invocation correctly initializes an invocation object with image input."""
-    run_id = uuid4()
+    run_id = uuid7()
     image_input = Image.new('RGB', (100, 100), color='red')
     model = "DummyT2I"
     sequence_number = 1
     seed = 12345
-    input_invocation_id = uuid4()
+    input_invocation_id = uuid7()
 
     image_invocation = create_invocation(
         model=model,
@@ -74,7 +73,7 @@ def test_create_image_invocation(db_session: Session):
 def test_perform_invocation_text(db_session: Session):
     """Test that perform_invocation correctly handles text input with a dummy model."""
 
-    run_id = uuid4()
+    run_id = uuid7()
     text_input = "A test prompt"
 
     # Create invocation object
@@ -103,7 +102,7 @@ def test_perform_invocation_text(db_session: Session):
 def test_perform_invocation_image(db_session: Session):
     """Test that perform_invocation correctly handles image input with a dummy model."""
 
-    run_id = uuid4()
+    run_id = uuid7()
     image_input = Image.new('RGB', (100, 100), color='blue')
 
     # Create invocation object
@@ -176,7 +175,7 @@ def test_embed_invocation(db_session: Session):
     invocation = create_invocation(
         model="DummyT2I",
         input=input_text,
-        run_id=uuid4(),
+        run_id=uuid7(),
         sequence_number=0,
         session=db_session,
         seed=42
@@ -214,7 +213,7 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
     invocation = create_invocation(
         model="DummyT2I",
         input=input_text,
-        run_id=uuid4(),
+        run_id=uuid7(),
         sequence_number=0,
         session=db_session,
         seed=42

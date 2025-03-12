@@ -1,6 +1,5 @@
-from uuid import uuid4
-
 import numpy as np
+from uuid_v7.base import uuid7
 
 from trajectory_tracer.embeddings import dummy
 from trajectory_tracer.schemas import Invocation, InvocationType
@@ -15,7 +14,7 @@ def test_dummy_embedding(db_session):
         type=InvocationType.TEXT,
         seed=42,
         output_text="Sample output text",
-        run_id = uuid4()
+        run_id = uuid7()
     )
     db_session.add(sample_text_invocation)
     db_session.commit()

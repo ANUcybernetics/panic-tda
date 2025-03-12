@@ -21,6 +21,7 @@ dependencies = [
     "sqlmodel>=0.0.23",
     "torch>=2.6.0",
     "transformers>=4.49.0",
+    "uuid-v7>=1.0.0",
 ]
 
 [tool.pytest.ini_options]

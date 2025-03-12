@@ -2,13 +2,14 @@ import io
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Union
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import numpy as np
 from PIL import Image
 from pydantic import field_validator
 from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
+from uuid_v7.base import uuid7
 
 ## numpy storage helper classes
 
@@ -98,7 +99,7 @@ class InvocationType(str, Enum):
 class Invocation(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
     model: str  # Store the model class name
@@ -153,7 +154,7 @@ class Invocation(SQLModel, table=True):
 class Run(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
     network: List[str] = Field(default=[], sa_type=JSON)
     seed: int
     length: int
@@ -168,7 +169,7 @@ class Run(SQLModel, table=True):
 class Embedding(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 
@@ -197,7 +198,7 @@ class Embedding(SQLModel, table=True):
 class PersistenceDiagram(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 

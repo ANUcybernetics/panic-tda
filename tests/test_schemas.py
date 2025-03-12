@@ -1,11 +1,12 @@
 import json
 import tempfile
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import numpy as np
 import pytest
 from PIL import Image
+from uuid_v7.base import uuid7
 
 from trajectory_tracer.schemas import (
     Embedding,
@@ -18,7 +19,7 @@ from trajectory_tracer.schemas import (
 
 def test_invocation_creation():
     """Test basic Invocation creation with required fields."""
-    run_id = uuid4()
+    run_id = uuid7()
     invocation = Invocation(
         model="DummyI2T",
         type=InvocationType.TEXT,
@@ -40,7 +41,7 @@ def test_invocation_creation():
 
 def test_invocation_output_property():
     """Test that output property correctly handles different types."""
-    run_id = uuid4()
+    run_id = uuid7()
 
     # Test text output
     text_invocation = Invocation(
@@ -68,7 +69,7 @@ def test_invocation_output_property():
 
 def test_text_invocation_output_setter_validation():
     """Test that output setter validates input types for text invocations."""
-    run_id = uuid4()
+    run_id = uuid7()
 
     # Create text invocation
     invocation = Invocation(
@@ -93,7 +94,7 @@ def test_text_invocation_output_setter_validation():
 
 def test_image_invocation_output_setter_validation():
     """Test that output setter validates input types for image invocations."""
-    run_id = uuid4()
+    run_id = uuid7()
 
     # Create image invocation
     invocation = Invocation(
@@ -119,7 +120,7 @@ def test_image_invocation_output_setter_validation():
 
 def test_run_validation_success():
     """Test Run validation with correctly ordered invocations."""
-    run_id = uuid4()
+    run_id = uuid7()
     network = ["DummyI2T", "DummyT2I"]
 
     invocations = [
@@ -134,7 +135,7 @@ def test_run_validation_success():
 
 def test_embedding_creation():
     """Test Embedding creation and dimension property."""
-    invocation_id = uuid4()
+    invocation_id = uuid7()
     vector = np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32)
 
     embedding = Embedding(

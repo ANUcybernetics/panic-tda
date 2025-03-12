@@ -1,8 +1,9 @@
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import numpy as np
 from PIL import Image
 from sqlmodel import Session
+from uuid_v7.base import uuid7
 
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
@@ -155,7 +156,7 @@ def test_persistence_diagram_storage(db_session: Session):
 
     # Create a persistence diagram with these arrays
     diagram = PersistenceDiagram(
-        run_id=uuid4(),
+        run_id=uuid7(),
         generators=[array1, array2, array3]
     )
 
