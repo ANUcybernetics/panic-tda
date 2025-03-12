@@ -1,6 +1,8 @@
+import io
 import numpy as np
 from uuid_v7.base import uuid7
 
+from PIL import Image
 from trajectory_tracer.embeddings import embed
 from trajectory_tracer.schemas import Invocation, InvocationType
 
@@ -118,6 +120,40 @@ def test_jina_clip_text_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_text_invocation.id
+    assert embedding.embedding_model == "jina-clip-v2"
+    assert embedding.vector is not None
+    assert len(embedding.vector) == 768  # Expected dimension
+
+    # Verify it's a proper embedding vector
+    assert embedding.vector.dtype == np.float32
+    assert not np.all(embedding.vector == 0)  # Should not be all zeros
+
+
+def test_jina_clip_image_embedding(db_session):
+    """Test that the JinaClip embedding returns a valid embedding vector for images."""
+
+    # Create a sample image (blue square)
+    image = Image.new('RGB', (100, 100), color='blue')
+    img_byte_arr = io.BytesIO()
+    image.save(img_byte_arr, format='PNG')
+    image_data = img_byte_arr.getvalue()
+
+    # Create a sample image invocation
+    sample_image_invocation = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=42,
+        output_image_data=image_data,
+        run_id=uuid7()
+    )
+    db_session.add(sample_image_invocation)
+    db_session.commit()
+
+    # Get the embedding using the actual model
+    embedding = embed("JinaClip", sample_image_invocation)
+
+    # Check that the embedding has the correct properties
+    assert embedding.invocation_id == sample_image_invocation.id
     assert embedding.embedding_model == "jina-clip-v2"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
