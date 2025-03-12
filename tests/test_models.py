@@ -1,6 +1,8 @@
 import pytest
 from PIL import Image
+
 from trajectory_tracer.models import IMAGE_SIZE, FluxDevT2I, SDXLTurbo
+
 
 @pytest.mark.slow
 def test_flux_dev_t2i():
@@ -32,7 +34,7 @@ def test_sdxl_turbo():
     assert image.height == IMAGE_SIZE
 
 
-# @pytest.mark.slow
+@pytest.mark.slow
 def test_blip2_i2t():
     """Test that BLIP2I2T returns a text caption for an input image."""
     from trajectory_tracer.models import BLIP2I2T
