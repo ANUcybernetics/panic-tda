@@ -140,10 +140,19 @@ class Invocation(SQLModel, table=True):
         elif isinstance(value, Image.Image):
             self.output_text = None
             buffer = io.BytesIO()
-            value.save(buffer, format="WEBP")
+            value.save(buffer, format="WEBP", lossless=True, quality=100)
             self.output_image_data = buffer.getvalue()
         else:
             raise TypeError(f"Expected str, Image, or None, got {type(value)}")
+
+    @property
+    def input(self) -> Union[str, Image.Image, None]:
+        if self.sequence_number == 0:
+            return self.run.initial_prompt
+        elif self.input_invocation:
+            return self.input_invocation.output
+        else:
+            return None
 
     @property
     def duration(self) -> float:
