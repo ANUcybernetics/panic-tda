@@ -16,6 +16,7 @@ dependencies = [
     "pytest>=8.3.5",
     "pyvips>=2.2.3",
     "rich>=13.9.4",
+    "sentence-transformers>=3.4.1",
     "sentencepiece>=0.2.0",
     "sqlmodel>=0.0.23",
     "torch>=2.6.0",

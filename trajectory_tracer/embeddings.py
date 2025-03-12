@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from pydantic import BaseModel
-from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
+from transformers import AutoImageProcessor, AutoModel
 
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType
 
@@ -33,33 +33,11 @@ class NomicText(EmbeddingModel):
         if invocation.type != InvocationType.TEXT or not invocation.output_text:
             raise ValueError("Cannot embed non-text output with nomic-embed-text")
 
-        def mean_pooling(model_output, attention_mask):
-            token_embeddings = model_output[0]
-            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-            return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+        from sentence_transformers import SentenceTransformer
 
-        # Prepare output text with the required prefix for RAG
-        text_with_prefix = f"search_query: {invocation.output_text}"
-
-        # Load the model and tokenizer
-        tokenizer = AutoTokenizer.from_pretrained('nomic-ai/nomic-embed-text-v1.5')
-        model = AutoModel.from_pretrained('nomic-ai/nomic-embed-text-v1.5', trust_remote_code=True)
-        model.eval()
-
-        # Tokenize the output
-        encoded_input = tokenizer([text_with_prefix], padding=True, truncation=True, return_tensors='pt')
-
-        # Calculate embeddings
-        with torch.no_grad():
-            model_output = model(**encoded_input)
-
-        # Process the embeddings
-        embeddings = mean_pooling(model_output, encoded_input['attention_mask'])
-        embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
-        embeddings = F.normalize(embeddings, p=2, dim=1)
-
-        # Convert to numpy array for storage
-        vector = embeddings[0].numpy()
+        model = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+        sentences = [f"clustering: {invocation.output}"]
+        vector = model.encode(sentences)
 
         # Return the embedding
         return Embedding(
