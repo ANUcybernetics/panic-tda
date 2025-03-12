@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from pydantic import BaseModel
 from transformers import AutoImageProcessor, AutoModel
 
+from sentence_transformers import SentenceTransformer
+
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType
 
 # other potential multimodal embedding models:
@@ -32,8 +34,6 @@ class NomicText(EmbeddingModel):
         # Only works with text outputs
         if invocation.type != InvocationType.TEXT or not invocation.output_text:
             raise ValueError("Cannot embed non-text output with nomic-embed-text")
-
-        from sentence_transformers import SentenceTransformer
 
         model = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
         sentences = [f"clustering: {invocation.output}"]
@@ -112,6 +112,52 @@ class Nomic(EmbeddingModel):
         else:
             raise ValueError(f"Unsupported invocation type for nomic embedding: {invocation.type}")
 
+
+class JinaClip(EmbeddingModel):
+    @staticmethod
+    def embed(invocation: Invocation) -> Embedding:
+        """
+        Calculate an embedding for text or image output of an invocation using jina-clip-v2.
+
+        Args:
+            invocation: The Invocation object containing the output to embed
+
+        Returns:
+            An Embedding object with the calculated vector
+
+        Raises:
+            ValueError: If the invocation type is not supported
+        """
+
+        # Choose the standard embedding dimension
+        truncate_dim = 768
+
+        # Initialize the model
+        model = SentenceTransformer('jinaai/jina-clip-v2', trust_remote_code=True, truncate_dim=truncate_dim)
+
+        if invocation.type == InvocationType.TEXT:
+            if not invocation.output_text:
+                raise ValueError("Cannot embed empty text output with jina-clip")
+
+            # Get text embedding
+            vector = model.encode(invocation.output, normalize_embeddings=True)
+
+        elif invocation.type == InvocationType.IMAGE:
+            if not invocation.output_image_data:
+                raise ValueError("Cannot embed empty image output with jina-clip")
+
+            # Get image embedding
+            vector = model.encode(invocation.output, normalize_embeddings=True)
+
+        else:
+            raise ValueError(f"Unsupported invocation type for jina-clip embedding: {invocation.type}")
+
+        # Return the embedding
+        return Embedding(
+            invocation_id=invocation.id,
+            embedding_model="jina-clip-v2",
+            vector=vector
+        )
 
 ## from here these ones used for testing
 
