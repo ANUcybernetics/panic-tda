@@ -1,10 +1,13 @@
 from uuid import UUID
 
 import numpy as np
+import pytest
 from PIL import Image
-from sqlmodel import Session
+from sqlalchemy import text
+from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
+from trajectory_tracer.db import Database
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
@@ -183,3 +186,75 @@ def test_persistence_diagram_storage(db_session: Session):
     assert np.allclose(retrieved_arrays[0], array1)
     assert np.allclose(retrieved_arrays[1], array2)
     assert np.allclose(retrieved_arrays[2], array3)
+
+
+def test_database_initialization():
+    """Test the Database class initialization."""
+    # Test with default connection string
+    db = Database()
+    assert db.engine is not None
+
+    # Test with custom connection string
+    custom_db = Database(connection_string="sqlite:///test.db")
+    assert custom_db.engine is not None
+    assert str(custom_db.engine.url) == "sqlite:///test.db"
+
+
+def test_database_create_session():
+    """Test creating a new database session."""
+    db = Database(connection_string="sqlite:///:memory:")
+    session = db.create_session()
+    assert session is not None
+
+    # Test that we can perform operations with the session
+    try:
+        session.execute(text("SELECT 1"))
+        session.commit()
+    except Exception as e:
+        pytest.fail(f"Session failed to execute query: {e}")
+    finally:
+        session.close()
+
+
+def test_database_context_manager():
+    """Test the context manager functionality of get_session."""
+    db = Database(connection_string="sqlite:///:memory:")
+
+    # Test normal operation
+    with db.get_session() as session:
+        # Create a sample run
+        sample_run = Run(
+            initial_prompt="testing context manager",
+            network=["test"],
+            seed=123,
+            length=1
+        )
+        session.add(sample_run)
+
+    # Verify the run was committed
+    with db.get_session() as session:
+        statement = select(Run).where(Run.initial_prompt == "testing context manager")
+        runs = session.exec(statement).all()
+        assert len(runs) == 1
+        assert runs[0].seed == 123
+
+    # Test rollback on exception
+    try:
+        with db.get_session() as session:
+            # Create another sample run
+            sample_run = Run(
+                initial_prompt="should be rolled back",
+                network=["test"],
+                seed=456,
+                length=1
+            )
+            session.add(sample_run)
+            raise ValueError("Test exception to trigger rollback")
+    except ValueError:
+        pass
+
+    # Verify the run was rolled back
+    with db.get_session() as session:
+        statement = select(Run).where(Run.initial_prompt == "should be rolled back")
+        runs = session.exec(statement).all()
+        assert len(runs) == 0
