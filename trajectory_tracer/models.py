@@ -132,10 +132,6 @@ def invoke(model_name: str, input: Union[str, Image]):
     Raises:
         ValueError: If the model doesn't exist or input type is incompatible
     """
-    # Check if CUDA is available before attempting to use models
-    if not torch.cuda.is_available():
-        raise RuntimeError("CUDA GPU is required but not available")
-
     current_module = sys.modules[__name__]
 
     # Try to find the model class in this module
@@ -149,6 +145,10 @@ def invoke(model_name: str, input: Union[str, Image]):
     # Check if it's a subclass of AIModel
     if not issubclass(model_class, AIModel):
         raise ValueError(f"'{model_name}' is not an AIModel subclass")
+
+    # Check if CUDA is available before attempting to use non-dummy models
+    if not model_name.startswith("Dummy") and not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required but not available")
 
     # Call the invoke method
     return model_class.invoke(input)
