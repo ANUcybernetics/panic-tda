@@ -7,10 +7,11 @@ from trajectory_tracer.engine import (
     create_run,
     embed_invocation,
     embed_run,
+    perform_experiment,
     perform_invocation,
     perform_run,
 )
-from trajectory_tracer.schemas import Invocation, InvocationType, Run
+from trajectory_tracer.schemas import ExperimentConfig, Invocation, InvocationType, Run
 
 
 def test_create_text_invocation(db_session: Session):
@@ -300,7 +301,6 @@ def test_embed_run(db_session: Session):
 
 def test_perform_experiment(db_session: Session):
     """Test that a small experiment with multiple runs can be executed successfully."""
-    from trajectory_tracer.engine import perform_experiment
     from trajectory_tracer.schemas import ExperimentConfig
 
     # Create a small experiment configuration
@@ -354,3 +354,31 @@ def test_perform_experiment(db_session: Session):
                 assert embedding.started_at is not None
                 assert embedding.completed_at is not None
                 assert embedding.completed_at >= embedding.started_at
+
+
+def test_experiment_config_validation():
+    """Test that ExperimentConfig validates input parameters correctly."""
+    # Test with valid configuration
+    valid_config = ExperimentConfig(
+        networks=[["DummyT2I"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedders=["Dummy"],
+        run_length=5
+    )
+    assert valid_config.run_length == 5
+
+    # Test with empty networks list
+    try:
+        ExperimentConfig(
+            networks=[],
+            seeds=[42],
+            prompts=["Test prompt"],
+            embedders=["Dummy"],
+            run_length=5
+        )
+        assert False, "Should have raised ValueError for empty networks list"
+    except ValueError:
+        pass
+
+    # Test with empty prompts

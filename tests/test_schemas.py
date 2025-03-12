@@ -210,7 +210,7 @@ def test_experiment_config():
 def test_experiment_config_invalid_values():
     """Test that ExperimentConfig raises errors for invalid values."""
     # Test empty list validation
-    with pytest.raises(ValueError, match="List cannot be empty"):
+    with pytest.raises(ValueError, match="Networks list cannot be empty"):
         ExperimentConfig(
             networks=[],
             seeds=[42],

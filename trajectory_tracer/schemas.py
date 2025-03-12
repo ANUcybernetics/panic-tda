@@ -6,7 +6,7 @@ from uuid import UUID
 
 import numpy as np
 from PIL import Image
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
 from uuid_v7.base import uuid7
@@ -158,7 +158,7 @@ class Run(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
-    network: List[str] = Field(default=[], sa_type=JSON)
+    network: List[str] = Field(default=None, sa_type=JSON)
     seed: int
     length: int
     initial_prompt: str
@@ -173,6 +173,14 @@ class Run(SQLModel, table=True):
         back_populates="run",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+
+    @model_validator(mode='after')
+    def validate_fields(self):
+        if not self.network:
+            raise ValueError("Network list cannot be empty")
+        if self.length <= 0:
+            raise ValueError("Run length must be greater than 0")
+        return self
 
 
 class Embedding(SQLModel, table=True):
@@ -242,16 +250,16 @@ class ExperimentConfig(BaseModel):
     embedders: List[str] = Field(..., description="List of embedding model class names")
     run_length: int = Field(..., description="Number of invocations in each run")
 
-    @field_validator('networks', 'seeds', 'prompts', 'embedders', check_fields=False)
-    @classmethod
-    def check_non_empty_lists(cls, value):
-        if not value:
-            raise ValueError("List cannot be empty")
-        return value
-
-    @field_validator('run_length', check_fields=False)
-    @classmethod
-    def check_positive_run_length(cls, value):
-        if value <= 0:
+    @model_validator(mode='after')
+    def validate_fields(self):
+        if not self.networks:
+            raise ValueError("Networks list cannot be empty")
+        if not self.seeds:
+            raise ValueError("Seeds list cannot be empty")
+        if not self.prompts:
+            raise ValueError("Prompts list cannot be empty")
+        if not self.embedders:
+            raise ValueError("Embedders list cannot be empty")
+        if self.run_length <= 0:
             raise ValueError("Run length must be greater than 0")
-        return value
+        return self
