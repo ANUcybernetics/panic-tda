@@ -16,8 +16,12 @@
   - do some statistical tests with e.g. scikit.learn
   - wall-clock time plots (so we see what's taking so long)
 
-- accelerate the models with CUDA
-
 - work on parallelism (with shared GPU, and with multi-GPU)
 
-- switch to a python package provided sqlite3 (maybe)
+- switch to a python package provided sqlite3 (maybe...)
+
+- use the dummy embeddings in the final analysis as a control, perhaps with a
+  slightly more sophisticated "random walk" scheme
+
+- idea: have multiple "models" for each model, with (in i2t case) different
+  captions, or (in t2i case) different num_steps or similar
