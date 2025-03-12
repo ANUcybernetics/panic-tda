@@ -22,7 +22,7 @@ class AIModel(BaseModel):
 
 # Text2Image models
 
-class FluxDevT2I(AIModel):
+class FluxDev(AIModel):
     # name = "FLUX.1-dev"
     # url = "https://huggingface.co/black-forest-labs/FLUX.1-dev"
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
@@ -111,7 +111,7 @@ class SDXLTurbo(AIModel):
 
 # Image2Text models
 
-class MoondreamI2T(AIModel):
+class Moondream(AIModel):
     # name = "Moondream 2"
     # url = "https://huggingface.co/vikhyatk/moondream2"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT

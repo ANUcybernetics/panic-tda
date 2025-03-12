@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from trajectory_tracer.models import IMAGE_SIZE, FluxDevT2I, SDXLTurbo
+from trajectory_tracer.models import IMAGE_SIZE, FluxDev, SDXLTurbo
 
 
 @pytest.mark.slow
@@ -9,7 +9,7 @@ def test_flux_dev_t2i():
     """Test that flux_dev_t2i returns an image with the expected dimensions."""
 
     prompt = "A beautiful mountain landscape at sunset"
-    image = FluxDevT2I.invoke(prompt)
+    image = FluxDev.invoke(prompt)
 
     assert isinstance(image, Image.Image)
 
@@ -51,12 +51,12 @@ def test_blip2_i2t():
 @pytest.mark.slow
 def test_moondream_i2t():
     """Test that moondream_i2t returns a text caption for an input image."""
-    from trajectory_tracer.models import MoondreamI2T
+    from trajectory_tracer.models import Moondream
 
     # Create a simple test image
     image = Image.new('RGB', (100, 100), color='red')
 
-    caption = MoondreamI2T.invoke(image)
+    caption = Moondream.invoke(image)
 
     assert isinstance(caption, str)
     assert len(caption) > 0  # Caption should not be empty

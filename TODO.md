@@ -1,12 +1,8 @@
 # TODO
 
-- add working (slow) tests for the nomic embedding modules
-
 - add helper functions for (either to engine, or to db):
 
   - fetch a run from the db by id, and again by seed/prompt/network
-  - write out the images for an invocation (or run) with prompt & other info in
-    metadata
 
 - add data analysis & vis code
 
@@ -25,5 +21,3 @@
 
 - idea: have multiple "models" for each model, with (in i2t case) different
   captions, or (in t2i case) different num_steps or similar
-
-- naming: do we need t2i or i2t in names?
