@@ -57,7 +57,7 @@ def main(
         logger.info(f"Experiment completed successfully. Results saved to {db_path}")
 
     except Exception as e:
-        logger.error(f"Error running experiment: {e}")
+        logger.error(f"Early termination of experiment: {e}")
         raise typer.Exit(code=1)
 
 
