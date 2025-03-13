@@ -51,3 +51,20 @@ def incomplete_embeddings(session: Session):
 
     statement = select(Embedding).where(Embedding.vector == None).order_by(Embedding.embedder)
     return session.exec(statement).all()
+
+
+def list_invocations(session: Session):
+    """
+    Returns all invocations.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of Invocation objects
+    """
+    from trajectory_tracer.schemas import Invocation
+
+    statement = select(Invocation)
+
+    return session.exec(statement).all()

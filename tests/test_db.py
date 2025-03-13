@@ -8,7 +8,13 @@ from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.db import Database, incomplete_embeddings
-from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
+from trajectory_tracer.schemas import (
+    Embedding,
+    Invocation,
+    InvocationType,
+    PersistenceDiagram,
+    Run,
+)
 
 
 def test_run_creation(db_session: Session):
@@ -150,7 +156,6 @@ def test_embedding(db_session: Session):
 
 def test_persistence_diagram_storage(db_session: Session):
     """Test storing and retrieving PersistenceDiagram objects."""
-    from trajectory_tracer.schemas import PersistenceDiagram
 
     # Create arrays of different shapes/dimensions
     array1 = np.array([[0.1, 0.5], [0.2, 0.7], [0.4, 0.9]])
@@ -327,3 +332,56 @@ def test_incomplete_embeddings(db_session: Session):
     # Verify complete embedding is not in results
     for embedding in results:
         assert embedding.vector is None
+
+
+def test_list_invocations(db_session: Session):
+    """Test the list_invocations function."""
+    from trajectory_tracer.db import list_invocations
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test list invocations",
+        network=["model1"],
+        seed=42,
+        length=3
+    )
+
+    # Create invocations with different creation times
+    invocation1 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="First output text"
+    )
+
+    invocation2 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=43,
+        run_id=sample_run.id,
+        sequence_number=2,
+        output_text="Second output text"
+    )
+
+    invocation3 = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=44,
+        run_id=sample_run.id,
+        sequence_number=3
+    )
+
+    # Add everything to the session
+    db_session.add(sample_run)
+    db_session.add(invocation1)
+    db_session.add(invocation2)
+    db_session.add(invocation3)
+    db_session.commit()
+
+    # Test with no limit
+    results = list_invocations(db_session)
+
+    # Verify we got all invocations
+    assert len(results) == 3
