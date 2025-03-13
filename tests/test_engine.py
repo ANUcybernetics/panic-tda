@@ -4,15 +4,24 @@ from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.engine import (
+    compute_missing_embeds,
     create_embedding,
     create_invocation,
+    create_persistence_diagram,
     create_run,
     perform_embedding,
     perform_experiment,
     perform_invocation,
+    perform_persistence_diagram,
     perform_run,
 )
-from trajectory_tracer.schemas import ExperimentConfig, Invocation, InvocationType, Run
+from trajectory_tracer.schemas import (
+    Embedding,
+    ExperimentConfig,
+    Invocation,
+    InvocationType,
+    Run,
+)
 
 
 def test_create_image_to_text_invocation(db_session: Session):
@@ -295,7 +304,6 @@ def test_create_embedding(db_session: Session):
     db_session.refresh(invocation)
 
     # Import the create_embedding function from engine
-    from trajectory_tracer.engine import create_embedding
 
     # Create an embedding for the invocation
     embedding = create_embedding("Dummy", invocation, db_session)
@@ -331,7 +339,6 @@ def test_perform_embedding(db_session: Session):
     db_session.refresh(invocation)
 
     # Import the create_embedding and perform_embedding functions from engine
-    from trajectory_tracer.engine import create_embedding, perform_embedding
 
     # Create an empty embedding
     embedding = create_embedding("Dummy", invocation, db_session)
@@ -476,7 +483,6 @@ def test_run_embeddings_by_model(db_session: Session):
 
 def test_compute_missing_embeds(db_session: Session):
     """Test that compute_missing_embeds correctly processes embeddings without vectors."""
-    from trajectory_tracer.engine import compute_missing_embeds
 
     # Create two test invocations with outputs
     invocation1 = create_invocation(
@@ -503,7 +509,6 @@ def test_compute_missing_embeds(db_session: Session):
     db_session.commit()
 
     # Create embedding objects without vectors
-    from trajectory_tracer.schemas import Embedding
 
     # First embedding with Dummy model
     embedding1 = Embedding(
@@ -680,7 +685,6 @@ def test_perform_experiment_with_test_config(db_session: Session):
 
 def test_create_persistence_diagram(db_session: Session):
     """Test that create_persistence_diagram correctly initializes a persistence diagram object."""
-    from trajectory_tracer.engine import create_persistence_diagram
 
     # Create a run first
     run = create_run(
@@ -707,14 +711,6 @@ def test_create_persistence_diagram(db_session: Session):
 
 def test_perform_persistence_diagram(db_session: Session):
     """Test that perform_persistence_diagram correctly calculates and stores the generators."""
-    from trajectory_tracer.engine import (
-        create_embedding,
-        create_invocation,
-        create_persistence_diagram,
-        perform_embedding,
-        perform_invocation,
-        perform_persistence_diagram,
-    )
 
     # Create a run
     run = create_run(
@@ -784,13 +780,7 @@ def test_perform_persistence_diagram(db_session: Session):
 
 def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
     """Test that perform_persistence_diagram correctly handles the case of missing embeddings."""
-    from trajectory_tracer.engine import (
-        create_embedding,
-        create_invocation,
-        create_persistence_diagram,
-        perform_invocation,
-        perform_persistence_diagram,
-    )
+
 
     # Create a run
     run = create_run(
