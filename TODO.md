@@ -1,13 +1,9 @@
 # TODO
 
-- ensure that the program can be interrupted (and that it doesn't re-do
-  any work it doesn't need to)
+- ensure that the program can be interrupted (and that it doesn't re-do any work
+  it doesn't need to)
 
 - add tda stuff to engine (but at the end?)
-
-- add helper functions for (either to engine, or to db):
-
-  - fetch a run from the db by id, and again by seed/prompt/network
 
 - add data analysis & vis code
 
