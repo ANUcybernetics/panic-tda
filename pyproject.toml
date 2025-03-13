@@ -24,8 +24,12 @@ dependencies = [
     "torch>=2.6.0",
     "torchvision>=0.21.0",
     "transformers>=4.49.0",
+    "typer>=0.15.2",
     "uuid-v7>=1.0.0",
 ]
+
+[project.scripts]
+trajectory-tracer = "trajectory_tracer.main:app"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
