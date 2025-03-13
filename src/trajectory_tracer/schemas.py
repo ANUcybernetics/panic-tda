@@ -200,7 +200,7 @@ class Embedding(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(default=None)
 
     invocation_id: UUID = Field(foreign_key="invocation.id", index=True)
-    embedder: str = Field(..., description="Embedding model class name")
+    embedding_model: str = Field(..., description="Embedding model class name")
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
     # Relationship attribute
@@ -256,7 +256,7 @@ class ExperimentConfig(BaseModel):
     networks: List[List[str]] = Field(..., description="List of networks (each network is a list of model names)")
     seeds: List[int] = Field(..., description="List of random seeds to use")
     prompts: List[str] = Field(..., description="List of initial text prompts")
-    embedders: List[str] = Field(..., description="List of embedding model class names")
+    embedding_models: List[str] = Field(..., description="List of embedding model class names")
     run_length: int = Field(..., description="Number of invocations in each run")
 
     @model_validator(mode='after')
@@ -267,8 +267,8 @@ class ExperimentConfig(BaseModel):
             raise ValueError("Seeds list cannot be empty")
         if not self.prompts:
             raise ValueError("Prompts list cannot be empty")
-        if not self.embedders:
-            raise ValueError("Embedders list cannot be empty")
+        if not self.embedding_models:
+            raise ValueError("embedding_models list cannot be empty")
         if self.run_length <= 0:
             raise ValueError("Run length must be greater than 0")
         return self

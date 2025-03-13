@@ -142,12 +142,12 @@ def test_embedding_creation():
 
     embedding = Embedding(
         invocation_id=invocation_id,
-        embedder="text-embedding-ada-002",
+        embedding_model="text-embedding-ada-002",
     )
     embedding.vector = vector
 
     assert embedding.invocation_id == invocation_id
-    assert embedding.embedder == "text-embedding-ada-002"
+    assert embedding.embedding_model == "text-embedding-ada-002"
     np.testing.assert_array_equal(embedding.vector, vector)
     assert embedding.dimension == 4
 
@@ -171,7 +171,7 @@ def test_experiment_config():
         "networks": [["DummyI2T", "DummyT2I"], ["DummyT2I"]],
         "seeds": [42, 123],
         "prompts": ["First prompt", "Second prompt"],
-        "embedders": ["embedder1", "embedder2"],
+        "embedding_models": ["embedding_model1", "embedding_model2"],
         "run_length": 5
     }
 
@@ -192,7 +192,7 @@ def test_experiment_config():
         assert config.networks[0] == ["DummyI2T", "DummyT2I"]
         assert config.seeds == [42, 123]
         assert config.prompts == ["First prompt", "Second prompt"]
-        assert config.embedders == ["embedder1", "embedder2"]
+        assert config.embedding_models == ["embedding_model1", "embedding_model2"]
         assert config.run_length == 5
 
         # Test validation error with unequal list lengths
@@ -215,7 +215,7 @@ def test_experiment_config_invalid_values():
             networks=[],
             seeds=[42],
             prompts=["test"],
-            embedders=["test"],
+            embedding_models=["test"],
             run_length=5
         )
 
@@ -225,7 +225,7 @@ def test_experiment_config_invalid_values():
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
-            embedders=["test"],
+            embedding_models=["test"],
             run_length=0
         )
 
@@ -235,7 +235,7 @@ def test_experiment_config_invalid_values():
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
-            embedders=["test"],
+            embedding_models=["test"],
             run_length=-5
         )
 
@@ -245,7 +245,7 @@ def test_experiment_config_invalid_values():
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
-            # Missing embedders
+            # Missing embedding_models
             run_length=5
         )
 
@@ -276,7 +276,7 @@ def test_embedding_duration_property():
     invocation_id = uuid7()
     embedding = Embedding(
         invocation_id=invocation_id,
-        embedder="test-embedding"
+        embedding_model="test-embedding"
     )
 
     # With no timestamps, duration should be 0

@@ -40,7 +40,7 @@ def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") 
 
 def incomplete_embeddings(session: Session):
     """
-    Returns all Embedding objects without vector data, ordered by embedder.
+    Returns all Embedding objects without vector data, ordered by embedding_model.
 
     Args:
         session: The database session
@@ -49,7 +49,7 @@ def incomplete_embeddings(session: Session):
         A list of Embedding objects that have null vector values
     """
 
-    statement = select(Embedding).where(Embedding.vector == None).order_by(Embedding.embedder)
+    statement = select(Embedding).where(Embedding.vector == None).order_by(Embedding.embedding_model)
     return session.exec(statement).all()
 
 

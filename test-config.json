@@ -5,6 +5,6 @@
   ],
   "seeds": [42, 43],
   "prompts": ["Test prompt 1", "Test prompt 2"],
-  "embedders": ["Dummy", "Dummy2"],
+  "embedding_models": ["Dummy", "Dummy2"],
   "run_length": 10
 }

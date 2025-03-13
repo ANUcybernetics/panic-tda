@@ -143,32 +143,32 @@ class Dummy2(EmbeddingModel):
         return np.random.rand(768).astype(np.float32)
 
 
-def embed(embedder_name: str, content: Union[str, Image.Image]) -> np.ndarray:
+def embed(embedding_model_name: str, content: Union[str, Image.Image]) -> np.ndarray:
     """
-    Dynamically dispatches to the specified embedder's embed method.
+    Dynamically dispatches to the specified embedding_model's embed method.
 
     Args:
-        embedder_name: Name of the embedder to use
+        embedding_model_name: Name of the embedding_model to use
         content: Either text or image to embed
 
     Returns:
         The calculated embedding vector
 
     Raises:
-        ValueError: If the embedder doesn't exist
+        ValueError: If the embedding_model doesn't exist
     """
     current_module = sys.modules[__name__]
 
     # Try to find the model class in this module
-    if not hasattr(current_module, embedder_name):
-        raise ValueError(f"Embedder '{embedder_name}' not found.")
+    if not hasattr(current_module, embedding_model_name):
+        raise ValueError(f"embedding_model '{embedding_model_name}' not found.")
 
     # Get the model class
-    model_class = getattr(current_module, embedder_name)
+    model_class = getattr(current_module, embedding_model_name)
 
     # Check if it's a subclass of EmbeddingModel
     if not issubclass(model_class, EmbeddingModel):
-        raise ValueError(f"'{embedder_name}' is not an EmbeddingModel subclass")
+        raise ValueError(f"'{embedding_model_name}' is not an EmbeddingModel subclass")
 
     # Call the embed method with the content
     return model_class.embed(content)

@@ -136,7 +136,7 @@ def test_embedding(db_session: Session):
     vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     sample_embedding = Embedding(
         invocation_id=sample_text_invocation.id,
-        embedder="test-embedding-model"
+        embedding_model="test-embedding-model"
     )
     sample_embedding.vector = vector
 
@@ -294,18 +294,18 @@ def test_incomplete_embeddings(db_session: Session):
     # Create embeddings - one complete and one incomplete
     complete_embedding = Embedding(
         invocation_id=invocation1.id,
-        embedder="embedder-1"
+        embedding_model="embedding_model-1"
     )
     complete_embedding.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
     incomplete_embedding1 = Embedding(
         invocation_id=invocation1.id,
-        embedder="embedder-2"
+        embedding_model="embedding_model-2"
     )
 
     incomplete_embedding2 = Embedding(
         invocation_id=invocation2.id,
-        embedder="embedder-1"
+        embedding_model="embedding_model-1"
     )
 
     # Add everything to the session
@@ -323,10 +323,10 @@ def test_incomplete_embeddings(db_session: Session):
     # Verify the results
     assert len(results) == 2
 
-    # Results should be ordered by embedder
-    assert results[0].embedder == "embedder-1"
+    # Results should be ordered by embedding_model
+    assert results[0].embedding_model == "embedding_model-1"
     assert results[0].invocation_id == invocation2.id
-    assert results[1].embedder == "embedder-2"
+    assert results[1].embedding_model == "embedding_model-2"
     assert results[1].invocation_id == invocation1.id
 
     # Verify complete embedding is not in results

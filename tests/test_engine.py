@@ -199,7 +199,7 @@ def test_create_embedding(db_session: Session):
     # Check that the embedding was created correctly
     assert embedding is not None
     assert embedding.invocation_id == invocation.id
-    assert embedding.embedder == "Dummy"
+    assert embedding.embedding_model == "Dummy"
     assert embedding.vector is None  # Vector is not calculated yet
 
     # Verify the relationship is established correctly
@@ -289,7 +289,7 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
     assert embedding2.completed_at >= embedding2.started_at
 
     # Check that we have one of each embedding model type
-    embedding_models = [e.embedder for e in invocation.embeddings]
+    embedding_models = [e.embedding_model for e in invocation.embeddings]
     assert "Dummy" in embedding_models
     assert "Dummy2" in embedding_models
 
@@ -337,7 +337,7 @@ def test_compute_missing_embeds(db_session: Session):
     # First embedding with Dummy model
     embedding1 = Embedding(
         invocation_id=invocation1.id,
-        embedder="Dummy",
+        embedding_model="Dummy",
         vector=None
     )
     db_session.add(embedding1)
@@ -345,7 +345,7 @@ def test_compute_missing_embeds(db_session: Session):
     # Second embedding with Dummy2 model
     embedding2 = Embedding(
         invocation_id=invocation2.id,
-        embedder="Dummy2",
+        embedding_model="Dummy2",
         vector=None
     )
     db_session.add(embedding2)
@@ -383,7 +383,7 @@ def test_perform_experiment(db_session: Session):
         ],
         seeds=[42, 43],
         prompts=["Test prompt 1", "Test prompt 2"],
-        embedders=["Dummy", "Dummy2"],
+        embedding_models=["Dummy", "Dummy2"],
         run_length=10 # Short run length for testing
     )
 
@@ -417,16 +417,16 @@ def test_perform_experiment(db_session: Session):
             assert invocation.completed_at >= invocation.started_at
 
             # Check that each invocation has embeddings for both embedding models
-            assert len(invocation.embeddings) == 2  # Should have 2 embeddings, one for each model in embedders
+            assert len(invocation.embeddings) == 2  # Should have 2 embeddings, one for each model in embedding_models
 
             # Get the embedding models used
-            embedding_models = [e.embedder for e in invocation.embeddings]
+            embedding_models = [e.embedding_model for e in invocation.embeddings]
             assert "Dummy" in embedding_models
             assert "Dummy2" in embedding_models
 
             # Check embedding properties
             for embedding in invocation.embeddings:
-                assert embedding.embedder in ["Dummy", "Dummy2"]
+                assert embedding.embedding_model in ["Dummy", "Dummy2"]
                 assert embedding.vector is not None
                 assert embedding.dimension == 768
                 assert embedding.started_at is not None
@@ -441,7 +441,7 @@ def test_experiment_config_validation():
         networks=[["DummyT2I"]],
         seeds=[42],
         prompts=["Test prompt"],
-        embedders=["Dummy"],
+        embedding_models=["Dummy"],
         run_length=5
     )
     assert valid_config.run_length == 5
@@ -452,7 +452,7 @@ def test_experiment_config_validation():
             networks=[],
             seeds=[42],
             prompts=["Test prompt"],
-            embedders=["Dummy"],
+            embedding_models=["Dummy"],
             run_length=5
         )
         assert False, "Should have raised ValueError for empty networks list"

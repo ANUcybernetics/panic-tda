@@ -57,7 +57,7 @@ def test_nomic_text_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedder == "nomic-embed-text-v1.5"
+    assert embedding.embedding_model == "nomic-embed-text-v1.5"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 
@@ -95,7 +95,7 @@ def test_nomic_vision_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedder == "nomic-embed-vision-v1.5"
+    assert embedding.embedding_model == "nomic-embed-vision-v1.5"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768
 
@@ -123,7 +123,7 @@ def test_jina_clip_text_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedder == "jina-clip-v2"
+    assert embedding.embedding_model == "jina-clip-v2"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 
@@ -158,7 +158,7 @@ def test_jina_clip_image_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedder == "jina-clip-v2"
+    assert embedding.embedding_model == "jina-clip-v2"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 
