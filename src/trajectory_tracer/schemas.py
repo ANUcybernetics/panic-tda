@@ -207,6 +207,33 @@ class Run(SQLModel, table=True):
         return final_invocation.output is not None
 
 
+    @property
+    def embeddings(self) -> List["Embedding"]:
+        """Get all embeddings for all invocations in this run."""
+        result = []
+        for invocation in self.invocations:
+            result.extend(invocation.embeddings)
+        return result
+
+
+    def embeddings_by_model(self, embedding_model: str) -> List["Embedding"]:
+        """
+        Get embeddings with a specific model name across all invocations in this run.
+
+        Args:
+            embedding_model: Name of the embedding model to filter by
+
+        Returns:
+            List of Embedding objects matching the specified model
+        """
+        result = []
+        for invocation in self.invocations:
+            # Get embeddings for this invocation that match the model name
+            matching_embeddings = [e for e in invocation.embeddings if e.embedding_model == embedding_model]
+            result.extend(matching_embeddings)
+        return result
+
+
 class Embedding(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
@@ -249,6 +276,7 @@ class PersistenceDiagram(SQLModel, table=True):
     )
 
     run_id: UUID = Field(foreign_key="run.id", index=True)
+    embedding_model: str = Field(..., description="Embedding model class name")
     run: Run = Relationship(back_populates="persistence_diagrams")
 
     def get_generators_as_arrays(self) -> List[np.ndarray]:
