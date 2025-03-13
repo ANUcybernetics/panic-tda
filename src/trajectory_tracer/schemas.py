@@ -191,6 +191,21 @@ class Run(SQLModel, table=True):
             raise ValueError("Run length must be greater than 0")
         return self
 
+    @property
+    def is_complete(self) -> bool:
+        """Check if the run is complete with all invocations and outputs."""
+        if not self.invocations:
+            return False
+
+        # Check if we have an invocation with the final sequence number
+        # (sequence_number is unique, so there will be at most one)
+        final_invocation = next((inv for inv in self.invocations if inv.sequence_number == self.length - 1), None)
+        if final_invocation is None:
+            return False
+
+        # Check that the final invocation has a non-None output
+        return final_invocation.output is not None
+
 
 class Embedding(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}

@@ -172,6 +172,109 @@ def test_perform_run(db_session: Session):
             assert invocation.type == InvocationType.TEXT
 
 
+def test_run_is_complete(db_session: Session):
+    """Test that Run.is_complete property returns correct values."""
+    # Create a run with multiple invocations
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for completeness check",
+        run_length=3,
+        seed=42,
+        session=db_session
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Initially, run should not be complete (no invocations)
+    assert not run.is_complete
+
+    # Add first invocation (sequence 0)
+    invocation0 = create_invocation(
+        model="DummyT2I",
+        input="Test prompt for completeness check",
+        run_id=run.id,
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation0 = perform_invocation(invocation0, "Test prompt for completeness check", db_session)
+    db_session.refresh(run)
+
+    # Run not complete with just the first invocation
+    assert not run.is_complete
+
+    # Add second invocation (sequence 1)
+    invocation1 = create_invocation(
+        model="DummyI2T",
+        input=invocation0.output,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=invocation0.id,
+        session=db_session,
+        seed=42
+    )
+    invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
+    db_session.refresh(run)
+
+    # Run not complete yet
+    assert not run.is_complete
+
+    # Add final invocation (sequence 2)
+    invocation2 = create_invocation(
+        model="DummyT2I",
+        input=invocation1.output,
+        run_id=run.id,
+        sequence_number=2,
+        input_invocation_id=invocation1.id,
+        session=db_session,
+        seed=42
+    )
+    invocation2 = perform_invocation(invocation2, invocation1.output, db_session)
+    db_session.refresh(run)
+
+    # Now run should be complete
+    assert run.is_complete
+
+    # Let's test that a run with final invocation but no output is not complete
+    run2 = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Another test prompt",
+        run_length=2,
+        seed=43,
+        session=db_session
+    )
+    db_session.add(run2)
+    db_session.commit()
+
+    # Add invocations but don't perform the last one
+    invocation_first = create_invocation(
+        model="DummyT2I",
+        input="Another test prompt",
+        run_id=run2.id,
+        sequence_number=0,
+        session=db_session,
+        seed=43
+    )
+    invocation_first = perform_invocation(invocation_first, "Another test prompt", db_session)
+
+    # Create final invocation but don't set its output
+    invocation_final = create_invocation(
+        model="DummyI2T",
+        input=invocation_first.output,
+        run_id=run2.id,
+        sequence_number=1,
+        input_invocation_id=invocation_first.id,
+        session=db_session,
+        seed=43
+    )
+    db_session.add(invocation_final)
+    db_session.commit()
+    db_session.refresh(run2)
+
+    # Run should not be complete because final invocation has no output
+    assert not run2.is_complete
+
+
 def test_create_embedding(db_session: Session):
     """Test that create_embedding correctly initializes an embedding for an invocation."""
     # Create a test invocation
