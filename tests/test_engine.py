@@ -375,8 +375,6 @@ def test_compute_missing_embeds(db_session: Session):
 
 def test_perform_experiment(db_session: Session):
     """Test that a small experiment with multiple runs can be executed successfully."""
-    from trajectory_tracer.schemas import ExperimentConfig
-
     # Create a small experiment configuration
     config = ExperimentConfig(
         networks=[
