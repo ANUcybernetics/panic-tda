@@ -3,11 +3,10 @@ import logging
 from pathlib import Path
 
 import typer
-from sqlmodel import Session
 
+from trajectory_tracer.db import get_database
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.db import get_database
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
