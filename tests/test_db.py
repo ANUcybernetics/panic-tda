@@ -7,7 +7,12 @@ from sqlalchemy import text
 from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.db import Database, incomplete_embeddings
+from trajectory_tracer.db import (
+    Database,
+    incomplete_embeddings,
+    list_embeddings,
+    list_invocations,
+)
 from trajectory_tracer.schemas import (
     Embedding,
     Invocation,
@@ -336,7 +341,6 @@ def test_incomplete_embeddings(db_session: Session):
 
 def test_list_invocations(db_session: Session):
     """Test the list_invocations function."""
-    from trajectory_tracer.db import list_invocations
 
     # Create a sample run
     sample_run = Run(
@@ -384,4 +388,67 @@ def test_list_invocations(db_session: Session):
     results = list_invocations(db_session)
 
     # Verify we got all invocations
+    assert len(results) == 3
+
+
+def test_list_embeddings(db_session: Session):
+    """Test the list_embeddings function."""
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test list embeddings",
+        network=["model1"],
+        seed=42,
+        length=3
+    )
+
+    # Create invocations
+    invocation1 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="First output text"
+    )
+
+    invocation2 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=43,
+        run_id=sample_run.id,
+        sequence_number=2,
+        output_text="Second output text"
+    )
+
+    # Create embeddings with different models
+    embedding1 = Embedding(
+        invocation_id=invocation1.id,
+        embedding_model="embedding_model-1"
+    )
+    embedding1.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+    embedding2 = Embedding(
+        invocation_id=invocation1.id,
+        embedding_model="embedding_model-2"
+    )
+    embedding2.vector = np.array([0.4, 0.5, 0.6], dtype=np.float32)
+
+    embedding3 = Embedding(
+        invocation_id=invocation2.id,
+        embedding_model="embedding_model-1"
+    )
+    embedding3.vector = np.array([0.7, 0.8, 0.9], dtype=np.float32)
+
+    # Add everything to the session
+    db_session.add(sample_run)
+    db_session.add(invocation1)
+    db_session.add(invocation2)
+    db_session.add(embedding1)
+    db_session.add(embedding2)
+    db_session.add(embedding3)
+    db_session.commit()
+
+    # Test with no filters
+    results = list_embeddings(db_session)
     assert len(results) == 3

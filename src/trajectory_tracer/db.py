@@ -68,3 +68,17 @@ def list_invocations(session: Session):
     statement = select(Invocation)
 
     return session.exec(statement).all()
+
+
+def list_embeddings(session: Session):
+    """
+    Returns all embeddings.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of Embedding objects
+    """
+    statement = select(Embedding)
+    return session.exec(statement).all()
