@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from trajectory_tracer.schemas import Embedding, PersistenceDiagram
+from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
 
 
 class Database:
@@ -81,12 +81,25 @@ def list_invocations(session: Session):
     Returns:
         A list of Invocation objects
     """
-    from trajectory_tracer.schemas import Invocation
 
     statement = select(Invocation)
 
     return session.exec(statement).all()
 
+
+def list_runs(session: Session):
+    """
+    Returns all runs.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of Run objects
+    """
+
+    statement = select(Run)
+    return session.exec(statement).all()
 
 def list_embeddings(session: Session):
     """
@@ -99,4 +112,18 @@ def list_embeddings(session: Session):
         A list of Embedding objects
     """
     statement = select(Embedding)
+    return session.exec(statement).all()
+
+
+def list_persistence_diagrams(session: Session):
+    """
+    Returns all persistence diagrams.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of PersistenceDiagram objects
+    """
+    statement = select(PersistenceDiagram)
     return session.exec(statement).all()

@@ -1,7 +1,7 @@
 import polars as pl
 from sqlmodel import Session
 
-from trajectory_tracer.db import list_embeddings
+from trajectory_tracer.db import list_embeddings, list_persistence_diagrams
 
 
 def load_embeddings_df(session: Session) -> pl.DataFrame:
@@ -35,6 +35,41 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
             'model': invocation.model,
             'sequence_number': invocation.sequence_number,
             'embedding_model': embedding.embedding_model,
+        }
+        data.append(row)
+
+    # Create a polars DataFrame
+    return pl.DataFrame(data)
+
+
+def load_persistence_diagram_df(session: Session) -> pl.DataFrame:
+    """
+    Load all persistence diagrams from the database and flatten them into a polars DataFrame.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        A polars DataFrame containing all persistence diagram data
+    """
+
+    persistence_diagrams = list_persistence_diagrams(session)
+
+    data = []
+    for diagram in persistence_diagrams:
+        # Count the number of generators
+        num_generators = len(diagram.generators) if diagram.generators else 0
+
+        row = {
+            'id': diagram.id,
+            'run_id': diagram.run_id,
+            'started_at': diagram.started_at,
+            'completed_at': diagram.completed_at,
+            'embedding_model': diagram.embedding_model,
+            'num_generators': num_generators,
+            'network': diagram.run.network,
+            'initial_prompt': diagram.run.initial_prompt,
+            'seed': diagram.run.seed,
         }
         data.append(row)
 

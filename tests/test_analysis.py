@@ -1,7 +1,11 @@
 import polars as pl
 
-from trajectory_tracer.analysis import load_embeddings_df
-from trajectory_tracer.engine import perform_experiment
+from trajectory_tracer.analysis import load_embeddings_df, load_persistence_diagram_df
+from trajectory_tracer.engine import (
+    create_persistence_diagram,
+    perform_experiment,
+    perform_persistence_diagram,
+)
 from trajectory_tracer.schemas import ExperimentConfig
 
 
@@ -53,3 +57,48 @@ def test_load_embeddings_df(db_session):
     assert image_row[df.columns.index('model')] == "DummyI2T"
     assert image_row[df.columns.index('sequence_number')] == 1
     assert image_row[df.columns.index('seed')] == 42  # Same seed used for all runs in the config
+
+
+def test_load_persistence_diagram_df(db_session):
+    """Test that load_persistence_diagram_df returns a polars DataFrame with correct data."""
+
+    # Create a simple test configuration
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["test persistence diagram dataframe"],
+        embedding_models=["Dummy"],
+        run_length=2
+    )
+
+    # Run the experiment to populate database
+    perform_experiment(config, db_session)
+
+    # Create and compute a persistence diagram
+    from trajectory_tracer.db import list_runs
+    runs = list_runs(db_session)
+    assert len(runs) > 0
+
+    run = runs[0]
+    diagram = create_persistence_diagram(run.id, "Dummy", db_session)
+    perform_persistence_diagram(diagram, db_session)
+
+    # Call function under test
+    df = load_persistence_diagram_df(db_session)
+
+    # Assertions
+    assert isinstance(df, pl.DataFrame)
+    assert len(df) == 1  # We created one persistence diagram
+
+    # Check column names
+    expected_columns = ['id', 'run_id', 'started_at', 'completed_at', 'embedding_model',
+                        'num_generators', 'network', 'initial_prompt', 'seed']
+    assert all(col in df.columns for col in expected_columns)
+
+    # Verify field values
+    row = df.row(0)
+    assert row[df.columns.index('embedding_model')] == "Dummy"
+    assert row[df.columns.index('initial_prompt')] == "test persistence diagram dataframe"
+    assert row[df.columns.index('seed')] == 42
+    assert row[df.columns.index('network')] == ["DummyT2I", "DummyI2T"]
+    assert isinstance(row[df.columns.index('num_generators')], int)
