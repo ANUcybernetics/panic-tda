@@ -2,7 +2,7 @@ from contextlib import contextmanager
 
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from trajectory_tracer.schemas import Embedding
+from trajectory_tracer.schemas import Embedding, PersistenceDiagram
 
 
 class Database:
@@ -50,6 +50,24 @@ def incomplete_embeddings(session: Session):
     """
 
     statement = select(Embedding).where(Embedding.vector.is_(None)).order_by(Embedding.embedding_model)
+    return session.exec(statement).all()
+
+
+def incomplete_persistence_diagrams(session: Session):
+    """
+    Returns all PersistenceDiagram objects without generator data.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of PersistenceDiagram objects that have empty generators
+    """
+
+    statement = select(PersistenceDiagram).where(
+        # Check for empty generators list
+        PersistenceDiagram.generators == []
+    )
     return session.exec(statement).all()
 
 

@@ -3,7 +3,9 @@ import logging
 import sys
 from datetime import datetime
 from typing import List, Optional, Union
+from uuid import UUID
 
+import numpy as np
 from PIL import Image
 from sqlmodel import Session
 
@@ -17,6 +19,7 @@ from trajectory_tracer.schemas import (
     InvocationType,
     Run,
 )
+from trajectory_tracer.tda import giotto_phd
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -337,6 +340,105 @@ def compute_missing_embeds(session: Session) -> int:
 
     except Exception as e:
         logger.error(f"Error in perform_missing_embeds: {e}")
+        raise
+
+
+def create_persistence_diagram(run_id: UUID, embedding_model: str, session: Session):
+    """
+    Create a persistence diagram object for a run.
+
+    Args:
+        run_id: The ID of the run
+        session: SQLModel Session for database operations
+
+    Returns:
+        The created PersistenceDiagram object
+    """
+    from trajectory_tracer.schemas import PersistenceDiagram
+
+    try:
+        logger.debug(f"Creating persistence diagram for run {run_id} and embedding model {embedding_model}")
+
+        # Create persistence diagram object with empty generators
+        pd = PersistenceDiagram(
+            run_id=run_id,
+            embedding_model=embedding_model,
+            generators=[]
+        )
+
+        # Save to database
+        session.add(pd)
+        session.commit()
+        session.refresh(pd)
+
+        logger.debug(f"Created persistence diagram with ID: {pd.id}")
+        return pd
+
+    except Exception as e:
+        logger.error(f"Error creating persistence diagram for run {run_id}: {e}")
+        raise
+
+
+def perform_persistence_diagram(persistence_diagram, session: Session):
+    """
+    Calculate and populate the generators for a persistence diagram.
+
+    Args:
+        persistence_diagram: The PersistenceDiagram object to update
+        session: SQLModel Session for database operations
+
+    Returns:
+        The updated PersistenceDiagram object with generators
+    """
+    try:
+        # Get the run associated with this diagram
+        run = persistence_diagram.run
+
+        logger.info(f"Computing persistence diagram for run {run.id}")
+
+        # Check if run is complete using is_complete property
+        if not run.is_complete:
+            raise ValueError(f"Run {run.id} is not complete")
+
+        # Get embeddings for the specific embedding model
+        embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
+
+        # Check that we have one embedding for each sequence number
+        sequence_numbers = set(emb.invocation.sequence_number for emb in embeddings)
+        if len(sequence_numbers) != run.length:
+            missing = set(range(run.length)) - sequence_numbers
+            raise ValueError(f"Run {run.id} is missing embeddings for sequence numbers: {missing}")
+
+        # Check that all embeddings have vectors
+        missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
+        if missing_vectors:
+            raise ValueError(f"Run {run.id} has embeddings without vectors: {missing_vectors}")
+
+        # Sort embeddings by sequence number
+        sorted_embeddings = sorted(embeddings, key=lambda e: e.invocation.sequence_number)
+
+        # Create point cloud from embedding vectors
+        point_cloud = np.array([emb.vector for emb in sorted_embeddings])
+
+        # Set start timestamp - only timing the persistence diagram computation
+        persistence_diagram.started_at = datetime.now()
+
+        # Compute persistence diagram
+        persistence_diagram.generators = giotto_phd(point_cloud)
+
+        # Set completion timestamp
+        persistence_diagram.completed_at = datetime.now()
+
+        # Save to database
+        session.add(persistence_diagram)
+        session.commit()
+        session.refresh(persistence_diagram)
+
+        logger.info(f"Successfully computed persistence diagram for run {run.id}")
+        return persistence_diagram
+
+    except Exception as e:
+        logger.error(f"Error computing persistence diagram: {e}")
         raise
 
 

@@ -1,3 +1,4 @@
+import pytest
 from PIL import Image
 from sqlmodel import Session, select
 from uuid_v7.base import uuid7
@@ -675,6 +676,167 @@ def test_perform_experiment_with_test_config(db_session: Session):
     assert prompts_count["Test prompt 2"] == 4
     assert seeds_count[42] == 4
     assert seeds_count[43] == 4
+
+
+def test_create_persistence_diagram(db_session: Session):
+    """Test that create_persistence_diagram correctly initializes a persistence diagram object."""
+    from trajectory_tracer.engine import create_persistence_diagram
+
+    # Create a run first
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for persistence diagram",
+        run_length=3,
+        seed=42,
+        session=db_session
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Create a persistence diagram for this run
+    pd = create_persistence_diagram(run.id, "Dummy", db_session)
+
+    # Check that the persistence diagram was created correctly
+    assert pd is not None
+    assert pd.run_id == run.id
+    assert pd.embedding_model == "Dummy"
+    assert pd.generators == []  # Should start with empty generators list
+    assert pd.started_at is None  # Should not have timestamps yet
+    assert pd.completed_at is None
+
+
+def test_perform_persistence_diagram(db_session: Session):
+    """Test that perform_persistence_diagram correctly calculates and stores the generators."""
+    from trajectory_tracer.engine import (
+        create_embedding,
+        create_invocation,
+        create_persistence_diagram,
+        perform_embedding,
+        perform_invocation,
+        perform_persistence_diagram,
+    )
+
+    # Create a run
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for performing persistence diagram",
+        run_length=3,
+        seed=42,
+        session=db_session
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Add invocations and perform them
+    invocation0 = create_invocation(
+        model="DummyT2I",
+        input=run.initial_prompt,
+        run_id=run.id,
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
+
+    invocation1 = create_invocation(
+        model="DummyI2T",
+        input=invocation0.output,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=invocation0.id,
+        session=db_session,
+        seed=42
+    )
+    invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
+
+    invocation2 = create_invocation(
+        model="DummyT2I",
+        input=invocation1.output,
+        run_id=run.id,
+        sequence_number=2,
+        input_invocation_id=invocation1.id,
+        session=db_session,
+        seed=42
+    )
+    invocation2 = perform_invocation(invocation2, invocation1.output, db_session)
+
+    # Create embeddings for all invocations
+    embedding_model = "Dummy"
+    for invocation in [invocation0, invocation1, invocation2]:
+        embedding = create_embedding(embedding_model, invocation, db_session)
+        perform_embedding(embedding, db_session)
+
+    # Create and perform persistence diagram
+    pd = create_persistence_diagram(run.id, embedding_model, db_session)
+    pd = perform_persistence_diagram(pd, db_session)
+
+    # Check the results
+    assert pd.generators is not None
+    assert len(pd.generators) > 0  # Should have at least some generators
+    assert pd.started_at is not None
+    assert pd.completed_at is not None
+    assert pd.completed_at >= pd.started_at
+
+    # Verify that generators are numpy arrays with the expected structure
+    for generator in pd.generators:
+        assert generator.shape[1] == 2  # Each generator should have birth/death pairs
+
+
+def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
+    """Test that perform_persistence_diagram correctly handles the case of missing embeddings."""
+    from trajectory_tracer.engine import (
+        create_embedding,
+        create_invocation,
+        create_persistence_diagram,
+        perform_invocation,
+        perform_persistence_diagram,
+    )
+
+    # Create a run
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for incomplete persistence diagram",
+        run_length=3,
+        seed=42,
+        session=db_session
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Add invocations but don't create embeddings for all of them
+    invocation0 = create_invocation(
+        model="DummyT2I",
+        input=run.initial_prompt,
+        run_id=run.id,
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
+
+    invocation1 = create_invocation(
+        model="DummyI2T",
+        input=invocation0.output,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=invocation0.id,
+        session=db_session,
+        seed=42
+    )
+    invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
+
+    # Only create embedding for the first invocation
+    _embedding = create_embedding("Dummy", invocation0, db_session)
+    db_session.commit()
+
+    # Create persistence diagram
+    pd = create_persistence_diagram(run.id, "Dummy", db_session)
+
+    # Should raise ValueError because not all invocations have embeddings
+
+    with pytest.raises(Exception):
+        perform_persistence_diagram(pd, db_session)
+
 
 def test_experiment_config_validation():
     """Test that ExperimentConfig validates input parameters correctly."""
