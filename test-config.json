@@ -1,0 +1,10 @@
+{
+  "networks": [
+    ["DummyT2I", "DummyI2T"],
+    ["DummyI2T", "DummyT2I"]
+  ],
+  "seeds": [42, 43],
+  "prompts": ["Test prompt 1", "Test prompt 2"],
+  "embedders": ["Dummy", "Dummy2"],
+  "run_length": 10
+}
