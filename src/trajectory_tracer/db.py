@@ -40,7 +40,7 @@ def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") 
 
 def incomplete_embeddings(session: Session):
     """
-    Returns all Embedding objects without vector data, ordered by embedding_model.
+    Returns all Embedding objects without vector data, ordered by embedding model.
 
     Args:
         session: The database session
