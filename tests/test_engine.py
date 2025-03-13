@@ -406,6 +406,73 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
         assert embedding.completed_at >= embedding.started_at
 
 
+def test_run_embeddings_by_model(db_session: Session):
+    """Test that Run.embeddings_by_model returns the correct embeddings for a specific model."""
+    # Create a run
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for embeddings by model",
+        run_length=3,
+        seed=42,
+        session=db_session
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Add invocations and perform them
+    invocation0 = create_invocation(
+        model="DummyT2I",
+        input=run.initial_prompt,
+        run_id=run.id,
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
+
+    invocation1 = create_invocation(
+        model="DummyI2T",
+        input=invocation0.output,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=invocation0.id,
+        session=db_session,
+        seed=42
+    )
+    invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
+
+    # Create embeddings with different models for each invocation
+    embed1_inv0 = create_embedding("Dummy", invocation0, db_session)
+    embed1_inv0 = perform_embedding(embed1_inv0, db_session)
+
+    embed2_inv0 = create_embedding("Dummy2", invocation0, db_session)
+    embed2_inv0 = perform_embedding(embed2_inv0, db_session)
+
+    embed1_inv1 = create_embedding("Dummy", invocation1, db_session)
+    embed1_inv1 = perform_embedding(embed1_inv1, db_session)
+
+    embed2_inv1 = create_embedding("Dummy2", invocation1, db_session)
+    embed2_inv1 = perform_embedding(embed2_inv1, db_session)
+
+    db_session.refresh(run)
+
+    # Test embeddings_by_model for first model
+    dummy_embeddings = run.embeddings_by_model("Dummy")
+    assert len(dummy_embeddings) == 2
+    assert all(e.embedding_model == "Dummy" for e in dummy_embeddings)
+    assert {e.id for e in dummy_embeddings} == {embed1_inv0.id, embed1_inv1.id}
+
+    # Test embeddings_by_model for second model
+    dummy2_embeddings = run.embeddings_by_model("Dummy2")
+    assert len(dummy2_embeddings) == 2
+    assert all(e.embedding_model == "Dummy2" for e in dummy2_embeddings)
+    assert {e.id for e in dummy2_embeddings} == {embed2_inv0.id, embed2_inv1.id}
+
+    # Test with a model that doesn't exist
+    nonexistent_embeddings = run.embeddings_by_model("NonExistentModel")
+    assert len(nonexistent_embeddings) == 0
+
+
 def test_compute_missing_embeds(db_session: Session):
     """Test that compute_missing_embeds correctly processes embeddings without vectors."""
     from trajectory_tracer.engine import compute_missing_embeds

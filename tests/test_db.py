@@ -170,6 +170,7 @@ def test_persistence_diagram_storage(db_session: Session):
     # Create a persistence diagram with these arrays
     diagram = PersistenceDiagram(
         run_id=uuid7(),
+        embedding_model="Dummy",
         generators=[array1, array2, array3]
     )
 
@@ -180,6 +181,7 @@ def test_persistence_diagram_storage(db_session: Session):
     retrieved = db_session.get(PersistenceDiagram, diagram.id)
 
     assert retrieved is not None
+    assert retrieved.embedding_model == "Dummy"
 
     # Get the generators as arrays
     retrieved_arrays = retrieved.get_generators_as_arrays()
