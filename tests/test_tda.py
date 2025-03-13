@@ -11,19 +11,16 @@ def test_giotto_phd():
     point_cloud = np.column_stack((np.cos(theta), np.sin(theta)))
 
     # Compute the persistence diagram
-    diagram = giotto_phd(point_cloud, max_dim=1)
+    diagrams = giotto_phd(point_cloud, max_dim=1)
 
-    # Check that the output is a dictionary
-    assert isinstance(diagram, dict)
-
-    # Check that the diagram contains expected keys
-    assert "dgms" in diagram
+    # Check that the output is a list of ndarrays
+    assert isinstance(diagrams, list)
 
     # Check that we have diagrams for dimensions 0 and 1
-    assert len(diagram["dgms"]) >= 2
+    assert len(diagrams) >= 2
 
     # Extract the 1-dimensional homology features (the circle)
-    h1_features = diagram["dgms"][1]
+    h1_features = diagrams[1]
 
     # There should be at least one persistent feature in H1 (the circle)
     assert len(h1_features) >= 1

@@ -1,11 +1,11 @@
-from typing import Any, Dict
+from typing import List
 
 import numpy as np
 from gph import ripser_parallel
 from persim.persistent_entropy import persistent_entropy
 
 
-def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> Dict[str, Any]:
+def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> List[np.ndarray]:
     """
     Compute persistent homology diagram using the giotto-ph library.
 
@@ -18,4 +18,4 @@ def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> Dict[str, Any]:
     """
     dgm = ripser_parallel(point_cloud, maxdim=max_dim, n_threads=-1)
     _pe = persistent_entropy(dgm["dgms"], normalize=False)
-    return dgm
+    return dgm["dgms"]
