@@ -434,6 +434,78 @@ def test_perform_experiment(db_session: Session):
                 assert embedding.completed_at >= embedding.started_at
 
 
+def test_perform_experiment_with_test_config(db_session: Session):
+    """Test that an experiment with the test-config.json configuration can be executed successfully."""
+    # Create experiment configuration matching the test-config.json
+    config = ExperimentConfig(
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyI2T", "DummyT2I"]
+        ],
+        seeds=[42, 43],
+        prompts=["Test prompt 1", "Test prompt 2"],
+        embedding_models=["Dummy", "Dummy2"],
+        run_length=10
+    )
+
+    # Perform the experiment
+    perform_experiment(config, db_session)
+
+    # Query the database to verify created objects
+    statement = select(Run)
+    runs = db_session.exec(statement).all()
+
+    # Check that runs were created: 2 networks × 2 seeds × 2 prompts = 8 runs
+    assert len(runs) == 8
+
+    # Check network configurations
+    networks_count = {
+        str(["DummyT2I", "DummyI2T"]): 0,
+        str(["DummyI2T", "DummyT2I"]): 0
+    }
+
+    # Check prompts usage
+    prompts_count = {
+        "Test prompt 1": 0,
+        "Test prompt 2": 0
+    }
+
+    # Check seeds usage
+    seeds_count = {
+        42: 0,
+        43: 0
+    }
+
+    # Check each run's properties
+    for run in runs:
+        assert run.length == 10
+        networks_count[str(run.network)] += 1
+        prompts_count[run.initial_prompt] += 1
+        seeds_count[run.seed] += 1
+
+        # Verify invocations
+        assert len(run.invocations) == 10
+
+        # Check that all invocations have embeddings from both models
+        for invocation in run.invocations:
+            embedding_models = [e.embedding_model for e in invocation.embeddings]
+            assert "Dummy" in embedding_models
+            assert "Dummy2" in embedding_models
+            assert len(invocation.embeddings) == 2
+
+            # Make sure all embeddings have vectors
+            for embedding in invocation.embeddings:
+                assert embedding.vector is not None
+                assert embedding.dimension == 768
+
+    # Verify all combinations were used
+    assert networks_count[str(["DummyT2I", "DummyI2T"])] == 4
+    assert networks_count[str(["DummyI2T", "DummyT2I"])] == 4
+    assert prompts_count["Test prompt 1"] == 4
+    assert prompts_count["Test prompt 2"] == 4
+    assert seeds_count[42] == 4
+    assert seeds_count[43] == 4
+
 def test_experiment_config_validation():
     """Test that ExperimentConfig validates input parameters correctly."""
     # Test with valid configuration
