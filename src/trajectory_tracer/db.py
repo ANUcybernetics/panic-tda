@@ -49,7 +49,7 @@ def incomplete_embeddings(session: Session):
         A list of Embedding objects that have null vector values
     """
 
-    statement = select(Embedding).where(Embedding.vector == None).order_by(Embedding.embedding_model)
+    statement = select(Embedding).where(Embedding.vector.is_(None)).order_by(Embedding.embedding_model)
     return session.exec(statement).all()
 
 
