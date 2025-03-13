@@ -190,14 +190,10 @@ def test_persistence_diagram_storage(db_session: Session):
 
 def test_database_initialization():
     """Test the Database class initialization."""
-    # Test with default connection string
-    db = Database()
+    connection_string="sqlite:///test.db"
+    db = Database(connection_string)
     assert db.engine is not None
-
-    # Test with custom connection string
-    custom_db = Database(connection_string="sqlite:///test.db")
-    assert custom_db.engine is not None
-    assert str(custom_db.engine.url) == "sqlite:///test.db"
+    assert str(db.engine.url) == connection_string
 
 
 def test_database_create_session():

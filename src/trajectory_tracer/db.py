@@ -4,7 +4,9 @@ from sqlmodel import Session, SQLModel, create_engine
 
 
 class Database:
-    def __init__(self, connection_string: str = "sqlite:///trajectory_tracer.db"):
+    _instance = None
+
+    def __init__(self, connection_string: str):
         """Initialize the database with a connection string."""
         self.engine = create_engine(connection_string)
         SQLModel.metadata.create_all(self.engine)
@@ -26,5 +28,7 @@ class Database:
         finally:
             session.close()
 
-# Create a global instance for convenience
-db = Database()
+
+def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") -> Database:
+    """Get or create a Database instance with the specified connection string."""
+    return Database(connection_string)

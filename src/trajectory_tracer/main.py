@@ -3,10 +3,11 @@ import logging
 from pathlib import Path
 
 import typer
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session
 
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig
+from trajectory_tracer.db import get_database
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -45,11 +46,12 @@ def main(
         # Create database engine and tables
         db_url = f"sqlite:///{db_path}"
         logger.info(f"Creating/connecting to database at {db_path}")
-        engine = create_engine(db_url, echo=verbose)
-        SQLModel.metadata.create_all(engine)
+
+        # Get database instance with the specified path
+        database = get_database(connection_string=db_url)
 
         # Run the experiment
-        with Session(engine) as session:
+        with database.get_session() as session:
             logger.info("Starting experiment...")
             perform_experiment(config=config, session=session)
 
