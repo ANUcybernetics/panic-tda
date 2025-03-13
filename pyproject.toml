@@ -31,6 +31,17 @@ dependencies = [
 [project.scripts]
 trajectory-tracer = "trajectory_tracer.main:app"
 
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["trajectory_tracer"]
+
+[tool.uv]
+package = true
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]

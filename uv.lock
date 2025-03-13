@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.12.0, <3.13"
 
 [[package]]
@@ -1101,7 +1100,7 @@ wheels = [
 [[package]]
 name = "trajectory-tracer"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "diffusers" },
