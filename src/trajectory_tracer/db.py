@@ -38,39 +38,6 @@ def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") 
 
 ## some helper functions
 
-def incomplete_embeddings(session: Session):
-    """
-    Returns all Embedding objects without vector data, ordered by embedding model.
-
-    Args:
-        session: The database session
-
-    Returns:
-        A list of Embedding objects that have null vector values
-    """
-
-    statement = select(Embedding).where(Embedding.vector.is_(None)).order_by(Embedding.embedding_model)
-    return session.exec(statement).all()
-
-
-def incomplete_persistence_diagrams(session: Session):
-    """
-    Returns all PersistenceDiagram objects without generator data.
-
-    Args:
-        session: The database session
-
-    Returns:
-        A list of PersistenceDiagram objects that have empty generators
-    """
-
-    statement = select(PersistenceDiagram).where(
-        # Check for empty generators list
-        PersistenceDiagram.generators == []
-    )
-    return session.exec(statement).all()
-
-
 def list_invocations(session: Session):
     """
     Returns all invocations.
@@ -126,4 +93,37 @@ def list_persistence_diagrams(session: Session):
         A list of PersistenceDiagram objects
     """
     statement = select(PersistenceDiagram)
+    return session.exec(statement).all()
+
+
+def incomplete_embeddings(session: Session):
+    """
+    Returns all Embedding objects without vector data, ordered by embedding model.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of Embedding objects that have null vector values
+    """
+
+    statement = select(Embedding).where(Embedding.vector.is_(None)).order_by(Embedding.embedding_model)
+    return session.exec(statement).all()
+
+
+def incomplete_persistence_diagrams(session: Session):
+    """
+    Returns all PersistenceDiagram objects without generator data.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of PersistenceDiagram objects that have empty generators
+    """
+
+    statement = select(PersistenceDiagram).where(
+        # Check for empty generators list
+        PersistenceDiagram.generators == []
+    )
     return session.exec(statement).all()

@@ -484,6 +484,9 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
                     embedding = create_embedding(embedding_model, invocation, session)
                     logger.debug(f"Created embedding {embedding.id} for invocation {invocation.id}")
 
+                # Create empty persistence diagram for this run and embedding model
+                create_persistence_diagram(run.id, embedding_model, session)
+
             successful_runs += 1
             logger.info(f"Completed run {i+1}/{total_combinations}")
 
@@ -491,7 +494,23 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
             logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
             # Continue with next run even if this one fails
 
-    # finally, run the embedding_models for all embeddings that are missing vectors
+    # Compute embeddings for all runs
+    logger.info(f"Computing embeddings for all {successful_runs} successful runs")
     compute_missing_embeds(session)
+
+    # After all embeddings are computed, calculate persistence diagrams
+    logger.info("Computing persistence diagrams for all runs")
+    from trajectory_tracer.db import incomplete_persistence_diagrams
+
+    # Get all persistence diagrams with empty generators
+    incomplete_pds = incomplete_persistence_diagrams(session)
+    logger.info(f"Found {len(incomplete_pds)} persistence diagrams to compute")
+
+    # Process each incomplete persistence diagram
+    for pd in incomplete_pds:
+        try:
+            perform_persistence_diagram(pd, session)
+        except Exception as e:
+            logger.error(f"Error computing persistence diagram for run {pd.run_id} with embedding model {pd.embedding_model}: {e}")
 
     logger.info(f"Experiment completed with {successful_runs} successful runs")

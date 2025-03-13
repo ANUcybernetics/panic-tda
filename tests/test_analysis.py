@@ -2,9 +2,7 @@ import polars as pl
 
 from trajectory_tracer.analysis import load_embeddings_df, load_persistence_diagram_df
 from trajectory_tracer.engine import (
-    create_persistence_diagram,
     perform_experiment,
-    perform_persistence_diagram,
 )
 from trajectory_tracer.schemas import ExperimentConfig
 
@@ -74,21 +72,12 @@ def test_load_persistence_diagram_df(db_session):
     # Run the experiment to populate database
     perform_experiment(config, db_session)
 
-    # Create and compute a persistence diagram
-    from trajectory_tracer.db import list_runs
-    runs = list_runs(db_session)
-    assert len(runs) > 0
-
-    run = runs[0]
-    diagram = create_persistence_diagram(run.id, "Dummy", db_session)
-    perform_persistence_diagram(diagram, db_session)
-
     # Call function under test
     df = load_persistence_diagram_df(db_session)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
-    assert len(df) == 1  # We created one persistence diagram
+    assert df.height == 1  # We created one persistence diagram
 
     # Check column names
     expected_columns = ['id', 'run_id', 'started_at', 'completed_at', 'embedding_model',
