@@ -22,3 +22,8 @@
 
 - idea: have multiple "models" for each model, with (in i2t case) different
   captions, or (in t2i case) different num_steps or similar
+
+- generators == None for "pre-initialised" PDs seems nicer semantically
+
+- generate big image grid (utils, or maybe analysis)... or perhaps move utils
+  into analysis
