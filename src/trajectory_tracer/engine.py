@@ -207,14 +207,14 @@ def create_embedding(embedding_model: str, invocation: Invocation, session: Sess
         ValueError: If the embedding model doesn't exist or if the invocation type is incompatible
     """
     # Validate that the embedding_model class exists
-    current_module = sys.modules["trajectory_tracer.embeddings"]
-    if not hasattr(current_module, embedding_model):
+    embeddings_module = sys.modules["trajectory_tracer.embeddings"]
+    if not hasattr(embeddings_module, embedding_model):
         raise ValueError(f"Embedding model '{embedding_model}' not found. Available embedding models: "
-                         f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), getattr(current_module, 'EmbeddingModel'))]}")
+                         f"{[cls for cls in dir(embeddings_module) if isinstance(getattr(embeddings_module, cls), type) and issubclass(getattr(embeddings_module, cls), getattr(embeddings_module, 'EmbeddingModel'))]}")
 
     # Get the model class and verify it's a valid EmbeddingModel
-    model_class = getattr(current_module, embedding_model)
-    if not issubclass(model_class, getattr(current_module, 'EmbeddingModel')):
+    model_class = getattr(embeddings_module, embedding_model)
+    if not issubclass(model_class, getattr(embeddings_module, 'EmbeddingModel')):
         raise ValueError(f"'{embedding_model}' is not an EmbeddingModel subclass")
 
     # First check if output exists - no embedding can work without output
@@ -379,7 +379,8 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
             # create "empty" embedding objects - will fill in the vectors later
             for embedding_model in config.embedding_models:
                 for invocation in run.invocations:
-                    create_embedding(embedding_model, invocation, session)
+                    embedding = create_embedding(embedding_model, invocation, session)
+                    logger.debug(f"Created embedding {embedding.id} for invocation {invocation.id}")
 
             successful_runs += 1
             logger.info(f"Completed run {i+1}/{total_combinations}")
