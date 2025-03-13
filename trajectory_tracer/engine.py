@@ -265,7 +265,6 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
         config.networks,
         config.seeds,
         config.prompts,
-        config.embedders
     ))
 
     total_combinations = len(combinations)
@@ -273,7 +272,7 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
 
     # Process each combination
     successful_runs = 0
-    for i, (network, seed, prompt, embedding_model) in enumerate(combinations):
+    for i, (network, seed, prompt) in enumerate(combinations):
         try:
             # Create the run
             logger.info(f"Creating run {i+1}/{total_combinations}: {network} with seed {seed}")
@@ -288,9 +287,10 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
             # Execute the run
             run = perform_run(run, session)
 
-            # Generate embeddings for the run
-            embeddings = embed_run(run, embedding_model, session)
-            logger.info(f"Generated {len(embeddings)} embeddings with model {embedding_model}")
+            # Generate embeddings for all embedding models specified in config
+            for embedding_model in config.embedders:
+                embeddings = embed_run(run, embedding_model, session)
+                logger.info(f"Generated {len(embeddings)} embeddings with model {embedding_model}")
 
             successful_runs += 1
             logger.info(f"Completed run {i+1}/{total_combinations}")

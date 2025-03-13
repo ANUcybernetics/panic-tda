@@ -326,7 +326,7 @@ def test_perform_experiment(db_session: Session):
 
     # Check that runs were created
     runs = db_session.exec(select(Run)).all()
-    assert len(runs) == 16  # 2 networks × 2 seeds × 2 prompts × 2 embedders = 16 runs
+    assert len(runs) == 8  # 2 networks × 2 seeds × 2 prompts = 8 runs
 
     # Check that each run has the correct properties and relationships
     for run in runs:
@@ -347,8 +347,13 @@ def test_perform_experiment(db_session: Session):
             assert invocation.completed_at is not None
             assert invocation.completed_at >= invocation.started_at
 
-            # Check that each invocation has an embedding
-            assert len(invocation.embeddings) == 1
+            # Check that each invocation has embeddings for both embedding models
+            assert len(invocation.embeddings) == 2  # Should have 2 embeddings, one for each model in embedders
+
+            # Get the embedding models used
+            embedding_models = [e.embedding_model for e in invocation.embeddings]
+            assert "dummy-embedding" in embedding_models
+            assert "dummy2-embedding" in embedding_models
 
             # Check embedding properties
             for embedding in invocation.embeddings:
