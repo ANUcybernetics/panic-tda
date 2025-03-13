@@ -3,10 +3,10 @@ from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.engine import (
+    create_embedding,
     create_invocation,
     create_run,
-    embed_invocation,
-    embed_run,
+    perform_embedding,
     perform_experiment,
     perform_invocation,
     perform_run,
@@ -172,8 +172,8 @@ def test_perform_run(db_session: Session):
             assert invocation.type == InvocationType.TEXT
 
 
-def test_embed_invocation(db_session: Session):
-    """Test that embed_invocation correctly generates and associates an embedding with an invocation."""
+def test_create_embedding(db_session: Session):
+    """Test that create_embedding correctly initializes an embedding for an invocation."""
     # Create a test invocation
     input_text = "This is test text for embedding"
     invocation = create_invocation(
@@ -184,28 +184,63 @@ def test_embed_invocation(db_session: Session):
         session=db_session,
         seed=42
     )
-    invocation.output = "This is test text for embedding"
+    # Use the real perform_invocation function to get a real output
+    invocation = perform_invocation(invocation, input_text, db_session)
     db_session.add(invocation)
     db_session.commit()
     db_session.refresh(invocation)
 
+    # Import the create_embedding function from engine
+    from trajectory_tracer.engine import create_embedding
+
     # Create an embedding for the invocation
-    embedding = embed_invocation(invocation, "Dummy", db_session)
+    embedding = create_embedding("Dummy", invocation, db_session)
 
     # Check that the embedding was created correctly
     assert embedding is not None
     assert embedding.invocation_id == invocation.id
-    assert embedding.embedding_model == "dummy-embedding"
-    assert embedding.vector is not None
-    assert embedding.dimension == 768  # dummy embeddings are 768-dimensional
-    assert embedding.started_at is not None  # Check that started_at is set
-    assert embedding.completed_at is not None  # Check that completed_at is set
-    assert embedding.completed_at >= embedding.started_at  # Completion should be after or equal to start
+    assert embedding.embedder == "Dummy"
+    assert embedding.vector is None  # Vector is not calculated yet
 
     # Verify the relationship is established correctly
     db_session.refresh(invocation)
     assert len(invocation.embeddings) == 1
     assert invocation.embeddings[0].id == embedding.id
+
+
+def test_perform_embedding(db_session: Session):
+    """Test that perform_embedding correctly calculates and stores the embedding vector."""
+    # Create a test invocation
+    input_text = "This is test text for embedding calculation"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=uuid7(),
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    # Use the real perform_invocation function to get a real output
+    invocation = perform_invocation(invocation, input_text, db_session)
+    db_session.add(invocation)
+    db_session.commit()
+    db_session.refresh(invocation)
+
+    # Import the create_embedding and perform_embedding functions from engine
+    from trajectory_tracer.engine import create_embedding, perform_embedding
+
+    # Create an empty embedding
+    embedding = create_embedding("Dummy", invocation, db_session)
+
+    # Perform the actual embedding calculation
+    embedding = perform_embedding(embedding, db_session)
+
+    # Check that the embedding vector was calculated correctly
+    assert embedding.vector is not None
+    assert len(embedding.vector) == 768  # dummy embeddings are 768-dimensional
+    assert embedding.started_at is not None  # Check that started_at is set
+    assert embedding.completed_at is not None  # Check that completed_at is set
+    assert embedding.completed_at >= embedding.started_at  # Completion should be after or equal to start
 
 
 def test_multiple_embeddings_per_invocation(db_session: Session):
@@ -220,16 +255,22 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
         session=db_session,
         seed=42
     )
-    invocation.output = "This is test text for multiple embeddings"
+    invocation = perform_invocation(invocation, input_text, db_session)
     db_session.add(invocation)
     db_session.commit()
     db_session.refresh(invocation)
 
     # Create first embedding using Dummy
-    embedding1 = embed_invocation(invocation, "Dummy", db_session)
 
-    # Create second embedding using Dummy2
-    embedding2 = embed_invocation(invocation, "Dummy2", db_session)
+    # Create first empty embedding
+    embedding1 = create_embedding("Dummy", invocation, db_session)
+    # Compute the actual embedding vector
+    embedding1 = perform_embedding(embedding1, db_session)
+
+    # Create second empty embedding
+    embedding2 = create_embedding("Dummy2", invocation, db_session)
+    # Compute the actual embedding vector
+    embedding2 = perform_embedding(embedding2, db_session)
 
     # Refresh invocation to see updated relationships
     db_session.refresh(invocation)
@@ -248,9 +289,9 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
     assert embedding2.completed_at >= embedding2.started_at
 
     # Check that we have one of each embedding model type
-    embedding_models = [e.embedding_model for e in invocation.embeddings]
-    assert "dummy-embedding" in embedding_models
-    assert "dummy2-embedding" in embedding_models
+    embedding_models = [e.embedder for e in invocation.embeddings]
+    assert "Dummy" in embedding_models
+    assert "Dummy2" in embedding_models
 
     # Verify each embedding has correct properties
     for embedding in invocation.embeddings:
@@ -262,45 +303,74 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
         assert embedding.completed_at >= embedding.started_at
 
 
-def test_embed_run(db_session: Session):
-    """Test that embed_run correctly generates embeddings for all invocations in a run."""
+def test_compute_missing_embeds(db_session: Session):
+    """Test that compute_missing_embeds correctly processes embeddings without vectors."""
+    from trajectory_tracer.engine import compute_missing_embeds
 
-    # Create a test run
-    network = ["DummyT2I", "DummyI2T"]
-    initial_prompt = "Test prompt for embedding run"
-    seed = 42
+    # Create two test invocations with outputs
+    invocation1 = create_invocation(
+        model="DummyT2I",
+        input="Text for invocation 1",
+        run_id=uuid7(),
+        sequence_number=0,
+        session=db_session,
+        seed=42
+    )
+    invocation1.output = "Output text for invocation 1"
+    db_session.add(invocation1)
 
-    # Create and perform the run
-    run = create_run(network=network, initial_prompt=initial_prompt, run_length=6, session=db_session, seed=seed)
-    db_session.add(run)
+    invocation2 = create_invocation(
+        model="DummyT2I",
+        input="Text for invocation 2",
+        run_id=uuid7(),
+        sequence_number=0,
+        session=db_session,
+        seed=43
+    )
+    invocation2.output = "Output text for invocation 2"
+    db_session.add(invocation2)
     db_session.commit()
-    db_session.refresh(run)
 
-    run = perform_run(run, db_session)
+    # Create embedding objects without vectors
+    from trajectory_tracer.schemas import Embedding
 
-    # Verify run was created with correct number of invocations
-    assert len(run.invocations) == 6
+    # First embedding with Dummy model
+    embedding1 = Embedding(
+        invocation_id=invocation1.id,
+        embedder="Dummy",
+        vector=None
+    )
+    db_session.add(embedding1)
 
-    # Create embeddings for all invocations
-    embeddings = embed_run(run, "Dummy", db_session)
+    # Second embedding with Dummy2 model
+    embedding2 = Embedding(
+        invocation_id=invocation2.id,
+        embedder="Dummy2",
+        vector=None
+    )
+    db_session.add(embedding2)
+    db_session.commit()
 
-    # Check that embeddings were created for each invocation
-    assert len(embeddings) == 6
+    # Run the function to compute missing embeddings
+    processed_count = compute_missing_embeds(db_session)
 
-    # Verify each embedding has timestamps
-    for embedding in embeddings:
-        assert embedding.started_at is not None
-        assert embedding.completed_at is not None
-        assert embedding.completed_at >= embedding.started_at
+    # Verify results
+    assert processed_count == 2
 
-    # Verify each invocation has an embedding
-    for invocation in run.invocations:
-        assert len(invocation.embeddings) == 1
-        assert invocation.embeddings[0].embedding_model == "dummy-embedding"
-        assert invocation.embeddings[0].dimension == 768
-        assert invocation.embeddings[0].started_at is not None
-        assert invocation.embeddings[0].completed_at is not None
-        assert invocation.embeddings[0].completed_at >= invocation.embeddings[0].started_at
+    # Check that embeddings now have vectors
+    db_session.refresh(embedding1)
+    db_session.refresh(embedding2)
+
+    assert embedding1.vector is not None
+    assert embedding2.vector is not None
+    assert embedding1.dimension == 768
+    assert embedding2.dimension == 768
+    assert embedding1.started_at is not None
+    assert embedding1.completed_at is not None
+    assert embedding2.started_at is not None
+    assert embedding2.completed_at is not None
+    assert embedding1.completed_at >= embedding1.started_at
+    assert embedding2.completed_at >= embedding2.started_at
 
 
 def test_perform_experiment(db_session: Session):
@@ -325,7 +395,8 @@ def test_perform_experiment(db_session: Session):
     # Query the database to verify created objects
 
     # Check that runs were created
-    runs = db_session.exec(select(Run)).all()
+    statement = select(Run)
+    runs = db_session.exec(statement).all()
     assert len(runs) == 8  # 2 networks × 2 seeds × 2 prompts = 8 runs
 
     # Check that each run has the correct properties and relationships
@@ -351,13 +422,13 @@ def test_perform_experiment(db_session: Session):
             assert len(invocation.embeddings) == 2  # Should have 2 embeddings, one for each model in embedders
 
             # Get the embedding models used
-            embedding_models = [e.embedding_model for e in invocation.embeddings]
-            assert "dummy-embedding" in embedding_models
-            assert "dummy2-embedding" in embedding_models
+            embedding_models = [e.embedder for e in invocation.embeddings]
+            assert "Dummy" in embedding_models
+            assert "Dummy2" in embedding_models
 
             # Check embedding properties
             for embedding in invocation.embeddings:
-                assert embedding.embedding_model in ["dummy-embedding", "dummy2-embedding"]
+                assert embedding.embedder in ["Dummy", "Dummy2"]
                 assert embedding.vector is not None
                 assert embedding.dimension == 768
                 assert embedding.started_at is not None

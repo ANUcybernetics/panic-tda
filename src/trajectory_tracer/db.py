@@ -1,6 +1,8 @@
 from contextlib import contextmanager
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
+
+from trajectory_tracer.schemas import Embedding
 
 
 class Database:
@@ -32,3 +34,20 @@ class Database:
 def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") -> Database:
     """Get or create a Database instance with the specified connection string."""
     return Database(connection_string)
+
+
+## some helper functions
+
+def incomplete_embeddings(session: Session):
+    """
+    Returns all Embedding objects without vector data, ordered by embedder.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of Embedding objects that have null vector values
+    """
+
+    statement = select(Embedding).where(Embedding.vector == None).order_by(Embedding.embedder)
+    return session.exec(statement).all()

@@ -24,20 +24,18 @@ def test_dummy_embedding(db_session):
     db_session.commit()
 
     # Get the embedding using the new approach
-    embedding = embed("Dummy", sample_text_invocation)
+    embedding_vector = embed("Dummy", sample_text_invocation)
 
     # Check that the embedding has the correct properties
-    assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedding_model == "dummy-embedding"
-    assert len(embedding.vector) == 768  # Expected dimension
+    assert len(embedding_vector) == 768  # Expected dimension
 
     # Verify that the vector contains random values between 0 and 1
-    assert all(0 <= x <= 1 for x in embedding.vector)
+    assert all(0 <= x <= 1 for x in embedding_vector)
 
     # Get another embedding and verify it's different (random)
-    embedding2 = embed("Dummy", sample_text_invocation)
+    embedding2_vector = embed("Dummy", sample_text_invocation)
     # Can't directly compare numpy arrays with !=, use numpy's array_equal instead
-    assert not np.array_equal(embedding.vector, embedding2.vector)
+    assert not np.array_equal(embedding_vector, embedding2_vector)
 
 
 @pytest.mark.slow
@@ -59,7 +57,7 @@ def test_nomic_text_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedding_model == "nomic-embed-text-v1.5"
+    assert embedding.embedder == "nomic-embed-text-v1.5"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 
@@ -97,7 +95,7 @@ def test_nomic_vision_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedding_model == "nomic-embed-vision-v1.5"
+    assert embedding.embedder == "nomic-embed-vision-v1.5"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768
 
@@ -125,7 +123,7 @@ def test_jina_clip_text_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedding_model == "jina-clip-v2"
+    assert embedding.embedder == "jina-clip-v2"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 
@@ -160,7 +158,7 @@ def test_jina_clip_image_embedding(db_session):
 
     # Check that the embedding has the correct properties
     assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedding_model == "jina-clip-v2"
+    assert embedding.embedder == "jina-clip-v2"
     assert embedding.vector is not None
     assert len(embedding.vector) == 768  # Expected dimension
 

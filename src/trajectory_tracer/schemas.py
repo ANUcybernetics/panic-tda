@@ -200,7 +200,7 @@ class Embedding(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(default=None)
 
     invocation_id: UUID = Field(foreign_key="invocation.id", index=True)
-    embedding_model: str = Field(..., description="Embedding model class name")
+    embedder: str = Field(..., description="Embedding model class name")
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
     # Relationship attribute

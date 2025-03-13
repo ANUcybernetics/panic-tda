@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlmodel import Session, select
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.db import Database
+from trajectory_tracer.db import Database, incomplete_embeddings
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
@@ -130,7 +130,7 @@ def test_embedding(db_session: Session):
     vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     sample_embedding = Embedding(
         invocation_id=sample_text_invocation.id,
-        embedding_model="test-embedding-model"
+        embedder="test-embedding-model"
     )
     sample_embedding.vector = vector
 
@@ -254,3 +254,76 @@ def test_database_context_manager():
         statement = select(Run).where(Run.initial_prompt == "should be rolled back")
         runs = session.exec(statement).all()
         assert len(runs) == 0
+
+
+def test_incomplete_embeddings(db_session: Session):
+    """Test the incomplete_embeddings function."""
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test incomplete embeddings",
+        network=["model1"],
+        seed=42,
+        length=3
+    )
+
+    # Create invocations
+    invocation1 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="First output text"
+    )
+
+    invocation2 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=43,
+        run_id=sample_run.id,
+        sequence_number=2,
+        output_text="Second output text"
+    )
+
+    # Create embeddings - one complete and one incomplete
+    complete_embedding = Embedding(
+        invocation_id=invocation1.id,
+        embedder="embedder-1"
+    )
+    complete_embedding.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+    incomplete_embedding1 = Embedding(
+        invocation_id=invocation1.id,
+        embedder="embedder-2"
+    )
+
+    incomplete_embedding2 = Embedding(
+        invocation_id=invocation2.id,
+        embedder="embedder-1"
+    )
+
+    # Add everything to the session
+    db_session.add(sample_run)
+    db_session.add(invocation1)
+    db_session.add(invocation2)
+    db_session.add(complete_embedding)
+    db_session.add(incomplete_embedding1)
+    db_session.add(incomplete_embedding2)
+    db_session.commit()
+
+    # Test the function
+    results = incomplete_embeddings(db_session)
+
+    # Verify the results
+    assert len(results) == 2
+
+    # Results should be ordered by embedder
+    assert results[0].embedder == "embedder-1"
+    assert results[0].invocation_id == invocation2.id
+    assert results[1].embedder == "embedder-2"
+    assert results[1].invocation_id == invocation1.id
+
+    # Verify complete embedding is not in results
+    for embedding in results:
+        assert embedding.vector is None

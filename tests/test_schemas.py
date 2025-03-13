@@ -142,12 +142,12 @@ def test_embedding_creation():
 
     embedding = Embedding(
         invocation_id=invocation_id,
-        embedding_model="text-embedding-ada-002",
+        embedder="text-embedding-ada-002",
     )
     embedding.vector = vector
 
     assert embedding.invocation_id == invocation_id
-    assert embedding.embedding_model == "text-embedding-ada-002"
+    assert embedding.embedder == "text-embedding-ada-002"
     np.testing.assert_array_equal(embedding.vector, vector)
     assert embedding.dimension == 4
 
@@ -276,7 +276,7 @@ def test_embedding_duration_property():
     invocation_id = uuid7()
     embedding = Embedding(
         invocation_id=invocation_id,
-        embedding_model="test-embedding"
+        embedder="test-embedding"
     )
 
     # With no timestamps, duration should be 0

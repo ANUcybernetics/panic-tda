@@ -1,17 +1,19 @@
 import itertools
 import logging
+import sys
 from datetime import datetime
 from typing import List, Optional, Union
 
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.embeddings import embed
+from trajectory_tracer.db import incomplete_embeddings
 from trajectory_tracer.models import get_output_type, invoke
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
+    InvocationType,
     Run,
 )
 
@@ -188,66 +190,153 @@ def perform_run(run: Run, session: Session) -> Run:
         raise
 
 
-def embed_invocation(invocation: Invocation, embedding_model: str, session: Session) -> Embedding:
+def create_embedding(embedder: str, invocation: Invocation, session: Session = None) -> Embedding:
     """
-    Generate an embedding for an invocation using the specified embedding model.
+    Create an empty embedding object for the specified embedder and persist it to the database.
 
     Args:
-        invocation: The invocation to embed
-        embedding_model: Name of the embedding model to use
+        embedder: The name of the embedder class to use
+        invocation: The Invocation object to embed
         session: SQLModel Session for database operations
 
     Returns:
-        The created Embedding object
+        An Embedding object without the vector calculated yet
+
+    Raises:
+        ValueError: If the embedder doesn't exist or if the invocation type is incompatible
+    """
+    # Validate that the embedder class exists
+    current_module = sys.modules["trajectory_tracer.embeddings"]
+    if not hasattr(current_module, embedder):
+        raise ValueError(f"Embedder '{embedder}' not found. Available embedders: "
+                         f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), getattr(current_module, 'EmbeddingModel'))]}")
+
+    # Get the model class and verify it's a valid EmbeddingModel
+    model_class = getattr(current_module, embedder)
+    if not issubclass(model_class, getattr(current_module, 'EmbeddingModel')):
+        raise ValueError(f"'{embedder}' is not an EmbeddingModel subclass")
+
+    # First check if output exists - no embedding can work without output
+    if invocation.output is None:
+        raise ValueError("Cannot embed an invocation with no output")
+
+    # Handle special case for Nomic which dispatches to specific models
+    if embedder == "Nomic":
+        if invocation.type == InvocationType.TEXT:
+            return create_embedding("NomicText", invocation, session)
+        elif invocation.type == InvocationType.IMAGE:
+            return create_embedding("NomicVision", invocation, session)
+        else:
+            raise ValueError(f"Unsupported invocation type for nomic embedding: {invocation.type}")
+
+    # Create the embedding object
+    embedding = Embedding(
+        invocation_id=invocation.id,
+        embedder=embedder,
+        vector=None
+    )
+
+    # Save to database if session is provided
+    if session:
+        logger.info(f"Persisting empty embedding for invocation {invocation.id} with embedder {embedder}")
+        session.add(embedding)
+        session.commit()
+        session.refresh(embedding)
+
+    return embedding
+
+
+def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
+    """
+    Perform the embedding calculation for an existing Embedding object
+    and update it with the computed vector and timestamps.
+
+    Args:
+        embedding: The Embedding object to compute the vector for
+        session: SQLModel Session for database operations
+
+    Returns:
+        The updated Embedding object with vector calculated
+
+    Raises:
+        ValueError: If the embedding doesn't have an associated invocation
     """
     try:
-        logger.info(f"Creating embedding for invocation {invocation.id} with {embedding_model}")
-        started_at_ts = datetime.now()
-        embedding = embed(embedding_model, invocation)
+        logger.info(f"Computing vector for embedding {embedding.id} with {embedding.embedder}")
+
+        # Make sure we have the invocation data
+        if not embedding.invocation:
+            raise ValueError(f"Embedding {embedding.id} has no associated invocation")
+
+        # Set the start timestamp
+        embedding.started_at = datetime.now()
+
+        # Get the content to embed from the invocation output
+        content = embedding.invocation.output
+
+        # Use the embed function from embeddings to calculate the vector
+        from trajectory_tracer.embeddings import embed
+        embedding.vector = embed(embedding.embedder, content)
+
+        # Set the completion timestamp
         embedding.completed_at = datetime.now()
-        embedding.started_at = started_at_ts
 
         # Save to database
         session.add(embedding)
         session.commit()
         session.refresh(embedding)
 
+        logger.info(f"Successfully computed vector for embedding {embedding.id}")
         return embedding
+
     except Exception as e:
-        logger.error(f"Error creating embedding for invocation {invocation.id}: {e}")
+        logger.error(f"Error performing embedding {embedding.id}: {e}")
         raise
 
 
-def embed_run(run: Run, embedding_model: str, session: Session) -> List[Embedding]:
+def compute_missing_embeds(session: Session) -> int:
     """
-    Generate embeddings for all invocations in a run using the specified embedding model.
+    Find all the Embedding objects in the database without a vector,
+    perform the embedding calculation, and update the database.
 
     Args:
-        run: The Run object containing invocations to embed
-        embedding_model: Name of the embedding model to use
         session: SQLModel Session for database operations
 
     Returns:
-        List of created Embedding objects
+        Number of embeddings that were processed
     """
     try:
-        logger.info(f"Embedding all invocations for run {run.id}")
-        embeddings = []
+        logger.info("Finding embedding objects without vectors...")
 
-        # Ensure invocations are loaded
-        if not run.invocations:
-            session.refresh(run)
+        # Query for embeddings where vector is None
+        incomplete = incomplete_embeddings(session)
+        total_to_process = len(incomplete)
+        logger.info(f"Found {total_to_process} embeddings without vectors")
 
-        # Generate embeddings for each invocation
-        for invocation in run.invocations:
-            embedding = embed_invocation(invocation, embedding_model, session)
-            embeddings.append(embedding)
+        if total_to_process == 0:
+            return 0
 
-        logger.info(f"Successfully embedded {len(embeddings)} invocations for run {run.id}")
-        return embeddings
+        processed_count = 0
+        for embedding in incomplete:
+            try:
+                # Generate the embedding
+                logger.info(f"Processing embedding {embedding.id} for invocation {embedding.invocation_id} with model {embedding.embedder}")
+
+                # Perform the embedding calculation
+                perform_embedding(embedding, session)
+
+                processed_count += 1
+                logger.info(f"Successfully processed embedding {processed_count}/{total_to_process}")
+
+            except Exception as e:
+                logger.error(f"Error processing embedding {embedding.id}: {e}")
+                session.rollback()
+
+        logger.info(f"Completed processing {processed_count}/{total_to_process} missing embeddings")
+        return processed_count
 
     except Exception as e:
-        logger.error(f"Error embedding run {run.id}: {e}")
+        logger.error(f"Error in perform_missing_embeds: {e}")
         raise
 
 
@@ -287,10 +376,10 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
             # Execute the run
             run = perform_run(run, session)
 
-            # Generate embeddings for all embedding models specified in config
-            for embedding_model in config.embedders:
-                embeddings = embed_run(run, embedding_model, session)
-                logger.info(f"Generated {len(embeddings)} embeddings with model {embedding_model}")
+            # create "empty" embedding objects - will fill in the vectors later
+            for embedder in config.embedders:
+                for invocation in run.invocations:
+                    create_embedding(embedder, invocation, session)
 
             successful_runs += 1
             logger.info(f"Completed run {i+1}/{total_combinations}")
@@ -298,5 +387,8 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
         except Exception as e:
             logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
             # Continue with next run even if this one fails
+
+    # finally, run the embedders for all embeddings that are missing vectors
+    compute_missing_embeds(session)
 
     logger.info(f"Experiment completed with {successful_runs} successful runs")
