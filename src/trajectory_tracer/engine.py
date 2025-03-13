@@ -8,6 +8,7 @@ from PIL import Image
 from sqlmodel import Session
 
 from trajectory_tracer.db import incomplete_embeddings
+from trajectory_tracer.embeddings import embed
 from trajectory_tracer.models import get_output_type, invoke
 from trajectory_tracer.schemas import (
     Embedding,
@@ -275,7 +276,6 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         content = embedding.invocation.output
 
         # Use the embed function from embeddings to calculate the vector
-        from trajectory_tracer.embeddings import embed
         embedding.vector = embed(embedding.embedding_model, content)
 
         # Set the completion timestamp
