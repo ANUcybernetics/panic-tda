@@ -192,10 +192,10 @@ def perform_run(run: Run, session: Session) -> Run:
 
 def create_embedding(embedding_model: str, invocation: Invocation, session: Session = None) -> Embedding:
     """
-    Create an empty embedding object for the specified embedding_model and persist it to the database.
+    Create an empty embedding object for the specified embedding model and persist it to the database.
 
     Args:
-        embedding_model: The name of the embedding_model class to use
+        embedding_model: The name of the embedding model class to use
         invocation: The Invocation object to embed
         session: SQLModel Session for database operations
 
@@ -203,12 +203,12 @@ def create_embedding(embedding_model: str, invocation: Invocation, session: Sess
         An Embedding object without the vector calculated yet
 
     Raises:
-        ValueError: If the embedding_model doesn't exist or if the invocation type is incompatible
+        ValueError: If the embedding model doesn't exist or if the invocation type is incompatible
     """
     # Validate that the embedding_model class exists
     current_module = sys.modules["trajectory_tracer.embeddings"]
     if not hasattr(current_module, embedding_model):
-        raise ValueError(f"embedding_model '{embedding_model}' not found. Available embedding_models: "
+        raise ValueError(f"Embedding model '{embedding_model}' not found. Available embedding models: "
                          f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), getattr(current_module, 'EmbeddingModel'))]}")
 
     # Get the model class and verify it's a valid EmbeddingModel
@@ -238,7 +238,7 @@ def create_embedding(embedding_model: str, invocation: Invocation, session: Sess
 
     # Save to database if session is provided
     if session:
-        logger.debug(f"Persisting empty embedding for invocation {invocation.id} with embedding_model {embedding_model}")
+        logger.debug(f"Persisting empty embedding for invocation {invocation.id} with embedding model {embedding_model}")
         session.add(embedding)
         session.commit()
         session.refresh(embedding)
@@ -306,12 +306,12 @@ def compute_missing_embeds(session: Session) -> int:
         Number of embeddings that were processed
     """
     try:
-        logger.info("Finding embedding objects without vectors...")
+        logger.debug("Finding embedding objects without vectors...")
 
         # Query for embeddings where vector is None
         incomplete = incomplete_embeddings(session)
         total_to_process = len(incomplete)
-        logger.info(f"Found {total_to_process} embeddings without vectors")
+        logger.debug(f"Found {total_to_process} embeddings without vectors")
 
         if total_to_process == 0:
             return 0
