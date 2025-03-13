@@ -12,6 +12,9 @@
   - do some basic vis with altair
   - do some statistical tests with e.g. scikit.learn
   - wall-clock time plots (so we see what's taking so long)
+  - overall (dim-reduced) clustering of the embeddings, colored by the different
+    factor levels
+  - would love to have some distribution of "length of equilibria" or similar
 
 - work on parallelism (with shared GPU, and with multi-GPU)
 
