@@ -63,7 +63,7 @@ def create_invocation(
     session.commit()
     session.refresh(invocation)
 
-    logger.info(f"Created invocation with ID: {invocation.id}")
+    logger.debug(f"Created invocation with ID: {invocation.id}")
     return invocation
 
 def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], session: Session) -> Invocation:
@@ -79,7 +79,7 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
         The updated invocation with output
     """
     try:
-        logger.info(f"Invoking model {invocation.model} with {type(input).__name__} input")
+        logger.debug(f"Invoking model {invocation.model} with {type(input).__name__} input")
         invocation.started_at = datetime.now()
         result = invoke(invocation.model, input)
         invocation.completed_at = datetime.now()
@@ -111,7 +111,7 @@ def create_run(network: List[str], initial_prompt: str, session: Session, seed: 
         The created Run object
     """
     try:
-        logger.info(f"Creating new run with network: {network}")
+        logger.debug(f"Creating new run with network: {network}")
 
         # Create run object
         run = Run(
@@ -126,7 +126,7 @@ def create_run(network: List[str], initial_prompt: str, session: Session, seed: 
         session.commit()
         session.refresh(run)
 
-        logger.info(f"Created run with ID: {run.id}")
+        logger.debug(f"Created run with ID: {run.id}")
         return run
 
     except Exception as e:
@@ -177,7 +177,7 @@ def perform_run(run: Run, session: Session) -> Run:
             current_input = invocation.output
             previous_invocation_id = invocation.id
 
-            logger.info(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
+            logger.debug(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
 
         # Refresh the run to include the invocations
         session.refresh(run)
@@ -238,7 +238,7 @@ def create_embedding(embedder: str, invocation: Invocation, session: Session = N
 
     # Save to database if session is provided
     if session:
-        logger.info(f"Persisting empty embedding for invocation {invocation.id} with embedder {embedder}")
+        logger.debug(f"Persisting empty embedding for invocation {invocation.id} with embedder {embedder}")
         session.add(embedding)
         session.commit()
         session.refresh(embedding)
@@ -262,7 +262,7 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         ValueError: If the embedding doesn't have an associated invocation
     """
     try:
-        logger.info(f"Computing vector for embedding {embedding.id} with {embedding.embedder}")
+        logger.debug(f"Computing vector for embedding {embedding.id} with {embedding.embedder}")
 
         # Make sure we have the invocation data
         if not embedding.invocation:
@@ -286,7 +286,7 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         session.commit()
         session.refresh(embedding)
 
-        logger.info(f"Successfully computed vector for embedding {embedding.id}")
+        logger.debug(f"Successfully computed vector for embedding {embedding.id}")
         return embedding
 
     except Exception as e:
@@ -320,13 +320,13 @@ def compute_missing_embeds(session: Session) -> int:
         for embedding in incomplete:
             try:
                 # Generate the embedding
-                logger.info(f"Processing embedding {embedding.id} for invocation {embedding.invocation_id} with model {embedding.embedder}")
+                logger.debug(f"Processing embedding {embedding.id} for invocation {embedding.invocation_id} with model {embedding.embedder}")
 
                 # Perform the embedding calculation
                 perform_embedding(embedding, session)
 
                 processed_count += 1
-                logger.info(f"Successfully processed embedding {processed_count}/{total_to_process}")
+                logger.debug(f"Successfully processed embedding {processed_count}/{total_to_process}")
 
             except Exception as e:
                 logger.error(f"Error processing embedding {embedding.id}: {e}")
