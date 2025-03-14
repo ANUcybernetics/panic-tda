@@ -1,3 +1,4 @@
+import random
 import sys
 from typing import ClassVar, Union
 
@@ -28,12 +29,13 @@ class FluxDev(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @staticmethod
-    def invoke(prompt: str) -> Image:
+    def invoke(prompt: str, seed: int = 0) -> Image:
         """
         Generate an image from a text prompt using the FLUX.1-dev model.
 
         Args:
             prompt: A text description of the image to generate
+            seed: Random seed for deterministic generation
 
         Returns:
             Image.Image: The generated PIL Image
@@ -57,9 +59,8 @@ class FluxDev(AIModel):
             height=IMAGE_SIZE,
             width=IMAGE_SIZE,
             guidance_scale=3.5,
-            num_inference_steps=50,
-            max_sequence_length=512,
-            generator=torch.Generator("cuda").manual_seed(0)  # Use CUDA for generation
+            num_inference_steps=20,
+            generator=torch.Generator("cuda").manual_seed(seed)  # Use provided seed
         ).images[0]
 
         return image
@@ -69,12 +70,13 @@ class SDXLTurbo(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @staticmethod
-    def invoke(prompt: str) -> Image:
+    def invoke(prompt: str, seed: int = 0) -> Image:
         """
         Generate an image from a text prompt using the SDXL-Turbo model.
 
         Args:
             prompt: A text description of the image to generate
+            seed: Random seed for deterministic generation
 
         Returns:
             Image.Image: The generated PIL Image
@@ -103,7 +105,7 @@ class SDXLTurbo(AIModel):
             width=IMAGE_SIZE,
             num_inference_steps=4,  # SDXL-Turbo works with very few steps
             guidance_scale=0.0,     # Typically uses zero guidance scale
-            generator=torch.Generator("cuda").manual_seed(0)
+            generator=torch.Generator("cuda").manual_seed(seed)  # Use provided seed
         ).images[0]
 
         return image
@@ -117,18 +119,25 @@ class Moondream(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @staticmethod
-    def invoke(image: Image) -> str:
+    def invoke(image: Image, seed: int = 0) -> str:
         """
         Generate a text caption for an input image using the Moondream model.
 
         Args:
             image: A PIL Image object to caption
+            seed: Random seed for deterministic generation
 
         Returns:
             str: The generated caption
         """
         # Check if CUDA is available and use it
         device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Set PyTorch seed for reproducibility
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+        random.seed(seed)
 
         model = AutoModelForCausalLM.from_pretrained(
             "vikhyatk/moondream2",
@@ -137,21 +146,22 @@ class Moondream(AIModel):
         ).to(device)
 
         # Generate a normal-length caption for the provided image
-        result = model.caption(image, length="normal")
+        result = model.caption(image, length="short")
 
         return result["caption"]
 
 
-class BLIP2I2T(AIModel):
+class BLIP2(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @staticmethod
-    def invoke(image: Image) -> str:
+    def invoke(image: Image, seed: int = 0) -> str:
         """
         Generate a text caption for an input image using the BLIP-2 model with OPT-2.7b.
 
         Args:
             image: A PIL Image object to caption
+            seed: Random seed for deterministic generation
 
         Returns:
             str: The generated caption
@@ -160,6 +170,10 @@ class BLIP2I2T(AIModel):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
 
+        # Set PyTorch seed for reproducibility
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        random.seed(seed)
 
         # Initialize the model with half-precision
         processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
@@ -172,8 +186,12 @@ class BLIP2I2T(AIModel):
         # Process the input image
         inputs = processor(image, return_tensors="pt").to("cuda", torch.float16)
 
-        # Generate the caption
-        generated_ids = model.generate(**inputs, max_length=50)
+        # Generate the caption with the specified seed
+        generated_ids = model.generate(
+            **inputs,
+            max_length=50,
+            do_sample=True
+        )
         caption = processor.decode(generated_ids[0], skip_special_tokens=True)
 
         return caption
@@ -183,12 +201,13 @@ class DummyI2T(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @staticmethod
-    def invoke(image: Image) -> str:
+    def invoke(image: Image, seed: int = 0) -> str:
         """
         A dummy function that mimics the signature of moondream_i2t but returns a fixed text.
 
         Args:
             image: A PIL Image object (not used)
+            seed: Random seed for deterministic generation (not used)
 
         Returns:
             str: A dummy text caption
@@ -200,28 +219,31 @@ class DummyT2I(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @staticmethod
-    def invoke(prompt: str) -> Image:
+    def invoke(prompt: str, seed: int = 0) -> Image:
         """
         A dummy function that mimics the signature of flux_dev_t2i but returns a fixed image.
 
         Args:
             prompt: A text description (not used)
+            seed: Random seed for deterministic generation (not used)
 
         Returns:
             Image.Image: A dummy blank image
         """
         # Create a blank white image
+        random.seed(seed)  # Use seed for consistency in dummy implementations
         dummy_image = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), color='white')
         return dummy_image
 
 
-def invoke(model_name: str, input: Union[str, Image]):
+def invoke(model_name: str, input: Union[str, Image], seed: int = 0):
     """
     Dynamically dispatches to the specified model's invoke method.
 
     Args:
         model_name: The name of the model class to use
         input: Either a text prompt (str) or an image (PIL.Image)
+        seed: Random seed for deterministic generation
 
     Returns:
         The result of the model's invoke method
@@ -247,8 +269,8 @@ def invoke(model_name: str, input: Union[str, Image]):
     if not model_name.startswith("Dummy") and not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required but not available")
 
-    # Call the invoke method
-    return model_class.invoke(input)
+    # Call the invoke method with seed parameter
+    return model_class.invoke(input, seed=seed)
 
 
 def get_output_type(model_name: str) -> str:

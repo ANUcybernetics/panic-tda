@@ -85,7 +85,7 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
     try:
         logger.debug(f"Invoking model {invocation.model} with {type(input).__name__} input")
         invocation.started_at = datetime.now()
-        result = invoke(invocation.model, input)
+        result = invoke(invocation.model, input, invocation.seed)
         invocation.completed_at = datetime.now()
         invocation.output = result
 
