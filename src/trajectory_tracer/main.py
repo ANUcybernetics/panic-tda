@@ -13,8 +13,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
+experiment_app = typer.Typer()
+app.add_typer(experiment_app, name="run-experiment")
 
-@app.command()
+@experiment_app.command()
 def main(
     config_file: Path = typer.Argument(..., help="Path to the configuration JSON file", exists=True, readable=True, file_okay=True, dir_okay=False),
     db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
@@ -60,6 +62,94 @@ def main(
         logger.error(f"Early termination of experiment: {e}")
         raise typer.Exit(code=1)
 
+
+@app.command("list-runs")
+def list_runs(
+    db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full run details")
+):
+    """
+    List all runs stored in the database.
+
+    Displays run IDs and basic information about each run.
+    Use --verbose for more detailed output.
+    """
+    try:
+        # Create database connection
+        db_url = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+        database = get_database(connection_string=db_url)
+
+        # List all runs
+        with database.get_session() as session:
+            from trajectory_tracer.db import list_runs
+
+            runs = list_runs(session)
+
+            if not runs:
+                typer.echo("No runs found in the database.")
+                return
+
+            typer.echo(f"Found {len(runs)} runs:")
+            for run in runs:
+                if verbose:
+                    # Detailed output
+                    typer.echo(f"\nRun ID: {run.id}")
+                    typer.echo(f"  Network: {run.network}")
+                    typer.echo(f"  Seed: {run.seed}")
+                    typer.echo(f"  Length: {run.length}")
+                    typer.echo(f"  Initial prompt: {run.initial_prompt}")
+                    typer.echo(f"  Complete: {run.is_complete}")
+                    typer.echo(f"  Invocation count: {len(run.invocations)}")
+                else:
+                    # Simple output
+                    status = "Complete" if run.is_complete else "Incomplete"
+                    typer.echo(f"{run.id} - Seed: {run.seed} - {status} ({len(run.invocations)}/{run.length} steps)")
+
+    except Exception as e:
+        logger.error(f"Error listing runs: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("export-images")
+def export_images(
+    run_id: str = typer.Argument(..., help="ID of the run to export images from"),
+    output_dir: str = typer.Option("outputs/images", "--output-dir", "-o", help="Directory where images will be saved"),
+    db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+):
+    """
+    Export all image invocations from a run to JPEG files with embedded metadata.
+
+    Images are saved to the specified output directory with metadata embedded in EXIF.
+    """
+    try:
+        # Create database connection
+        db_url = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+        database = get_database(connection_string=db_url)
+
+        # Get the run and export images
+        with database.get_session() as session:
+            from trajectory_tracer.schemas import Run
+            from trajectory_tracer.utils import export_run_images
+
+            # Find the run by ID
+            from uuid import UUID
+            run = session.get(Run, UUID(run_id))
+            if not run:
+                logger.error(f"Run with ID {run_id} not found")
+                raise typer.Exit(code=1)
+
+            # Create run-specific output directory
+            run_output_dir = f"{output_dir}/{run.id}"
+            logger.info(f"Exporting images for run {run_id} to {run_output_dir}")
+            export_run_images(run=run, session=session, output_dir=run_output_dir)
+
+        logger.info(f"Image export completed successfully")
+
+    except Exception as e:
+        logger.error(f"Error exporting images: {e}")
+        raise typer.Exit(code=1)
 
 if __name__ == "__main__":
     app()

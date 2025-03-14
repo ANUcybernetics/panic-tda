@@ -11,14 +11,14 @@ from trajectory_tracer.schemas import InvocationType, Run
 logger = logging.getLogger(__name__)
 
 
-def export_run_images(run: Run, session: Session, output_dir: str = "image_outputs") -> None:
+def export_run_images(run: Run, session: Session, output_dir: str = "outputs/images") -> None:
     """
     Export all image invocations from a run to webp files.
 
     Args:
         run: The Run object containing invocations
         session: SQLModel Session for database operations
-        output_dir: Directory where images will be saved (default: "image_outputs")
+        output_dir: Directory where images will be saved (default: "outputs/images")
     """
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
