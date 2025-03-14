@@ -34,6 +34,9 @@ def test_nomic_text_embedding():
     # Get the embedding using the actual model
     embedding_vector = embed("NomicText", sample_text)
 
+    # Run it again to verify determinism
+    embedding_vector2 = embed("NomicText", sample_text)
+
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
     assert len(embedding_vector) == 768  # Expected dimension
@@ -41,6 +44,9 @@ def test_nomic_text_embedding():
     # Verify it's a proper embedding vector
     assert embedding_vector.dtype == np.float32
     assert not np.all(embedding_vector == 0)  # Should not be all zeros
+
+    # Verify determinism
+    assert np.array_equal(embedding_vector, embedding_vector2)
 
 
 @pytest.mark.slow
@@ -52,6 +58,9 @@ def test_nomic_vision_embedding():
     # Get the embedding using the actual model
     embedding_vector = embed("NomicVision", image)
 
+    # Run it again to verify determinism
+    embedding_vector2 = embed("NomicVision", image)
+
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
     assert len(embedding_vector) == 768
@@ -60,6 +69,9 @@ def test_nomic_vision_embedding():
     assert embedding_vector.dtype == np.float32
     assert not np.all(embedding_vector == 0)  # Should not be all zeros
 
+    # Verify determinism
+    assert np.array_equal(embedding_vector, embedding_vector2)
+
 
 @pytest.mark.slow
 def test_nomic_combined_embedding():
@@ -67,16 +79,26 @@ def test_nomic_combined_embedding():
     # Test with text
     sample_text = "Sample output text"
     text_embedding = embed("Nomic", sample_text)
+    text_embedding2 = embed("Nomic", sample_text)
+
     assert text_embedding is not None
     assert len(text_embedding) == 768
     assert text_embedding.dtype == np.float32
 
+    # Verify determinism for text
+    assert np.array_equal(text_embedding, text_embedding2)
+
     # Test with image
     image = Image.new('RGB', (100, 100), color='green')
     image_embedding = embed("Nomic", image)
+    image_embedding2 = embed("Nomic", image)
+
     assert image_embedding is not None
     assert len(image_embedding) == 768
     assert image_embedding.dtype == np.float32
+
+    # Verify determinism for image
+    assert np.array_equal(image_embedding, image_embedding2)
 
 
 @pytest.mark.slow
@@ -88,6 +110,9 @@ def test_jina_clip_text_embedding():
     # Get the embedding using the actual model
     embedding_vector = embed("JinaClip", sample_text)
 
+    # Run it again to verify determinism
+    embedding_vector2 = embed("JinaClip", sample_text)
+
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
     assert len(embedding_vector) == 768  # Expected dimension
@@ -95,6 +120,9 @@ def test_jina_clip_text_embedding():
     # Verify it's a proper embedding vector
     assert embedding_vector.dtype == np.float32
     assert not np.all(embedding_vector == 0)  # Should not be all zeros
+
+    # Verify determinism
+    assert np.array_equal(embedding_vector, embedding_vector2)
 
 
 @pytest.mark.slow
@@ -106,6 +134,9 @@ def test_jina_clip_image_embedding():
     # Get the embedding using the actual model
     embedding_vector = embed("JinaClip", image)
 
+    # Run it again to verify determinism
+    embedding_vector2 = embed("JinaClip", image)
+
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
     assert len(embedding_vector) == 768  # Expected dimension
@@ -113,3 +144,6 @@ def test_jina_clip_image_embedding():
     # Verify it's a proper embedding vector
     assert embedding_vector.dtype == np.float32
     assert not np.all(embedding_vector == 0)  # Should not be all zeros
+
+    # Verify determinism
+    assert np.array_equal(embedding_vector, embedding_vector2)
