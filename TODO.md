@@ -19,6 +19,11 @@
 - make the "test giotto runtime" fake PD-generation test use 768-dim vectors,
   and maybe even iterate and log the times to a file?
 
+- add documentation to readme at least (and clean up doco for the code)
+
+- ensure that the program can be interrupted (and that it doesn't re-do any work
+  it doesn't need to)
+
 - add data analysis & vis code
 
   - pull a run or series of runs (experiment? or just everything) into a polars
