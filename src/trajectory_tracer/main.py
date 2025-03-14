@@ -1,12 +1,16 @@
 import json
 import logging
 from pathlib import Path
+from uuid import UUID
 
 import typer
 
+from trajectory_tracer.db import list_runs
 from trajectory_tracer.db import get_database
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig
+from trajectory_tracer.schemas import Run
+from trajectory_tracer.utils import export_run_images
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -64,7 +68,7 @@ def main(
 
 
 @app.command("list-runs")
-def list_runs(
+def list_runs_command(
     db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full run details")
 ):
@@ -82,7 +86,6 @@ def list_runs(
 
         # List all runs
         with database.get_session() as session:
-            from trajectory_tracer.db import list_runs
 
             runs = list_runs(session)
 
@@ -130,11 +133,8 @@ def export_images(
 
         # Get the run and export images
         with database.get_session() as session:
-            from trajectory_tracer.schemas import Run
-            from trajectory_tracer.utils import export_run_images
 
             # Find the run by ID
-            from uuid import UUID
             run = session.get(Run, UUID(run_id))
             if not run:
                 logger.error(f"Run with ID {run_id} not found")
