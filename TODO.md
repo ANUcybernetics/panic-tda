@@ -1,9 +1,11 @@
 # TODO
 
-- ensure that the program can be interrupted (and that it doesn't re-do any work
-  it doesn't need to)
+- ensure that invocations aren't ever re-done (i.e. if the same thing is
+  requetsed it either errors or copies the output and any embeddings)
 
-- add tda stuff to engine (but at the end?)
+- see why "main" is required in the run-experiments cli subcommand
+
+- add stopping criteria to runs
 
 - add data analysis & vis code
 
