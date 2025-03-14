@@ -1,30 +1,17 @@
-import io
-
 import numpy as np
 import pytest
 from PIL import Image
-from uuid_v7.base import uuid7
 
 from trajectory_tracer.embeddings import embed
-from trajectory_tracer.schemas import Invocation, InvocationType
 
 
-def test_dummy_embedding(db_session):
+def test_dummy_embedding():
     """Test that the dummy embedding returns a random embedding vector."""
-    # Create a sample invocation
+    # Create a sample text string
+    sample_text = "Sample output text"
 
-    sample_text_invocation = Invocation(
-        model="TextModel",
-        type=InvocationType.TEXT,
-        seed=42,
-        output_text="Sample output text",
-        run_id = uuid7()
-    )
-    db_session.add(sample_text_invocation)
-    db_session.commit()
-
-    # Get the embedding using the new approach
-    embedding_vector = embed("Dummy", sample_text_invocation)
+    # Get the embedding using the Dummy model
+    embedding_vector = embed("Dummy", sample_text)
 
     # Check that the embedding has the correct properties
     assert len(embedding_vector) == 768  # Expected dimension
@@ -33,135 +20,96 @@ def test_dummy_embedding(db_session):
     assert all(0 <= x <= 1 for x in embedding_vector)
 
     # Get another embedding and verify it's different (random)
-    embedding2_vector = embed("Dummy", sample_text_invocation)
+    embedding2_vector = embed("Dummy", sample_text)
     # Can't directly compare numpy arrays with !=, use numpy's array_equal instead
     assert not np.array_equal(embedding_vector, embedding2_vector)
 
 
 @pytest.mark.slow
-def test_nomic_text_embedding(db_session):
+def test_nomic_text_embedding():
     """Test that the nomic text embedding returns a valid embedding vector."""
-    # Create a sample invocation
-    sample_text_invocation = Invocation(
-        model="TextModel",
-        type=InvocationType.TEXT,
-        seed=42,
-        output_text="Sample output text",
-        run_id=uuid7()
-    )
-    db_session.add(sample_text_invocation)
-    db_session.commit()
+    # Create a sample text
+    sample_text = "Sample output text"
 
     # Get the embedding using the actual model
-    embedding = embed("NomicText", sample_text_invocation)
+    embedding_vector = embed("NomicText", sample_text)
 
     # Check that the embedding has the correct properties
-    assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedding_model == "nomic-embed-text-v1.5"
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768  # Expected dimension
+    assert embedding_vector is not None
+    assert len(embedding_vector) == 768  # Expected dimension
 
     # Verify it's a proper embedding vector
-    assert embedding.vector.dtype == np.float32
-    assert not np.all(embedding.vector == 0)  # Should not be all zeros
+    assert embedding_vector.dtype == np.float32
+    assert not np.all(embedding_vector == 0)  # Should not be all zeros
 
 
 @pytest.mark.slow
-def test_nomic_vision_embedding(db_session):
+def test_nomic_vision_embedding():
     """Test that the nomic vision embedding returns a valid embedding vector."""
-    import io
-
-    from PIL import Image
-
     # Create a sample image (red square)
     image = Image.new('RGB', (100, 100), color='red')
-    img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='PNG')
-    image_data = img_byte_arr.getvalue()
-
-    # Create a sample image invocation
-    sample_image_invocation = Invocation(
-        model="ImageModel",
-        type=InvocationType.IMAGE,
-        seed=42,
-        output_image_data=image_data,
-        run_id=uuid7()
-    )
-    db_session.add(sample_image_invocation)
-    db_session.commit()
 
     # Get the embedding using the actual model
-    embedding = embed("NomicVision", sample_image_invocation)
+    embedding_vector = embed("NomicVision", image)
 
     # Check that the embedding has the correct properties
-    assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedding_model == "nomic-embed-vision-v1.5"
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768
+    assert embedding_vector is not None
+    assert len(embedding_vector) == 768
 
     # Verify it's a proper embedding vector
-    assert embedding.vector.dtype == np.float32
-    assert not np.all(embedding.vector == 0)  # Should not be all zeros
+    assert embedding_vector.dtype == np.float32
+    assert not np.all(embedding_vector == 0)  # Should not be all zeros
 
 
 @pytest.mark.slow
-def test_jina_clip_text_embedding(db_session):
+def test_nomic_combined_embedding():
+    """Test that the Nomic embedding works for both text and images."""
+    # Test with text
+    sample_text = "Sample output text"
+    text_embedding = embed("Nomic", sample_text)
+    assert text_embedding is not None
+    assert len(text_embedding) == 768
+    assert text_embedding.dtype == np.float32
+
+    # Test with image
+    image = Image.new('RGB', (100, 100), color='green')
+    image_embedding = embed("Nomic", image)
+    assert image_embedding is not None
+    assert len(image_embedding) == 768
+    assert image_embedding.dtype == np.float32
+
+
+@pytest.mark.slow
+def test_jina_clip_text_embedding():
     """Test that the JinaClip embedding returns a valid embedding vector for text."""
-    # Create a sample invocation
-    sample_text_invocation = Invocation(
-        model="TextModel",
-        type=InvocationType.TEXT,
-        seed=42,
-        output_text="Sample output text",
-        run_id=uuid7()
-    )
-    db_session.add(sample_text_invocation)
-    db_session.commit()
+    # Create a sample text
+    sample_text = "Sample output text"
 
     # Get the embedding using the actual model
-    embedding = embed("JinaClip", sample_text_invocation)
+    embedding_vector = embed("JinaClip", sample_text)
 
     # Check that the embedding has the correct properties
-    assert embedding.invocation_id == sample_text_invocation.id
-    assert embedding.embedding_model == "jina-clip-v2"
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768  # Expected dimension
+    assert embedding_vector is not None
+    assert len(embedding_vector) == 768  # Expected dimension
 
     # Verify it's a proper embedding vector
-    assert embedding.vector.dtype == np.float32
-    assert not np.all(embedding.vector == 0)  # Should not be all zeros
+    assert embedding_vector.dtype == np.float32
+    assert not np.all(embedding_vector == 0)  # Should not be all zeros
 
 
 @pytest.mark.slow
-def test_jina_clip_image_embedding(db_session):
+def test_jina_clip_image_embedding():
     """Test that the JinaClip embedding returns a valid embedding vector for images."""
-
     # Create a sample image (blue square)
     image = Image.new('RGB', (100, 100), color='blue')
-    img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='PNG')
-    image_data = img_byte_arr.getvalue()
-
-    # Create a sample image invocation
-    sample_image_invocation = Invocation(
-        model="ImageModel",
-        type=InvocationType.IMAGE,
-        seed=42,
-        output_image_data=image_data,
-        run_id=uuid7()
-    )
-    db_session.add(sample_image_invocation)
-    db_session.commit()
 
     # Get the embedding using the actual model
-    embedding = embed("JinaClip", sample_image_invocation)
+    embedding_vector = embed("JinaClip", image)
 
     # Check that the embedding has the correct properties
-    assert embedding.invocation_id == sample_image_invocation.id
-    assert embedding.embedding_model == "jina-clip-v2"
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768  # Expected dimension
+    assert embedding_vector is not None
+    assert len(embedding_vector) == 768  # Expected dimension
 
     # Verify it's a proper embedding vector
-    assert embedding.vector.dtype == np.float32
-    assert not np.all(embedding.vector == 0)  # Should not be all zeros
+    assert embedding_vector.dtype == np.float32
+    assert not np.all(embedding_vector == 0)  # Should not be all zeros
