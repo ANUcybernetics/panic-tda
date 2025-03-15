@@ -1,11 +1,23 @@
 # TODO
 
-- ensure that invocations aren't ever re-done (i.e. if the same thing is
-  requetsed it either errors or copies the output and any embeddings)
+- add "seed == -1" for random seeds (and update models)
+
+- engine: ensure that run is stopped if the same output is seen (and seed isn't
+  -1), plus an `is_stuck` method to check (post-hoc) if that was the reason the
+  run stopped
+
+- add an export-images for all runs
 
 - see why "main" is required in the run-experiments cli subcommand
 
-- add stopping criteria to runs
+- write tests for cli commands
+
+- shell script to run it with nohup
+
+- silence logger.info for VIPS things
+
+- make the "test giotto runtime" fake PD-generation test use 768-dim vectors,
+  and maybe even iterate and log the times to a file?
 
 - add data analysis & vis code
 
