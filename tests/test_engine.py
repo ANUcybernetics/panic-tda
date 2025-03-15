@@ -133,7 +133,7 @@ def test_perform_invocation_image(db_session: Session):
 
     # Check the result
     assert result.output is not None
-    assert result.output == "dummy text caption"
+    assert result.output == "dummy text caption (seed 42)"
     assert result.started_at is not None  # Check that started_at is set
     assert result.completed_at is not None  # Check that completed_at is set
     assert result.completed_at >= result.started_at  # Completion should be after or equal to start
