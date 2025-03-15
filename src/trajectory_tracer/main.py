@@ -5,11 +5,9 @@ from uuid import UUID
 
 import typer
 
-from trajectory_tracer.db import list_runs
-from trajectory_tracer.db import get_database
+from trajectory_tracer.db import get_database, list_runs
 from trajectory_tracer.engine import perform_experiment
-from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.schemas import Run
+from trajectory_tracer.schemas import ExperimentConfig, Run
 from trajectory_tracer.utils import export_run_images
 
 # Set up logging
