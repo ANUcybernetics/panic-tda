@@ -116,7 +116,7 @@ def list_runs_command(
 
 @app.command("export-images")
 def export_images(
-    run_id: str = typer.Argument(..., help="ID of the run to export images from"),
+    run_id: str = typer.Argument(..., help="ID of the run to export images from (or 'all' to export from all runs)"),
     output_dir: str = typer.Option("outputs/images", "--output-dir", "-o", help="Directory where images will be saved"),
     db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
 ):
@@ -124,6 +124,7 @@ def export_images(
     Export all image invocations from a run to JPEG files with embedded metadata.
 
     Images are saved to the specified output directory with metadata embedded in EXIF.
+    If 'all' is specified as the run_id, exports images from all runs in the database.
     """
     try:
         # Create database connection
@@ -133,17 +134,32 @@ def export_images(
 
         # Get the run and export images
         with database.get_session() as session:
+            runs = []
 
-            # Find the run by ID
-            run = session.get(Run, UUID(run_id))
-            if not run:
-                logger.error(f"Run with ID {run_id} not found")
-                raise typer.Exit(code=1)
+            if run_id.lower() == "all":
+                # Export images from all runs
+                runs = list_runs(session)
+                if not runs:
+                    logger.info("No runs found in the database")
+                    raise typer.Exit(code=0)
+                logger.info(f"Exporting images for all {len(runs)} runs")
+            else:
+                # Find the run by ID
+                try:
+                    run = session.get(Run, UUID(run_id))
+                    if not run:
+                        logger.error(f"Run with ID {run_id} not found")
+                        raise typer.Exit(code=1)
+                    runs = [run]
+                except ValueError as e:
+                    logger.error(f"Invalid run ID format: {e}")
+                    raise typer.Exit(code=1)
 
-            # Create run-specific output directory
-            run_output_dir = f"{output_dir}/{run.id}"
-            logger.info(f"Exporting images for run {run_id} to {run_output_dir}")
-            export_run_images(run=run, session=session, output_dir=run_output_dir)
+            # Process all runs (either the single run or all runs)
+            for run in runs:
+                run_output_dir = f"{output_dir}/{run.id}"
+                logger.info(f"Exporting images for run {run.id} to {run_output_dir}")
+                export_run_images(run=run, session=session, output_dir=run_output_dir)
 
         logger.info(f"Image export completed successfully")
 
