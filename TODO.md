@@ -6,8 +6,6 @@
   -1), plus an `is_stuck` method to check (post-hoc) if that was the reason the
   run stopped
 
-- add an export-images for all runs
-
 - see why "main" is required in the run-experiments cli subcommand
 
 - write tests for cli commands
@@ -16,8 +14,7 @@
 
 - silence logger.info for VIPS things
 
-- make the "test giotto runtime" fake PD-generation test use 768-dim vectors,
-  and maybe even iterate and log the times to a file?
+- make the "test giotto runtime" iterate over pc sizes and log the times to a file?
 
 - add documentation to readme at least (and clean up doco for the code)
 
