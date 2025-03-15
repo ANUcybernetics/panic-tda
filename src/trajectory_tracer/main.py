@@ -161,7 +161,7 @@ def export_images(
                 logger.info(f"Exporting images for run {run.id} to {run_output_dir}")
                 export_run_images(run=run, session=session, output_dir=run_output_dir)
 
-        logger.info(f"Image export completed successfully")
+        logger.info("Image export completed successfully")
 
     except Exception as e:
         logger.error(f"Error exporting images: {e}")
