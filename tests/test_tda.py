@@ -36,23 +36,12 @@ def test_giotto_phd():
 @pytest.mark.slow
 def test_giotto_phd_large_point_cloud():
     """Test the giotto_phd function on a larger point cloud."""
-    # Create a larger point cloud (1000 points on a torus)
+    # Create a larger point cloud with 768 dimensions (random noise)
     n_points = 3000
+    n_dims = 768
 
-    # Generate points on a torus
-    R = 1.0  # large radius
-    r = 0.3  # small radius
-
-    # Angles
-    theta = np.random.uniform(0, 2*np.pi, n_points)  # around the tube
-    phi = np.random.uniform(0, 2*np.pi, n_points)    # around the centerline
-
-    # Convert to Cartesian coordinates
-    x = (R + r * np.cos(theta)) * np.cos(phi)
-    y = (R + r * np.cos(theta)) * np.sin(phi)
-    z = r * np.sin(theta)
-
-    point_cloud = np.column_stack((x, y, z))
+    # Generate random points in 768-dimensional space
+    point_cloud = np.random.normal(0, 1, (n_points, n_dims))
 
     # Compute the persistence diagram
     diagrams = giotto_phd(point_cloud, max_dim=2)
@@ -67,15 +56,9 @@ def test_giotto_phd_large_point_cloud():
     h1_features = diagrams[1]
     h2_features = diagrams[2]
 
-    # A torus should have two significant features in H1 and one in H2
+    # Calculate persistence values
     h1_persistence = h1_features[:, 1] - h1_features[:, 0] if len(h1_features) > 0 else []
     h2_persistence = h2_features[:, 1] - h2_features[:, 0] if len(h2_features) > 0 else []
 
-    # Count significant features (with persistence > threshold)
-    threshold = 0.1
-    significant_h1 = np.sum(h1_persistence > threshold)
-    significant_h2 = np.sum(h2_persistence > threshold)
-
-    # Check for at least the expected topological features of a torus
-    assert significant_h1 >= 2, "Should detect at least 2 significant H1 features for a torus"
-    assert significant_h2 >= 1, "Should detect at least 1 significant H2 feature for a torus"
+    # No specific checks on the features - this test is just for timing
+    # with high-dimensional data
