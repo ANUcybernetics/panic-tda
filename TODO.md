@@ -14,8 +14,7 @@
 
 - silence logger.info for VIPS things
 
-- make the logger print overall progress in terms of runs (or embeddings/PDs for
-  the end stages)
+- find out if moondream2 can take a seed
 
 - make the "test giotto runtime" iterate over pc sizes and log the times to a
   file?
