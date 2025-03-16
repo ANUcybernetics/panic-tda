@@ -29,12 +29,12 @@ class AIModel(BaseModel):
         """Get or create the model instance."""
         model_name = cls.__name__
         if model_name not in _MODEL_CACHE:
-            _MODEL_CACHE[model_name] = cls._create_model()
+            _MODEL_CACHE[model_name] = cls.load_to_device()
         return _MODEL_CACHE[model_name]
 
     @classmethod
-    def _create_model(cls):
-        """Create the model instance. To be implemented by subclasses."""
+    def load_to_device(cls):
+        """Load the model to the appropriate device (typically GPU)."""
         raise NotImplementedError
 
 
@@ -46,7 +46,7 @@ class FluxDev(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Check if CUDA is available
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
@@ -95,7 +95,7 @@ class SDXLTurbo(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Check if CUDA is available
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
@@ -150,7 +150,7 @@ class Moondream(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Check if CUDA is available and use it
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -195,7 +195,7 @@ class BLIP2(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Check if CUDA is available
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
@@ -246,13 +246,14 @@ class BLIP2(AIModel):
 
         return caption
 
+
 class DummyI2T(AIModel):
     # name = "dummy image2text"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @classmethod
-    def _create_model(cls):
-        # No model to create for dummy class
+    def load_to_device(cls):
+        # No model to load for dummy class
         return None
 
     @staticmethod
@@ -283,8 +284,8 @@ class DummyT2I(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @classmethod
-    def _create_model(cls):
-        # No model to create for dummy class
+    def load_to_device(cls):
+        # No model to load for dummy class
         return None
 
     @staticmethod
@@ -381,7 +382,31 @@ def get_output_type(model_name: str) -> str:
     return model_class.output_type
 
 
-def clear_model_cache():
-    """Clear the cached models to free memory."""
+def unload_all_models():
+    """Unload all models from the cache and free GPU memory."""
     global _MODEL_CACHE
-    _MODEL_CACHE = {}
+
+    # Attempt to properly unload each model
+    for model_name, model in list(_MODEL_CACHE.items()):
+        # Handle different model types differently
+        try:
+            # For models with an explicit to() method (like diffusers pipelines)
+            if hasattr(model, 'to') and callable(model.to):
+                model.to('cpu')  # Move to CPU first
+            # For dictionary of components (like BLIP2)
+            elif isinstance(model, dict):
+                for component_name, component in model.items():
+                    if hasattr(component, 'to') and callable(component.to):
+                        component.to('cpu')
+        except Exception as e:
+            print(f"Warning: Error unloading model {model_name}: {e}")
+
+    # Clear the cache
+    _MODEL_CACHE.clear()
+
+    # Force CUDA garbage collection
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()  # Make sure CUDA operations are completed
+
+    print("All models unloaded from GPU.")

@@ -17,10 +17,34 @@ from transformers import AutoImageProcessor, AutoModel
 # Model cache to avoid reloading models
 _MODEL_CACHE: Dict[str, Any] = {}
 
-def clear_model_cache():
-    """Clear the cached models to free memory."""
+def unload_all_models():
+    """Unload all models from the cache and free memory."""
     global _MODEL_CACHE
-    _MODEL_CACHE = {}
+
+    # Attempt to properly unload each model
+    for model_name, model in list(_MODEL_CACHE.items()):
+        # Handle different model types differently
+        try:
+            # For models with an explicit to() method
+            if hasattr(model, 'to') and callable(model.to):
+                model.to('cpu')  # Move to CPU first
+            # For dictionary of components
+            elif isinstance(model, dict):
+                for component_name, component in model.items():
+                    if hasattr(component, 'to') and callable(component.to):
+                        component.to('cpu')
+        except Exception as e:
+            print(f"Warning: Error unloading model {model_name}: {e}")
+
+    # Clear the cache
+    _MODEL_CACHE.clear()
+
+    # Force CUDA garbage collection
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()  # Make sure CUDA operations are completed
+
+    print("All embedding models unloaded.")
 
 class EmbeddingModel(BaseModel):
     @classmethod
@@ -28,12 +52,12 @@ class EmbeddingModel(BaseModel):
         """Get or create the model instance."""
         model_name = cls.__name__
         if model_name not in _MODEL_CACHE:
-            _MODEL_CACHE[model_name] = cls._create_model()
+            _MODEL_CACHE[model_name] = cls.load_to_device()
         return _MODEL_CACHE[model_name]
 
     @classmethod
-    def _create_model(cls):
-        """Create the model instance. To be implemented by subclasses."""
+    def load_to_device(cls):
+        """Load the model to the appropriate device (typically GPU)."""
         raise NotImplementedError
 
     @staticmethod
@@ -44,7 +68,7 @@ class EmbeddingModel(BaseModel):
 
 class NomicText(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         return SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
 
     @staticmethod
@@ -65,7 +89,7 @@ class NomicText(EmbeddingModel):
 
 class NomicVision(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
         vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
         vision_model.eval()
@@ -101,7 +125,7 @@ class NomicVision(EmbeddingModel):
 
 class Nomic(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # This class uses other models, no need to cache anything specific
         return None
 
@@ -126,7 +150,7 @@ class Nomic(EmbeddingModel):
 
 class JinaClip(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Choose the standard embedding dimension
         truncate_dim = 768
         return SentenceTransformer('jinaai/jina-clip-v2', trust_remote_code=True, truncate_dim=truncate_dim)
@@ -153,7 +177,7 @@ class JinaClip(EmbeddingModel):
 
 class Dummy(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Dummy model doesn't need to create or cache anything
         return None
 
@@ -174,7 +198,7 @@ class Dummy(EmbeddingModel):
 
 class Dummy2(EmbeddingModel):
     @classmethod
-    def _create_model(cls):
+    def load_to_device(cls):
         # Dummy model doesn't need to create or cache anything
         return None
 
