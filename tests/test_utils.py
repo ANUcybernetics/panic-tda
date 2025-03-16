@@ -15,8 +15,8 @@ def test_export_run_images(db_session: Session, tmp_path):
     initial_prompt = "Test prompt for image export"
     seed = 42
 
-    # Create and execute the run
-    run = create_run(network=network, initial_prompt=initial_prompt, run_length=6, session=db_session, seed=seed)
+    # Create and execute the run (just 4, because it'll hit the duplicate detection after that)
+    run = create_run(network=network, initial_prompt=initial_prompt, run_length=4, session=db_session, seed=seed)
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
@@ -36,7 +36,7 @@ def test_export_run_images(db_session: Session, tmp_path):
     image_files = list(output_dir.glob("*.jpg"))
 
     # We should have image outputs from DummyT2I (at positions 0, 2, 4)
-    assert len(image_files) == 3
+    assert len(image_files) == 2
 
     # Verify each image file exists and is a valid image
     for image_file in image_files:

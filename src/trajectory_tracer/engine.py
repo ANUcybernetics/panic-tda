@@ -157,6 +157,10 @@ def perform_run(run: Run, session: Session) -> Run:
         previous_invocation_id = None
         network_length = len(run.network)
 
+        # Track outputs to detect loops (only if seed is not -1)
+        seen_outputs = set()
+        track_duplicates = run.seed != -1
+
         # Process each invocation in the run
         for sequence_number in range(run.length):
             # Get the next model in the network (cycling if necessary)
@@ -176,6 +180,28 @@ def perform_run(run: Run, session: Session) -> Run:
 
             # Execute the invocation
             invocation = perform_invocation(invocation, current_input, session=session)
+
+            # Check for duplicate outputs if tracking is enabled
+            if track_duplicates:
+                # Convert output to a hashable representation based on type
+                hashable_output = None
+                if isinstance(invocation.output, str):
+                    hashable_output = invocation.output
+                elif isinstance(invocation.output, Image.Image):
+                    # Convert image to a bytes representation for hashing
+                    import io
+                    buffer = io.BytesIO()
+                    # TODO if the duplicate-tracking for images is too aggressive, bump up the quality
+                    invocation.output.save(buffer, format="JPEG", quality=30)
+                    hashable_output = buffer.getvalue()
+                else:
+                    # Handle any other types that might occur
+                    hashable_output = str(invocation.output)
+
+                if hashable_output in seen_outputs:
+                    logger.info(f"Detected duplicate output in run {run.id} at sequence {sequence_number}. Stopping run.")
+                    break
+                seen_outputs.add(hashable_output)
 
             # Set up for next invocation
             current_input = invocation.output
