@@ -2,8 +2,6 @@
 
 - add a did_terminate_early method to run (maybe)
 
-- use pytest-benchmark to test the model speeds
-
 - write tests for cli commands
 
 - shell script to run it with nohup
