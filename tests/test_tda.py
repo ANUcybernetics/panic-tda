@@ -34,7 +34,7 @@ def test_giotto_phd():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("n_points", [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000])
+@pytest.mark.parametrize("n_points", range(1000, 11000, 1000))
 def test_giotto_phd_large_point_cloud(benchmark, n_points):
     """Test the giotto_phd function on larger point clouds of increasing size."""
     n_dims = 768
