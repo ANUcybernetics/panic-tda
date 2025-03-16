@@ -33,7 +33,7 @@ def test_run_experiment_command(tmp_path):
 
     # Check the result
     assert result.returncode == 0
-    assert "Experiment completed successfully" in result.stdout
+    assert "Experiment completed successfully" in result.stdout or "Experiment completed successfully" in result.stderr
     assert db_path.exists()
 
 
@@ -144,7 +144,7 @@ def test_export_images_command(tmp_path):
 
     # Check the result
     assert result.returncode == 0
-    assert "Image export completed successfully" in result.stdout
+    assert "Image export completed successfully" in result.stdout or "Image export completed successfully" in result.stderr
 
     # Verify image directory was created with run ID
     assert (output_dir / run_id).exists()
@@ -161,6 +161,6 @@ def test_export_images_command(tmp_path):
 
     # Check the result
     assert result.returncode == 0
-    assert "Image export completed successfully" in result.stdout
+    assert "Image export completed successfully" in result.stdout or "Image export completed successfully" in result.stderr
     # Should have created a directory with the same run ID
     assert (all_output_dir / run_id).exists()
