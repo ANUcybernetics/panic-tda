@@ -1,5 +1,5 @@
 import sys
-from typing import Union
+from typing import Union, Dict, Any
 
 import numpy as np
 import torch
@@ -14,7 +14,28 @@ from transformers import AutoImageProcessor, AutoModel
 # - https://huggingface.co/jinaai/jina-clip-v2
 # - https://huggingface.co/nielsr/imagebind-huge
 
+# Model cache to avoid reloading models
+_MODEL_CACHE: Dict[str, Any] = {}
+
+def clear_model_cache():
+    """Clear the cached models to free memory."""
+    global _MODEL_CACHE
+    _MODEL_CACHE = {}
+
 class EmbeddingModel(BaseModel):
+    @classmethod
+    def get_model(cls):
+        """Get or create the model instance."""
+        model_name = cls.__name__
+        if model_name not in _MODEL_CACHE:
+            _MODEL_CACHE[model_name] = cls._create_model()
+        return _MODEL_CACHE[model_name]
+
+    @classmethod
+    def _create_model(cls):
+        """Create the model instance. To be implemented by subclasses."""
+        raise NotImplementedError
+
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
         """Compute the actual embedding vector."""
@@ -22,6 +43,10 @@ class EmbeddingModel(BaseModel):
 
 
 class NomicText(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        return SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+
     @staticmethod
     def embed(text: str) -> np.ndarray:
         """
@@ -33,12 +58,19 @@ class NomicText(EmbeddingModel):
         Returns:
             The calculated embedding vector
         """
-        model = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+        model = NomicText.get_model()
         sentences = [f"clustering: {text}"]
         return model.encode(sentences)[0]  # Get first element to flatten (1, 768) to (768,)
 
 
 class NomicVision(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
+        vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
+        vision_model.eval()
+        return {"processor": processor, "model": vision_model}
+
     @staticmethod
     def embed(image: Image.Image) -> np.ndarray:
         """
@@ -50,10 +82,10 @@ class NomicVision(EmbeddingModel):
         Returns:
             The calculated embedding vector
         """
-        # Load the model and processor
-        processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
-        vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
-        vision_model.eval()
+        # Get cached model components
+        cache = NomicVision.get_model()
+        processor = cache["processor"]
+        vision_model = cache["model"]
 
         # Process the image
         inputs = processor(image, return_tensors="pt")
@@ -68,6 +100,11 @@ class NomicVision(EmbeddingModel):
 
 
 class Nomic(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        # This class uses other models, no need to cache anything specific
+        return None
+
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
         """
@@ -88,6 +125,12 @@ class Nomic(EmbeddingModel):
 
 
 class JinaClip(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        # Choose the standard embedding dimension
+        truncate_dim = 768
+        return SentenceTransformer('jinaai/jina-clip-v2', trust_remote_code=True, truncate_dim=truncate_dim)
+
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
         """
@@ -99,11 +142,8 @@ class JinaClip(EmbeddingModel):
         Returns:
             The calculated embedding vector
         """
-        # Choose the standard embedding dimension
-        truncate_dim = 768
-
-        # Initialize the model
-        model = SentenceTransformer('jinaai/jina-clip-v2', trust_remote_code=True, truncate_dim=truncate_dim)
+        # Get cached model
+        model = JinaClip.get_model()
 
         # Get the embedding
         return model.encode(content, normalize_embeddings=True)
@@ -112,6 +152,11 @@ class JinaClip(EmbeddingModel):
 ## from here these ones used for testing
 
 class Dummy(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        # Dummy model doesn't need to create or cache anything
+        return None
+
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
         """
@@ -128,6 +173,11 @@ class Dummy(EmbeddingModel):
 
 
 class Dummy2(EmbeddingModel):
+    @classmethod
+    def _create_model(cls):
+        # Dummy model doesn't need to create or cache anything
+        return None
+
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
         """

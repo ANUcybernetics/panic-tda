@@ -1,12 +1,16 @@
 # TODO
 
-- add "seed == -1" for random seeds (and update models)
+- the model cache sortof works, but needs to be manually cleared. there's an AI
+  suggestion, but perhaps it could be done at an engine-level (the "how much gpu
+  memory is free", then evict things approach)
 
 - engine: ensure that run is stopped if the same output is seen (and seed isn't
   -1), plus an `is_stuck` method to check (post-hoc) if that was the reason the
-  run stopped
+  run stopped. plus tests for this!
 
 - see why "main" is required in the run-experiments cli subcommand
+
+- use pytest-benchmark to test the model speeds
 
 - write tests for cli commands
 
@@ -14,7 +18,11 @@
 
 - silence logger.info for VIPS things
 
-- make the "test giotto runtime" iterate over pc sizes and log the times to a file?
+- make the logger print overall progress in terms of runs (or embeddings/PDs for
+  the end stages)
+
+- make the "test giotto runtime" iterate over pc sizes and log the times to a
+  file?
 
 - add documentation to readme at least (and clean up doco for the code)
 

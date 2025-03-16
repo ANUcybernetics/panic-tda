@@ -17,9 +17,26 @@ from trajectory_tracer.schemas import InvocationType
 # Image size for all image operations
 IMAGE_SIZE = 512
 
+# Cache to store loaded models
+_MODEL_CACHE = {}
+
 
 class AIModel(BaseModel):
     output_type: ClassVar[InvocationType] = None
+
+    @classmethod
+    def get_model(cls):
+        """Get or create the model instance."""
+        model_name = cls.__name__
+        if model_name not in _MODEL_CACHE:
+            _MODEL_CACHE[model_name] = cls._create_model()
+        return _MODEL_CACHE[model_name]
+
+    @classmethod
+    def _create_model(cls):
+        """Create the model instance. To be implemented by subclasses."""
+        raise NotImplementedError
+
 
 # Text2Image models
 
@@ -27,6 +44,21 @@ class FluxDev(AIModel):
     # name = "FLUX.1-dev"
     # url = "https://huggingface.co/black-forest-labs/FLUX.1-dev"
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
+
+    @classmethod
+    def _create_model(cls):
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Initialize the model with appropriate settings for GPU
+        pipe = FluxPipeline.from_pretrained(
+            "black-forest-labs/FLUX.1-dev",
+            torch_dtype=torch.bfloat16
+        )
+
+        # Explicitly move to CUDA
+        return pipe.to("cuda")
 
     @staticmethod
     def invoke(prompt: str, seed: int = -1) -> Image:
@@ -40,18 +72,8 @@ class FluxDev(AIModel):
         Returns:
             Image.Image: The generated PIL Image
         """
-        # Check if CUDA is available
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required but not available")
-
-        # Initialize the model with appropriate settings for GPU
-        pipe = FluxPipeline.from_pretrained(
-            "black-forest-labs/FLUX.1-dev",
-            torch_dtype=torch.bfloat16
-        )
-
-        # Explicitly move to CUDA
-        pipe = pipe.to("cuda")
+        # Get the cached model
+        pipe = FluxDev.get_model()
 
         # Set up generator with seed if specified, otherwise use None for random generation
         generator = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
@@ -72,6 +94,22 @@ class FluxDev(AIModel):
 class SDXLTurbo(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
+    @classmethod
+    def _create_model(cls):
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Initialize the model with appropriate settings for GPU
+        pipe = AutoPipelineForText2Image.from_pretrained(
+            "stabilityai/sdxl-turbo",
+            torch_dtype=torch.float16,
+            variant="fp16"
+        )
+
+        # Explicitly move to CUDA
+        return pipe.to("cuda")
+
     @staticmethod
     def invoke(prompt: str, seed: int = -1) -> Image:
         """
@@ -84,21 +122,8 @@ class SDXLTurbo(AIModel):
         Returns:
             Image.Image: The generated PIL Image
         """
-        # Check if CUDA is available
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required but not available")
-
-        # Import diffusers components here to avoid import errors when CUDA is not available
-
-        # Initialize the model with appropriate settings for GPU
-        pipe = AutoPipelineForText2Image.from_pretrained(
-            "stabilityai/sdxl-turbo",
-            torch_dtype=torch.float16,
-            variant="fp16"
-        )
-
-        # Explicitly move to CUDA
-        pipe = pipe.to("cuda")
+        # Get the cached model
+        pipe = SDXLTurbo.get_model()
 
         # Set up generator with seed if specified, otherwise use None for random generation
         generator = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
@@ -124,6 +149,20 @@ class Moondream(AIModel):
     # url = "https://huggingface.co/vikhyatk/moondream2"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
+    @classmethod
+    def _create_model(cls):
+        # Check if CUDA is available and use it
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        # Initialize the model
+        model = AutoModelForCausalLM.from_pretrained(
+            "vikhyatk/moondream2",
+            revision="2025-01-09",
+            trust_remote_code=True
+        ).to(device)
+
+        return model
+
     @staticmethod
     def invoke(image: Image, seed: int = -1) -> str:
         """
@@ -136,8 +175,8 @@ class Moondream(AIModel):
         Returns:
             str: The generated caption
         """
-        # Check if CUDA is available and use it
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Get the cached model
+        model = Moondream.get_model()
 
         # Initialize RNGs only if a specific seed is provided
         if seed != -1:
@@ -145,12 +184,6 @@ class Moondream(AIModel):
             if torch.cuda.is_available():
                 torch.cuda.manual_seed_all(seed)
             random.seed(seed)
-
-        model = AutoModelForCausalLM.from_pretrained(
-            "vikhyatk/moondream2",
-            revision="2025-01-09",
-            trust_remote_code=True
-        ).to(device)
 
         # Generate a normal-length caption for the provided image
         result = model.caption(image, length="short")
@@ -160,6 +193,22 @@ class Moondream(AIModel):
 
 class BLIP2(AIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
+
+    @classmethod
+    def _create_model(cls):
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Initialize the model with half-precision
+        processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+        model = Blip2ForConditionalGeneration.from_pretrained(
+            "Salesforce/blip2-opt-2.7b",
+            torch_dtype=torch.float16,
+            device_map="auto"
+        )
+
+        return {"processor": processor, "model": model}
 
     @staticmethod
     def invoke(image: Image, seed: int = -1) -> str:
@@ -173,23 +222,16 @@ class BLIP2(AIModel):
         Returns:
             str: The generated caption
         """
-        # Check if CUDA is available
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required but not available")
+        # Get cached model components
+        components = BLIP2.get_model()
+        processor = components["processor"]
+        model = components["model"]
 
         # Initialize RNGs only if a specific seed is provided
         if seed != -1:
             torch.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
             random.seed(seed)
-
-        # Initialize the model with half-precision
-        processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
-        model = Blip2ForConditionalGeneration.from_pretrained(
-            "Salesforce/blip2-opt-2.7b",
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
 
         # Process the input image
         inputs = processor(image, return_tensors="pt").to("cuda", torch.float16)
@@ -207,6 +249,11 @@ class BLIP2(AIModel):
 class DummyI2T(AIModel):
     # name = "dummy image2text"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
+
+    @classmethod
+    def _create_model(cls):
+        # No model to create for dummy class
+        return None
 
     @staticmethod
     def invoke(image: Image, seed: int = -1) -> str:
@@ -234,6 +281,11 @@ class DummyI2T(AIModel):
 class DummyT2I(AIModel):
     # name = "dummy text2image"
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
+
+    @classmethod
+    def _create_model(cls):
+        # No model to create for dummy class
+        return None
 
     @staticmethod
     def invoke(prompt: str, seed: int = -1) -> Image:
@@ -327,3 +379,9 @@ def get_output_type(model_name: str) -> str:
 
     # Return the output_type
     return model_class.output_type
+
+
+def clear_model_cache():
+    """Clear the cached models to free memory."""
+    global _MODEL_CACHE
+    _MODEL_CACHE = {}
