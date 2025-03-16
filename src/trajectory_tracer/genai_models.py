@@ -1,6 +1,7 @@
 import random
 import sys
 from typing import ClassVar, Optional, Union
+from functools import partial
 
 import torch
 from diffusers import AutoPipelineForText2Image, FluxPipeline
@@ -58,7 +59,24 @@ class FluxDev(AIModel):
         )
 
         # Explicitly move to CUDA
-        return pipe.to("cuda")
+        pipe = pipe.to("cuda")
+
+        # Use a more targeted approach to compilation for complex models
+        try:
+            # Only compile the UNet's forward method, not the entire model
+            if hasattr(pipe, "unet") and hasattr(pipe.unet, "forward"):
+                original_forward = pipe.unet.forward
+                pipe.unet.forward = torch.compile(
+                    original_forward,
+                    mode="reduce-overhead",
+                    fullgraph=False,  # Important for complex models
+                    dynamic=True      # Handle variable input sizes
+                )
+        except Exception as e:
+            print(f"Warning: Could not compile FluxDev UNet forward method: {e}")
+            # Continue without compilation
+
+        return pipe
 
     @staticmethod
     def invoke(prompt: str, seed: int = -1) -> Image:
@@ -151,15 +169,25 @@ class Moondream(AIModel):
 
     @classmethod
     def load_to_device(cls):
-        # Check if CUDA is available and use it
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
 
-        # Initialize the model
+        # Initialize the model and move to GPU
         model = AutoModelForCausalLM.from_pretrained(
             "vikhyatk/moondream2",
             revision="2025-01-09",
             trust_remote_code=True
-        ).to(device)
+        ).to("cuda")
+
+        # Compile the model if it has a forward method
+        # Note: since Moondream uses trust_remote_code, need to be careful with compiling
+        # and only compile the model's transformer blocks if possible
+        try:
+            if hasattr(model, "model"):
+                model.model = torch.compile(model.model)
+        except Exception as e:
+            print(f"Warning: Could not compile Moondream model: {e}")
 
         return model
 
@@ -181,8 +209,7 @@ class Moondream(AIModel):
         # Initialize RNGs only if a specific seed is provided
         if seed != -1:
             torch.manual_seed(seed)
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed_all(seed)
+            torch.cuda.manual_seed_all(seed)
             random.seed(seed)
 
         # Generate a normal-length caption for the provided image
