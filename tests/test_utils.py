@@ -4,7 +4,7 @@ from PIL import Image
 from sqlmodel import Session
 
 from trajectory_tracer.engine import create_run, perform_run
-from trajectory_tracer.models import IMAGE_SIZE
+from trajectory_tracer.genai_models import IMAGE_SIZE
 from trajectory_tracer.utils import export_run_images
 
 

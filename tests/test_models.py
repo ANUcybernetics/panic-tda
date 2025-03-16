@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from trajectory_tracer.models import (
+from trajectory_tracer.genai_models import (
     BLIP2,
     IMAGE_SIZE,
     DummyI2T,

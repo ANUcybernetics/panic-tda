@@ -11,7 +11,7 @@ from sqlmodel import Session
 
 from trajectory_tracer.db import incomplete_embeddings
 from trajectory_tracer.embeddings import embed
-from trajectory_tracer.models import get_output_type, invoke
+from trajectory_tracer.genai_models import get_output_type, invoke
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
