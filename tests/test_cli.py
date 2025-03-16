@@ -4,6 +4,9 @@ import sys
 import os
 from pathlib import Path
 
+import pytest
+
+# @pytest.mark.slow
 def test_run_experiment_command(tmp_path):
     """Test the run-experiment command with a simple configuration."""
 
@@ -37,6 +40,7 @@ def test_run_experiment_command(tmp_path):
     assert db_path.exists()
 
 
+@pytest.mark.slow
 def test_list_runs_command(tmp_path):
     """Test the list-runs command after creating a run."""
     import json
@@ -90,6 +94,7 @@ def test_list_runs_command(tmp_path):
     assert "Network:" in result.stdout
 
 
+@pytest.mark.slow
 def test_export_images_command(tmp_path):
     """Test the export-images command after creating a run."""
     import json
