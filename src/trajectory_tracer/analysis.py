@@ -29,6 +29,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
             'invocation_completed_at': invocation.completed_at,
             'duration': embedding.duration,
             'run_id': invocation.run_id,
+            'stop_reason': invocation.run.stop_reason,
             'type': invocation.type,
             'initial_prompt': invocation.run.initial_prompt,
             'seed': invocation.run.seed,
