@@ -11,7 +11,7 @@ from sqlmodel import Session
 
 from trajectory_tracer.db import incomplete_embeddings, incomplete_persistence_diagrams
 from trajectory_tracer.embeddings import embed
-from trajectory_tracer.genai_models import get_output_type, invoke
+from trajectory_tracer.genai_models import get_output_type, invoke, unload_all_models
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
@@ -532,9 +532,12 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
 
             successful_runs += 1
             logger.info(f"Completed run {i+1}/{total_combinations} (ID: {run.id})")
+            # Unload all AI models from memory after each run to conserve GPU resources
+            unload_all_models()
 
         except Exception as e:
             logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
+            unload_all_models()
             # Continue with next run even if this one fails
 
     # Compute embeddings for all runs
