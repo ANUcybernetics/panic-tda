@@ -303,6 +303,112 @@ def test_run_is_complete(db_session: Session):
     assert not run2.is_complete
 
 
+def test_run_stop_reason(db_session: Session):
+    """Test that Run.stop_reason correctly identifies why a run stopped."""
+    # Test 'length' stop reason - run that completes its intended length
+    run_complete = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for length stop",
+        run_length=3,
+        seed=-1,  # Use -1 to disable duplicate detection
+        session=db_session
+    )
+    db_session.add(run_complete)
+    db_session.commit()
+
+    # Create and perform the full run
+    for i in range(run_complete.length):
+        if i == 0:
+            input_data = run_complete.initial_prompt
+            input_invocation_id = None
+        else:
+            input_data = run_complete.invocations[i-1].output
+            input_invocation_id = run_complete.invocations[i-1].id
+
+        model = run_complete.network[i % len(run_complete.network)]
+        invocation = create_invocation(
+            model=model,
+            input=input_data,
+            run_id=run_complete.id,
+            sequence_number=i,
+            input_invocation_id=input_invocation_id,
+            session=db_session,
+            seed=run_complete.seed
+        )
+        perform_invocation(invocation, input_data, db_session)
+
+    db_session.refresh(run_complete)
+    assert run_complete.stop_reason == "length"
+
+    # Test 'duplicate' stop reason - run that stops due to duplicate output
+    run_duplicate = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for duplicate stop",
+        run_length=10,  # Long enough that we'd hit duplicates before completing
+        seed=42,  # Use fixed seed to ensure deterministic outputs
+        session=db_session
+    )
+    db_session.add(run_duplicate)
+    db_session.commit()
+
+    # Create invocations until we hit a duplicate
+    max_invocations = 6  # Limit to prevent infinite loop in case test logic changes
+    for i in range(max_invocations):
+        if i == 0:
+            input_data = run_duplicate.initial_prompt
+            input_invocation_id = None
+        else:
+            input_data = run_duplicate.invocations[i-1].output
+            input_invocation_id = run_duplicate.invocations[i-1].id
+
+        model = run_duplicate.network[i % len(run_duplicate.network)]
+        invocation = create_invocation(
+            model=model,
+            input=input_data,
+            run_id=run_duplicate.id,
+            sequence_number=i,
+            input_invocation_id=input_invocation_id,
+            session=db_session,
+            seed=run_duplicate.seed
+        )
+        perform_invocation(invocation, input_data, db_session)
+
+        # Check if we've hit a duplicate output
+        db_session.refresh(run_duplicate)
+        if run_duplicate.stop_reason == "duplicate" or i == max_invocations - 1:
+            break
+
+    db_session.refresh(run_duplicate)
+    assert run_duplicate.stop_reason == "duplicate"
+    assert len(run_duplicate.invocations) < run_duplicate.length  # Should have stopped early
+
+    # Test 'unknown' stop reason - incomplete run
+    run_incomplete = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for incomplete run",
+        run_length=5,
+        seed=43,
+        session=db_session
+    )
+    db_session.add(run_incomplete)
+    db_session.commit()
+
+    # Create just one invocation without output
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=run_incomplete.initial_prompt,
+        run_id=run_incomplete.id,
+        sequence_number=0,
+        session=db_session,
+        seed=run_incomplete.seed
+    )
+    db_session.add(invocation)  # Add but don't perform, so no output
+    db_session.commit()
+    db_session.refresh(run_incomplete)
+
+    assert run_incomplete.stop_reason == "unknown"
+
+
 def test_create_embedding(db_session: Session):
     """Test that create_embedding correctly initializes an embedding for an invocation."""
     # Create a test invocation

@@ -1,14 +1,10 @@
 # TODO
 
-- add a did_terminate_early method to run (maybe)
-
 - write tests for cli commands
 
 - shell script to run it with nohup
 
 - silence logger.info for VIPS things
-
-- find out if moondream2 can take a seed
 
 - make the "test giotto runtime" iterate over pc sizes and log the times to a
   file?

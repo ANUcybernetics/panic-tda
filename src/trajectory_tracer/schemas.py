@@ -215,6 +215,52 @@ class Run(SQLModel, table=True):
             result.extend(invocation.embeddings)
         return result
 
+    @property
+    def stop_reason(self) -> str:
+        """
+        Determine why the run stopped.
+
+        Returns:
+            "length": If the run completed its full length
+            "duplicate": If the run was stopped because of a duplicate output
+            "unknown": If the reason can't be determined
+        """
+        # Check if we have all invocations up to the specified length
+        if len(self.invocations) == self.length:
+            # Make sure all invocations are complete (have outputs)
+            all_complete = all(inv.output is not None for inv in self.invocations)
+            if all_complete:
+                return "length"
+
+        # Check for duplicate outputs if seed is not -1
+        if self.seed != -1 and len(self.invocations) > 1:
+            # Track seen outputs
+            seen_outputs = set()
+
+            for invocation in sorted(self.invocations, key=lambda inv: inv.sequence_number):
+                if invocation.output is None:
+                    continue
+
+                # Convert output to a hashable representation based on type
+                hashable_output = None
+                if isinstance(invocation.output, str):
+                    hashable_output = invocation.output
+                elif isinstance(invocation.output, Image.Image):
+                    # Convert image to a bytes representation for hashing
+                    buffer = io.BytesIO()
+                    invocation.output.save(buffer, format="JPEG", quality=30)
+                    hashable_output = buffer.getvalue()
+                else:
+                    hashable_output = str(invocation.output)
+
+                # Check if we've seen this output before
+                if hashable_output in seen_outputs:
+                    return "duplicate"
+
+                seen_outputs.add(hashable_output)
+
+        # If we can't determine a specific reason
+        return "unknown"
 
     def embeddings_by_model(self, embedding_model: str) -> List["Embedding"]:
         """
