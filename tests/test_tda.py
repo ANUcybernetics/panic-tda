@@ -34,17 +34,16 @@ def test_giotto_phd():
 
 
 @pytest.mark.slow
-def test_giotto_phd_large_point_cloud():
-    """Test the giotto_phd function on a larger point cloud."""
-    # Create a larger point cloud with 768 dimensions (random noise)
-    n_points = 3000
+@pytest.mark.parametrize("n_points", [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000])
+def test_giotto_phd_large_point_cloud(benchmark, n_points):
+    """Test the giotto_phd function on larger point clouds of increasing size."""
     n_dims = 768
 
     # Generate random points in 768-dimensional space
     point_cloud = np.random.normal(0, 1, (n_points, n_dims))
 
-    # Compute the persistence diagram
-    diagrams = giotto_phd(point_cloud, max_dim=2)
+    # Benchmark the computation of persistence diagrams with increasing point cloud sizes
+    diagrams = benchmark(lambda: giotto_phd(point_cloud, max_dim=2))
 
     # Check that the output is a list of ndarrays
     assert isinstance(diagrams, list)
@@ -60,5 +59,5 @@ def test_giotto_phd_large_point_cloud():
     h1_persistence = h1_features[:, 1] - h1_features[:, 0] if len(h1_features) > 0 else []
     h2_persistence = h2_features[:, 1] - h2_features[:, 0] if len(h2_features) > 0 else []
 
-    # No specific checks on the features - this test is just for timing
-    # with high-dimensional data
+    # Log the size of the point cloud
+    print(f"Processed point cloud with {n_points} points in {n_dims} dimensions")
