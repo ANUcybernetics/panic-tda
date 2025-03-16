@@ -1,9 +1,5 @@
 # TODO
 
-- the model cache sortof works, but needs to be manually cleared. there's an AI
-  suggestion, but perhaps it could be done at an engine-level (the "how much gpu
-  memory is free", then evict things approach)
-
 - engine: ensure that run is stopped if the same output is seen (and seed isn't
   -1), plus an `is_stuck` method to check (post-hoc) if that was the reason the
   run stopped. plus tests for this!
