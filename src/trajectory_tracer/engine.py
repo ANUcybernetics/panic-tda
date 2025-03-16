@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.db import incomplete_embeddings
+from trajectory_tracer.db import incomplete_embeddings, incomplete_persistence_diagrams
 from trajectory_tracer.embeddings import embed
 from trajectory_tracer.genai_models import get_output_type, invoke
 from trajectory_tracer.schemas import (
@@ -335,7 +335,7 @@ def compute_missing_embeds(session: Session) -> int:
                 logger.error(f"Error processing embedding {embedding.id}: {e}")
                 session.rollback()
 
-        logger.info(f"Completed processing {processed_count}/{total_to_process} missing embeddings")
+        logger.debug(f"Completed processing {processed_count}/{total_to_process} missing embeddings")
         return processed_count
 
     except Exception as e:
@@ -394,7 +394,7 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
         # Get the run associated with this diagram
         run = persistence_diagram.run
 
-        logger.info(f"Computing persistence diagram for run {run.id}")
+        logger.debug(f"Computing persistence diagram for run {run.id}")
 
         # Check if run is complete using is_complete property
         if not run.is_complete:
@@ -434,11 +434,50 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
         session.commit()
         session.refresh(persistence_diagram)
 
-        logger.info(f"Successfully computed persistence diagram for run {run.id}")
+        logger.debug(f"Successfully computed persistence diagram for run {run.id}")
         return persistence_diagram
 
     except Exception as e:
         logger.error(f"Error computing persistence diagram: {e}")
+        raise
+
+def compute_missing_persistence_diagrams(session: Session) -> int:
+    """
+    Find all the PersistenceDiagram objects in the database without generators,
+    perform the persistence diagram calculation, and update the database.
+
+    Args:
+        session: SQLModel Session for database operations
+
+    Returns:
+        Number of persistence diagrams that were processed
+    """
+    try:
+        logger.debug("Finding persistence diagram objects without generators...")
+
+        # Query for persistence diagrams with empty generators
+        incomplete_pds = incomplete_persistence_diagrams(session)
+        total_to_process = len(incomplete_pds)
+        logger.debug(f"Found {total_to_process} persistence diagrams to compute")
+
+        if total_to_process == 0:
+            return 0
+
+        processed_count = 0
+        for i, pd in enumerate(incomplete_pds):
+            try:
+                logger.debug(f"Computing persistence diagram {i+1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id}")
+                perform_persistence_diagram(pd, session)
+                processed_count += 1
+                logger.debug(f"Completed persistence diagram {i+1}/{total_to_process} (ID: {pd.id})")
+            except Exception as e:
+                logger.error(f"Error computing persistence diagram {i+1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id} with embedding model {pd.embedding_model}: {e}")
+
+        logger.debug(f"Completed processing {processed_count}/{total_to_process} missing persistence diagrams")
+        return processed_count
+
+    except Exception as e:
+        logger.error(f"Error in compute_missing_persistence_diagrams: {e}")
         raise
 
 
@@ -448,7 +487,7 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
 
     Args:
         config: The experiment configuration containing network definitions,
-               seeds, prompts, and embedding model specifications
+                seeds, prompts, and embedding model specifications
         session: SQLModel Session for database operations
     """
     # Generate cartesian product of all parameters
@@ -459,14 +498,14 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
     ))
 
     total_combinations = len(combinations)
-    logger.info(f"Starting experiment with {total_combinations} total run configurations")
+    logger.debug(f"Starting experiment with {total_combinations} total run configurations")
 
     # Process each combination
     successful_runs = 0
     for i, (network, seed, prompt) in enumerate(combinations):
         try:
             # Create the run
-            logger.info(f"Creating run {i+1}/{total_combinations}: {network} with seed {seed}")
+            logger.debug(f"Creating run {i+1}/{total_combinations}: {network} with seed {seed}")
             run = create_run(
                 network=network,
                 initial_prompt=prompt,
@@ -476,41 +515,36 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
             )
 
             # Execute the run
+            logger.debug(f"Executing run {i+1}/{total_combinations} (ID: {run.id})")
             run = perform_run(run, session)
+            logger.debug(f"Model invocations complete for run {i+1}/{total_combinations} (ID: {run.id})")
 
             # create "empty" embedding objects - will fill in the vectors later
             for embedding_model in config.embedding_models:
-                for invocation in run.invocations:
+                logger.debug(f"Creating empty embeddings for model {embedding_model} in run {run.id}")
+                for j, invocation in enumerate(run.invocations):
                     embedding = create_embedding(embedding_model, invocation, session)
-                    logger.debug(f"Created embedding {embedding.id} for invocation {invocation.id}")
+                    logger.debug(f"Created empty embedding {embedding.id} for invocation {invocation.id} ({j+1}/{len(run.invocations)})")
 
                 # Create empty persistence diagram for this run and embedding model
-                create_persistence_diagram(run.id, embedding_model, session)
+                pd = create_persistence_diagram(run.id, embedding_model, session)
+                logger.debug(f"Created empty persistence diagram {pd.id} for run {run.id} with model {embedding_model}")
 
             successful_runs += 1
-            logger.info(f"Completed run {i+1}/{total_combinations}")
+            logger.info(f"Completed run {i+1}/{total_combinations} (ID: {run.id})")
 
         except Exception as e:
             logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
             # Continue with next run even if this one fails
 
     # Compute embeddings for all runs
-    logger.info(f"Computing embeddings for all {successful_runs} successful runs")
-    compute_missing_embeds(session)
+    logger.debug(f"Starting computation of embeddings for all {successful_runs} successful runs")
+    processed_embeddings = compute_missing_embeds(session)
+    logger.info(f"Completed computation of {processed_embeddings} embeddings across all runs")
 
     # After all embeddings are computed, calculate persistence diagrams
-    logger.info("Computing persistence diagrams for all runs")
-    from trajectory_tracer.db import incomplete_persistence_diagrams
-
-    # Get all persistence diagrams with empty generators
-    incomplete_pds = incomplete_persistence_diagrams(session)
-    logger.info(f"Found {len(incomplete_pds)} persistence diagrams to compute")
-
-    # Process each incomplete persistence diagram
-    for pd in incomplete_pds:
-        try:
-            perform_persistence_diagram(pd, session)
-        except Exception as e:
-            logger.error(f"Error computing persistence diagram for run {pd.run_id} with embedding model {pd.embedding_model}: {e}")
+    logger.debug("Starting computation of persistence diagrams for all runs")
+    processed_pds = compute_missing_persistence_diagrams(session)
+    logger.info(f"Completed computation of {processed_pds} persistence diagrams across all runs")
 
     logger.info(f"Experiment completed with {successful_runs} successful runs")
