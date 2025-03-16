@@ -1,10 +1,6 @@
 # TODO
 
-- engine: ensure that run is stopped if the same output is seen (and seed isn't
-  -1), plus an `is_stuck` method to check (post-hoc) if that was the reason the
-  run stopped. plus tests for this!
-
-- see why "main" is required in the run-experiments cli subcommand
+- add a did_terminate_early method to run (maybe)
 
 - use pytest-benchmark to test the model speeds
 

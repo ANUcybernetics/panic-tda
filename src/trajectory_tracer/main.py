@@ -15,11 +15,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
-experiment_app = typer.Typer()
-app.add_typer(experiment_app, name="run-experiment")
 
-@experiment_app.command()
-def main(
+@app.command("run-experiment")
+def run_experiment(
     config_file: Path = typer.Argument(..., help="Path to the configuration JSON file", exists=True, readable=True, file_okay=True, dir_okay=False),
     db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
