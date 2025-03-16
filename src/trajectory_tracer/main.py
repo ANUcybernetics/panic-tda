@@ -19,7 +19,7 @@ app = typer.Typer()
 @app.command("run-experiment")
 def run_experiment(
     config_file: Path = typer.Argument(..., help="Path to the configuration JSON file", exists=True, readable=True, file_okay=True, dir_okay=False),
-    db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
 ):
     """
@@ -65,7 +65,7 @@ def run_experiment(
 
 @app.command("list-runs")
 def list_runs_command(
-    db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full run details")
 ):
     """
@@ -113,8 +113,8 @@ def list_runs_command(
 @app.command("export-images")
 def export_images(
     run_id: str = typer.Argument(..., help="ID of the run to export images from (or 'all' to export from all runs)"),
-    output_dir: str = typer.Option("outputs/images", "--output-dir", "-o", help="Directory where images will be saved"),
-    db_path: Path = typer.Option("trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    output_dir: str = typer.Option("output/images", "--output-dir", "-o", help="Directory where images will be saved"),
+    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
 ):
     """
     Export all image invocations from a run to JPEG files with embedded metadata.

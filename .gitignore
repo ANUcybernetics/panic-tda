@@ -9,7 +9,7 @@ wheels/
 # venv
 .venv
 
-outputs/
+output/
 
 mise.local.toml
 
