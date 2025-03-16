@@ -18,6 +18,9 @@
 - ensure that the program can be interrupted (and that it doesn't re-do any work
   it doesn't need to)
 
+- switch to fast flux (fp8) using
+  [this](https://github.com/aredden/flux-fp8-api)
+
 - add data analysis & vis code
 
   - pull a run or series of runs (experiment? or just everything) into a polars
