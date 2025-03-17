@@ -331,8 +331,14 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         # Get the content to embed from the invocation output
         content = embedding.invocation.output
 
-        # Use the embed function from embeddings to calculate the vector
-        embedding.vector = embed(embedding.embedding_model, content)
+        # Special handling for Nomic embeddings - need to use the right model based on content type
+        embedding_model = embedding.embedding_model
+        if embedding_model in ("NomicText", "NomicVision"):
+            # Use the generic Nomic embedder which will dispatch based on content type
+            embedding.vector = embed("Nomic", content)
+        else:
+            # Use the embed function from embeddings to calculate the vector
+            embedding.vector = embed(embedding_model, content)
 
         # Set the completion timestamp
         embedding.completed_at = datetime.now()
@@ -449,62 +455,57 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
     Returns:
         The updated PersistenceDiagram object with generators
     """
-    try:
-        # Get the run associated with this diagram
-        run = persistence_diagram.run
+    run = persistence_diagram.run
 
-        logger.debug(f"Computing persistence diagram for run {run.id}")
+    logger.debug(f"Computing persistence diagram for run {run.id}")
 
-        # Check run status - only bail if stop_reason is "unknown"
-        if run.stop_reason == "unknown":
-            raise ValueError(f"Run {run.id} has unknown stop reason")
+    # Check run status - only bail if stop_reason is "unknown"
+    if run.stop_reason == "unknown":
+        raise ValueError(f"Run {run.id} has unknown stop reason")
 
-        # Get embeddings for the specific embedding model
-        embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
+    # Get embeddings for the specific embedding model
+    embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
 
-        # Check if there are enough embeddings to compute a persistence diagram
-        if len(embeddings) < 2:
-            raise ValueError(f"Not enough embeddings ({len(embeddings)}) to compute a persistence diagram. Need at least 2 points.")
+    # Check if there are enough embeddings to compute a persistence diagram
+    if len(embeddings) < 2:
+        raise ValueError(f"Not enough embeddings ({len(embeddings)}) to compute a persistence diagram. Need at least 2 points.")
 
-        # Check if the embeddings list is empty
-        if not embeddings:
-            raise ValueError("No embeddings found for this run and embedding model")
+    # Check if the embeddings list is empty
+    if not embeddings:
+        raise ValueError("No embeddings found for this run and embedding model")
 
-        # Check that all embeddings have vectors
-        missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
-        if missing_vectors:
-            raise ValueError(
-                f"Run {run.id} has embeddings without vectors: {missing_vectors}"
-            )
-
-        # Sort embeddings by sequence number
-        sorted_embeddings = sorted(
-            embeddings, key=lambda e: e.invocation.sequence_number
+    # Check that all embeddings have vectors
+    missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
+    if missing_vectors:
+        raise ValueError(
+            f"Run {run.id} has embeddings without vectors: {missing_vectors}"
         )
 
-        # Create point cloud from embedding vectors
-        point_cloud = np.array([emb.vector for emb in sorted_embeddings])
+    # Sort embeddings by sequence number
+    sorted_embeddings = sorted(
+        embeddings, key=lambda e: e.invocation.sequence_number
+    )
 
-        # Set start timestamp - only timing the persistence diagram computation
-        persistence_diagram.started_at = datetime.now()
+    # Create point cloud from embedding vectors
+    point_cloud = np.array([emb.vector for emb in sorted_embeddings])
 
-        # Compute persistence diagram
-        persistence_diagram.generators = giotto_phd(point_cloud)
+    # Set start timestamp - only timing the persistence diagram computation
+    persistence_diagram.started_at = datetime.now()
 
-        # Set completion timestamp
-        persistence_diagram.completed_at = datetime.now()
+    # Compute persistence diagram
+    persistence_diagram.generators = giotto_phd(point_cloud)
 
-        # Save to database
-        session.add(persistence_diagram)
-        session.commit()
-        session.refresh(persistence_diagram)
+    # Set completion timestamp
+    persistence_diagram.completed_at = datetime.now()
 
-        logger.debug(f"Successfully computed persistence diagram for run {run.id}")
-        return persistence_diagram
+    # Save to database
+    session.add(persistence_diagram)
+    session.commit()
+    session.refresh(persistence_diagram)
 
-    except Exception as e:
-        logger.error(f"Error computing persistence diagram: {e}")
-        raise
+    logger.debug(f"Successfully computed persistence diagram for run {run.id}")
+    return persistence_diagram
+
 
 
 def compute_missing_persistence_diagrams(session: Session) -> int:
