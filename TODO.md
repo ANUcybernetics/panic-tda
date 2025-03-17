@@ -2,8 +2,6 @@
 
 - silence logger.info for VIPS things
 
-- change run_length to max_run_length
-
 - check that by default both slow and benchmark tests are skipped
 
 - update the README with the new list-models command, and use real models in the

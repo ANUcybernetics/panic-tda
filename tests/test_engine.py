@@ -156,7 +156,7 @@ def test_perform_run(db_session: Session):
     run = create_run(
         network=network,
         initial_prompt=initial_prompt,
-        run_length=10,
+        max_run_length=10,
         seed=seed,
         session=db_session,
     )
@@ -193,7 +193,7 @@ def test_perform_run(db_session: Session):
     run_no_dup_tracking = create_run(
         network=network,
         initial_prompt=initial_prompt,
-        run_length=6,
+        max_run_length=6,
         seed=-1,  # Special value to disable duplicate tracking
         session=db_session,
     )
@@ -214,7 +214,7 @@ def test_run_stop_reason(db_session: Session):
     run_complete = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for length stop",
-        run_length=3,
+        max_run_length=3,
         seed=-1,  # Use -1 to disable duplicate detection
         session=db_session,
     )
@@ -249,7 +249,7 @@ def test_run_stop_reason(db_session: Session):
     run_duplicate = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for duplicate stop",
-        run_length=10,  # Long enough that we'd hit duplicates before completing
+        max_run_length=10,  # Long enough that we'd hit duplicates before completing
         seed=42,  # Use fixed seed to ensure deterministic outputs
         session=db_session,
     )
@@ -293,7 +293,7 @@ def test_run_stop_reason(db_session: Session):
     run_incomplete = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for incomplete run",
-        run_length=5,
+        max_run_length=5,
         seed=43,
         session=db_session,
     )
@@ -453,7 +453,7 @@ def test_run_embeddings_by_model(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for embeddings by model",
-        run_length=3,
+        max_run_length=3,
         seed=42,
         session=db_session,
     )
@@ -586,7 +586,7 @@ def test_perform_experiment(db_session: Session):
         seeds=[42, 43],
         prompts=["Test prompt 1", "Test prompt 2"],
         embedding_models=["Dummy", "Dummy2"],
-        run_length=10,  # Short run length for testing
+        max_run_length=10,  # Short run length for testing
     )
 
     # Perform the experiment
@@ -646,7 +646,7 @@ def test_create_persistence_diagram(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for persistence diagram",
-        run_length=3,
+        max_run_length=3,
         seed=42,
         session=db_session,
     )
@@ -672,7 +672,7 @@ def test_perform_persistence_diagram(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for performing persistence diagram",
-        run_length=3,
+        max_run_length=3,
         seed=42,
         session=db_session,
     )
@@ -741,7 +741,7 @@ def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for incomplete persistence diagram",
-        run_length=3,
+        max_run_length=3,
         seed=42,
         session=db_session,
     )
@@ -791,9 +791,9 @@ def test_experiment_config_validation():
         seeds=[42],
         prompts=["Test prompt"],
         embedding_models=["Dummy"],
-        run_length=5,
+        max_run_length=5,
     )
-    assert valid_config.run_length == 5
+    assert valid_config.max_run_length == 5
 
     # Test with empty networks list
     try:
@@ -802,7 +802,7 @@ def test_experiment_config_validation():
             seeds=[42],
             prompts=["Test prompt"],
             embedding_models=["Dummy"],
-            run_length=5,
+            max_run_length=5,
         )
         assert False, "Should have raised ValueError for empty networks list"
     except ValueError:

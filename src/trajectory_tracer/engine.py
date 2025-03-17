@@ -113,7 +113,7 @@ def create_run(
     initial_prompt: str,
     session: Session,
     seed: int = 42,
-    run_length: int = None,
+    max_run_length: int = None,
 ) -> Run:
     """
     Create a new run with the specified parameters.
@@ -123,7 +123,7 @@ def create_run(
         initial_prompt: The text prompt to start the run with
         seed: Random seed for reproducibility
         session: SQLModel Session for database operations
-        run_length: Length of the run
+        max_run_length: Length of the run
 
     Returns:
         The created Run object
@@ -133,7 +133,7 @@ def create_run(
 
         # Create run object
         run = Run(
-            network=network, initial_prompt=initial_prompt, seed=seed, length=run_length
+            network=network, initial_prompt=initial_prompt, seed=seed, length=max_run_length
         )
 
         # Save to database
@@ -588,7 +588,7 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
                 initial_prompt=prompt,
                 seed=seed,
                 session=session,
-                run_length=config.run_length,
+                max_run_length=config.max_run_length,
             )
 
             # Execute the run

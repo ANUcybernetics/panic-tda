@@ -19,7 +19,7 @@ def test_export_run_images(db_session: Session, tmp_path):
     run = create_run(
         network=network,
         initial_prompt=initial_prompt,
-        run_length=4,
+        max_run_length=4,
         session=db_session,
         seed=seed,
     )

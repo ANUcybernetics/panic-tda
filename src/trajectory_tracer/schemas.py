@@ -352,7 +352,7 @@ class ExperimentConfig(BaseModel):
     embedding_models: List[str] = Field(
         ..., description="List of embedding model class names"
     )
-    run_length: int = Field(..., description="Number of invocations in each run")
+    max_run_length: int = Field(..., description="Number of invocations in each run")
 
     @model_validator(mode="after")
     def validate_fields(self):
@@ -364,6 +364,6 @@ class ExperimentConfig(BaseModel):
             raise ValueError("Prompts list cannot be empty")
         if not self.embedding_models:
             raise ValueError("embedding_models list cannot be empty")
-        if self.run_length <= 0:
+        if self.max_run_length <= 0:
             raise ValueError("Run length must be greater than 0")
         return self

@@ -22,5 +22,5 @@
         "a detailed pencil sketch of an ancient mechanical device"
     ],
     "embedding_models": ["Nomic", "JinaClip"],
-    "run_length": 5000
+    "max_run_length": 5000
 }

@@ -181,7 +181,7 @@ def test_experiment_config():
         "seeds": [42, 123],
         "prompts": ["First prompt", "Second prompt"],
         "embedding_models": ["embedding_model1", "embedding_model2"],
-        "run_length": 5,
+        "max_run_length": 5,
     }
 
     # Create a temporary JSON file
@@ -202,7 +202,7 @@ def test_experiment_config():
         assert config.seeds == [42, 123]
         assert config.prompts == ["First prompt", "Second prompt"]
         assert config.embedding_models == ["embedding_model1", "embedding_model2"]
-        assert config.run_length == 5
+        assert config.max_run_length == 5
 
         # Test validation error with unequal list lengths
         invalid_data = config_data.copy()
@@ -225,27 +225,27 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=5,
+            max_run_length=5,
         )
 
-    # Test zero run_length validation
+    # Test zero max_run_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=0,
+            max_run_length=0,
         )
 
-    # Test negative run_length validation
+    # Test negative max_run_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=-5,
+            max_run_length=-5,
         )
 
     # Test missing required field
@@ -255,7 +255,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             # Missing embedding_models
-            run_length=5,
+            max_run_length=5,
         )
 
 
