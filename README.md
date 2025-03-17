@@ -51,6 +51,8 @@ The main CLI is `trajectory-tracer`. It has a few subcommands:
   configuration file
 - `list-runs`: List all runs stored in the database, with options for detailed
   output
+- `list-models`: List all the supported models (both GenAI t2i/i2t and embedding
+  models)
 - `export-images`: Export images from one or all runs to JPEG files with
   embedded metadata
 
