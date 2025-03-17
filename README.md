@@ -9,7 +9,7 @@ manner.
 ## Requirements
 
 - python 3.12+
-- a beefy-ish computer with an NVIDIA GPU (for running the models)
+- GPU which supports CUDA 12.7 (maybe earlier ok, but untested)
 
 ## Why?
 
