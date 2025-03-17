@@ -1,7 +1,6 @@
 import random
 import sys
-from typing import ClassVar, Optional, Union
-from functools import partial
+from typing import ClassVar, Union
 
 import torch
 from diffusers import AutoPipelineForText2Image, FluxPipeline

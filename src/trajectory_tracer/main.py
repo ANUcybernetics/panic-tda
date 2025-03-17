@@ -1,8 +1,19 @@
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
+import json
 import logging
-import os
-import sys
+from pathlib import Path
+from uuid import UUID
+
+import typer
+
+from trajectory_tracer.db import count_invocations, get_database, list_runs
+from trajectory_tracer.embeddings import list_models as list_embedding_models
+from trajectory_tracer.engine import perform_experiment
+from trajectory_tracer.genai_models import get_output_type
+from trajectory_tracer.genai_models import list_models as list_genai_models
+from trajectory_tracer.schemas import ExperimentConfig, Run
+from trajectory_tracer.utils import export_run_images
 
 # Set up logging first, before any handlers might be added by other code
 logging.basicConfig(
@@ -40,21 +51,6 @@ def patched_log(self, level, msg, args, exc_info=None, extra=None, stack_info=Fa
     return original_log(self, level, msg, args, exc_info, extra, stack_info)
 
 logging.Logger._log = patched_log
-
-import json
-from pathlib import Path
-from uuid import UUID
-
-import typer
-
-from trajectory_tracer.db import get_database, list_runs, count_invocations
-from trajectory_tracer.engine import perform_experiment
-from trajectory_tracer.schemas import ExperimentConfig, Run
-from trajectory_tracer.utils import export_run_images
-from trajectory_tracer.analysis import persistance_diagram_benchmark_vis
-from trajectory_tracer.genai_models import get_output_type
-from trajectory_tracer.genai_models import list_models as list_genai_models
-from trajectory_tracer.embeddings import list_models as list_embedding_models
 
 # Get a logger for this module
 logger = logging.getLogger(__name__)
@@ -289,7 +285,7 @@ def script(
         # Create database connection
         db_url = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
-        database = get_database(connection_string=db_url)
+        _database = get_database(connection_string=db_url)
 
         # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
 

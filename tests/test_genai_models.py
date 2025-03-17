@@ -10,8 +10,8 @@ from trajectory_tracer.genai_models import (
     FluxDev,
     Moondream,
     SDXLTurbo,
-    unload_all_models,
     list_models,
+    unload_all_models,
 )
 
 
@@ -174,9 +174,9 @@ def test_moondream_i2t():
         # Test with -1 seed (should be non-deterministic)
         seed = -1
         # First invocation
-        caption_random1 = Moondream.invoke(image, seed)
+        _caption_random1 = Moondream.invoke(image, seed)
         # Second invocation with -1 seed
-        caption_random2 = Moondream.invoke(image, seed)
+        _caption_random2 = Moondream.invoke(image, seed)
 
         # NOTE: Moondream currently doesn't respect the seed (TODO figure out why), so this final assertion commented-out for now
         # Check that the captions are different (note: there's a small chance they could be the same by coincidence)

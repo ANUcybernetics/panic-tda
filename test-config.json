@@ -1,10 +1,7 @@
 {
-    "networks": [
-        ["DummyT2I", "DummyI2T"],
-        ["DummyI2T", "DummyT2I"]
-    ],
-    "seeds": [42, 43],
-    "prompts": ["Test prompt 1", "Test prompt 2"],
-    "embedding_models": ["Dummy", "Dummy2"],
-    "max_length": 10
+    "networks": [["DummyT2I", "DummyI2T"]],
+    "seeds": [42],
+    "prompts": ["Test prompt 1"],
+    "embedding_models": ["JinaClip"],
+    "max_length": 2
 }

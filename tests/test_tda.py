@@ -51,17 +51,5 @@ def test_giotto_phd_large_point_cloud(benchmark, n_points):
     # Check that we have diagrams for dimensions 0, 1, and 2
     assert len(diagrams) >= 3
 
-    # Extract the 1-dimensional and 2-dimensional homology features
-    h1_features = diagrams[1]
-    h2_features = diagrams[2]
-
-    # Calculate persistence values
-    h1_persistence = (
-        h1_features[:, 1] - h1_features[:, 0] if len(h1_features) > 0 else []
-    )
-    h2_persistence = (
-        h2_features[:, 1] - h2_features[:, 0] if len(h2_features) > 0 else []
-    )
-
     # Log the size of the point cloud
     print(f"Processed point cloud with {n_points} points in {n_dims} dimensions")

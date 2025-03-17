@@ -3,6 +3,7 @@ import pytest
 from PIL import Image
 
 from trajectory_tracer.embeddings import embed, list_models
+from trajectory_tracer.engine import create_invocation, perform_invocation, create_embedding, perform_embedding
 
 
 def test_dummy_embedding():
@@ -147,6 +148,62 @@ def test_jina_clip_image_embedding():
 
     # Verify determinism
     assert np.array_equal(embedding_vector, embedding_vector2)
+
+
+def test_create_and_perform_embedding_nomic(db_session):
+    """Test creating and performing embedding with Nomic model."""
+
+    # Create an invocation with output
+    input_text = "This is a test for Nomic embedding"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=None,
+        sequence_number=0,
+        session=db_session,
+        seed=42,
+    )
+    invocation = perform_invocation(invocation, input_text, db_session)
+
+    # Create and perform the embedding
+    embedding = create_embedding("Nomic", invocation, db_session)
+    embedding = perform_embedding(embedding, db_session)
+
+    # Check embedding properties
+    assert embedding.vector is not None
+    assert len(embedding.vector) == 768
+    assert embedding.embedding_model == "Nomic"
+    assert embedding.started_at is not None
+    assert embedding.completed_at is not None
+    assert embedding.completed_at >= embedding.started_at
+
+
+def test_create_and_perform_embedding_jinaclip(db_session):
+    """Test creating and performing embedding with JinaClip model."""
+
+    # Create an invocation with output
+    input_text = "This is a test for JinaClip embedding"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=None,
+        sequence_number=0,
+        session=db_session,
+        seed=42,
+    )
+    invocation = perform_invocation(invocation, input_text, db_session)
+
+    # Create and perform the embedding
+    embedding = create_embedding("JinaClip", invocation, db_session)
+    embedding = perform_embedding(embedding, db_session)
+
+    # Check embedding properties
+    assert embedding.vector is not None
+    assert len(embedding.vector) == 768
+    assert embedding.embedding_model == "JinaClip"
+    assert embedding.started_at is not None
+    assert embedding.completed_at is not None
+    assert embedding.completed_at >= embedding.started_at
 
 
 def test_list_models():
