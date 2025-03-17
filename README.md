@@ -61,25 +61,18 @@ example:
 
 ```json
 {
-  "networks": [
-    ["text-to-image", "image-to-text"],
-    ["image-to-text", "text-to-image"]
-  ],
-  "seeds": [42, 100, 500],
-  "prompts": [
-    "A red balloon floating in a clear blue sky",
-    "The concept of time travel explained through dance"
-  ],
-  "embedding_models": ["clip-vit-base-patch32"],
-  "max_length": 10
+  "networks": [["FluxDev", "Moondream"]],
+  "seeds": [42, 56, 545654, 6545],
+  "prompts": ["Test prompt 1"],
+  "embedding_models": ["Nomic"],
+  "max_length": 100
 }
 ```
 
-This configuration will run experiments with two different network topologies
-(text→image→text and image→text→image), three different random seeds, and two
-different prompts. Each run will consist of (max) 10 model invocations.
+The schema for the configuration file is based on `ExperimentConfig` in the
+`schema` module (that's the class it needs to parse cleanly into).
 
-Example usage:
+Then, to "run" the experiment:
 
 ```bash
 # Run an experiment with the above configuration
@@ -91,6 +84,10 @@ trajectory-tracer list-runs
 # Export images from a specific run
 trajectory-tracer export-images 123e4567-e89b-12d3-a456-426614174000
 ```
+
+If you're running it on a remote machine and kicking it off via ssh, you'll
+probably want to use `nohup` or `tmux` or something to keep it running after you
+log out (see `run-experiment.sh` for an example).
 
 ## Why?
 
