@@ -1,5 +1,47 @@
-import json
+# NOTE: all these logging shenanigans are required because it's not otherwise
+# possible to shut pyvips (a dep of moondream) up
 import logging
+import os
+import sys
+
+# Set up logging first, before any handlers might be added by other code
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+# Create a special NullHandler that will silently discard all VIPS messages
+class VIPSNullHandler(logging.Handler):
+    def emit(self, record):
+        pass
+
+# Create a separate logger for VIPS messages
+vips_logger = logging.Logger("VIPS")
+vips_logger.addHandler(VIPSNullHandler())
+vips_logger.propagate = False  # Don't propagate to root logger
+
+# Store the original getLogger method
+original_getLogger = logging.getLogger
+
+# Define a replacement getLogger that catches VIPS loggers
+def patched_getLogger(name=None):
+    if name == "VIPS" or (isinstance(name, str) and "VIPS" in name):
+        return vips_logger
+    return original_getLogger(name)
+
+# Replace the standard getLogger method
+logging.getLogger = patched_getLogger
+
+# Also capture direct root logger messages about VIPS
+original_log = logging.Logger._log
+
+def patched_log(self, level, msg, args, exc_info=None, extra=None, stack_info=False):
+    if isinstance(msg, str) and "VIPS:" in msg:
+        return None  # Skip logging VIPS messages
+    return original_log(self, level, msg, args, exc_info, extra, stack_info)
+
+logging.Logger._log = patched_log
+
+import json
 from pathlib import Path
 from uuid import UUID
 
@@ -14,14 +56,10 @@ from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# Get a logger for this module
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
-
 
 @app.command("run-experiment")
 def run_experiment(
