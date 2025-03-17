@@ -462,6 +462,14 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
 
+        # Check if there are enough embeddings to compute a persistence diagram
+        if len(embeddings) < 2:
+            raise ValueError(f"Not enough embeddings ({len(embeddings)}) to compute a persistence diagram. Need at least 2 points.")
+
+        # Check if the embeddings list is empty
+        if not embeddings:
+            raise ValueError("No embeddings found for this run and embedding model")
+
         # Check that all embeddings have vectors
         missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
         if missing_vectors:
