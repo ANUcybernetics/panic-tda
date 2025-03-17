@@ -33,7 +33,7 @@ def run_experiment(
         dir_okay=False,
     ),
     db_path: Path = typer.Option(
-        "output/trajectory_data.sqlite",
+        "output/db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -88,7 +88,7 @@ def run_experiment(
 @app.command("list-runs")
 def list_runs_command(
     db_path: Path = typer.Option(
-        "output/trajectory_data.sqlite",
+        "output/db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -175,7 +175,7 @@ def export_images(
         help="Directory where images will be saved",
     ),
     db_path: Path = typer.Option(
-        "output/trajectory_data.sqlite",
+        "output/db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -232,7 +232,7 @@ def export_images(
 @app.command("script")
 def script(
     db_path: Path = typer.Option(
-        "output/trajectory_data.sqlite",
+        "output/db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
