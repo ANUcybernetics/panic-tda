@@ -17,7 +17,7 @@ def test_run_experiment_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for CLI testing"],
         "embedding_models": ["Dummy"],
-        "max_run_length": 3,
+        "max_length": 3,
     }
 
     # Save the config to a temp file
@@ -63,7 +63,7 @@ def test_list_runs_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for list-runs"],
         "embedding_models": ["Dummy"],
-        "max_run_length": 2,
+        "max_length": 2,
     }
 
     # Save the config to a temp file
@@ -132,7 +132,7 @@ def test_export_images_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for export-images"],
         "embedding_models": ["Dummy"],
-        "max_run_length": 2,
+        "max_length": 2,
     }
 
     # Save the config to a temp file

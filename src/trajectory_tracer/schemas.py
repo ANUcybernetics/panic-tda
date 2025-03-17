@@ -185,7 +185,7 @@ class Run(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     network: List[str] = Field(default=None, sa_type=JSON)
     seed: int
-    length: int
+    max_length: int
     initial_prompt: str
     invocations: List[Invocation] = Relationship(
         back_populates="run",
@@ -202,8 +202,8 @@ class Run(SQLModel, table=True):
     def validate_fields(self):
         if not self.network:
             raise ValueError("Network list cannot be empty")
-        if self.length <= 0:
-            raise ValueError("Run length must be greater than 0")
+        if self.max_length <= 0:
+            raise ValueError("Max. run length must be greater than 0")
         return self
 
     @property
@@ -225,7 +225,7 @@ class Run(SQLModel, table=True):
             "unknown": If the reason can't be determined
         """
         # Check if we have all invocations up to the specified length
-        if len(self.invocations) == self.length:
+        if len(self.invocations) == self.max_length:
             # Make sure all invocations are complete (have outputs)
             all_complete = all(inv.output is not None for inv in self.invocations)
             if all_complete:
@@ -352,7 +352,7 @@ class ExperimentConfig(BaseModel):
     embedding_models: List[str] = Field(
         ..., description="List of embedding model class names"
     )
-    max_run_length: int = Field(..., description="Number of invocations in each run")
+    max_length: int = Field(..., description="Number of invocations in each run")
 
     @model_validator(mode="after")
     def validate_fields(self):
@@ -364,6 +364,6 @@ class ExperimentConfig(BaseModel):
             raise ValueError("Prompts list cannot be empty")
         if not self.embedding_models:
             raise ValueError("embedding_models list cannot be empty")
-        if self.max_run_length <= 0:
+        if self.max_length <= 0:
             raise ValueError("Run length must be greater than 0")
         return self

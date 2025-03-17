@@ -132,7 +132,7 @@ def list_runs_command(
                 else:
                     # Simple output
                     typer.echo(
-                        f"{run.id} - length: {len(run.invocations)}/{run.length}, stop reason: {run.stop_reason}"
+                        f"{run.id} - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
                     )
 
     except Exception as e:

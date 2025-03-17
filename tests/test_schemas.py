@@ -140,7 +140,7 @@ def test_run_validation_success():
         ),
     ]
 
-    run = Run(id=run_id, seed=1, length=3, network=network, invocations=invocations)
+    run = Run(id=run_id, seed=1, max_length=3, network=network, invocations=invocations)
     assert len(run.invocations) == 3
 
 
@@ -164,7 +164,7 @@ def test_embedding_creation():
 def test_run_network_property():
     """Test the network property serializes and deserializes correctly."""
     network = ["DummyI2T", "DummyT2I"]
-    run = Run(seed=1, length=3, network=network)
+    run = Run(seed=1, max_length=3, network=network)
 
     # Test that we can get the network back as model classes
     retrieved_network = run.network
@@ -181,7 +181,7 @@ def test_experiment_config():
         "seeds": [42, 123],
         "prompts": ["First prompt", "Second prompt"],
         "embedding_models": ["embedding_model1", "embedding_model2"],
-        "max_run_length": 5,
+        "max_length": 5,
     }
 
     # Create a temporary JSON file
@@ -202,7 +202,7 @@ def test_experiment_config():
         assert config.seeds == [42, 123]
         assert config.prompts == ["First prompt", "Second prompt"]
         assert config.embedding_models == ["embedding_model1", "embedding_model2"]
-        assert config.max_run_length == 5
+        assert config.max_length == 5
 
         # Test validation error with unequal list lengths
         invalid_data = config_data.copy()
@@ -225,27 +225,27 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            max_run_length=5,
+            max_length=5,
         )
 
-    # Test zero max_run_length validation
+    # Test zero max_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            max_run_length=0,
+            max_length=0,
         )
 
-    # Test negative max_run_length validation
+    # Test negative max_length validation
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
         ExperimentConfig(
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            max_run_length=-5,
+            max_length=-5,
         )
 
     # Test missing required field
@@ -255,7 +255,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             # Missing embedding_models
-            max_run_length=5,
+            max_length=5,
         )
 
 

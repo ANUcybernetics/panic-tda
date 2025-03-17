@@ -113,7 +113,7 @@ def create_run(
     initial_prompt: str,
     session: Session,
     seed: int = 42,
-    max_run_length: int = None,
+    max_length: int = None,
 ) -> Run:
     """
     Create a new run with the specified parameters.
@@ -123,7 +123,7 @@ def create_run(
         initial_prompt: The text prompt to start the run with
         seed: Random seed for reproducibility
         session: SQLModel Session for database operations
-        max_run_length: Length of the run
+        max_length: Length of the run
 
     Returns:
         The created Run object
@@ -136,7 +136,7 @@ def create_run(
             network=network,
             initial_prompt=initial_prompt,
             seed=seed,
-            length=max_run_length,
+            max_length=max_length,
         )
 
         # Save to database
@@ -176,7 +176,7 @@ def perform_run(run: Run, session: Session) -> Run:
         track_duplicates = run.seed != -1
 
         # Process each invocation in the run
-        for sequence_number in range(run.length):
+        for sequence_number in range(run.max_length):
             # Get the next model in the network (cycling if necessary)
             model_index = sequence_number % network_length
             model_name = run.network[model_index]
@@ -225,7 +225,7 @@ def perform_run(run: Run, session: Session) -> Run:
             previous_invocation_id = invocation.id
 
             logger.debug(
-                f"Completed invocation {sequence_number}/{run.length}: {model_name}"
+                f"Completed invocation {sequence_number}/{run.max_length}: {model_name}"
             )
 
         # Refresh the run to include the invocations
@@ -464,8 +464,8 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
 
         # Check that we have one embedding for each sequence number
         sequence_numbers = set(emb.invocation.sequence_number for emb in embeddings)
-        if len(sequence_numbers) != run.length:
-            missing = set(range(run.length)) - sequence_numbers
+        if len(sequence_numbers) != run.max_length:
+            missing = set(range(run.max_length)) - sequence_numbers
             raise ValueError(
                 f"Run {run.id} is missing embeddings for sequence numbers: {missing}"
             )
@@ -591,7 +591,7 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
                 initial_prompt=prompt,
                 seed=seed,
                 session=session,
-                max_run_length=config.max_run_length,
+                max_length=config.max_length,
             )
 
             # Execute the run

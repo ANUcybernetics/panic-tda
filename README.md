@@ -13,9 +13,7 @@ This repo is a command-line tool:
    sqlite database
 5. using
    [Topological Data Analysis](https://en.wikipedia.org/wiki/Topological_data_analysis)
-   to answer questions like "how did it get from the initial prompt to where it
-   ended up?", "is it stuck in a loop?", "has it done this before?", "which
-   aspect of the system of the have the biggest impact on what happens?"
+   to answer questions like [the ones below](#why)
 
 This work design of this tool was initially motivated by the
 [PANIC! art installation](https://cybernetics.anu.edu.au/news/2022/11/22/panic-a-serendipity-engine/)
@@ -71,7 +69,7 @@ example:
     "The concept of time travel explained through dance"
   ],
   "embedding_models": ["clip-vit-base-patch32"],
-  "run_length": 10
+  "max_length": 10
 }
 ```
 

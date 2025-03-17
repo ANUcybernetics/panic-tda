@@ -156,7 +156,7 @@ def test_perform_run(db_session: Session):
     run = create_run(
         network=network,
         initial_prompt=initial_prompt,
-        max_run_length=10,
+        max_length=10,
         seed=seed,
         session=db_session,
     )
@@ -168,7 +168,7 @@ def test_perform_run(db_session: Session):
     perform_run(run, db_session)
 
     # The run might not complete to full length if duplicates are detected
-    assert len(run.invocations) <= run.length
+    assert len(run.invocations) <= run.max_length
 
     # Verify the sequence of invocations
     for i, invocation in enumerate(run.invocations):
@@ -193,7 +193,7 @@ def test_perform_run(db_session: Session):
     run_no_dup_tracking = create_run(
         network=network,
         initial_prompt=initial_prompt,
-        max_run_length=6,
+        max_length=6,
         seed=-1,  # Special value to disable duplicate tracking
         session=db_session,
     )
@@ -205,7 +205,7 @@ def test_perform_run(db_session: Session):
     perform_run(run_no_dup_tracking, db_session)
 
     # Run should complete to full length since duplicate detection is disabled
-    assert len(run_no_dup_tracking.invocations) == run_no_dup_tracking.length
+    assert len(run_no_dup_tracking.invocations) == run_no_dup_tracking.max_length
 
 
 def test_run_stop_reason(db_session: Session):
@@ -214,7 +214,7 @@ def test_run_stop_reason(db_session: Session):
     run_complete = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for length stop",
-        max_run_length=3,
+        max_length=3,
         seed=-1,  # Use -1 to disable duplicate detection
         session=db_session,
     )
@@ -222,7 +222,7 @@ def test_run_stop_reason(db_session: Session):
     db_session.commit()
 
     # Create and perform the full run
-    for i in range(run_complete.length):
+    for i in range(run_complete.max_length):
         if i == 0:
             input_data = run_complete.initial_prompt
             input_invocation_id = None
@@ -249,7 +249,7 @@ def test_run_stop_reason(db_session: Session):
     run_duplicate = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for duplicate stop",
-        max_run_length=10,  # Long enough that we'd hit duplicates before completing
+        max_length=10,  # Long enough that we'd hit duplicates before completing
         seed=42,  # Use fixed seed to ensure deterministic outputs
         session=db_session,
     )
@@ -286,14 +286,14 @@ def test_run_stop_reason(db_session: Session):
     db_session.refresh(run_duplicate)
     assert run_duplicate.stop_reason == "duplicate"
     assert (
-        len(run_duplicate.invocations) < run_duplicate.length
+        len(run_duplicate.invocations) < run_duplicate.max_length
     )  # Should have stopped early
 
     # Test 'unknown' stop reason - incomplete run
     run_incomplete = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for incomplete run",
-        max_run_length=5,
+        max_length=5,
         seed=43,
         session=db_session,
     )
@@ -453,7 +453,7 @@ def test_run_embeddings_by_model(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for embeddings by model",
-        max_run_length=3,
+        max_length=3,
         seed=42,
         session=db_session,
     )
@@ -586,7 +586,7 @@ def test_perform_experiment(db_session: Session):
         seeds=[42, 43],
         prompts=["Test prompt 1", "Test prompt 2"],
         embedding_models=["Dummy", "Dummy2"],
-        max_run_length=10,  # Short run length for testing
+        max_length=10,  # Short run length for testing
     )
 
     # Perform the experiment
@@ -602,7 +602,7 @@ def test_perform_experiment(db_session: Session):
     # Check that each run has the correct properties and relationships
     for run in runs:
         # Verify run properties
-        assert run.length == 10  # This is the intended run length
+        assert run.max_length == 10  # This is the intended run length
         assert run.seed in [42, 43]
         assert run.initial_prompt in ["Test prompt 1", "Test prompt 2"]
         assert len(run.network) == 2
@@ -646,7 +646,7 @@ def test_create_persistence_diagram(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for persistence diagram",
-        max_run_length=3,
+        max_length=3,
         seed=42,
         session=db_session,
     )
@@ -672,7 +672,7 @@ def test_perform_persistence_diagram(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for performing persistence diagram",
-        max_run_length=3,
+        max_length=3,
         seed=42,
         session=db_session,
     )
@@ -741,7 +741,7 @@ def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for incomplete persistence diagram",
-        max_run_length=3,
+        max_length=3,
         seed=42,
         session=db_session,
     )
@@ -791,9 +791,9 @@ def test_experiment_config_validation():
         seeds=[42],
         prompts=["Test prompt"],
         embedding_models=["Dummy"],
-        max_run_length=5,
+        max_length=5,
     )
-    assert valid_config.max_run_length == 5
+    assert valid_config.max_length == 5
 
     # Test with empty networks list
     try:
@@ -802,7 +802,7 @@ def test_experiment_config_validation():
             seeds=[42],
             prompts=["Test prompt"],
             embedding_models=["Dummy"],
-            max_run_length=5,
+            max_length=5,
         )
         assert False, "Should have raised ValueError for empty networks list"
     except ValueError:

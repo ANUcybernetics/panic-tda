@@ -16,7 +16,7 @@ def test_load_embeddings_df(db_session):
         seeds=[42],
         prompts=["test embedding dataframe"],
         embedding_models=["Dummy", "Dummy2"],
-        max_run_length=2,
+        max_length=2,
     )
 
     # Run the experiment to populate database
@@ -81,7 +81,7 @@ def test_load_persistence_diagram_df(db_session):
         seeds=[42],
         prompts=["test persistence diagram dataframe"],
         embedding_models=["Dummy"],
-        max_run_length=2,
+        max_length=2,
     )
 
     # Run the experiment to populate database

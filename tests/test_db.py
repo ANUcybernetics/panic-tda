@@ -26,7 +26,7 @@ def test_run_creation(db_session: Session):
     """Test creating a Run object."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
     )
     db_session.add(sample_run)
     db_session.commit()
@@ -38,14 +38,14 @@ def test_run_creation(db_session: Session):
     assert retrieved_run.id == sample_run.id
     assert retrieved_run.network == ["model1", "model2"]
     assert retrieved_run.seed == 42
-    assert retrieved_run.length == 5
+    assert retrieved_run.max_length == 5
 
 
 def test_text_invocation(db_session: Session):
     """Test creating a text Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
     )
 
     # Create a sample text invocation
@@ -75,7 +75,7 @@ def test_image_invocation(db_session: Session):
     """Test creating an image Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
     )
 
     # Create a simple test image
@@ -114,7 +114,7 @@ def test_embedding(db_session: Session):
     """Test creating and retrieving an Embedding."""
     # Create a sample text invocation
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
     )
 
     sample_text_invocation = Invocation(
@@ -221,7 +221,7 @@ def test_database_context_manager():
             initial_prompt="testing context manager",
             network=["test"],
             seed=123,
-            length=1,
+            max_length=1,
         )
         session.add(sample_run)
 
@@ -240,7 +240,7 @@ def test_database_context_manager():
                 initial_prompt="should be rolled back",
                 network=["test"],
                 seed=456,
-                length=1,
+                max_length=1,
             )
             session.add(sample_run)
             raise ValueError("Test exception to trigger rollback")
@@ -262,7 +262,7 @@ def test_incomplete_embeddings(db_session: Session):
         initial_prompt="test incomplete embeddings",
         network=["model1"],
         seed=42,
-        length=3,
+        max_length=3,
     )
 
     # Create invocations
@@ -329,7 +329,7 @@ def test_list_invocations(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list invocations", network=["model1"], seed=42, length=3
+        initial_prompt="test list invocations", network=["model1"], seed=42, max_length=3
     )
 
     # Create invocations with different creation times
@@ -378,7 +378,7 @@ def test_list_embeddings(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list embeddings", network=["model1"], seed=42, length=3
+        initial_prompt="test list embeddings", network=["model1"], seed=42, max_length=3
     )
 
     # Create invocations
