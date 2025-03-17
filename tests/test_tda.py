@@ -33,7 +33,7 @@ def test_giotto_phd():
     assert max_persistence > 0.5  # The circle should be clearly detected
 
 
-@pytest.mark.slow
+@pytest.mark.benchmark
 @pytest.mark.parametrize("n_points", range(1000, 11000, 1000))
 def test_giotto_phd_large_point_cloud(benchmark, n_points):
     """Test the giotto_phd function on larger point clouds of increasing size."""
