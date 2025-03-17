@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 
-from sqlmodel import Session, SQLModel, create_engine, select
+# from sqlalchemy import func
+from sqlmodel import Session, SQLModel, create_engine, select, func
 
 from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
 
@@ -135,3 +136,17 @@ def incomplete_persistence_diagrams(session: Session):
         PersistenceDiagram.generators == []
     )
     return session.exec(statement).all()
+
+
+def count_invocations(session: Session) -> int:
+    """
+    Returns the count of invocations in the database.
+
+    Args:
+        session: The database session
+
+    Returns:
+        The number of Invocation records
+    """
+    statement = select(func.count()).select_from(Invocation)
+    return session.exec(statement).one()

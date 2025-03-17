@@ -5,7 +5,7 @@ from uuid import UUID
 
 import typer
 
-from trajectory_tracer.db import get_database, list_runs
+from trajectory_tracer.db import get_database, list_runs, count_invocations
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig, Run
 from trajectory_tracer.utils import export_run_images
@@ -117,7 +117,7 @@ def list_runs_command(
                 typer.echo("No runs found in the database.")
                 return
 
-            typer.echo(f"Found {len(runs)} runs:")
+            typer.echo(f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):")
             for run in runs:
                 if verbose:
                     # Detailed output
