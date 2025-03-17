@@ -1,5 +1,3 @@
-# NOTE: all these logging shenanigans are required because it's not otherwise
-# possible to shut pyvips (a dep of moondream) up
 import json
 import logging
 from pathlib import Path
@@ -14,6 +12,9 @@ from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig, Run
 from trajectory_tracer.utils import export_run_images
+
+# NOTE: all these logging shenanigans are required because it's not otherwise
+# possible to shut pyvips (a dep of moondream) up
 
 # Set up logging first, before any handlers might be added by other code
 logging.basicConfig(
@@ -167,7 +168,7 @@ def list_runs_command(
                 else:
                     # Simple output
                     typer.echo(
-                        f"{run.id} - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
+                        f"{run.id} (seed {run.seed}) - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
                     )
 
     except Exception as e:
