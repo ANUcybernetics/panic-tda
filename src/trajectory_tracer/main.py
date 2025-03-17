@@ -129,9 +129,8 @@ def list_runs_command(
                     typer.echo(f"  Stop reason: {run.stop_reason}")
                 else:
                     # Simple output
-                    status = "Complete" if run.is_complete else "Incomplete"
                     typer.echo(
-                        f"{run.id} - Seed: {run.seed} - {status} ({len(run.invocations)}/{run.length} steps)"
+                        f"{run.id} - length: {len(run.invocations)}/{run.length}, stop reason: {run.stop_reason}"
                     )
 
     except Exception as e:
