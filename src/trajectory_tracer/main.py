@@ -10,6 +10,8 @@ from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig, Run
 from trajectory_tracer.utils import export_run_images
 from trajectory_tracer.analysis import persistance_diagram_benchmark_vis
+from trajectory_tracer.genai_models import list_models
+from trajectory_tracer.embeddings import list_models
 
 # Set up logging
 logging.basicConfig(
@@ -136,6 +138,30 @@ def list_runs_command(
         logger.error(f"Error listing runs: {e}")
         raise typer.Exit(code=1)
 
+
+@app.command("list-models")
+def list_models():
+    """
+    List all available GenAI and embedding models with their output types.
+
+    This is useful when creating experiment configurations and you need to know
+    what models are available and their expected output types.
+    """
+
+    typer.echo("Available GenAI Models:")
+    typer.echo("======================")
+
+    # List GenAI models using the helper function
+    for model_name in genai_models.list_models():
+        output_type = genai_models.get_output_type(model_name).value
+        typer.echo(f"  {model_name:<15} - Output type: {output_type}")
+
+    typer.echo("\nAvailable Embedding Models:")
+    typer.echo("=========================")
+
+    # List embedding models using the helper function
+    for model_name in embeddings.list_models():
+        typer.echo(f"  {model_name}")
 
 @app.command("export-images")
 def export_images(

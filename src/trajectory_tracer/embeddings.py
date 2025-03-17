@@ -259,3 +259,23 @@ def embed(embedding_model_name: str, content: Union[str, Image.Image]) -> np.nda
 
     # Call the embed method with the content
     return model_class.embed(content)
+
+
+def list_models():
+    """
+    Returns a list of all available embedding model names (EmbeddingModel subclasses).
+
+    Returns:
+        list: Names of all available embedding models
+    """
+    current_module = sys.modules[__name__]
+
+    # Find all EmbeddingModel subclasses in this module
+    models = [
+        cls for cls in dir(current_module)
+        if isinstance(getattr(current_module, cls), type)
+        and issubclass(getattr(current_module, cls), EmbeddingModel)
+        and cls != "EmbeddingModel"  # Exclude the base class
+    ]
+
+    return models

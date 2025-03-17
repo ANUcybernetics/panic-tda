@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from trajectory_tracer.embeddings import embed
+from trajectory_tracer.embeddings import embed, list_models
 
 
 def test_dummy_embedding():
@@ -147,3 +147,24 @@ def test_jina_clip_image_embedding():
 
     # Verify determinism
     assert np.array_equal(embedding_vector, embedding_vector2)
+
+
+def test_list_models():
+    """Test that list_models returns a list of available embedding models."""
+
+    # Call the list_models function
+    available_models = list_models()
+
+    # Check that it returns a list
+    assert isinstance(available_models, list)
+
+    # Check that the list is not empty
+    assert len(available_models) > 0
+
+    # Check that it contains the expected models we've tested
+    expected_models = ["Dummy", "Dummy2", "NomicText", "NomicVision", "Nomic", "JinaClip"]
+    for model in expected_models:
+        assert model in available_models
+
+    # Verify the base class is not included
+    assert "EmbeddingModel" not in available_models

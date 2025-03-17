@@ -22,7 +22,7 @@ IMAGE_SIZE = 512
 _MODEL_CACHE = {}
 
 
-class AIModel(BaseModel):
+class GenAIModel(BaseModel):
     output_type: ClassVar[InvocationType] = None
 
     @classmethod
@@ -42,7 +42,7 @@ class AIModel(BaseModel):
 # Text2Image models
 
 
-class FluxDev(AIModel):
+class FluxDev(GenAIModel):
     # name = "FLUX.1-dev"
     # url = "https://huggingface.co/black-forest-labs/FLUX.1-dev"
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
@@ -109,7 +109,7 @@ class FluxDev(AIModel):
         return image
 
 
-class SDXLTurbo(AIModel):
+class SDXLTurbo(GenAIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
     @classmethod
@@ -161,7 +161,7 @@ class SDXLTurbo(AIModel):
 # Image2Text models
 
 
-class Moondream(AIModel):
+class Moondream(GenAIModel):
     # name = "Moondream 2"
     # url = "https://huggingface.co/vikhyatk/moondream2"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
@@ -215,7 +215,7 @@ class Moondream(AIModel):
         return result["caption"]
 
 
-class BLIP2(AIModel):
+class BLIP2(GenAIModel):
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
     @classmethod
@@ -265,7 +265,7 @@ class BLIP2(AIModel):
         return caption
 
 
-class DummyI2T(AIModel):
+class DummyI2T(GenAIModel):
     # name = "dummy image2text"
     output_type: ClassVar[InvocationType] = InvocationType.TEXT
 
@@ -297,7 +297,7 @@ class DummyI2T(AIModel):
             return f"{base_text} (seed {seed})"
 
 
-class DummyT2I(AIModel):
+class DummyT2I(GenAIModel):
     # name = "dummy text2image"
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
@@ -353,15 +353,15 @@ def invoke(model_name: str, input: Union[str, Image], seed: int = -1):
     if not hasattr(current_module, model_name):
         raise ValueError(
             f"Model '{model_name}' not found. Available models: "
-            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}"
+            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), GenAIModel)]}"
         )
 
     # Get the model class
     model_class = getattr(current_module, model_name)
 
-    # Check if it's a subclass of AIModel
-    if not issubclass(model_class, AIModel):
-        raise ValueError(f"'{model_name}' is not an AIModel subclass")
+    # Check if it's a subclass of GenAIModel
+    if not issubclass(model_class, GenAIModel):
+        raise ValueError(f"'{model_name}' is not an GenAIModel subclass")
 
     # Check if CUDA is available before attempting to use non-dummy models
     if not model_name.startswith("Dummy") and not torch.cuda.is_available():
@@ -382,7 +382,7 @@ def get_output_type(model_name: str) -> str:
         The output type (InvocationType.TEXT or InvocationType.IMAGE)
 
     Raises:
-        ValueError: If the model doesn't exist or is not an AIModel subclass
+        ValueError: If the model doesn't exist or is not an GenAIModel subclass
     """
     current_module = sys.modules[__name__]
 
@@ -390,15 +390,15 @@ def get_output_type(model_name: str) -> str:
     if not hasattr(current_module, model_name):
         raise ValueError(
             f"Model '{model_name}' not found. Available models: "
-            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}"
+            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), GenAIModel)]}"
         )
 
     # Get the model class
     model_class = getattr(current_module, model_name)
 
-    # Check if it's a subclass of AIModel
-    if not issubclass(model_class, AIModel):
-        raise ValueError(f"'{model_name}' is not an AIModel subclass")
+    # Check if it's a subclass of GenAIModel
+    if not issubclass(model_class, GenAIModel):
+        raise ValueError(f"'{model_name}' is not an GenAIModel subclass")
 
     # Return the output_type
     return model_class.output_type
@@ -432,3 +432,23 @@ def unload_all_models():
         torch.cuda.synchronize()  # Make sure CUDA operations are completed
 
     print("All models unloaded from GPU.")
+
+
+def list_models():
+    """
+    Returns a list of all available model names (GenAIModel subclasses).
+
+    Returns:
+        list: Names of all available models
+    """
+    current_module = sys.modules[__name__]
+
+    # Find all GenAIModel subclasses in this module
+    models = [
+        cls for cls in dir(current_module)
+        if isinstance(getattr(current_module, cls), type)
+        and issubclass(getattr(current_module, cls), GenAIModel)
+        and cls != "GenAIModel"  # Exclude the base class
+    ]
+
+    return models
