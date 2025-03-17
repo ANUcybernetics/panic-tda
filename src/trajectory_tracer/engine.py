@@ -462,14 +462,6 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
 
-        # Check that we have one embedding for each sequence number
-        sequence_numbers = set(emb.invocation.sequence_number for emb in embeddings)
-        if len(sequence_numbers) != run.max_length:
-            missing = set(range(run.max_length)) - sequence_numbers
-            raise ValueError(
-                f"Run {run.id} is missing embeddings for sequence numbers: {missing}"
-            )
-
         # Check that all embeddings have vectors
         missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
         if missing_vectors:
