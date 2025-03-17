@@ -1,13 +1,6 @@
 # TODO
 
-- write tests for cli commands
-
-- shell script to run it with nohup
-
 - silence logger.info for VIPS things
-
-- make the "test giotto runtime" iterate over pc sizes and log the times to a
-  file?
 
 - add documentation to readme at least (and clean up doco for the code)
 
@@ -23,7 +16,6 @@
     df
   - do some basic vis with altair
   - do some statistical tests with e.g. scikit.learn
-  - wall-clock time plots (so we see what's taking so long)
   - overall (dim-reduced) clustering of the embeddings, colored by the different
     factor levels
   - would love to have some distribution of "length of equilibria" or similar
