@@ -210,7 +210,7 @@ class Moondream(GenAIModel):
             random.seed(seed)
 
         # Generate a normal-length caption for the provided image
-        result = model.caption(image, max_length="short")
+        result = model.caption(image, length="short")
 
         return result["caption"]
 
