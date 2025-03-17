@@ -1,8 +1,11 @@
 import polars as pl
 from sqlmodel import Session
+import json
+import altair as alt
 
 from trajectory_tracer.db import list_embeddings, list_persistence_diagrams
 
+## load the DB objects into dataframes
 
 def load_embeddings_df(session: Session) -> pl.DataFrame:
     """
@@ -76,3 +79,67 @@ def load_persistence_diagram_df(session: Session) -> pl.DataFrame:
 
     # Create a polars DataFrame
     return pl.DataFrame(data)
+
+## visualisation
+
+def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
+    """
+    Visualize PD (Giotto PH) benchmark data from a JSON file using Altair.
+
+    Args:
+        benchmark_file: Path to the JSON benchmark file
+    """
+
+    # Load the benchmark data
+    with open(benchmark_file, 'r') as f:
+        data = json.load(f)
+
+    # Extract benchmark results
+    benchmark_data = []
+    for benchmark in data['benchmarks']:
+        benchmark_data.append({
+            'n_points': benchmark['params']['n_points'],
+            'mean': benchmark['stats']['mean'],
+            'min': benchmark['stats']['min'],
+            'max': benchmark['stats']['max'],
+            'stddev': benchmark['stats']['stddev']
+        })
+
+    # Convert to DataFrame
+    df = pl.DataFrame(benchmark_data)
+
+    # Create Altair chart
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .encode(
+            x=alt.X('n_points:O', title='Number of Points'),
+            y=alt.Y('mean:Q', title='Time (seconds)'),
+            tooltip=['n_points', 'mean', 'min', 'max', 'stddev']
+        )
+        .properties(
+            title="Giotto PH wall-clock time",
+            width=600,
+            height=400
+        )
+    )
+
+    # Add error bars
+    error_bars = (
+        alt.Chart(df)
+        .mark_errorbar()
+        .encode(
+            x=alt.X('n_points:O'),
+            y=alt.Y('min:Q', title='Time (seconds)'),
+            y2=alt.Y2('max:Q')
+        )
+    )
+
+    # Combine the bar chart and error bars
+    combined_chart = (chart + error_bars).configure_axis(
+        labelFontSize=12,
+        titleFontSize=14
+    )
+
+    # Save the chart to a file
+    combined_chart.save('output/vis/giotto_benchmark.html')
