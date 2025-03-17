@@ -9,6 +9,7 @@ from trajectory_tracer.db import get_database, list_runs
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig, Run
 from trajectory_tracer.utils import export_run_images
+from trajectory_tracer.analysis import persistance_diagram_benchmark_vis
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -162,6 +163,32 @@ def export_images(
     except Exception as e:
         logger.error(f"Error exporting images: {e}")
         raise typer.Exit(code=1)
+
+@app.command("script")
+def script(
+    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+):
+    """
+    Execute a Python script in the context of the application.
+
+    This provides access to the application's database and other utilities,
+    allowing for quick development and testing of scripts without needing to set up
+    the environment manually.
+    """
+    try:
+        # Create database connection
+        db_url = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+        database = get_database(connection_string=db_url)
+
+        # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
+
+        logger.info("Script execution completed")
+
+    except Exception as e:
+        logger.error(f"Error executing script: {e}")
+        raise typer.Exit(code=1)
+
 
 if __name__ == "__main__":
     app()
