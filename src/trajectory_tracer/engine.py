@@ -1,6 +1,5 @@
 import itertools
 import logging
-import sys
 from datetime import datetime
 from typing import List, Optional, Union
 from uuid import UUID
@@ -16,7 +15,6 @@ from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
-    InvocationType,
     Run,
 )
 from trajectory_tracer.tda import giotto_phd
@@ -252,38 +250,7 @@ def create_embedding(
 
     Returns:
         An Embedding object without the vector calculated yet
-
-    Raises:
-        ValueError: If the embedding model doesn't exist or if the invocation type is incompatible
     """
-    # Validate that the embedding_model class exists
-    embeddings_module = sys.modules["trajectory_tracer.embeddings"]
-    if not hasattr(embeddings_module, embedding_model):
-        raise ValueError(
-            f"Embedding model '{embedding_model}' not found. Available embedding models: "
-            f"{[cls for cls in dir(embeddings_module) if isinstance(getattr(embeddings_module, cls), type) and issubclass(getattr(embeddings_module, cls), getattr(embeddings_module, 'EmbeddingModel'))]}"
-        )
-
-    # Get the model class and verify it's a valid EmbeddingModel
-    model_class = getattr(embeddings_module, embedding_model)
-    if not issubclass(model_class, getattr(embeddings_module, "EmbeddingModel")):
-        raise ValueError(f"'{embedding_model}' is not an EmbeddingModel subclass")
-
-    # First check if output exists - no embedding can work without output
-    if invocation.output is None:
-        raise ValueError("Cannot embed an invocation with no output")
-
-    # Handle special case for Nomic which dispatches to specific models
-    if embedding_model == "Nomic":
-        if invocation.type == InvocationType.TEXT:
-            return create_embedding("NomicText", invocation, session)
-        elif invocation.type == InvocationType.IMAGE:
-            return create_embedding("NomicVision", invocation, session)
-        else:
-            raise ValueError(
-                f"Unsupported invocation type for nomic embedding: {invocation.type}"
-            )
-
     # Create the embedding object
     embedding = Embedding(
         invocation_id=invocation.id, embedding_model=embedding_model, vector=None
@@ -330,15 +297,8 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
 
         # Get the content to embed from the invocation output
         content = embedding.invocation.output
-
-        # Special handling for Nomic embeddings - need to use the right model based on content type
-        embedding_model = embedding.embedding_model
-        if embedding_model in ("NomicText", "NomicVision"):
-            # Use the generic Nomic embedder which will dispatch based on content type
-            embedding.vector = embed("Nomic", content)
-        else:
-            # Use the embed function from embeddings to calculate the vector
-            embedding.vector = embed(embedding_model, content)
+        # Use the embed function from embeddings to calculate the vector
+        embedding.vector = embed(embedding.embedding_model, content)
 
         # Set the completion timestamp
         embedding.completed_at = datetime.now()

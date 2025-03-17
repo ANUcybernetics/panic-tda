@@ -246,6 +246,15 @@ def embed(embedding_model_name: str, content: Union[str, Image.Image]) -> np.nda
     """
     current_module = sys.modules[__name__]
 
+    # Special case for Nomic to dispatch based on content type
+    if embedding_model_name == "Nomic":
+        if isinstance(content, str):
+            return NomicText.embed(content)
+        elif isinstance(content, Image.Image):
+            return NomicVision.embed(content)
+        else:
+            raise ValueError(f"Unsupported content type for Nomic: {type(content)}")
+
     # Try to find the model class in this module
     if not hasattr(current_module, embedding_model_name):
         raise ValueError(f"embedding_model '{embedding_model_name}' not found.")
