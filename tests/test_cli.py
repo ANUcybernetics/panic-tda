@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+
 # @pytest.mark.slow
 def test_run_experiment_command(tmp_path):
     """Test the run-experiment command with a simple configuration."""
@@ -16,7 +17,7 @@ def test_run_experiment_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for CLI testing"],
         "embedding_models": ["Dummy"],
-        "run_length": 3
+        "run_length": 3,
     }
 
     # Save the config to a temp file
@@ -29,14 +30,23 @@ def test_run_experiment_command(tmp_path):
 
     # Use subprocess to run the command directly
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "run-experiment",
-        str(config_file), "--db-path", str(db_path), "--verbose"
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "run-experiment",
+        str(config_file),
+        "--db-path",
+        str(db_path),
+        "--verbose",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     # Check the result
     assert result.returncode == 0
-    assert "Experiment completed successfully" in result.stdout or "Experiment completed successfully" in result.stderr
+    assert (
+        "Experiment completed successfully" in result.stdout
+        or "Experiment completed successfully" in result.stderr
+    )
     assert db_path.exists()
 
 
@@ -53,7 +63,7 @@ def test_list_runs_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for list-runs"],
         "embedding_models": ["Dummy"],
-        "run_length": 2
+        "run_length": 2,
     }
 
     # Save the config to a temp file
@@ -66,16 +76,25 @@ def test_list_runs_command(tmp_path):
 
     # Run the experiment command first
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "run-experiment",
-        str(config_file), "--db-path", str(db_path)
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "run-experiment",
+        str(config_file),
+        "--db-path",
+        str(db_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 0
 
     # Now test the list-runs command
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "list-runs",
-        "--db-path", str(db_path)
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "list-runs",
+        "--db-path",
+        str(db_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -85,8 +104,13 @@ def test_list_runs_command(tmp_path):
 
     # Test verbose mode
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "list-runs",
-        "--db-path", str(db_path), "--verbose"
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "list-runs",
+        "--db-path",
+        str(db_path),
+        "--verbose",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 0
@@ -108,7 +132,7 @@ def test_export_images_command(tmp_path):
         "seeds": [42],
         "prompts": ["A test prompt for export-images"],
         "embedding_models": ["Dummy"],
-        "run_length": 2
+        "run_length": 2,
     }
 
     # Save the config to a temp file
@@ -122,16 +146,26 @@ def test_export_images_command(tmp_path):
 
     # Run the experiment command first
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "run-experiment",
-        str(config_file), "--db-path", str(db_path)
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "run-experiment",
+        str(config_file),
+        "--db-path",
+        str(db_path),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     assert result.returncode == 0
 
     # Get the run ID from the list command
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "list-runs",
-        "--db-path", str(db_path), "--verbose"
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "list-runs",
+        "--db-path",
+        str(db_path),
+        "--verbose",
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -142,14 +176,24 @@ def test_export_images_command(tmp_path):
 
     # Now test the export-images command for specific run
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "export-images",
-        run_id, "--db-path", str(db_path), "--output-dir", str(output_dir)
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "export-images",
+        run_id,
+        "--db-path",
+        str(db_path),
+        "--output-dir",
+        str(output_dir),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     # Check the result
     assert result.returncode == 0
-    assert "Image export completed successfully" in result.stdout or "Image export completed successfully" in result.stderr
+    assert (
+        "Image export completed successfully" in result.stdout
+        or "Image export completed successfully" in result.stderr
+    )
 
     # Verify image directory was created with run ID
     assert (output_dir / run_id).exists()
@@ -159,13 +203,23 @@ def test_export_images_command(tmp_path):
     # Test export-images for all runs
     all_output_dir = tmp_path / "all_test_images"
     cmd = [
-        sys.executable, "-m", "trajectory_tracer.main", "export-images",
-        "all", "--db-path", str(db_path), "--output-dir", str(all_output_dir)
+        sys.executable,
+        "-m",
+        "trajectory_tracer.main",
+        "export-images",
+        "all",
+        "--db-path",
+        str(db_path),
+        "--output-dir",
+        str(all_output_dir),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     # Check the result
     assert result.returncode == 0
-    assert "Image export completed successfully" in result.stdout or "Image export completed successfully" in result.stderr
+    assert (
+        "Image export completed successfully" in result.stdout
+        or "Image export completed successfully" in result.stderr
+    )
     # Should have created a directory with the same run ID
     assert (all_output_dir / run_id).exists()

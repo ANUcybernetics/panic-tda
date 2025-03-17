@@ -52,7 +52,10 @@ markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 addopts = "-m 'not slow'"
 
 [dependency-groups]
-dev = ["pytest>=8.3.5"]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.11.0",
+]
 
 [tool.ruff.format]
 # Enable preview style formatting.

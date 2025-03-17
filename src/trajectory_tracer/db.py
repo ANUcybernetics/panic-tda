@@ -31,12 +31,15 @@ class Database:
             session.close()
 
 
-def get_database(connection_string: str = "sqlite:///trajectory_tracer.sqlite") -> Database:
+def get_database(
+    connection_string: str = "sqlite:///trajectory_tracer.sqlite",
+) -> Database:
     """Get or create a Database instance with the specified connection string."""
     return Database(connection_string)
 
 
 ## some helper functions
+
 
 def list_invocations(session: Session):
     """
@@ -67,6 +70,7 @@ def list_runs(session: Session):
 
     statement = select(Run)
     return session.exec(statement).all()
+
 
 def list_embeddings(session: Session):
     """
@@ -107,7 +111,11 @@ def incomplete_embeddings(session: Session):
         A list of Embedding objects that have null vector values
     """
 
-    statement = select(Embedding).where(Embedding.vector.is_(None)).order_by(Embedding.embedding_model)
+    statement = (
+        select(Embedding)
+        .where(Embedding.vector.is_(None))
+        .order_by(Embedding.embedding_model)
+    )
     return session.exec(statement).all()
 
 

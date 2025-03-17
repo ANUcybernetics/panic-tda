@@ -6,14 +6,11 @@ from trajectory_tracer.schemas import Invocation, InvocationType, Run
 
 
 def test_create_initial_invocation():
-
     initial_invocation = Invocation(
-        model="DummyT2I",
-        type=InvocationType.IMAGE,
-        seed=12345
+        model="DummyT2I", type=InvocationType.IMAGE, seed=12345
     )
 
-    initial_invocation.output=Image.new('RGB', (100, 100), color='red')
+    initial_invocation.output = Image.new("RGB", (100, 100), color="red")
 
     assert initial_invocation.model == "DummyT2I"  # First model in network
     assert initial_invocation.output
@@ -36,20 +33,16 @@ def test_invocation_duration():
         type=InvocationType.TEXT,
         seed=12345,
         started_at=start_time,
-        completed_at=end_time
+        completed_at=end_time,
     )
 
     # Test that duration is calculated correctly
     assert invocation.duration == (end_time - start_time).total_seconds()
     assert invocation.duration >= 5.0  # Should be around 5 seconds
-    assert invocation.duration < 6.0   # With some tolerance for test execution
+    assert invocation.duration < 6.0  # With some tolerance for test execution
 
     # Test with real time delay
-    invocation = Invocation(
-        model="DummyModel",
-        type=InvocationType.TEXT,
-        seed=12345
-    )
+    invocation = Invocation(model="DummyModel", type=InvocationType.TEXT, seed=12345)
 
     invocation.started_at = datetime.now()
     time.sleep(0.1)  # Small delay
@@ -60,21 +53,13 @@ def test_invocation_duration():
 
 
 def test_invocation_input_property():
-
     # Test case for sequence_number=0
     run = Run(
-        network=["ModelA", "ModelB"],
-        seed=12345,
-        length=5,
-        initial_prompt="test prompt"
+        network=["ModelA", "ModelB"], seed=12345, length=5, initial_prompt="test prompt"
     )
 
     initial_invocation = Invocation(
-        model="ModelA",
-        type=InvocationType.TEXT,
-        seed=12345,
-        sequence_number=0,
-        run=run
+        model="ModelA", type=InvocationType.TEXT, seed=12345, sequence_number=0, run=run
     )
 
     # For sequence_number=0, input should be the run's initial_prompt
@@ -82,11 +67,7 @@ def test_invocation_input_property():
 
     # Test case for sequence_number > 0
     input_invocation = Invocation(
-        model="ModelB",
-        type=InvocationType.TEXT,
-        seed=12345,
-        sequence_number=0,
-        run=run
+        model="ModelB", type=InvocationType.TEXT, seed=12345, sequence_number=0, run=run
     )
     input_invocation.output = "output from previous invocation"
 
@@ -96,7 +77,7 @@ def test_invocation_input_property():
         seed=12345,
         sequence_number=1,
         run=run,
-        input_invocation=input_invocation
+        input_invocation=input_invocation,
     )
 
     # For sequence_number > 0, input should be the output of the previous invocation
@@ -104,11 +85,7 @@ def test_invocation_input_property():
 
     # Test when input_invocation is None for sequence_number > 0
     orphan_invocation = Invocation(
-        model="ModelA",
-        type=InvocationType.TEXT,
-        seed=12345,
-        sequence_number=1,
-        run=run
+        model="ModelA", type=InvocationType.TEXT, seed=12345, sequence_number=1, run=run
     )
 
     assert orphan_invocation.input is None
@@ -117,10 +94,7 @@ def test_invocation_input_property():
 def test_invocation_input_property_with_images():
     # Create a Run
     run = Run(
-        network=["ModelA", "ModelB"],
-        seed=12345,
-        length=5,
-        initial_prompt="test prompt"
+        network=["ModelA", "ModelB"], seed=12345, length=5, initial_prompt="test prompt"
     )
 
     # Create an image input invocation
@@ -129,11 +103,11 @@ def test_invocation_input_property_with_images():
         type=InvocationType.IMAGE,
         seed=12345,
         sequence_number=0,
-        run=run
+        run=run,
     )
 
     # Set an image as output
-    test_image = Image.new('RGB', (100, 100), color='blue')
+    test_image = Image.new("RGB", (100, 100), color="blue")
     input_invocation.output = test_image
 
     # Create a second invocation that takes the first as input
@@ -143,7 +117,7 @@ def test_invocation_input_property_with_images():
         seed=12345,
         sequence_number=1,
         run=run,
-        input_invocation=input_invocation
+        input_invocation=input_invocation,
     )
 
     # Test that the input property returns an image
@@ -157,19 +131,13 @@ def test_invocation_input_property_with_images():
 
 def test_invocation_type():
     # Test TEXT type invocation
-    text_invocation = Invocation(
-        model="DummyT2T",
-        type=InvocationType.TEXT,
-        seed=12345
-    )
+    text_invocation = Invocation(model="DummyT2T", type=InvocationType.TEXT, seed=12345)
 
     assert text_invocation.type == InvocationType.TEXT
 
     # Test IMAGE type invocation
     image_invocation = Invocation(
-        model="DummyT2I",
-        type=InvocationType.IMAGE,
-        seed=12345
+        model="DummyT2I", type=InvocationType.IMAGE, seed=12345
     )
 
     assert image_invocation.type == InvocationType.IMAGE
@@ -179,7 +147,7 @@ def test_invocation_type():
     assert text_invocation.output_text == "text output"
     assert text_invocation.output_image_data is None
 
-    test_image = Image.new('RGB', (50, 50), color='green')
+    test_image = Image.new("RGB", (50, 50), color="green")
     image_invocation.output = test_image
     assert image_invocation.output_text is None
     assert image_invocation.output_image_data is not None

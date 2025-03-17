@@ -22,8 +22,11 @@ from trajectory_tracer.schemas import (
 from trajectory_tracer.tda import giotto_phd
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
 
 def create_invocation(
     model: str,
@@ -32,7 +35,7 @@ def create_invocation(
     sequence_number: int,
     session: Session,
     input_invocation_id: Optional[str] = None,
-    seed: int = 42
+    seed: int = 42,
 ) -> Invocation:
     """
     Create an invocation object based on model type and input.
@@ -59,7 +62,7 @@ def create_invocation(
         run_id=run_id,
         sequence_number=sequence_number,
         input_invocation_id=input_invocation_id,
-        seed=seed
+        seed=seed,
     )
 
     # Save to database
@@ -70,7 +73,10 @@ def create_invocation(
     logger.debug(f"Created invocation with ID: {invocation.id}")
     return invocation
 
-def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], session: Session) -> Invocation:
+
+def perform_invocation(
+    invocation: Invocation, input: Union[str, Image.Image], session: Session
+) -> Invocation:
     """
     Perform the actual model invocation and update the invocation object with the result.
 
@@ -83,7 +89,9 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
         The updated invocation with output
     """
     try:
-        logger.debug(f"Invoking model {invocation.model} with {type(input).__name__} input")
+        logger.debug(
+            f"Invoking model {invocation.model} with {type(input).__name__} input"
+        )
         invocation.started_at = datetime.now()
         result = invoke(invocation.model, input, invocation.seed)
         invocation.completed_at = datetime.now()
@@ -100,7 +108,13 @@ def perform_invocation(invocation: Invocation, input: Union[str, Image.Image], s
         raise
 
 
-def create_run(network: List[str], initial_prompt: str, session: Session, seed: int = 42, run_length: int = None) -> Run:
+def create_run(
+    network: List[str],
+    initial_prompt: str,
+    session: Session,
+    seed: int = 42,
+    run_length: int = None,
+) -> Run:
     """
     Create a new run with the specified parameters.
 
@@ -119,10 +133,7 @@ def create_run(network: List[str], initial_prompt: str, session: Session, seed: 
 
         # Create run object
         run = Run(
-            network=network,
-            initial_prompt=initial_prompt,
-            seed=seed,
-            length=run_length
+            network=network, initial_prompt=initial_prompt, seed=seed, length=run_length
         )
 
         # Save to database
@@ -175,7 +186,7 @@ def perform_run(run: Run, session: Session) -> Run:
                 sequence_number=sequence_number,
                 input_invocation_id=previous_invocation_id,
                 seed=run.seed,
-                session=session
+                session=session,
             )
 
             # Execute the invocation
@@ -190,6 +201,7 @@ def perform_run(run: Run, session: Session) -> Run:
                 elif isinstance(invocation.output, Image.Image):
                     # Convert image to a bytes representation for hashing
                     import io
+
                     buffer = io.BytesIO()
                     # TODO if the duplicate-tracking for images is too aggressive, bump up the quality
                     invocation.output.save(buffer, format="JPEG", quality=30)
@@ -199,7 +211,9 @@ def perform_run(run: Run, session: Session) -> Run:
                     hashable_output = str(invocation.output)
 
                 if hashable_output in seen_outputs:
-                    logger.info(f"Detected duplicate output in run {run.id} at sequence {sequence_number}. Stopping run.")
+                    logger.info(
+                        f"Detected duplicate output in run {run.id} at sequence {sequence_number}. Stopping run."
+                    )
                     break
                 seen_outputs.add(hashable_output)
 
@@ -207,7 +221,9 @@ def perform_run(run: Run, session: Session) -> Run:
             current_input = invocation.output
             previous_invocation_id = invocation.id
 
-            logger.debug(f"Completed invocation {sequence_number}/{run.length}: {model_name}")
+            logger.debug(
+                f"Completed invocation {sequence_number}/{run.length}: {model_name}"
+            )
 
         # Refresh the run to include the invocations
         session.refresh(run)
@@ -220,7 +236,9 @@ def perform_run(run: Run, session: Session) -> Run:
         raise
 
 
-def create_embedding(embedding_model: str, invocation: Invocation, session: Session = None) -> Embedding:
+def create_embedding(
+    embedding_model: str, invocation: Invocation, session: Session = None
+) -> Embedding:
     """
     Create an empty embedding object for the specified embedding model and persist it to the database.
 
@@ -238,12 +256,14 @@ def create_embedding(embedding_model: str, invocation: Invocation, session: Sess
     # Validate that the embedding_model class exists
     embeddings_module = sys.modules["trajectory_tracer.embeddings"]
     if not hasattr(embeddings_module, embedding_model):
-        raise ValueError(f"Embedding model '{embedding_model}' not found. Available embedding models: "
-                         f"{[cls for cls in dir(embeddings_module) if isinstance(getattr(embeddings_module, cls), type) and issubclass(getattr(embeddings_module, cls), getattr(embeddings_module, 'EmbeddingModel'))]}")
+        raise ValueError(
+            f"Embedding model '{embedding_model}' not found. Available embedding models: "
+            f"{[cls for cls in dir(embeddings_module) if isinstance(getattr(embeddings_module, cls), type) and issubclass(getattr(embeddings_module, cls), getattr(embeddings_module, 'EmbeddingModel'))]}"
+        )
 
     # Get the model class and verify it's a valid EmbeddingModel
     model_class = getattr(embeddings_module, embedding_model)
-    if not issubclass(model_class, getattr(embeddings_module, 'EmbeddingModel')):
+    if not issubclass(model_class, getattr(embeddings_module, "EmbeddingModel")):
         raise ValueError(f"'{embedding_model}' is not an EmbeddingModel subclass")
 
     # First check if output exists - no embedding can work without output
@@ -257,18 +277,20 @@ def create_embedding(embedding_model: str, invocation: Invocation, session: Sess
         elif invocation.type == InvocationType.IMAGE:
             return create_embedding("NomicVision", invocation, session)
         else:
-            raise ValueError(f"Unsupported invocation type for nomic embedding: {invocation.type}")
+            raise ValueError(
+                f"Unsupported invocation type for nomic embedding: {invocation.type}"
+            )
 
     # Create the embedding object
     embedding = Embedding(
-        invocation_id=invocation.id,
-        embedding_model=embedding_model,
-        vector=None
+        invocation_id=invocation.id, embedding_model=embedding_model, vector=None
     )
 
     # Save to database if session is provided
     if session:
-        logger.debug(f"Persisting empty embedding for invocation {invocation.id} with embedding model {embedding_model}")
+        logger.debug(
+            f"Persisting empty embedding for invocation {invocation.id} with embedding model {embedding_model}"
+        )
         session.add(embedding)
         session.commit()
         session.refresh(embedding)
@@ -292,7 +314,9 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         ValueError: If the embedding doesn't have an associated invocation
     """
     try:
-        logger.debug(f"Computing vector for embedding {embedding.id} with {embedding.embedding_model}")
+        logger.debug(
+            f"Computing vector for embedding {embedding.id} with {embedding.embedding_model}"
+        )
 
         # Make sure we have the invocation data
         if not embedding.invocation:
@@ -349,19 +373,25 @@ def compute_missing_embeds(session: Session) -> int:
         for embedding in incomplete:
             try:
                 # Generate the embedding
-                logger.debug(f"Processing embedding {embedding.id} for invocation {embedding.invocation_id} with model {embedding.embedding_model}")
+                logger.debug(
+                    f"Processing embedding {embedding.id} for invocation {embedding.invocation_id} with model {embedding.embedding_model}"
+                )
 
                 # Perform the embedding calculation
                 perform_embedding(embedding, session)
 
                 processed_count += 1
-                logger.debug(f"Successfully processed embedding {processed_count}/{total_to_process}")
+                logger.debug(
+                    f"Successfully processed embedding {processed_count}/{total_to_process}"
+                )
 
             except Exception as e:
                 logger.error(f"Error processing embedding {embedding.id}: {e}")
                 session.rollback()
 
-        logger.debug(f"Completed processing {processed_count}/{total_to_process} missing embeddings")
+        logger.debug(
+            f"Completed processing {processed_count}/{total_to_process} missing embeddings"
+        )
         return processed_count
 
     except Exception as e:
@@ -383,13 +413,13 @@ def create_persistence_diagram(run_id: UUID, embedding_model: str, session: Sess
     from trajectory_tracer.schemas import PersistenceDiagram
 
     try:
-        logger.debug(f"Creating persistence diagram for run {run_id} and embedding model {embedding_model}")
+        logger.debug(
+            f"Creating persistence diagram for run {run_id} and embedding model {embedding_model}"
+        )
 
         # Create persistence diagram object with empty generators
         pd = PersistenceDiagram(
-            run_id=run_id,
-            embedding_model=embedding_model,
-            generators=[]
+            run_id=run_id, embedding_model=embedding_model, generators=[]
         )
 
         # Save to database
@@ -433,15 +463,21 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
         sequence_numbers = set(emb.invocation.sequence_number for emb in embeddings)
         if len(sequence_numbers) != run.length:
             missing = set(range(run.length)) - sequence_numbers
-            raise ValueError(f"Run {run.id} is missing embeddings for sequence numbers: {missing}")
+            raise ValueError(
+                f"Run {run.id} is missing embeddings for sequence numbers: {missing}"
+            )
 
         # Check that all embeddings have vectors
         missing_vectors = [emb.id for emb in embeddings if emb.vector is None]
         if missing_vectors:
-            raise ValueError(f"Run {run.id} has embeddings without vectors: {missing_vectors}")
+            raise ValueError(
+                f"Run {run.id} has embeddings without vectors: {missing_vectors}"
+            )
 
         # Sort embeddings by sequence number
-        sorted_embeddings = sorted(embeddings, key=lambda e: e.invocation.sequence_number)
+        sorted_embeddings = sorted(
+            embeddings, key=lambda e: e.invocation.sequence_number
+        )
 
         # Create point cloud from embedding vectors
         point_cloud = np.array([emb.vector for emb in sorted_embeddings])
@@ -466,6 +502,7 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
     except Exception as e:
         logger.error(f"Error computing persistence diagram: {e}")
         raise
+
 
 def compute_missing_persistence_diagrams(session: Session) -> int:
     """
@@ -492,14 +529,22 @@ def compute_missing_persistence_diagrams(session: Session) -> int:
         processed_count = 0
         for i, pd in enumerate(incomplete_pds):
             try:
-                logger.debug(f"Computing persistence diagram {i+1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id}")
+                logger.debug(
+                    f"Computing persistence diagram {i + 1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id}"
+                )
                 perform_persistence_diagram(pd, session)
                 processed_count += 1
-                logger.debug(f"Completed persistence diagram {i+1}/{total_to_process} (ID: {pd.id})")
+                logger.debug(
+                    f"Completed persistence diagram {i + 1}/{total_to_process} (ID: {pd.id})"
+                )
             except Exception as e:
-                logger.error(f"Error computing persistence diagram {i+1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id} with embedding model {pd.embedding_model}: {e}")
+                logger.error(
+                    f"Error computing persistence diagram {i + 1}/{total_to_process} (ID: {pd.id}) for run {pd.run_id} with embedding model {pd.embedding_model}: {e}"
+                )
 
-        logger.debug(f"Completed processing {processed_count}/{total_to_process} missing persistence diagrams")
+        logger.debug(
+            f"Completed processing {processed_count}/{total_to_process} missing persistence diagrams"
+        )
         return processed_count
 
     except Exception as e:
@@ -517,63 +562,83 @@ def perform_experiment(config: ExperimentConfig, session: Session) -> None:
         session: SQLModel Session for database operations
     """
     # Generate cartesian product of all parameters
-    combinations = list(itertools.product(
-        config.networks,
-        config.seeds,
-        config.prompts,
-    ))
+    combinations = list(
+        itertools.product(
+            config.networks,
+            config.seeds,
+            config.prompts,
+        )
+    )
 
     total_combinations = len(combinations)
-    logger.debug(f"Starting experiment with {total_combinations} total run configurations")
+    logger.debug(
+        f"Starting experiment with {total_combinations} total run configurations"
+    )
 
     # Process each combination
     successful_runs = 0
     for i, (network, seed, prompt) in enumerate(combinations):
         try:
             # Create the run
-            logger.debug(f"Creating run {i+1}/{total_combinations}: {network} with seed {seed}")
+            logger.debug(
+                f"Creating run {i + 1}/{total_combinations}: {network} with seed {seed}"
+            )
             run = create_run(
                 network=network,
                 initial_prompt=prompt,
                 seed=seed,
                 session=session,
-                run_length=config.run_length
+                run_length=config.run_length,
             )
 
             # Execute the run
-            logger.debug(f"Executing run {i+1}/{total_combinations} (ID: {run.id})")
+            logger.debug(f"Executing run {i + 1}/{total_combinations} (ID: {run.id})")
             run = perform_run(run, session)
-            logger.debug(f"Model invocations complete for run {i+1}/{total_combinations} (ID: {run.id})")
+            logger.debug(
+                f"Model invocations complete for run {i + 1}/{total_combinations} (ID: {run.id})"
+            )
 
             # create "empty" embedding objects - will fill in the vectors later
             for embedding_model in config.embedding_models:
-                logger.debug(f"Creating empty embeddings for model {embedding_model} in run {run.id}")
+                logger.debug(
+                    f"Creating empty embeddings for model {embedding_model} in run {run.id}"
+                )
                 for j, invocation in enumerate(run.invocations):
                     embedding = create_embedding(embedding_model, invocation, session)
-                    logger.debug(f"Created empty embedding {embedding.id} for invocation {invocation.id} ({j+1}/{len(run.invocations)})")
+                    logger.debug(
+                        f"Created empty embedding {embedding.id} for invocation {invocation.id} ({j + 1}/{len(run.invocations)})"
+                    )
 
                 # Create empty persistence diagram for this run and embedding model
                 pd = create_persistence_diagram(run.id, embedding_model, session)
-                logger.debug(f"Created empty persistence diagram {pd.id} for run {run.id} with model {embedding_model}")
+                logger.debug(
+                    f"Created empty persistence diagram {pd.id} for run {run.id} with model {embedding_model}"
+                )
 
             successful_runs += 1
-            logger.info(f"Completed run {i+1}/{total_combinations} (ID: {run.id})")
+            logger.info(f"Completed run {i + 1}/{total_combinations} (ID: {run.id})")
             # Unload all AI models from memory after each run to conserve GPU resources
             unload_all_models()
 
         except Exception as e:
-            logger.error(f"Error processing run {i+1}/{total_combinations}: {e}")
+            logger.error(f"Error processing run {i + 1}/{total_combinations}: {e}")
             unload_all_models()
             # Continue with next run even if this one fails
 
     # Compute embeddings for all runs
-    logger.debug(f"Starting computation of embeddings for all {successful_runs} successful runs")
+    logger.debug(
+        f"Starting computation of embeddings for all {successful_runs} successful runs"
+    )
     processed_embeddings = compute_missing_embeds(session)
-    logger.info(f"Completed computation of {processed_embeddings} embeddings across all runs")
+    logger.info(
+        f"Completed computation of {processed_embeddings} embeddings across all runs"
+    )
 
     # After all embeddings are computed, calculate persistence diagrams
     logger.debug("Starting computation of persistence diagrams for all runs")
     processed_pds = compute_missing_persistence_diagrams(session)
-    logger.info(f"Completed computation of {processed_pds} persistence diagrams across all runs")
+    logger.info(
+        f"Completed computation of {processed_pds} persistence diagrams across all runs"
+    )
 
     logger.info(f"Experiment completed with {successful_runs} successful runs")

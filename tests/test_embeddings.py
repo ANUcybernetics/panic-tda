@@ -53,7 +53,7 @@ def test_nomic_text_embedding():
 def test_nomic_vision_embedding():
     """Test that the nomic vision embedding returns a valid embedding vector."""
     # Create a sample image (red square)
-    image = Image.new('RGB', (100, 100), color='red')
+    image = Image.new("RGB", (100, 100), color="red")
 
     # Get the embedding using the actual model
     embedding_vector = embed("NomicVision", image)
@@ -89,7 +89,7 @@ def test_nomic_combined_embedding():
     assert np.array_equal(text_embedding, text_embedding2)
 
     # Test with image
-    image = Image.new('RGB', (100, 100), color='green')
+    image = Image.new("RGB", (100, 100), color="green")
     image_embedding = embed("Nomic", image)
     image_embedding2 = embed("Nomic", image)
 
@@ -129,7 +129,7 @@ def test_jina_clip_text_embedding():
 def test_jina_clip_image_embedding():
     """Test that the JinaClip embedding returns a valid embedding vector for images."""
     # Create a sample image (blue square)
-    image = Image.new('RGB', (100, 100), color='blue')
+    image = Image.new("RGB", (100, 100), color="blue")
 
     # Get the embedding using the actual model
     embedding_vector = embed("JinaClip", image)

@@ -12,16 +12,33 @@ from trajectory_tracer.utils import export_run_images
 from trajectory_tracer.analysis import persistance_diagram_benchmark_vis
 
 # Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 
+
 @app.command("run-experiment")
 def run_experiment(
-    config_file: Path = typer.Argument(..., help="Path to the configuration JSON file", exists=True, readable=True, file_okay=True, dir_okay=False),
-    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output")
+    config_file: Path = typer.Argument(
+        ...,
+        help="Path to the configuration JSON file",
+        exists=True,
+        readable=True,
+        file_okay=True,
+        dir_okay=False,
+    ),
+    db_path: Path = typer.Option(
+        "output/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
 ):
     """
     Run a trajectory tracer experiment defined in CONFIG_FILE.
@@ -37,13 +54,15 @@ def run_experiment(
     logger.info(f"Loading configuration from {config_file}")
 
     try:
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             config_data = json.load(f)
 
         # Create experiment config from JSON
         config = ExperimentConfig(**config_data)
-        logger.info(f"Configuration loaded successfully: {len(config.networks)} networks, "
-                   f"{len(config.seeds)} seeds, {len(config.prompts)} prompts")
+        logger.info(
+            f"Configuration loaded successfully: {len(config.networks)} networks, "
+            f"{len(config.seeds)} seeds, {len(config.prompts)} prompts"
+        )
 
         # Create database engine and tables
         db_url = f"sqlite:///{db_path}"
@@ -66,8 +85,15 @@ def run_experiment(
 
 @app.command("list-runs")
 def list_runs_command(
-    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show full run details")
+    db_path: Path = typer.Option(
+        "output/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show full run details"
+    ),
 ):
     """
     List all runs stored in the database.
@@ -83,7 +109,6 @@ def list_runs_command(
 
         # List all runs
         with database.get_session() as session:
-
             runs = list_runs(session)
 
             if not runs:
@@ -104,7 +129,9 @@ def list_runs_command(
                 else:
                     # Simple output
                     status = "Complete" if run.is_complete else "Incomplete"
-                    typer.echo(f"{run.id} - Seed: {run.seed} - {status} ({len(run.invocations)}/{run.length} steps)")
+                    typer.echo(
+                        f"{run.id} - Seed: {run.seed} - {status} ({len(run.invocations)}/{run.length} steps)"
+                    )
 
     except Exception as e:
         logger.error(f"Error listing runs: {e}")
@@ -113,9 +140,22 @@ def list_runs_command(
 
 @app.command("export-images")
 def export_images(
-    run_id: str = typer.Argument(..., help="ID of the run to export images from (or 'all' to export from all runs)"),
-    output_dir: str = typer.Option("output/images", "--output-dir", "-o", help="Directory where images will be saved"),
-    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    run_id: str = typer.Argument(
+        ...,
+        help="ID of the run to export images from (or 'all' to export from all runs)",
+    ),
+    output_dir: str = typer.Option(
+        "output/images",
+        "--output-dir",
+        "-o",
+        help="Directory where images will be saved",
+    ),
+    db_path: Path = typer.Option(
+        "output/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
 ):
     """
     Export all image invocations from a run to JPEG files with embedded metadata.
@@ -164,9 +204,15 @@ def export_images(
         logger.error(f"Error exporting images: {e}")
         raise typer.Exit(code=1)
 
+
 @app.command("script")
 def script(
-    db_path: Path = typer.Option("output/trajectory_data.sqlite", "--db-path", "-d", help="Path to the SQLite database file"),
+    db_path: Path = typer.Option(
+        "output/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
 ):
     """
     Execute a Python script in the context of the application.

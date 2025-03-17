@@ -1,0 +1,26 @@
+{
+    "networks": [
+        ["FluxDev", "Moondream"],
+        ["SDXLTurbo", "Moondream"],
+        ["FluxDev", "Nomic"],
+        ["SDXLTurbo", "Nomic"]
+    ],
+    "seeds": [
+        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, -1, -1, -1,
+        -1, -1
+    ],
+    "prompts": [
+        "a red ball on a blue background",
+        "a blue ball on a red background",
+        "une boule rouge sur fond bleu",
+        "a horse riding an astronaut",
+        "the unbearable lightness of being",
+        "do the previous thing, but make it more!",
+        "a cyberpunk city at sunset with neon signs",
+        "an impressionist painting of a garden in spring",
+        "surreal landscape with floating islands and waterfalls",
+        "a detailed pencil sketch of an ancient mechanical device"
+    ],
+    "embedding_models": ["Nomic", "JinaClip"],
+    "run_length": 5000
+}

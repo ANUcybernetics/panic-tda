@@ -11,7 +11,9 @@ from trajectory_tracer.schemas import InvocationType, Run
 logger = logging.getLogger(__name__)
 
 
-def export_run_images(run: Run, session: Session, output_dir: str = "output/images") -> None:
+def export_run_images(
+    run: Run, session: Session, output_dir: str = "output/images"
+) -> None:
     """
     Export all image invocations from a run to webp files.
 
@@ -61,7 +63,7 @@ def export_run_images(run: Run, session: Session, output_dir: str = "output/imag
                 "prompt": prompt_text,
                 "model": invocation.model,
                 "sequence_number": str(invocation.sequence_number),
-                "seed": str(invocation.seed)
+                "seed": str(invocation.seed),
             }
 
             # Convert to RGB mode for JPEG format
@@ -71,12 +73,14 @@ def export_run_images(run: Run, session: Session, output_dir: str = "output/imag
             exif_data = img_with_metadata.getexif()
 
             # Store metadata in EXIF - UserComment tag (0x9286)
-            exif_data[0x9286] = json.dumps(metadata).encode('utf-8')
+            exif_data[0x9286] = json.dumps(metadata).encode("utf-8")
 
             # Save image with EXIF metadata
             img_with_metadata.save(file_path, format="JPEG", quality=95, exif=exif_data)
 
-            logger.info(f"Saved image with embedded metadata for invocation {invocation.id} to {file_path}")
+            logger.info(
+                f"Saved image with embedded metadata for invocation {invocation.id} to {file_path}"
+            )
 
         except Exception as e:
             logger.error(f"Error exporting image for invocation {invocation.id}: {e}")

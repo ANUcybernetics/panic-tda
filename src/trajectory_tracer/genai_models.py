@@ -41,6 +41,7 @@ class AIModel(BaseModel):
 
 # Text2Image models
 
+
 class FluxDev(AIModel):
     # name = "FLUX.1-dev"
     # url = "https://huggingface.co/black-forest-labs/FLUX.1-dev"
@@ -54,8 +55,7 @@ class FluxDev(AIModel):
 
         # Initialize the model with appropriate settings for GPU
         pipe = FluxPipeline.from_pretrained(
-            "black-forest-labs/FLUX.1-dev",
-            torch_dtype=torch.bfloat16
+            "black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16
         )
 
         # Explicitly move to CUDA
@@ -70,7 +70,7 @@ class FluxDev(AIModel):
                     original_forward,
                     mode="reduce-overhead",
                     fullgraph=False,  # Important for complex models
-                    dynamic=True      # Handle variable input sizes
+                    dynamic=True,  # Handle variable input sizes
                 )
         except Exception as e:
             print(f"Warning: Could not compile FluxDev UNet forward method: {e}")
@@ -103,7 +103,7 @@ class FluxDev(AIModel):
             width=IMAGE_SIZE,
             guidance_scale=3.5,
             num_inference_steps=20,
-            generator=generator  # Use provided seed or random
+            generator=generator,  # Use provided seed or random
         ).images[0]
 
         return image
@@ -120,9 +120,7 @@ class SDXLTurbo(AIModel):
 
         # Initialize the model with appropriate settings for GPU
         pipe = AutoPipelineForText2Image.from_pretrained(
-            "stabilityai/sdxl-turbo",
-            torch_dtype=torch.float16,
-            variant="fp16"
+            "stabilityai/sdxl-turbo", torch_dtype=torch.float16, variant="fp16"
         )
 
         # Explicitly move to CUDA
@@ -153,14 +151,15 @@ class SDXLTurbo(AIModel):
             height=IMAGE_SIZE,
             width=IMAGE_SIZE,
             num_inference_steps=4,  # SDXL-Turbo works with very few steps
-            guidance_scale=0.0,     # Typically uses zero guidance scale
-            generator=generator  # Use provided seed or random
+            guidance_scale=0.0,  # Typically uses zero guidance scale
+            generator=generator,  # Use provided seed or random
         ).images[0]
 
         return image
 
 
 # Image2Text models
+
 
 class Moondream(AIModel):
     # name = "Moondream 2"
@@ -175,9 +174,7 @@ class Moondream(AIModel):
 
         # Initialize the model and move to GPU
         model = AutoModelForCausalLM.from_pretrained(
-            "vikhyatk/moondream2",
-            revision="2025-01-09",
-            trust_remote_code=True
+            "vikhyatk/moondream2", revision="2025-01-09", trust_remote_code=True
         ).to("cuda")
 
         # Compile the model if it has a forward method
@@ -230,9 +227,7 @@ class BLIP2(AIModel):
         # Initialize the model with half-precision
         processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
         model = Blip2ForConditionalGeneration.from_pretrained(
-            "Salesforce/blip2-opt-2.7b",
-            torch_dtype=torch.float16,
-            device_map="auto"
+            "Salesforce/blip2-opt-2.7b", torch_dtype=torch.float16, device_map="auto"
         )
 
         return {"processor": processor, "model": model}
@@ -264,11 +259,7 @@ class BLIP2(AIModel):
         inputs = processor(image, return_tensors="pt").to("cuda", torch.float16)
 
         # Generate the caption with the specified seed
-        generated_ids = model.generate(
-            **inputs,
-            max_length=50,
-            do_sample=True
-        )
+        generated_ids = model.generate(**inputs, max_length=50, do_sample=True)
         caption = processor.decode(generated_ids[0], skip_special_tokens=True)
 
         return caption
@@ -337,7 +328,7 @@ class DummyT2I(AIModel):
         b = random.randint(0, 255)
 
         # Create an image with the random color
-        dummy_image = Image.new('RGB', (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
+        dummy_image = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
         return dummy_image
 
 
@@ -360,8 +351,10 @@ def invoke(model_name: str, input: Union[str, Image], seed: int = -1):
 
     # Try to find the model class in this module
     if not hasattr(current_module, model_name):
-        raise ValueError(f"Model '{model_name}' not found. Available models: "
-                         f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}")
+        raise ValueError(
+            f"Model '{model_name}' not found. Available models: "
+            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}"
+        )
 
     # Get the model class
     model_class = getattr(current_module, model_name)
@@ -395,8 +388,10 @@ def get_output_type(model_name: str) -> str:
 
     # Try to find the model class in this module
     if not hasattr(current_module, model_name):
-        raise ValueError(f"Model '{model_name}' not found. Available models: "
-                         f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}")
+        raise ValueError(
+            f"Model '{model_name}' not found. Available models: "
+            f"{[cls for cls in dir(current_module) if isinstance(getattr(current_module, cls), type) and issubclass(getattr(current_module, cls), AIModel)]}"
+        )
 
     # Get the model class
     model_class = getattr(current_module, model_name)
@@ -418,13 +413,13 @@ def unload_all_models():
         # Handle different model types differently
         try:
             # For models with an explicit to() method (like diffusers pipelines)
-            if hasattr(model, 'to') and callable(model.to):
-                model.to('cpu')  # Move to CPU first
+            if hasattr(model, "to") and callable(model.to):
+                model.to("cpu")  # Move to CPU first
             # For dictionary of components (like BLIP2)
             elif isinstance(model, dict):
                 for component_name, component in model.items():
-                    if hasattr(component, 'to') and callable(component.to):
-                        component.to('cpu')
+                    if hasattr(component, "to") and callable(component.to):
+                        component.to("cpu")
         except Exception as e:
             print(f"Warning: Error unloading model {model_name}: {e}")
 

@@ -28,7 +28,7 @@ def test_create_image_to_text_invocation(db_session: Session):
     """Test that create_invocation correctly initializes an invocation object with image input."""
     run_id = uuid7()
     # Create a test image as input instead of text
-    image_input = Image.new('RGB', (100, 100), color='red')
+    image_input = Image.new("RGB", (100, 100), color="red")
     model = "DummyI2T"  # DummyI2T is an Image-to-Text model
     sequence_number = 0
     seed = 12345
@@ -39,7 +39,7 @@ def test_create_image_to_text_invocation(db_session: Session):
         run_id=run_id,
         sequence_number=sequence_number,
         session=db_session,
-        seed=seed
+        seed=seed,
     )
 
     assert image_to_text_invocation.model == model
@@ -49,13 +49,15 @@ def test_create_image_to_text_invocation(db_session: Session):
     assert image_to_text_invocation.seed == seed
     assert image_to_text_invocation.input_invocation_id is None
     assert image_to_text_invocation.output is None
-    assert image_to_text_invocation.id is not None  # Should have an ID since it was saved to DB
+    assert (
+        image_to_text_invocation.id is not None
+    )  # Should have an ID since it was saved to DB
 
 
 def test_create_image_invocation(db_session: Session):
     """Test that create_invocation correctly initializes an invocation object with image input."""
     run_id = uuid7()
-    image_input = Image.new('RGB', (100, 100), color='red')
+    image_input = Image.new("RGB", (100, 100), color="red")
     model = "DummyT2I"
     sequence_number = 1
     seed = 12345
@@ -68,7 +70,7 @@ def test_create_image_invocation(db_session: Session):
         sequence_number=sequence_number,
         input_invocation_id=input_invocation_id,
         session=db_session,
-        seed=seed
+        seed=seed,
     )
 
     assert image_invocation.model == model
@@ -93,7 +95,7 @@ def test_perform_invocation_text(db_session: Session):
         type=InvocationType.IMAGE,  # Changed to IMAGE since DummyT2I produces images
         run_id=run_id,
         sequence_number=0,
-        seed=42
+        seed=42,
     )
     db_session.add(invocation)
     db_session.commit()
@@ -107,14 +109,16 @@ def test_perform_invocation_text(db_session: Session):
     assert isinstance(result.output, Image.Image)
     assert result.started_at is not None  # Check that started_at is set
     assert result.completed_at is not None  # Check that completed_at is set
-    assert result.completed_at >= result.started_at  # Completion should be after or equal to start
+    assert (
+        result.completed_at >= result.started_at
+    )  # Completion should be after or equal to start
 
 
 def test_perform_invocation_image(db_session: Session):
     """Test that perform_invocation correctly handles image input with a dummy model."""
 
     run_id = uuid7()
-    image_input = Image.new('RGB', (100, 100), color='blue')
+    image_input = Image.new("RGB", (100, 100), color="blue")
 
     # Create invocation object
     invocation = Invocation(
@@ -122,7 +126,7 @@ def test_perform_invocation_image(db_session: Session):
         type=InvocationType.TEXT,  # Changed to TEXT since DummyI2T produces text
         run_id=run_id,
         sequence_number=0,
-        seed=42
+        seed=42,
     )
     db_session.add(invocation)
     db_session.commit()
@@ -136,7 +140,9 @@ def test_perform_invocation_image(db_session: Session):
     assert result.output == "dummy text caption (seed 42)"
     assert result.started_at is not None  # Check that started_at is set
     assert result.completed_at is not None  # Check that completed_at is set
-    assert result.completed_at >= result.started_at  # Completion should be after or equal to start
+    assert (
+        result.completed_at >= result.started_at
+    )  # Completion should be after or equal to start
 
 
 def test_perform_run(db_session: Session):
@@ -152,7 +158,7 @@ def test_perform_run(db_session: Session):
         initial_prompt=initial_prompt,
         run_length=10,
         seed=seed,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -171,7 +177,9 @@ def test_perform_run(db_session: Session):
         assert invocation.seed == seed
         assert invocation.started_at is not None  # Check that started_at is set
         assert invocation.completed_at is not None  # Check that completed_at is set
-        assert invocation.completed_at >= invocation.started_at  # Completion should be after or equal to start
+        assert (
+            invocation.completed_at >= invocation.started_at
+        )  # Completion should be after or equal to start
 
         # Check the model alternation pattern
         if i % 2 == 0:
@@ -187,7 +195,7 @@ def test_perform_run(db_session: Session):
         initial_prompt=initial_prompt,
         run_length=6,
         seed=-1,  # Special value to disable duplicate tracking
-        session=db_session
+        session=db_session,
     )
     db_session.add(run_no_dup_tracking)
     db_session.commit()
@@ -208,7 +216,7 @@ def test_run_is_complete(db_session: Session):
         initial_prompt="Test prompt for completeness check",
         run_length=3,
         seed=42,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -223,9 +231,11 @@ def test_run_is_complete(db_session: Session):
         run_id=run.id,
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
-    invocation0 = perform_invocation(invocation0, "Test prompt for completeness check", db_session)
+    invocation0 = perform_invocation(
+        invocation0, "Test prompt for completeness check", db_session
+    )
     db_session.refresh(run)
 
     # Run not complete with just the first invocation
@@ -239,7 +249,7 @@ def test_run_is_complete(db_session: Session):
         sequence_number=1,
         input_invocation_id=invocation0.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
     db_session.refresh(run)
@@ -255,7 +265,7 @@ def test_run_is_complete(db_session: Session):
         sequence_number=2,
         input_invocation_id=invocation1.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation2 = perform_invocation(invocation2, invocation1.output, db_session)
     db_session.refresh(run)
@@ -269,7 +279,7 @@ def test_run_is_complete(db_session: Session):
         initial_prompt="Another test prompt",
         run_length=2,
         seed=43,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run2)
     db_session.commit()
@@ -281,9 +291,11 @@ def test_run_is_complete(db_session: Session):
         run_id=run2.id,
         sequence_number=0,
         session=db_session,
-        seed=43
+        seed=43,
     )
-    invocation_first = perform_invocation(invocation_first, "Another test prompt", db_session)
+    invocation_first = perform_invocation(
+        invocation_first, "Another test prompt", db_session
+    )
 
     # Create final invocation but don't set its output
     invocation_final = create_invocation(
@@ -293,7 +305,7 @@ def test_run_is_complete(db_session: Session):
         sequence_number=1,
         input_invocation_id=invocation_first.id,
         session=db_session,
-        seed=43
+        seed=43,
     )
     db_session.add(invocation_final)
     db_session.commit()
@@ -311,7 +323,7 @@ def test_run_stop_reason(db_session: Session):
         initial_prompt="Test prompt for length stop",
         run_length=3,
         seed=-1,  # Use -1 to disable duplicate detection
-        session=db_session
+        session=db_session,
     )
     db_session.add(run_complete)
     db_session.commit()
@@ -322,8 +334,8 @@ def test_run_stop_reason(db_session: Session):
             input_data = run_complete.initial_prompt
             input_invocation_id = None
         else:
-            input_data = run_complete.invocations[i-1].output
-            input_invocation_id = run_complete.invocations[i-1].id
+            input_data = run_complete.invocations[i - 1].output
+            input_invocation_id = run_complete.invocations[i - 1].id
 
         model = run_complete.network[i % len(run_complete.network)]
         invocation = create_invocation(
@@ -333,7 +345,7 @@ def test_run_stop_reason(db_session: Session):
             sequence_number=i,
             input_invocation_id=input_invocation_id,
             session=db_session,
-            seed=run_complete.seed
+            seed=run_complete.seed,
         )
         perform_invocation(invocation, input_data, db_session)
 
@@ -346,7 +358,7 @@ def test_run_stop_reason(db_session: Session):
         initial_prompt="Test prompt for duplicate stop",
         run_length=10,  # Long enough that we'd hit duplicates before completing
         seed=42,  # Use fixed seed to ensure deterministic outputs
-        session=db_session
+        session=db_session,
     )
     db_session.add(run_duplicate)
     db_session.commit()
@@ -358,8 +370,8 @@ def test_run_stop_reason(db_session: Session):
             input_data = run_duplicate.initial_prompt
             input_invocation_id = None
         else:
-            input_data = run_duplicate.invocations[i-1].output
-            input_invocation_id = run_duplicate.invocations[i-1].id
+            input_data = run_duplicate.invocations[i - 1].output
+            input_invocation_id = run_duplicate.invocations[i - 1].id
 
         model = run_duplicate.network[i % len(run_duplicate.network)]
         invocation = create_invocation(
@@ -369,7 +381,7 @@ def test_run_stop_reason(db_session: Session):
             sequence_number=i,
             input_invocation_id=input_invocation_id,
             session=db_session,
-            seed=run_duplicate.seed
+            seed=run_duplicate.seed,
         )
         perform_invocation(invocation, input_data, db_session)
 
@@ -380,7 +392,9 @@ def test_run_stop_reason(db_session: Session):
 
     db_session.refresh(run_duplicate)
     assert run_duplicate.stop_reason == "duplicate"
-    assert len(run_duplicate.invocations) < run_duplicate.length  # Should have stopped early
+    assert (
+        len(run_duplicate.invocations) < run_duplicate.length
+    )  # Should have stopped early
 
     # Test 'unknown' stop reason - incomplete run
     run_incomplete = create_run(
@@ -388,7 +402,7 @@ def test_run_stop_reason(db_session: Session):
         initial_prompt="Test prompt for incomplete run",
         run_length=5,
         seed=43,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run_incomplete)
     db_session.commit()
@@ -400,7 +414,7 @@ def test_run_stop_reason(db_session: Session):
         run_id=run_incomplete.id,
         sequence_number=0,
         session=db_session,
-        seed=run_incomplete.seed
+        seed=run_incomplete.seed,
     )
     db_session.add(invocation)  # Add but don't perform, so no output
     db_session.commit()
@@ -419,7 +433,7 @@ def test_create_embedding(db_session: Session):
         run_id=uuid7(),
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     # Use the real perform_invocation function to get a real output
     invocation = perform_invocation(invocation, input_text, db_session)
@@ -454,7 +468,7 @@ def test_perform_embedding(db_session: Session):
         run_id=uuid7(),
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     # Use the real perform_invocation function to get a real output
     invocation = perform_invocation(invocation, input_text, db_session)
@@ -475,7 +489,9 @@ def test_perform_embedding(db_session: Session):
     assert len(embedding.vector) == 768  # dummy embeddings are 768-dimensional
     assert embedding.started_at is not None  # Check that started_at is set
     assert embedding.completed_at is not None  # Check that completed_at is set
-    assert embedding.completed_at >= embedding.started_at  # Completion should be after or equal to start
+    assert (
+        embedding.completed_at >= embedding.started_at
+    )  # Completion should be after or equal to start
 
 
 def test_multiple_embeddings_per_invocation(db_session: Session):
@@ -488,7 +504,7 @@ def test_multiple_embeddings_per_invocation(db_session: Session):
         run_id=uuid7(),
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation = perform_invocation(invocation, input_text, db_session)
     db_session.add(invocation)
@@ -546,7 +562,7 @@ def test_run_embeddings_by_model(db_session: Session):
         initial_prompt="Test prompt for embeddings by model",
         run_length=3,
         seed=42,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -558,7 +574,7 @@ def test_run_embeddings_by_model(db_session: Session):
         run_id=run.id,
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
 
@@ -569,7 +585,7 @@ def test_run_embeddings_by_model(db_session: Session):
         sequence_number=1,
         input_invocation_id=invocation0.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
 
@@ -615,7 +631,7 @@ def test_compute_missing_embeds(db_session: Session):
         run_id=uuid7(),
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation1.output = "Output text for invocation 1"
     db_session.add(invocation1)
@@ -626,7 +642,7 @@ def test_compute_missing_embeds(db_session: Session):
         run_id=uuid7(),
         sequence_number=0,
         session=db_session,
-        seed=43
+        seed=43,
     )
     invocation2.output = "Output text for invocation 2"
     db_session.add(invocation2)
@@ -636,17 +652,13 @@ def test_compute_missing_embeds(db_session: Session):
 
     # First embedding with Dummy model
     embedding1 = Embedding(
-        invocation_id=invocation1.id,
-        embedding_model="Dummy",
-        vector=None
+        invocation_id=invocation1.id, embedding_model="Dummy", vector=None
     )
     db_session.add(embedding1)
 
     # Second embedding with Dummy2 model
     embedding2 = Embedding(
-        invocation_id=invocation2.id,
-        embedding_model="Dummy2",
-        vector=None
+        invocation_id=invocation2.id, embedding_model="Dummy2", vector=None
     )
     db_session.add(embedding2)
     db_session.commit()
@@ -677,14 +689,11 @@ def test_perform_experiment(db_session: Session):
     """Test that a small experiment with multiple runs can be executed successfully."""
     # Create a small experiment configuration
     config = ExperimentConfig(
-        networks=[
-            ["DummyT2I", "DummyI2T"],
-            ["DummyI2T", "DummyT2I"]
-        ],
+        networks=[["DummyT2I", "DummyI2T"], ["DummyI2T", "DummyT2I"]],
         seeds=[42, 43],
         prompts=["Test prompt 1", "Test prompt 2"],
         embedding_models=["Dummy", "Dummy2"],
-        run_length=10 # Short run length for testing
+        run_length=10,  # Short run length for testing
     )
 
     # Perform the experiment
@@ -718,7 +727,9 @@ def test_perform_experiment(db_session: Session):
             assert invocation.completed_at >= invocation.started_at
 
             # Check that each invocation has embeddings for both embedding models
-            assert len(invocation.embeddings) == 2  # Should have 2 embeddings, one for each model in embedding_models
+            assert (
+                len(invocation.embeddings) == 2
+            )  # Should have 2 embeddings, one for each model in embedding_models
 
             # Get the embedding models used
             embedding_models = [e.embedding_model for e in invocation.embeddings]
@@ -744,7 +755,7 @@ def test_create_persistence_diagram(db_session: Session):
         initial_prompt="Test prompt for persistence diagram",
         run_length=3,
         seed=42,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -770,7 +781,7 @@ def test_perform_persistence_diagram(db_session: Session):
         initial_prompt="Test prompt for performing persistence diagram",
         run_length=3,
         seed=42,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -782,7 +793,7 @@ def test_perform_persistence_diagram(db_session: Session):
         run_id=run.id,
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
 
@@ -793,7 +804,7 @@ def test_perform_persistence_diagram(db_session: Session):
         sequence_number=1,
         input_invocation_id=invocation0.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
 
@@ -804,7 +815,7 @@ def test_perform_persistence_diagram(db_session: Session):
         sequence_number=2,
         input_invocation_id=invocation1.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation2 = perform_invocation(invocation2, invocation1.output, db_session)
 
@@ -833,14 +844,13 @@ def test_perform_persistence_diagram(db_session: Session):
 def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
     """Test that perform_persistence_diagram correctly handles the case of missing embeddings."""
 
-
     # Create a run
     run = create_run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for incomplete persistence diagram",
         run_length=3,
         seed=42,
-        session=db_session
+        session=db_session,
     )
     db_session.add(run)
     db_session.commit()
@@ -852,7 +862,7 @@ def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
         run_id=run.id,
         sequence_number=0,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
 
@@ -863,7 +873,7 @@ def test_perform_persistence_diagram_missing_embeddings(db_session: Session):
         sequence_number=1,
         input_invocation_id=invocation0.id,
         session=db_session,
-        seed=42
+        seed=42,
     )
     invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
 
@@ -888,7 +898,7 @@ def test_experiment_config_validation():
         seeds=[42],
         prompts=["Test prompt"],
         embedding_models=["Dummy"],
-        run_length=5
+        run_length=5,
     )
     assert valid_config.run_length == 5
 
@@ -899,7 +909,7 @@ def test_experiment_config_validation():
             seeds=[42],
             prompts=["Test prompt"],
             embedding_models=["Dummy"],
-            run_length=5
+            run_length=5,
         )
         assert False, "Should have raised ValueError for empty networks list"
     except ValueError:

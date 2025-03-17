@@ -26,10 +26,7 @@ def test_run_creation(db_session: Session):
     """Test creating a Run object."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...",
-        network=["model1", "model2"],
-        seed=42,
-        length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
     )
     db_session.add(sample_run)
     db_session.commit()
@@ -48,10 +45,7 @@ def test_text_invocation(db_session: Session):
     """Test creating a text Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...",
-        network=["model1", "model2"],
-        seed=42,
-        length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
     )
 
     # Create a sample text invocation
@@ -61,7 +55,7 @@ def test_text_invocation(db_session: Session):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="Sample output text"
+        output_text="Sample output text",
     )
 
     db_session.add(sample_run)
@@ -81,22 +75,19 @@ def test_image_invocation(db_session: Session):
     """Test creating an image Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...",
-        network=["model1", "model2"],
-        seed=42,
-        length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
     )
 
     # Create a simple test image
-    img = Image.new('RGB', (60, 30), color = 'red')
+    img = Image.new("RGB", (60, 30), color="red")
 
     invocation = Invocation(
-        id=UUID('00000000-0000-0000-0000-000000000001'),
+        id=UUID("00000000-0000-0000-0000-000000000001"),
         model="ImageModel",
         type=InvocationType.IMAGE,
         seed=42,
         run_id=sample_run.id,
-        sequence_number=2
+        sequence_number=2,
     )
     invocation.output = img  # Test the output property setter for images
 
@@ -118,14 +109,12 @@ def test_image_invocation(db_session: Session):
     assert output_image.width == 60
     assert output_image.height == 30
 
+
 def test_embedding(db_session: Session):
     """Test creating and retrieving an Embedding."""
     # Create a sample text invocation
     sample_run = Run(
-        initial_prompt="once upon a...",
-        network=["model1", "model2"],
-        seed=42,
-        length=5
+        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, length=5
     )
 
     sample_text_invocation = Invocation(
@@ -134,14 +123,13 @@ def test_embedding(db_session: Session):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="Sample output text"
+        output_text="Sample output text",
     )
 
     # Create a sample embedding
     vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
     sample_embedding = Embedding(
-        invocation_id=sample_text_invocation.id,
-        embedding_model="test-embedding-model"
+        invocation_id=sample_text_invocation.id, embedding_model="test-embedding-model"
     )
     sample_embedding.vector = vector
 
@@ -169,9 +157,7 @@ def test_persistence_diagram_storage(db_session: Session):
 
     # Create a persistence diagram with these arrays
     diagram = PersistenceDiagram(
-        run_id=uuid7(),
-        embedding_model="Dummy",
-        generators=[array1, array2, array3]
+        run_id=uuid7(), embedding_model="Dummy", generators=[array1, array2, array3]
     )
 
     db_session.add(diagram)
@@ -202,7 +188,7 @@ def test_persistence_diagram_storage(db_session: Session):
 
 def test_database_initialization():
     """Test the Database class initialization."""
-    connection_string="sqlite:///test.db"
+    connection_string = "sqlite:///test.db"
     db = Database(connection_string)
     assert db.engine is not None
     assert str(db.engine.url) == connection_string
@@ -235,7 +221,7 @@ def test_database_context_manager():
             initial_prompt="testing context manager",
             network=["test"],
             seed=123,
-            length=1
+            length=1,
         )
         session.add(sample_run)
 
@@ -254,7 +240,7 @@ def test_database_context_manager():
                 initial_prompt="should be rolled back",
                 network=["test"],
                 seed=456,
-                length=1
+                length=1,
             )
             session.add(sample_run)
             raise ValueError("Test exception to trigger rollback")
@@ -276,7 +262,7 @@ def test_incomplete_embeddings(db_session: Session):
         initial_prompt="test incomplete embeddings",
         network=["model1"],
         seed=42,
-        length=3
+        length=3,
     )
 
     # Create invocations
@@ -286,7 +272,7 @@ def test_incomplete_embeddings(db_session: Session):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="First output text"
+        output_text="First output text",
     )
 
     invocation2 = Invocation(
@@ -295,24 +281,21 @@ def test_incomplete_embeddings(db_session: Session):
         seed=43,
         run_id=sample_run.id,
         sequence_number=2,
-        output_text="Second output text"
+        output_text="Second output text",
     )
 
     # Create embeddings - one complete and one incomplete
     complete_embedding = Embedding(
-        invocation_id=invocation1.id,
-        embedding_model="embedding_model-1"
+        invocation_id=invocation1.id, embedding_model="embedding_model-1"
     )
     complete_embedding.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
     incomplete_embedding1 = Embedding(
-        invocation_id=invocation1.id,
-        embedding_model="embedding_model-2"
+        invocation_id=invocation1.id, embedding_model="embedding_model-2"
     )
 
     incomplete_embedding2 = Embedding(
-        invocation_id=invocation2.id,
-        embedding_model="embedding_model-1"
+        invocation_id=invocation2.id, embedding_model="embedding_model-1"
     )
 
     # Add everything to the session
@@ -346,10 +329,7 @@ def test_list_invocations(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list invocations",
-        network=["model1"],
-        seed=42,
-        length=3
+        initial_prompt="test list invocations", network=["model1"], seed=42, length=3
     )
 
     # Create invocations with different creation times
@@ -359,7 +339,7 @@ def test_list_invocations(db_session: Session):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="First output text"
+        output_text="First output text",
     )
 
     invocation2 = Invocation(
@@ -368,7 +348,7 @@ def test_list_invocations(db_session: Session):
         seed=43,
         run_id=sample_run.id,
         sequence_number=2,
-        output_text="Second output text"
+        output_text="Second output text",
     )
 
     invocation3 = Invocation(
@@ -376,7 +356,7 @@ def test_list_invocations(db_session: Session):
         type=InvocationType.IMAGE,
         seed=44,
         run_id=sample_run.id,
-        sequence_number=3
+        sequence_number=3,
     )
 
     # Add everything to the session
@@ -398,10 +378,7 @@ def test_list_embeddings(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list embeddings",
-        network=["model1"],
-        seed=42,
-        length=3
+        initial_prompt="test list embeddings", network=["model1"], seed=42, length=3
     )
 
     # Create invocations
@@ -411,7 +388,7 @@ def test_list_embeddings(db_session: Session):
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="First output text"
+        output_text="First output text",
     )
 
     invocation2 = Invocation(
@@ -420,25 +397,22 @@ def test_list_embeddings(db_session: Session):
         seed=43,
         run_id=sample_run.id,
         sequence_number=2,
-        output_text="Second output text"
+        output_text="Second output text",
     )
 
     # Create embeddings with different models
     embedding1 = Embedding(
-        invocation_id=invocation1.id,
-        embedding_model="embedding_model-1"
+        invocation_id=invocation1.id, embedding_model="embedding_model-1"
     )
     embedding1.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
     embedding2 = Embedding(
-        invocation_id=invocation1.id,
-        embedding_model="embedding_model-2"
+        invocation_id=invocation1.id, embedding_model="embedding_model-2"
     )
     embedding2.vector = np.array([0.4, 0.5, 0.6], dtype=np.float32)
 
     embedding3 = Embedding(
-        invocation_id=invocation2.id,
-        embedding_model="embedding_model-1"
+        invocation_id=invocation2.id, embedding_model="embedding_model-1"
     )
     embedding3.vector = np.array([0.7, 0.8, 0.9], dtype=np.float32)
 

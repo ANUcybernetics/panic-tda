@@ -16,7 +16,13 @@ def test_export_run_images(db_session: Session, tmp_path):
     seed = 42
 
     # Create and execute the run (just 4, because it'll hit the duplicate detection after that)
-    run = create_run(network=network, initial_prompt=initial_prompt, run_length=4, session=db_session, seed=seed)
+    run = create_run(
+        network=network,
+        initial_prompt=initial_prompt,
+        run_length=4,
+        session=db_session,
+        seed=seed,
+    )
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
@@ -43,7 +49,10 @@ def test_export_run_images(db_session: Session, tmp_path):
         assert image_file.exists()
         # Try opening the image to make sure it's valid
         img = Image.open(image_file)
-        assert img.size == (IMAGE_SIZE, IMAGE_SIZE)  # Check it matches our IMAGE_SIZE constant
+        assert img.size == (
+            IMAGE_SIZE,
+            IMAGE_SIZE,
+        )  # Check it matches our IMAGE_SIZE constant
 
         # Get EXIF data from the image
         exif_data = img.getexif()
@@ -51,7 +60,7 @@ def test_export_run_images(db_session: Session, tmp_path):
 
         # Parse metadata from EXIF
         metadata_bytes = exif_data[0x9286]
-        metadata = json.loads(metadata_bytes.decode('utf-8'))
+        metadata = json.loads(metadata_bytes.decode("utf-8"))
 
         # Verify metadata content
         assert "prompt" in metadata
@@ -61,4 +70,6 @@ def test_export_run_images(db_session: Session, tmp_path):
 
         # Verify specific metadata values
         assert metadata["seed"] == str(seed)
-        assert metadata["model"] == "DummyT2I"  # Image invocations come from DummyT2I in this test
+        assert (
+            metadata["model"] == "DummyT2I"
+        )  # Image invocations come from DummyT2I in this test

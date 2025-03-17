@@ -27,7 +27,7 @@ def test_invocation_creation():
         type=InvocationType.TEXT,
         seed=42,
         run_id=run_id,
-        output_text="Hi there!"
+        output_text="Hi there!",
     )
 
     assert isinstance(invocation.id, UUID)
@@ -51,17 +51,14 @@ def test_invocation_output_property():
         type=InvocationType.TEXT,
         seed=42,
         run_id=run_id,
-        output_text="Text output"
+        output_text="Text output",
     )
     assert text_invocation.output == "Text output"
 
     # Test image output
-    test_image = Image.new('RGB', (100, 100), color='red')
+    test_image = Image.new("RGB", (100, 100), color="red")
     image_invocation = Invocation(
-        model="DummyT2I",
-        type=InvocationType.IMAGE,
-        seed=42,
-        run_id=run_id
+        model="DummyT2I", type=InvocationType.IMAGE, seed=42, run_id=run_id
     )
     image_invocation.output = test_image
 
@@ -75,10 +72,7 @@ def test_text_invocation_output_setter_validation():
 
     # Create text invocation
     invocation = Invocation(
-        model="DummyI2T",
-        type=InvocationType.TEXT,
-        seed=42,
-        run_id=run_id
+        model="DummyI2T", type=InvocationType.TEXT, seed=42, run_id=run_id
     )
 
     # Test setting to None
@@ -100,10 +94,7 @@ def test_image_invocation_output_setter_validation():
 
     # Create image invocation
     invocation = Invocation(
-        model="DummyT2I",
-        type=InvocationType.IMAGE,
-        seed=42,
-        run_id=run_id
+        model="DummyT2I", type=InvocationType.IMAGE, seed=42, run_id=run_id
     )
 
     # Test setting to None
@@ -111,7 +102,7 @@ def test_image_invocation_output_setter_validation():
     assert invocation.output is None
 
     # Test setting to image
-    test_image = Image.new('RGB', (100, 100), color='blue')
+    test_image = Image.new("RGB", (100, 100), color="blue")
     invocation.output = test_image
     assert isinstance(invocation.output, Image.Image)
 
@@ -126,9 +117,27 @@ def test_run_validation_success():
     network = ["DummyI2T", "DummyT2I"]
 
     invocations = [
-        Invocation(model="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=0),
-        Invocation(model="DummyT2I", type=InvocationType.IMAGE, seed=1, run_id=run_id, sequence_number=1),
-        Invocation(model="DummyI2T", type=InvocationType.TEXT, seed=1, run_id=run_id, sequence_number=2),
+        Invocation(
+            model="DummyI2T",
+            type=InvocationType.TEXT,
+            seed=1,
+            run_id=run_id,
+            sequence_number=0,
+        ),
+        Invocation(
+            model="DummyT2I",
+            type=InvocationType.IMAGE,
+            seed=1,
+            run_id=run_id,
+            sequence_number=1,
+        ),
+        Invocation(
+            model="DummyI2T",
+            type=InvocationType.TEXT,
+            seed=1,
+            run_id=run_id,
+            sequence_number=2,
+        ),
     ]
 
     run = Run(id=run_id, seed=1, length=3, network=network, invocations=invocations)
@@ -172,7 +181,7 @@ def test_experiment_config():
         "seeds": [42, 123],
         "prompts": ["First prompt", "Second prompt"],
         "embedding_models": ["embedding_model1", "embedding_model2"],
-        "run_length": 5
+        "run_length": 5,
     }
 
     # Create a temporary JSON file
@@ -216,7 +225,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=5
+            run_length=5,
         )
 
     # Test zero run_length validation
@@ -226,7 +235,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=0
+            run_length=0,
         )
 
     # Test negative run_length validation
@@ -236,7 +245,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             embedding_models=["test"],
-            run_length=-5
+            run_length=-5,
         )
 
     # Test missing required field
@@ -246,7 +255,7 @@ def test_experiment_config_invalid_values():
             seeds=[42],
             prompts=["test"],
             # Missing embedding_models
-            run_length=5
+            run_length=5,
         )
 
 
@@ -254,10 +263,7 @@ def test_invocation_duration_property():
     """Test the duration property of Invocation."""
     run_id = uuid7()
     invocation = Invocation(
-        model="DummyI2T",
-        type=InvocationType.TEXT,
-        seed=42,
-        run_id=run_id
+        model="DummyI2T", type=InvocationType.TEXT, seed=42, run_id=run_id
     )
 
     # With no timestamps, duration should be 0
@@ -274,10 +280,7 @@ def test_invocation_duration_property():
 def test_embedding_duration_property():
     """Test the duration property of Embedding."""
     invocation_id = uuid7()
-    embedding = Embedding(
-        invocation_id=invocation_id,
-        embedding_model="test-embedding"
-    )
+    embedding = Embedding(invocation_id=invocation_id, embedding_model="test-embedding")
 
     # With no timestamps, duration should be 0
     assert embedding.duration == 0.0
@@ -297,13 +300,10 @@ def test_persistence_diagram_creation():
     # Create some test generators (birth-death pairs)
     generators = [
         np.array([[0.1, 0.5], [0.2, 0.7]], dtype=np.float32),
-        np.array([[0.3, 0.6], [0.4, 0.9]], dtype=np.float32)
+        np.array([[0.3, 0.6], [0.4, 0.9]], dtype=np.float32),
     ]
 
-    diagram = PersistenceDiagram(
-        run_id=run_id,
-        generators=generators
-    )
+    diagram = PersistenceDiagram(run_id=run_id, generators=generators)
 
     assert diagram.run_id == run_id
     assert len(diagram.generators) == 2

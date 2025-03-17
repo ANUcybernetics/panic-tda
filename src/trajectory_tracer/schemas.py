@@ -13,17 +13,23 @@ from uuid_v7.base import uuid7
 
 ## numpy storage helper classes
 
+
 class NumpyArrayType(TypeDecorator):
     """SQLAlchemy type for storing numpy arrays as binary data."""
+
     impl = LargeBinary
     cache_ok = True
 
-    def process_bind_param(self, value: Optional[np.ndarray], dialect) -> Optional[bytes]:
+    def process_bind_param(
+        self, value: Optional[np.ndarray], dialect
+    ) -> Optional[bytes]:
         if value is None:
             return None
         return np.asarray(value, dtype=np.float32).tobytes()
 
-    def process_result_value(self, value: Optional[bytes], dialect) -> Optional[np.ndarray]:
+    def process_result_value(
+        self, value: Optional[bytes], dialect
+    ) -> Optional[np.ndarray]:
         if value is None:
             return None
         return np.frombuffer(value, dtype=np.float32)
@@ -31,10 +37,13 @@ class NumpyArrayType(TypeDecorator):
 
 class NumpyArrayListType(TypeDecorator):
     """SQLAlchemy type for storing a list of numpy arrays as binary data."""
+
     impl = LargeBinary
     cache_ok = True
 
-    def process_bind_param(self, value: Optional[List[np.ndarray]], dialect) -> Optional[bytes]:
+    def process_bind_param(
+        self, value: Optional[List[np.ndarray]], dialect
+    ) -> Optional[bytes]:
         if value is None:
             return None
 
@@ -45,7 +54,9 @@ class NumpyArrayListType(TypeDecorator):
 
         # For each array, save its shape, dtype, and data
         for arr in value:
-            arr_np = np.asarray(arr, dtype=np.float32)  # Ensure it's a numpy array with float32 dtype
+            arr_np = np.asarray(
+                arr, dtype=np.float32
+            )  # Ensure it's a numpy array with float32 dtype
             shape = np.array(arr_np.shape, dtype=np.int32)
 
             # Save shape dimensions
@@ -73,7 +84,9 @@ class NumpyArrayListType(TypeDecorator):
             shape_length_bytes = buffer.read(4)  # int32 is 4 bytes
             shape_length = np.frombuffer(shape_length_bytes, dtype=np.int32)[0]
 
-            shape_bytes = buffer.read(4 * shape_length)  # Each dimension is an int32 (4 bytes)
+            shape_bytes = buffer.read(
+                4 * shape_length
+            )  # Each dimension is an int32 (4 bytes)
             shape = tuple(np.frombuffer(shape_bytes, dtype=np.int32))
 
             # Calculate number of elements and bytes needed
@@ -89,6 +102,7 @@ class NumpyArrayListType(TypeDecorator):
 
 
 ## main DB classes
+
 
 class InvocationType(str, Enum):
     TEXT = "text"
@@ -107,7 +121,9 @@ class Invocation(SQLModel, table=True):
     seed: int
     run_id: UUID = Field(foreign_key="run.id", index=True)
     sequence_number: int = 0
-    input_invocation_id: Optional[UUID] = Field(default=None, foreign_key="invocation.id", index=True)
+    input_invocation_id: Optional[UUID] = Field(
+        default=None, foreign_key="invocation.id", index=True
+    )
     output_text: Optional[str] = None
     output_image_data: Optional[bytes] = None
 
@@ -115,7 +131,7 @@ class Invocation(SQLModel, table=True):
     run: "Run" = Relationship(back_populates="invocations")
     embeddings: List["Embedding"] = Relationship(
         back_populates="invocation",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
     input_invocation: Optional["Invocation"] = Relationship(
         sa_relationship_kwargs={"remote_side": "Invocation.id"}
@@ -175,15 +191,14 @@ class Run(SQLModel, table=True):
         back_populates="run",
         sa_relationship_kwargs={
             "order_by": "Invocation.sequence_number",
-            "cascade": "all, delete-orphan"
-        }
+            "cascade": "all, delete-orphan",
+        },
     )
     persistence_diagrams: List["PersistenceDiagram"] = Relationship(
-        back_populates="run",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_fields(self):
         if not self.network:
             raise ValueError("Network list cannot be empty")
@@ -199,13 +214,15 @@ class Run(SQLModel, table=True):
 
         # Check if we have an invocation with the final sequence number
         # (sequence_number is unique, so there will be at most one)
-        final_invocation = next((inv for inv in self.invocations if inv.sequence_number == self.length - 1), None)
+        final_invocation = next(
+            (inv for inv in self.invocations if inv.sequence_number == self.length - 1),
+            None,
+        )
         if final_invocation is None:
             return False
 
         # Check that the final invocation has a non-None output
         return final_invocation.output is not None
-
 
     @property
     def embeddings(self) -> List["Embedding"]:
@@ -237,7 +254,9 @@ class Run(SQLModel, table=True):
             # Track seen outputs
             seen_outputs = set()
 
-            for invocation in sorted(self.invocations, key=lambda inv: inv.sequence_number):
+            for invocation in sorted(
+                self.invocations, key=lambda inv: inv.sequence_number
+            ):
                 if invocation.output is None:
                     continue
 
@@ -275,7 +294,9 @@ class Run(SQLModel, table=True):
         result = []
         for invocation in self.invocations:
             # Get embeddings for this invocation that match the model name
-            matching_embeddings = [e for e in invocation.embeddings if e.embedding_model == embedding_model]
+            matching_embeddings = [
+                e for e in invocation.embeddings if e.embedding_model == embedding_model
+            ]
             result.extend(matching_embeddings)
         return result
 
@@ -317,8 +338,7 @@ class PersistenceDiagram(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(default=None)
 
     generators: List[np.ndarray] = Field(
-        default=[],
-        sa_column=Column(NumpyArrayListType)
+        default=[], sa_column=Column(NumpyArrayListType)
     )
 
     run_id: UUID = Field(foreign_key="run.id", index=True)
@@ -342,13 +362,17 @@ class ExperimentConfig(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
     """Configuration for a trajectory tracer experiment."""
-    networks: List[List[str]] = Field(..., description="List of networks (each network is a list of model names)")
+    networks: List[List[str]] = Field(
+        ..., description="List of networks (each network is a list of model names)"
+    )
     seeds: List[int] = Field(..., description="List of random seeds to use")
     prompts: List[str] = Field(..., description="List of initial text prompts")
-    embedding_models: List[str] = Field(..., description="List of embedding model class names")
+    embedding_models: List[str] = Field(
+        ..., description="List of embedding model class names"
+    )
     run_length: int = Field(..., description="Number of invocations in each run")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_fields(self):
         if not self.networks:
             raise ValueError("Networks list cannot be empty")

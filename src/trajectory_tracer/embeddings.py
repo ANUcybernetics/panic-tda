@@ -17,6 +17,7 @@ from transformers import AutoImageProcessor, AutoModel
 # Model cache to avoid reloading models
 _MODEL_CACHE: Dict[str, Any] = {}
 
+
 def unload_all_models():
     """Unload all models from the cache and free memory."""
     global _MODEL_CACHE
@@ -26,13 +27,13 @@ def unload_all_models():
         # Handle different model types differently
         try:
             # For models with an explicit to() method
-            if hasattr(model, 'to') and callable(model.to):
-                model.to('cpu')  # Move to CPU first
+            if hasattr(model, "to") and callable(model.to):
+                model.to("cpu")  # Move to CPU first
             # For dictionary of components
             elif isinstance(model, dict):
                 for component_name, component in model.items():
-                    if hasattr(component, 'to') and callable(component.to):
-                        component.to('cpu')
+                    if hasattr(component, "to") and callable(component.to):
+                        component.to("cpu")
         except Exception as e:
             print(f"Warning: Error unloading model {model_name}: {e}")
 
@@ -45,6 +46,7 @@ def unload_all_models():
         torch.cuda.synchronize()  # Make sure CUDA operations are completed
 
     print("All embedding models unloaded.")
+
 
 class EmbeddingModel(BaseModel):
     @classmethod
@@ -69,7 +71,9 @@ class EmbeddingModel(BaseModel):
 class NomicText(EmbeddingModel):
     @classmethod
     def load_to_device(cls):
-        return SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+        return SentenceTransformer(
+            "nomic-ai/nomic-embed-text-v1", trust_remote_code=True
+        )
 
     @staticmethod
     def embed(text: str) -> np.ndarray:
@@ -84,14 +88,20 @@ class NomicText(EmbeddingModel):
         """
         model = NomicText.get_model()
         sentences = [f"clustering: {text}"]
-        return model.encode(sentences)[0]  # Get first element to flatten (1, 768) to (768,)
+        return model.encode(sentences)[
+            0
+        ]  # Get first element to flatten (1, 768) to (768,)
 
 
 class NomicVision(EmbeddingModel):
     @classmethod
     def load_to_device(cls):
-        processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
-        vision_model = AutoModel.from_pretrained("nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True)
+        processor = AutoImageProcessor.from_pretrained(
+            "nomic-ai/nomic-embed-vision-v1.5"
+        )
+        vision_model = AutoModel.from_pretrained(
+            "nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True
+        )
         vision_model.eval()
         return {"processor": processor, "model": vision_model}
 
@@ -153,7 +163,9 @@ class JinaClip(EmbeddingModel):
     def load_to_device(cls):
         # Choose the standard embedding dimension
         truncate_dim = 768
-        return SentenceTransformer('jinaai/jina-clip-v2', trust_remote_code=True, truncate_dim=truncate_dim)
+        return SentenceTransformer(
+            "jinaai/jina-clip-v2", trust_remote_code=True, truncate_dim=truncate_dim
+        )
 
     @staticmethod
     def embed(content: Union[str, Image.Image]) -> np.ndarray:
@@ -174,6 +186,7 @@ class JinaClip(EmbeddingModel):
 
 
 ## from here these ones used for testing
+
 
 class Dummy(EmbeddingModel):
     @classmethod

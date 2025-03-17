@@ -13,6 +13,7 @@ def db_session():
 
     # Database is automatically closed when the connection is closed
 
+
 @pytest.fixture
 def session():
     """Alias for db_session for backward compatibility"""
