@@ -121,11 +121,10 @@ def list_runs_command(
                     # Detailed output
                     typer.echo(f"\nRun ID: {run.id}")
                     typer.echo(f"  Network: {run.network}")
-                    typer.echo(f"  Seed: {run.seed}")
-                    typer.echo(f"  Length: {run.length}")
                     typer.echo(f"  Initial prompt: {run.initial_prompt}")
-                    typer.echo(f"  Complete: {run.is_complete}")
-                    typer.echo(f"  Invocation count: {len(run.invocations)}")
+                    typer.echo(f"  Seed: {run.seed}")
+                    typer.echo(f"  Length: {len(run.invocations)}")
+                    typer.echo(f"  Stop reason: {run.stop_reason}")
                 else:
                     # Simple output
                     status = "Complete" if run.is_complete else "Incomplete"
