@@ -1,7 +1,8 @@
+import json
+
+import altair as alt
 import polars as pl
 from sqlmodel import Session
-import json
-import altair as alt
 
 from trajectory_tracer.db import list_embeddings, list_persistence_diagrams
 

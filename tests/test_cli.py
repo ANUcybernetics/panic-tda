@@ -120,9 +120,9 @@ def test_list_runs_command(tmp_path):
 def test_export_images_command(tmp_path):
     """Test the export-images command after creating a run."""
     import json
+    import re
     import subprocess
     import sys
-    import re
 
     # First create a run with a simple configuration
     config = {

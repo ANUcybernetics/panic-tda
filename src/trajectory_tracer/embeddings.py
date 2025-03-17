@@ -1,5 +1,5 @@
 import sys
-from typing import Union, Dict, Any
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch

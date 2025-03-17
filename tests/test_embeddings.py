@@ -3,7 +3,12 @@ import pytest
 from PIL import Image
 
 from trajectory_tracer.embeddings import embed, list_models
-from trajectory_tracer.engine import create_invocation, perform_invocation, create_embedding, perform_embedding
+from trajectory_tracer.engine import (
+    create_embedding,
+    create_invocation,
+    perform_embedding,
+    perform_invocation,
+)
 
 
 def test_dummy_embedding():

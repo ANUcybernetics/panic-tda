@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 
 # from sqlalchemy import func
-from sqlmodel import Session, SQLModel, create_engine, select, func
+from sqlmodel import Session, SQLModel, create_engine, func, select
 
 from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
 
