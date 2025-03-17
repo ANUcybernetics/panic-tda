@@ -41,10 +41,10 @@ def test_nomic_text_embedding():
     sample_text = "Sample output text"
 
     # Get the embedding using the actual model
-    embedding_vector = embed("NomicText", sample_text)
+    embedding_vector = embed("Nomic", sample_text)
 
     # Run it again to verify determinism
-    embedding_vector2 = embed("NomicText", sample_text)
+    embedding_vector2 = embed("Nomic", sample_text)
 
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
@@ -65,10 +65,10 @@ def test_nomic_vision_embedding():
     image = Image.new("RGB", (100, 100), color="red")
 
     # Get the embedding using the actual model
-    embedding_vector = embed("NomicVision", image)
+    embedding_vector = embed("Nomic", image)
 
     # Run it again to verify determinism
-    embedding_vector2 = embed("NomicVision", image)
+    embedding_vector2 = embed("Nomic", image)
 
     # Check that the embedding has the correct properties
     assert embedding_vector is not None
@@ -191,7 +191,7 @@ def test_create_and_perform_embedding_nomic(db_session):
     # Check embedding properties
     assert embedding.vector is not None
     assert len(embedding.vector) == 768
-    assert embedding.embedding_model in ["NomicText", "NomicVision"]  # Nomic dispatches to specific models
+    assert embedding.embedding_model == "Nomic"
     assert embedding.started_at is not None
     assert embedding.completed_at is not None
     assert embedding.completed_at >= embedding.started_at
