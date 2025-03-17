@@ -11,7 +11,7 @@ from trajectory_tracer.genai_models import (
     Moondream,
     SDXLTurbo,
     unload_all_models,
-    list_models
+    list_models,
 )
 
 
@@ -279,9 +279,18 @@ def test_list_models():
     assert len(models) > 0
 
     # Check that the list contains our known models
-    expected_models = ["BLIP2", "DummyI2T", "DummyT2I", "FluxDev", "Moondream", "SDXLTurbo"]
+    expected_models = [
+        "BLIP2",
+        "DummyI2T",
+        "DummyT2I",
+        "FluxDev",
+        "Moondream",
+        "SDXLTurbo",
+    ]
     for model in expected_models:
-        assert model in models, f"Expected model {model} not found in list_models() output"
+        assert model in models, (
+            f"Expected model {model} not found in list_models() output"
+        )
 
     # Check that no non-GenAIModel classes are included
     assert "GenAIModel" not in models, "list_models() should not include the base class"

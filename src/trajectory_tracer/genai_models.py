@@ -445,7 +445,8 @@ def list_models():
 
     # Find all GenAIModel subclasses in this module
     models = [
-        cls for cls in dir(current_module)
+        cls
+        for cls in dir(current_module)
         if isinstance(getattr(current_module, cls), type)
         and issubclass(getattr(current_module, cls), GenAIModel)
         and cls != "GenAIModel"  # Exclude the base class

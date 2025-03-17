@@ -133,7 +133,10 @@ def create_run(
 
         # Create run object
         run = Run(
-            network=network, initial_prompt=initial_prompt, seed=seed, length=max_run_length
+            network=network,
+            initial_prompt=initial_prompt,
+            seed=seed,
+            length=max_run_length,
         )
 
         # Save to database

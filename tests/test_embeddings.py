@@ -162,7 +162,14 @@ def test_list_models():
     assert len(available_models) > 0
 
     # Check that it contains the expected models we've tested
-    expected_models = ["Dummy", "Dummy2", "NomicText", "NomicVision", "Nomic", "JinaClip"]
+    expected_models = [
+        "Dummy",
+        "Dummy2",
+        "NomicText",
+        "NomicVision",
+        "Nomic",
+        "JinaClip",
+    ]
     for model in expected_models:
         assert model in available_models
 

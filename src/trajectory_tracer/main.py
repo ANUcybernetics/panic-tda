@@ -117,7 +117,9 @@ def list_runs_command(
                 typer.echo("No runs found in the database.")
                 return
 
-            typer.echo(f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):")
+            typer.echo(
+                f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):"
+            )
             for run in runs:
                 if verbose:
                     # Detailed output
@@ -161,6 +163,7 @@ def list_models():
     # List embedding models using the helper function
     for model_name in embeddings.list_models():
         typer.echo(f"  {model_name}")
+
 
 @app.command("export-images")
 def export_images(
