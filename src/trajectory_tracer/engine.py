@@ -452,9 +452,9 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
 
         logger.debug(f"Computing persistence diagram for run {run.id}")
 
-        # Check if run is complete using is_complete property
-        if not run.is_complete:
-            raise ValueError(f"Run {run.id} is not complete")
+        # Check run status - only bail if stop_reason is "unknown"
+        if run.stop_reason == "unknown":
+            raise ValueError(f"Run {run.id} has unknown stop reason")
 
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings_by_model(persistence_diagram.embedding_model)
