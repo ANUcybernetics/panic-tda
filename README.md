@@ -9,7 +9,7 @@ This repo is a command-line tool:
    model invocations
 3. embedding each output (text or image) into a joint embedding space using a
    multimodal embedding model
-4. storing everything (GenAI model outputs & embedding outputs) in a local
+4. storing everything (genAI model outputs & embedding outputs) in a local
    sqlite database
 5. using
    [Topological Data Analysis](https://en.wikipedia.org/wiki/Topological_data_analysis)
@@ -51,7 +51,7 @@ The main CLI is `trajectory-tracer`. It has a few subcommands:
   configuration file
 - `list-runs`: List all runs stored in the database, with options for detailed
   output
-- `list-models`: List all the supported models (both GenAI t2i/i2t and embedding
+- `list-models`: List all the supported models (both genAI t2i/i2t and embedding
   models)
 - `export-images`: Export images from one or all runs to JPEG files with
   embedded metadata
@@ -88,6 +88,30 @@ trajectory-tracer export-images 123e4567-e89b-12d3-a456-426614174000
 If you're running it on a remote machine and kicking it off via ssh, you'll
 probably want to use `nohup` or `tmux` or something to keep it running after you
 log out (see `run-experiment.sh` for an example).
+
+## Repo structure
+
+This repo uses [Pydantic](https://pydantic.dev) for data modelling and
+validation and the related [sqlmodel](https://sqlmodel.tiangolo.com) for
+persisting data to a sqlite database. The data model is described in the
+`schema` module. The code for performing the experiments is done by the `engine`
+module. All other modules do what they say on the tin.
+
+There are (relatively) comprehensive tests in the `tests` directory. They can be
+run with pytest:
+
+    uv run pytest
+
+A few of the tests (anything which involves actual GPU processing) are marked
+slow and won't run by default. To run them, use:
+
+    uv run pytest -m slow
+
+If you'd like to add a new genAI or embedding model, have a look in
+`genai_models` or `embeddings` respectively, and add a new subclass which
+implements the desired interface. Look at the existing models and work from
+there - and don't forget to add a new test to `tests/test_genai_models.py` or
+`tests/test_embeddings.py`.
 
 ## Why?
 

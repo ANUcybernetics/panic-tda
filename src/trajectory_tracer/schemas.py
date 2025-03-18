@@ -15,7 +15,13 @@ from uuid_v7.base import uuid7
 
 
 class NumpyArrayType(TypeDecorator):
-    """SQLAlchemy type for storing numpy arrays as binary data."""
+    """
+    SQLAlchemy type for storing numpy arrays as binary data.
+
+    This custom type allows numpy arrays to be stored efficiently in the database
+    by converting them to binary data. All arrays are stored as float32 dtype
+    for consistency.
+    """
 
     impl = LargeBinary
     cache_ok = True
@@ -23,6 +29,16 @@ class NumpyArrayType(TypeDecorator):
     def process_bind_param(
         self, value: Optional[np.ndarray], dialect
     ) -> Optional[bytes]:
+        """
+        Convert a numpy array to bytes for storage.
+
+        Args:
+            value: The numpy array to convert, or None
+            dialect: SQLAlchemy dialect (unused)
+
+        Returns:
+            Bytes representation of the array, or None if input is None
+        """
         if value is None:
             return None
         return np.asarray(value, dtype=np.float32).tobytes()
@@ -30,13 +46,29 @@ class NumpyArrayType(TypeDecorator):
     def process_result_value(
         self, value: Optional[bytes], dialect
     ) -> Optional[np.ndarray]:
+        """
+        Convert stored bytes back to a numpy array.
+
+        Args:
+            value: Bytes to convert, or None
+            dialect: SQLAlchemy dialect (unused)
+
+        Returns:
+            The restored numpy array, or None if input is None
+        """
         if value is None:
             return None
         return np.frombuffer(value, dtype=np.float32)
 
 
 class NumpyArrayListType(TypeDecorator):
-    """SQLAlchemy type for storing a list of numpy arrays as binary data."""
+    """
+    SQLAlchemy type for storing a list of numpy arrays as binary data.
+
+    This custom type enables efficient storage of multiple numpy arrays in a single
+    database field by serializing their shapes and contents into a compact binary format.
+    All arrays are stored with float32 dtype for consistency.
+    """
 
     impl = LargeBinary
     cache_ok = True
@@ -44,6 +76,23 @@ class NumpyArrayListType(TypeDecorator):
     def process_bind_param(
         self, value: Optional[List[np.ndarray]], dialect
     ) -> Optional[bytes]:
+        """
+        Convert a list of numpy arrays to bytes for storage.
+
+        The format stores:
+        1. The number of arrays (int32)
+        2. For each array:
+           a. The dimensionality of the shape (int32)
+           b. The shape dimensions (each as int32)
+           c. The array data (as float32)
+
+        Args:
+            value: List of numpy arrays to convert, or None
+            dialect: SQLAlchemy dialect (unused)
+
+        Returns:
+            Bytes representation of the array list, or None if input is None
+        """
         if value is None:
             return None
 
@@ -70,6 +119,19 @@ class NumpyArrayListType(TypeDecorator):
         return buffer.getvalue()
 
     def process_result_value(self, value: Optional[bytes], dialect) -> List[np.ndarray]:
+        """
+        Convert stored bytes back to a list of numpy arrays.
+
+        Decodes the binary format created by process_bind_param to reconstruct
+        the original list of arrays with their proper shapes.
+
+        Args:
+            value: Bytes to convert, or None
+            dialect: SQLAlchemy dialect (unused)
+
+        Returns:
+            List of restored numpy arrays, or empty list if input is None
+        """
         if value is None:
             return []
 
@@ -105,12 +167,26 @@ class NumpyArrayListType(TypeDecorator):
 
 
 class InvocationType(str, Enum):
+    """
+    Enum defining the types of model invocations supported.
+
+    TEXT: Invocation that produces text output
+    IMAGE: Invocation that produces image output
+    """
     TEXT = "text"
     IMAGE = "image"
 
 
 # NOTE: output can't be passed to the constructor, has to be set afterwards (otherwise the setter won't work)
 class Invocation(SQLModel, table=True):
+    """
+    Represents a single invocation of a generative AI model with inputs and outputs.
+
+    This class stores details about a model invocation, including the model used,
+    seed value, timing information, and the actual input/output data (which can
+    be text or images). It maintains relationships to its parent run and any
+    embedding calculations performed on its outputs.
+    """
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -139,6 +215,13 @@ class Invocation(SQLModel, table=True):
 
     @property
     def output(self) -> Union[str, Image.Image, None]:
+        """
+        Get the output of this invocation as the appropriate type.
+
+        Returns:
+            A string for text invocations, a PIL Image for image invocations,
+            or None if no output is available.
+        """
         if self.type == InvocationType.TEXT:
             return self.output_text
         elif self.type == InvocationType.IMAGE and self.output_image_data:
@@ -147,6 +230,19 @@ class Invocation(SQLModel, table=True):
 
     @output.setter
     def output(self, value: Union[str, Image.Image, None]) -> None:
+        """
+        Set the output of this invocation, handling the appropriate type conversion.
+
+        For string values, stores in output_text.
+        For PIL Image values, converts to WEBP format and stores in output_image_data.
+        For None, clears both output fields.
+
+        Args:
+            value: The output to set (string, PIL Image, or None)
+
+        Raises:
+            TypeError: If the value is not a string, PIL Image, or None
+        """
         if value is None:
             self.output_text = None
             self.output_image_data = None
@@ -163,6 +259,15 @@ class Invocation(SQLModel, table=True):
 
     @property
     def input(self) -> Union[str, Image.Image, None]:
+        """
+        Get the input to this invocation.
+
+        For the first invocation in a run, returns the initial prompt.
+        For later invocations, returns the output of the previous invocation.
+
+        Returns:
+            A string, PIL Image, or None depending on the input type
+        """
         if self.sequence_number == 0:
             return self.run.initial_prompt
         elif self.input_invocation:
@@ -172,7 +277,13 @@ class Invocation(SQLModel, table=True):
 
     @property
     def duration(self) -> float:
-        """Return the duration of the embedding computation in seconds."""
+        """
+        Calculate the duration of the invocation in seconds.
+
+        Returns:
+            Duration in seconds between started_at and completed_at timestamps,
+            or 0.0 if either timestamp is missing
+        """
         if self.started_at is None or self.completed_at is None:
             return 0.0
         delta = self.completed_at - self.started_at
@@ -180,6 +291,13 @@ class Invocation(SQLModel, table=True):
 
 
 class Run(SQLModel, table=True):
+    """
+    Represents a complete run of a generative AI trajectory experiment.
+
+    A Run consists of a series of model invocations in a specific network configuration,
+    starting from an initial prompt. It tracks the entire sequence of generations
+    and their embeddings, allowing for trajectory analysis.
+    """
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -200,6 +318,19 @@ class Run(SQLModel, table=True):
 
     @model_validator(mode="after")
     def validate_fields(self):
+        """
+        Validate that the run configuration is valid.
+
+        Ensures:
+        - network list is not empty
+        - max_length is positive
+
+        Returns:
+            Self if validation passes
+
+        Raises:
+            ValueError: If validation fails
+        """
         if not self.network:
             raise ValueError("Network list cannot be empty")
         if self.max_length <= 0:
@@ -208,7 +339,12 @@ class Run(SQLModel, table=True):
 
     @property
     def embeddings(self) -> List["Embedding"]:
-        """Get all embeddings for all invocations in this run."""
+        """
+        Get all embeddings for all invocations in this run.
+
+        Returns:
+            A flat list of all embedding objects across all invocations in the run
+        """
         result = []
         for invocation in self.invocations:
             result.extend(invocation.embeddings)
@@ -218,6 +354,9 @@ class Run(SQLModel, table=True):
     def stop_reason(self) -> str:
         """
         Determine why the run stopped.
+
+        Analyzes the run to determine if it completed its intended length,
+        stopped due to detecting duplicate outputs, or stopped for an unknown reason.
 
         Returns:
             "length": If the run completed its full length
@@ -267,6 +406,9 @@ class Run(SQLModel, table=True):
         """
         Get embeddings with a specific model name across all invocations in this run.
 
+        Filters all embeddings in the run to return only those created by the
+        specified embedding model.
+
         Args:
             embedding_model: Name of the embedding model to filter by
 
@@ -284,6 +426,14 @@ class Run(SQLModel, table=True):
 
 
 class Embedding(SQLModel, table=True):
+    """
+    Represents an embedded vector representation of a model invocation output.
+
+    This class stores the embedding vector calculated from a model invocation's output
+    along with metadata such as the embedding model used and timing information.
+    Embeddings enable analysis of trajectories in a consistent vector space regardless
+    of whether the original outputs were text or images.
+    """
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -299,13 +449,25 @@ class Embedding(SQLModel, table=True):
 
     @property
     def dimension(self) -> int:
+        """
+        Get the dimensionality of the embedding vector.
+
+        Returns:
+            The number of dimensions in the embedding vector, or 0 if the vector is None
+        """
         if self.vector is None:
             return 0
         return len(self.vector)
 
     @property
     def duration(self) -> float:
-        """Return the duration of the embedding computation in seconds."""
+        """
+        Calculate the duration of the embedding computation in seconds.
+
+        Returns:
+            Duration in seconds between started_at and completed_at timestamps,
+            or 0.0 if either timestamp is missing
+        """
         if self.started_at is None or self.completed_at is None:
             return 0.0
         delta = self.completed_at - self.started_at
@@ -313,6 +475,13 @@ class Embedding(SQLModel, table=True):
 
 
 class PersistenceDiagram(SQLModel, table=True):
+    """
+    Represents the topological features of a run's trajectory through embedding space.
+
+    This class stores the results of persistent homology computations performed on
+    the sequence of embeddings from a run. The "generators" represent the birth-death
+    pairs of topological features detected at different scales in the trajectory data.
+    """
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -328,12 +497,23 @@ class PersistenceDiagram(SQLModel, table=True):
     run: Run = Relationship(back_populates="persistence_diagrams")
 
     def get_generators_as_arrays(self) -> List[np.ndarray]:
-        """Return generators as numpy arrays."""
+        """
+        Get the persistence diagram generators as a list of numpy arrays.
+
+        Returns:
+            List of numpy arrays representing the birth-death pairs of topological features
+        """
         return self.generators  # Already numpy arrays
 
     @property
     def duration(self) -> float:
-        """Return the duration of the embedding computation in seconds."""
+        """
+        Calculate the duration of the persistence diagram computation in seconds.
+
+        Returns:
+            Duration in seconds between started_at and completed_at timestamps,
+            or 0.0 if either timestamp is missing
+        """
         if self.started_at is None or self.completed_at is None:
             return 0.0
         delta = self.completed_at - self.started_at
@@ -341,9 +521,16 @@ class PersistenceDiagram(SQLModel, table=True):
 
 
 class ExperimentConfig(BaseModel):
+    """
+    Configuration for a trajectory tracer experiment.
+
+    This class defines all the parameters needed to run a complete experiment,
+    including which model networks to use, initial prompts, random seeds, and
+    embedding models. It provides validation to ensure the configuration is valid
+    before an experiment begins.
+    """
     model_config = {"arbitrary_types_allowed": True}
 
-    """Configuration for a trajectory tracer experiment."""
     networks: List[List[str]] = Field(
         ..., description="List of networks (each network is a list of model names)"
     )
@@ -356,6 +543,22 @@ class ExperimentConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_fields(self):
+        """
+        Validate that the experiment configuration is complete and consistent.
+
+        Checks:
+        - Networks list is not empty
+        - Seeds list is not empty
+        - Prompts list is not empty
+        - Embedding models list is not empty
+        - Maximum length is positive
+
+        Returns:
+            Self if validation passes
+
+        Raises:
+            ValueError: If any validation check fails
+        """
         if not self.networks:
             raise ValueError("Networks list cannot be empty")
         if not self.seeds:
