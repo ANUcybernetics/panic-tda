@@ -153,9 +153,6 @@ def list_runs_command(
                 typer.echo("No runs found in the database.")
                 return
 
-            typer.echo(
-                f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):"
-            )
             for run in runs:
                 if verbose:
                     # Detailed output
@@ -170,6 +167,9 @@ def list_runs_command(
                     typer.echo(
                         f"{run.id} (seed {run.seed}) - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
                     )
+            typer.echo(
+                f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):"
+            )
 
     except Exception as e:
         logger.error(f"Error listing runs: {e}")
