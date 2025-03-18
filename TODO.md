@@ -1,16 +1,5 @@
 # TODO
 
-- silence logger.info for VIPS things
-
-- check that by default both slow and benchmark tests are skipped
-
-- update the README with the new list-models command, and use real models in the
-  example config file in the README
-
-- add a note to the readme about how to add new models
-
-- add doco for all the schemas (and point to that in the main readme)
-
 - ensure that the program can be interrupted (and that it doesn't re-do any work
   it doesn't need to)
 
