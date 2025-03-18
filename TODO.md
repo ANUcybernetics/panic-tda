@@ -1,5 +1,8 @@
 # TODO
 
+- work on parallelism priority queue/dependency graph between invocations, then
+  embeddings, then do the PD calculations serially using all cores
+
 - ensure that the program can be interrupted (and that it doesn't re-do any work
   it doesn't need to)
 
@@ -15,8 +18,6 @@
   - overall (dim-reduced) clustering of the embeddings, colored by the different
     factor levels
   - would love to have some distribution of "length of equilibria" or similar
-
-- work on parallelism (with shared GPU, and with multi-GPU)
 
 - switch to a python package provided sqlite3 (maybe...)
 
