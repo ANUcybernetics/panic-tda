@@ -259,7 +259,7 @@ def export_images(
                 logger.info(f"Exporting images for run {run.id} to {run_output_dir}")
                 export_run_images(run=run, session=session, output_dir=run_output_dir)
 
-        logger.info("Image export completed successfully")
+        logger.info(f"Image export completed successfully to {run_output_dir}")
 
     except Exception as e:
         logger.error(f"Error exporting images: {e}")
@@ -285,8 +285,19 @@ def script(
     try:
         # Create database connection
         db_url = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
-        _database = get_database(connection_string=db_url)
+        database = get_database(connection_string=db_url)
+
+        # Example script cod# Fetch and print run info
+        with database.get_session() as session:
+            run_id = "067d914f-705a-7da8-b7d7-4a8fd13fb196"
+            run = session.get(Run, UUID(run_id))
+            if run:
+                print(f"Run: {run_id}")
+                print(f"Initial prompt: {run.initial_prompt}")
+                print(f"Seed: {run.seed}")
+                print(f"Network: {run.network}")
+            else:
+                print(f"Run with ID {run_id} not found")
 
         # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
 

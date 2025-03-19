@@ -31,7 +31,6 @@ def export_run_images(
     # Process each invocation
     for invocation in run.invocations:
         # Skip non-image invocations
-        print(invocation.sequence_number, invocation.type)
         if invocation.type != InvocationType.IMAGE:
             continue
 
@@ -56,7 +55,7 @@ def export_run_images(
 
             # Prepare file path for image
             # Use JPEG format instead of WebP for better EXIF support
-            file_path = os.path.join(output_dir, f"{invocation.id}.jpg")
+            file_path = os.path.join(output_dir, f"{invocation.sequence_number:05d}--{invocation.id}.jpg")
 
             # Create metadata
             metadata = {
@@ -77,10 +76,6 @@ def export_run_images(
 
             # Save image with EXIF metadata
             img_with_metadata.save(file_path, format="JPEG", quality=95, exif=exif_data)
-
-            logger.info(
-                f"Saved image with embedded metadata for invocation {invocation.id} to {file_path}"
-            )
 
         except Exception as e:
             logger.error(f"Error exporting image for invocation {invocation.id}: {e}")
