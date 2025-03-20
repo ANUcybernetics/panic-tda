@@ -15,7 +15,8 @@ from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
-    Run,
+    PersistenceDiagram,
+    Run
 )
 from trajectory_tracer.tda import giotto_phd
 
@@ -379,7 +380,6 @@ def create_persistence_diagram(run_id: UUID, embedding_model: str, session: Sess
     Returns:
         The created PersistenceDiagram object
     """
-    from trajectory_tracer.schemas import PersistenceDiagram
 
     try:
         logger.debug(
