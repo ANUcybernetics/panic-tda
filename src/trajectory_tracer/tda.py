@@ -5,7 +5,7 @@ from gph import ripser_parallel
 from persim.persistent_entropy import persistent_entropy
 
 
-def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> List[np.ndarray]:
+def giotto_phd(point_cloud: np.ndarray, max_dim: int = 1) -> List[np.ndarray]:
     """
     Compute persistent homology diagram using the giotto-ph library.
 

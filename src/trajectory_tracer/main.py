@@ -5,9 +5,9 @@ from uuid import UUID
 
 import typer
 
-from trajectory_tracer.db import count_invocations, get_database, list_runs
+from trajectory_tracer.db import count_invocations, get_database, list_runs, read_run
 from trajectory_tracer.embeddings import list_models as list_embedding_models
-from trajectory_tracer.engine import perform_experiment, create_persistence_diagram, perform_persistence_diagram
+from trajectory_tracer.engine import perform_experiment, create_persistence_diagram, perform_persistence_diagram, create_embedding, perform_embedding
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig, Run
@@ -287,33 +287,17 @@ def script(
         db_url = f"sqlite:///{db_path}"
         database = get_database(connection_string=db_url)
 
-        # Example script cod# Fetch and print run info
+        # Example script code - Fetch and print run info
         with database.get_session() as session:
-            run_id = "067d8b04-1304-76e2-b569-561f579f0a3b"
-            run = session.get(Run, UUID(run_id))
-
-            if run:
-                # Get embedding model name
-                embedding_model = "Nomic"
-
-                # Create a persistence diagram for this run and embedding model
-
-                logger.info(f"Creating persistence diagram for run {run.id} with embedding model {embedding_model}")
-                pd = create_persistence_diagram(run.id, embedding_model, session)
-
-                # Perform the persistence diagram calculation
-                logger.info("Computing persistence diagram...")
-                pd = perform_persistence_diagram(pd, session)
-
-                # Verify the persistence diagram was created successfully
-                logger.info(f"Persistence diagram created successfully with {len(pd.generators)} generators")
-
-                # Display information about the persistence diagram
-                logger.info(f"Computation duration: {pd.duration:.2f} seconds")
-                for i, generator in enumerate(pd.generators[:2]):  # Show first 5 generators
-                    logger.info(f"Generator {i}: {generator.shape}")
+            run = read_run(UUID("067d8ada-9d90-70c2-b71e-da6b9c94fe24"), session)
+            logger.info(f"Run: {run.id}")
+            if run.persistence_diagrams:
+                for i, pd in enumerate(run.persistence_diagrams):
+                    logger.info(f"  Persistence Diagram {i+1} - Embedding Model: {pd.embedding_model}")
+                    for j, gen in enumerate(pd.generators):
+                        logger.info(f"    Generator {j+1}: {gen}")
             else:
-                logger.warning(f"Run with ID {run_id} not found")
+                logger.info("  No persistence diagrams found for this run")
         # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
 
         logger.info("Script execution completed")
