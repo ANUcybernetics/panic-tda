@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 from PIL import Image
 from sqlmodel import Session, select
 from uuid_v7.base import uuid7
@@ -423,6 +424,102 @@ def test_perform_real_embedding(db_session: Session):
     db_session.refresh(invocation)
     assert len(invocation.embeddings) == 1
     assert invocation.embeddings[0].id == embedding.id
+
+
+@pytest.mark.slow
+def test_perform_real_persistence_diagram(db_session: Session):
+    """Test that persistence diagram calculation works with real data and persists to database."""
+    # Import numpy at the top of the function to avoid NameError
+
+    # Create a run
+    run = create_run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for real persistence diagram",
+        max_length=4,
+        seed=42,
+        session=db_session,
+    )
+    db_session.add(run)
+    db_session.commit()
+
+    # Create and perform several invocations to build a trajectory
+    invocation0 = create_invocation(
+        model="DummyT2I",
+        input=run.initial_prompt,
+        run_id=run.id,
+        sequence_number=0,
+        session=db_session,
+        seed=42,
+    )
+    invocation0 = perform_invocation(invocation0, run.initial_prompt, db_session)
+
+    invocation1 = create_invocation(
+        model="DummyI2T",
+        input=invocation0.output,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=invocation0.id,
+        session=db_session,
+        seed=42,
+    )
+    invocation1 = perform_invocation(invocation1, invocation0.output, db_session)
+
+    invocation2 = create_invocation(
+        model="DummyT2I",
+        input=invocation1.output,
+        run_id=run.id,
+        sequence_number=2,
+        input_invocation_id=invocation1.id,
+        session=db_session,
+        seed=42,
+    )
+    invocation2 = perform_invocation(invocation2, invocation1.output, db_session)
+
+    invocation3 = create_invocation(
+        model="DummyI2T",
+        input=invocation2.output,
+        run_id=run.id,
+        sequence_number=3,
+        input_invocation_id=invocation2.id,
+        session=db_session,
+        seed=42,
+    )
+    invocation3 = perform_invocation(invocation3, invocation2.output, db_session)
+
+    # Create embeddings for all invocations using a real embedding model
+    embedding_model = "Nomic"
+    for invocation in [invocation0, invocation1, invocation2, invocation3]:
+        embedding = create_embedding(embedding_model, invocation, db_session)
+        perform_embedding(embedding, db_session)
+
+    # Create persistence diagram
+    pd = create_persistence_diagram(run.id, embedding_model, db_session)
+
+    # Perform the persistence diagram calculation
+    pd = perform_persistence_diagram(pd, db_session)
+
+    # Make sure the diagram was created and has generators
+    assert pd.generators is not None
+    assert len(pd.generators) > 0
+    assert pd.started_at is not None
+    assert pd.completed_at is not None
+    assert pd.completed_at >= pd.started_at
+
+    # Verify that generators are numpy arrays with the expected structure
+    for generator in pd.generators:
+        assert isinstance(generator, np.ndarray)
+        assert generator.shape[1] == 2  # Each generator should have birth/death pairs
+
+    # Verify persistence in the database by retrieving the diagram separately
+    db_session.expire_all()  # Clear session cache to ensure fresh data from DB
+    from sqlmodel import select
+    statement = select(pd.__class__).where(pd.__class__.id == pd.id)
+    retrieved_pd = db_session.exec(statement).one()
+
+    # Check that the generators were properly persisted
+    assert retrieved_pd.generators is not None
+    assert len(retrieved_pd.generators) == len(pd.generators)
+    assert all(np.array_equal(g1, g2) for g1, g2 in zip(pd.generators, retrieved_pd.generators))
 
 
 def test_multiple_embeddings_per_invocation(db_session: Session):
