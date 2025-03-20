@@ -7,7 +7,7 @@ import typer
 
 from trajectory_tracer.db import count_invocations, get_database, list_runs, read_run
 from trajectory_tracer.embeddings import list_models as list_embedding_models
-from trajectory_tracer.engine import perform_experiment, create_persistence_diagram, perform_persistence_diagram, create_embedding, perform_embedding
+from trajectory_tracer.engine import do_persistence_diagram, perform_experiment
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig, Run
@@ -289,15 +289,76 @@ def script(
 
         # Example script code - Fetch and print run info
         with database.get_session() as session:
-            run = read_run(UUID("067d8ada-9d90-70c2-b71e-da6b9c94fe24"), session)
-            logger.info(f"Run: {run.id}")
-            if run.persistence_diagrams:
-                for i, pd in enumerate(run.persistence_diagrams):
-                    logger.info(f"  Persistence Diagram {i+1} - Embedding Model: {pd.embedding_model}")
+            run = read_run(UUID("067d8b04-1304-76e2-b569-561f579f0a3b"), session)
+            embedding_model = "Nomic"
+
+            # Check if the run has any invocations
+            if not run.invocations:
+                logger.error(f"Run {run.id} has no invocations")
+                raise typer.Exit(code=1)
+
+            # Create a list to store [sequence_number, embedding_vector] pairs
+            embedding_data = []
+
+            # Iterate through invocations in sequence order
+            for invocation in sorted(run.invocations, key=lambda inv: inv.sequence_number):
+                # Find embedding for the specified model
+                matching_embeddings = [e for e in invocation.embeddings if e.embedding_model == embedding_model]
+
+                if not matching_embeddings:
+                    logger.error(f"Invocation {invocation.id} (sequence {invocation.sequence_number}) has no embedding for model {embedding_model}")
+                    raise typer.Exit(code=1)
+
+                # Use the first matching embedding (should only be one per model)
+                embedding = matching_embeddings[0]
+
+                # Convert numpy array to list for JSON serialization
+                embedding_vector = embedding.vector.tolist()
+
+                # Add the pair to our data collection
+                embedding_data.append([invocation.sequence_number, embedding_vector])
+
+            # Write to JSON file
+            filename = f"logs/embeddings-{embedding_model}--{run.id}.json"
+            with open(filename, "w") as f:
+                json.dump(embedding_data, f, indent=2)
+                logger.info(f"Wrote {len(embedding_data)} embeddings to {filename}")
+
+            typer.Exit()
+
+            # Check if a persistence diagram already exists
+            existing_pd = [pd for pd in run.persistence_diagrams
+                          if pd.embedding_model == embedding_model]
+
+            if existing_pd:
+                pd = existing_pd[0]
+                logger.info(f"Found existing persistence diagram for run {run.id} and model {embedding_model}")
+                if pd.generators:
+                    # Convert generators to list format for JSON serialization
+                    generators_list = [gen.tolist() for gen in pd.generators]
+
+                    # Write to JSON file
+                    filename = f"logs/pd-{embedding_model}--{run.id}.json"
+                    with open(filename, "w") as f:
+                        json.dump(generators_list, f, indent=2)
+                        logger.info(f"Wrote persistence diagram to {filename}")
+
+                    for j, gen in enumerate(pd.generators):
+                        logger.info(f"    Generator {j+1} (length {len(gen)}): {gen}")
+                else:
+                    pd = do_persistence_diagram(run, embedding_model, session)
+                    if pd and pd.generators:
+                        for j, gen in enumerate(pd.generators):
+                            logger.info(f"    Generator {j+1} (length {len(gen)}): {gen}")
+                    else:
+                        logger.info("  No generators found for this persistence diagram")
+            else:
+                pd = do_persistence_diagram(run, embedding_model, session)
+                if pd:
                     for j, gen in enumerate(pd.generators):
                         logger.info(f"    Generator {j+1}: {gen}")
-            else:
-                logger.info("  No persistence diagrams found for this run")
+                else:
+                    logger.info("  No persistence diagrams found for this run")
         # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
 
         logger.info("Script execution completed")

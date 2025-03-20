@@ -317,6 +317,40 @@ def perform_embedding(embedding: Embedding, session: Session) -> Embedding:
         raise
 
 
+def embed_run(run: Run, embedding_model: str, session: Session) -> Run:
+    """
+    Create and compute embeddings for all invocations in a run using the specified embedding model.
+
+    Args:
+        run: The Run object containing invocations to embed
+        embedding_model: The name of the embedding model to use
+        session: SQLModel Session for database operations
+
+    Returns:
+        List of the created and computed Embedding objects
+    """
+    logger.info(f"Embedding run {run.id} with model {embedding_model}")
+
+    embeddings = []
+    for i, invocation in enumerate(run.invocations):
+        try:
+            # Create the embedding object
+            embedding = create_embedding(embedding_model, invocation, session)
+
+            # Compute the embedding vector
+            embedding = perform_embedding(embedding, session)
+
+            embeddings.append(embedding)
+            logger.debug(f"Embedded invocation {i+1}/{len(run.invocations)} with {embedding_model}")
+
+        except Exception as e:
+            logger.error(f"Error embedding invocation {invocation.id}: {e}")
+
+    logger.info(f"Completed embedding run {run.id} with {len(embeddings)} embeddings")
+    session.refresh(run)
+    return run
+
+
 def compute_missing_embeds(session: Session) -> int:
     """
     Find all the Embedding objects in the database without a vector,
@@ -466,6 +500,59 @@ def perform_persistence_diagram(persistence_diagram, session: Session):
     logger.debug(f"Successfully computed persistence diagram for run {run.id}")
     return persistence_diagram
 
+
+def do_persistence_diagram(run: Run, embedding_model: str, session: Session) -> PersistenceDiagram:
+    """
+    Create and compute a persistence diagram for a run with a specific embedding model.
+    If embeddings don't exist for invocations, they will be created automatically.
+
+    Args:
+        run: The Run object to analyze
+        embedding_model: The embedding model to use
+        session: SQLModel Session for database operations
+
+    Returns:
+        The computed PersistenceDiagram object
+
+    Raises:
+        ValueError: If the run is invalid or computation fails
+    """
+    logger.info(f"Computing persistence diagram for run {run.id} with embedding model {embedding_model}")
+
+    # First ensure all invocations have embeddings for this model
+    for invocation in run.invocations:
+        # Check if this invocation already has an embedding for this model
+        existing_embeddings = [e for e in invocation.embeddings if e.embedding_model == embedding_model]
+
+        if not existing_embeddings:
+            # Create and compute embedding if it doesn't exist
+            logger.debug(f"Creating missing embedding for invocation {invocation.id} with model {embedding_model}")
+            embedding = create_embedding(embedding_model, invocation, session)
+            perform_embedding(embedding, session)
+        elif existing_embeddings[0].vector is None:
+            # If embedding exists but has no vector, compute it
+            logger.debug(f"Computing vector for existing embedding {existing_embeddings[0].id}")
+            perform_embedding(existing_embeddings[0], session)
+
+    # Check if a persistence diagram already exists for this run and embedding model
+    existing_pds = [pd for pd in run.persistence_diagrams
+                   if pd.embedding_model == embedding_model]
+
+    if existing_pds:
+        pd = existing_pds[0]
+        logger.debug(f"Found existing persistence diagram {pd.id} for run {run.id}")
+
+        # If it exists but has no generators, compute them
+        if not pd.generators:
+            logger.debug(f"Computing generators for existing persistence diagram {pd.id}")
+            perform_persistence_diagram(pd, session)
+    else:
+        # Create and compute a new persistence diagram
+        pd = create_persistence_diagram(run.id, embedding_model, session)
+        perform_persistence_diagram(pd, session)
+
+    logger.info(f"Completed persistence diagram {pd.id} for run {run.id}")
+    return pd
 
 
 def compute_missing_persistence_diagrams(session: Session) -> int:
