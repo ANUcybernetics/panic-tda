@@ -41,6 +41,35 @@ def get_database(
 
 ## some helper functions
 
+def read_invocation(session: Session, invocation_id: str):
+    """
+    Fetches a single invocation by its UUID.
+
+    Args:
+        session: The database session
+        invocation_id: UUID string of the invocation to fetch
+
+    Returns:
+        An Invocation object or None if not found
+    """
+    statement = select(Invocation).where(Invocation.id == invocation_id)
+    return session.exec(statement).first()
+
+
+def read_run(session: Session, run_id: str):
+    """
+    Fetches a single run by its UUID.
+
+    Args:
+        session: The database session
+        run_id: UUID string of the run to fetch
+
+    Returns:
+        A Run object or None if not found
+    """
+    statement = select(Run).where(Run.id == run_id)
+    return session.exec(statement).first()
+
 
 def list_invocations(session: Session):
     """

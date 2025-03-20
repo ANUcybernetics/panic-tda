@@ -22,6 +22,72 @@ from trajectory_tracer.schemas import (
 )
 
 
+def test_read_invocation(db_session: Session):
+    """Test the read_invocation function."""
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test read_invocation", network=["model1"], seed=42, max_length=3
+    )
+
+    # Create a sample invocation
+    sample_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="Sample output text",
+    )
+
+    # Add to the session
+    db_session.add(sample_run)
+    db_session.add(sample_invocation)
+    db_session.commit()
+
+    # Test the read_invocation function
+    from trajectory_tracer.db import read_invocation
+
+    # Test with valid ID
+    invocation = read_invocation(db_session, sample_invocation.id)
+    assert invocation is not None
+    assert invocation.id == sample_invocation.id
+    assert invocation.model == "TextModel"
+    assert invocation.output_text == "Sample output text"
+
+    # Test with invalid ID
+    nonexistent_id = uuid7()
+    invocation = read_invocation(db_session, nonexistent_id)
+    assert invocation is None
+
+
+def test_read_run(db_session: Session):
+    """Test the read_run function."""
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test read_run", network=["model1", "model2"], seed=42, max_length=5
+    )
+
+    # Add to the session
+    db_session.add(sample_run)
+    db_session.commit()
+
+    # Test the read_run function
+    from trajectory_tracer.db import read_run
+
+    # Test with valid ID
+    run = read_run(db_session, sample_run.id)
+    assert run is not None
+    assert run.id == sample_run.id
+    assert run.initial_prompt == "test read_run"
+    assert run.network == ["model1", "model2"]
+    assert run.seed == 42
+
+    # Test with invalid ID
+    nonexistent_id = uuid7()
+    run = read_run(db_session, nonexistent_id)
+    assert run is None
+
+
 def test_run_creation(db_session: Session):
     """Test creating a Run object."""
     # Create a sample run
