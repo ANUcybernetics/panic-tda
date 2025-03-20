@@ -12,6 +12,8 @@ from trajectory_tracer.db import (
     incomplete_embeddings,
     list_embeddings,
     list_invocations,
+    read_invocation,
+    read_run
 )
 from trajectory_tracer.schemas import (
     Embedding,
@@ -45,10 +47,9 @@ def test_read_invocation(db_session: Session):
     db_session.commit()
 
     # Test the read_invocation function
-    from trajectory_tracer.db import read_invocation
 
     # Test with valid ID
-    invocation = read_invocation(db_session, sample_invocation.id)
+    invocation = read_invocation(sample_invocation.id, db_session)
     assert invocation is not None
     assert invocation.id == sample_invocation.id
     assert invocation.model == "TextModel"
@@ -56,7 +57,7 @@ def test_read_invocation(db_session: Session):
 
     # Test with invalid ID
     nonexistent_id = uuid7()
-    invocation = read_invocation(db_session, nonexistent_id)
+    invocation = read_invocation(nonexistent_id, db_session)
     assert invocation is None
 
 
@@ -71,11 +72,8 @@ def test_read_run(db_session: Session):
     db_session.add(sample_run)
     db_session.commit()
 
-    # Test the read_run function
-    from trajectory_tracer.db import read_run
-
     # Test with valid ID
-    run = read_run(db_session, sample_run.id)
+    run = read_run(sample_run.id, db_session)
     assert run is not None
     assert run.id == sample_run.id
     assert run.initial_prompt == "test read_run"
@@ -84,7 +82,7 @@ def test_read_run(db_session: Session):
 
     # Test with invalid ID
     nonexistent_id = uuid7()
-    run = read_run(db_session, nonexistent_id)
+    run = read_run(nonexistent_id, db_session)
     assert run is None
 
 

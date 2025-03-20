@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from uuid import UUID
 
 # from sqlalchemy import func
 from sqlmodel import Session, SQLModel, create_engine, func, select
@@ -41,34 +42,32 @@ def get_database(
 
 ## some helper functions
 
-def read_invocation(session: Session, invocation_id: str):
+def read_invocation(invocation_id: UUID, session: Session):
     """
     Fetches a single invocation by its UUID.
 
     Args:
-        session: The database session
         invocation_id: UUID string of the invocation to fetch
+        session: The database session
 
     Returns:
         An Invocation object or None if not found
     """
-    statement = select(Invocation).where(Invocation.id == invocation_id)
-    return session.exec(statement).first()
+    return session.get(Invocation, invocation_id)
 
 
-def read_run(session: Session, run_id: str):
+def read_run(run_id: UUID, session: Session):
     """
     Fetches a single run by its UUID.
 
     Args:
-        session: The database session
         run_id: UUID string of the run to fetch
+        session: The database session
 
     Returns:
         A Run object or None if not found
     """
-    statement = select(Run).where(Run.id == run_id)
-    return session.exec(statement).first()
+    return session.get(Run, run_id)
 
 
 def list_invocations(session: Session):
