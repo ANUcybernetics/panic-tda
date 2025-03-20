@@ -387,6 +387,44 @@ def test_perform_embedding(db_session: Session):
     )  # Completion should be after or equal to start
 
 
+@pytest.mark.slow
+def test_perform_real_embedding(db_session: Session):
+    """Test that perform_embedding works with a real Nomic embedding model."""
+    # Create a test invocation
+    input_text = "This is test text for a real embedding calculation"
+    invocation = create_invocation(
+        model="DummyT2I",
+        input=input_text,
+        run_id=uuid7(),
+        sequence_number=0,
+        session=db_session,
+        seed=42,
+    )
+    # Use the real perform_invocation function to get a real output
+    invocation = perform_invocation(invocation, input_text, db_session)
+    db_session.add(invocation)
+    db_session.commit()
+    db_session.refresh(invocation)
+
+    # Create an empty embedding with a real embedding model
+    embedding = create_embedding("Nomic", invocation, db_session)
+
+    # Perform the actual embedding calculation with the real model
+    embedding = perform_embedding(embedding, db_session)
+
+    # Check that the embedding vector was calculated correctly
+    assert embedding.vector is not None
+    assert embedding.dimension > 0  # Real embeddings should have a positive dimension
+    assert embedding.started_at is not None
+    assert embedding.completed_at is not None
+    assert embedding.completed_at >= embedding.started_at
+
+    # Verify the relationship is established correctly
+    db_session.refresh(invocation)
+    assert len(invocation.embeddings) == 1
+    assert invocation.embeddings[0].id == embedding.id
+
+
 def test_multiple_embeddings_per_invocation(db_session: Session):
     """Test that multiple embedding models can be used on the same invocation."""
     # Create a test invocation
