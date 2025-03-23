@@ -7,7 +7,7 @@ import typer
 
 from trajectory_tracer.db import count_invocations, get_database, list_runs, read_run
 from trajectory_tracer.embeddings import list_models as list_embedding_models
-from trajectory_tracer.engine import perform_experiment, create_persistence_diagram, perform_persistence_diagram, create_embedding, perform_embedding
+from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig, Run
