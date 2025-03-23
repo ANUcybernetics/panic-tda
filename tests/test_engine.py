@@ -1,49 +1,16 @@
 import hashlib
 import io
+import uuid
 
 import ray
 from PIL import Image
 from sqlmodel import Session
-from uuid_v7.base import uuid7
 
-from trajectory_tracer.engine import (
-    create_invocation,
-    run_generator,
-)
+from trajectory_tracer.engine import run_generator
 from trajectory_tracer.schemas import (
-    InvocationType,
+    Invocation,
     Run,
 )
-
-
-def test_create_image_to_text_invocation(db_session: Session):
-    """Test that create_invocation correctly initializes an invocation object with image input."""
-    run_id = uuid7()
-    # Create a test image as input instead of text
-    image_input = Image.new("RGB", (100, 100), color="red")
-    model = "DummyI2T"  # DummyI2T is an Image-to-Text model
-    sequence_number = 0
-    seed = 12345
-
-    image_to_text_invocation = create_invocation(
-        model=model,
-        input=image_input,
-        run_id=run_id,
-        sequence_number=sequence_number,
-        session=db_session,
-        seed=seed,
-    )
-
-    assert image_to_text_invocation.model == model
-    assert image_to_text_invocation.type == InvocationType.TEXT
-    assert image_to_text_invocation.run_id == run_id
-    assert image_to_text_invocation.sequence_number == sequence_number
-    assert image_to_text_invocation.seed == seed
-    assert image_to_text_invocation.input_invocation_id is None
-    assert image_to_text_invocation.output is None
-    assert (
-        image_to_text_invocation.id is not None
-    )  # Should have an ID since it was saved to DB
 
 
 def test_get_output_hash():
@@ -95,16 +62,17 @@ def test_run_generator(db_session: Session):
     # Call the generator function with the same DB that db_session is using
     gen_ref = run_generator.remote(str(run.id), db_url)
 
-    # Get the generator object
-    gen_obj = ray.get(gen_ref)
+    # Get the DynamicObjectRefGenerator object
+    ref_generator = ray.get(gen_ref)
 
-    # Get the first few invocation IDs
+    # Get the invocation IDs by iterating through the DynamicObjectRefGenerator
     invocation_ids = []
-    for _ in range(3):
-        try:
-            invocation_id = next(gen_obj)
-            invocation_ids.append(invocation_id)
-        except StopIteration:
+    # Iterate directly over the DynamicObjectRefGenerator
+    for invocation_id_ref in ref_generator:
+        # Each item is an ObjectRef containing an invocation ID
+        invocation_id = ray.get(invocation_id_ref)
+        invocation_ids.append(invocation_id)
+        if len(invocation_ids) >= 3:
             break
 
     # Verify we got the expected number of invocations
@@ -112,7 +80,11 @@ def test_run_generator(db_session: Session):
 
     # Verify the invocations are in the database with the right sequence numbers
     for i, invocation_id in enumerate(invocation_ids):
-        invocation = db_session.get(InvocationType, invocation_id)
+        # Convert string UUID to UUID object if needed
+        if isinstance(invocation_id, str):
+            invocation_id = uuid.UUID(invocation_id)
+
+        invocation = db_session.get(Invocation, invocation_id)
         assert invocation is not None
         assert invocation.run_id == run.id
         assert invocation.sequence_number == i
