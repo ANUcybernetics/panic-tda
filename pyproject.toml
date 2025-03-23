@@ -47,15 +47,12 @@ packages = ["trajectory_tracer"]
 pythonpath = ["."]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')"
+    "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
 ]
 addopts = "-m 'not slow and not benchmark'"
 
 [dependency-groups]
-dev = [
-    "pytest>=8.3.5",
-    "ruff>=0.11.0",
-]
+dev = ["pytest>=8.3.5", "ruff>=0.11.0"]
 
 [tool.ruff.format]
 # Enable preview style formatting.
