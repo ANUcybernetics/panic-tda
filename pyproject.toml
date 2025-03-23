@@ -29,7 +29,6 @@ dependencies = [
     "transformers>=4.49.0",
     "typer>=0.15.2",
     "uuid-v7>=1.0.0",
-    "xformers>=0.0.29.post3",
 ]
 
 [project.scripts]
