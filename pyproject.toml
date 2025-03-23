@@ -43,9 +43,6 @@ build-backend = "setuptools.build_meta"
 package-dir = { "" = "src" }
 packages = ["trajectory_tracer"]
 
-[tool.uv]
-package = true
-
 [tool.pytest.ini_options]
 pythonpath = ["."]
 markers = [
