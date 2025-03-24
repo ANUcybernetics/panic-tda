@@ -25,11 +25,11 @@ an attempt to quantify and understand that structure.
 
 - python 3.12+
 - sqlite3
-- GPU which supports CUDA 12.7 (maybe earlier ok, but untested)
+- GPU which supports CUDA 12.7 (earlier version maybe earlier ok, but untested)
 
 ## Installation
 
-Seriously, my recommendation is to just use [uv](https://docs.astral.sh/uv/).
+With [uv](https://docs.astral.sh/uv/), it's just:
 
 ```bash
 # install the package
@@ -39,7 +39,7 @@ uv pip install -e .
 uv run trajectory-tracer --help
 ```
 
-Note: if you're the sort of person who has alternate (strong) opinions on how to
+If you're the sort of person who has alternate (strong) opinions on how to
 manage python environments, then you can probably figure out how to do it your
 preferred way. Godspeed to you.
 
@@ -94,8 +94,11 @@ log out (see `perform-experiment.sh` for an example).
 This repo uses [Pydantic](https://pydantic.dev) for data modelling and
 validation and the related [sqlmodel](https://sqlmodel.tiangolo.com) for
 persisting data to a sqlite database. The data model is described in the
-`schema` module. The code for performing the experiments is done by the `engine`
-module. All other modules do what they say on the tin.
+`schema` module.
+
+The code for performing the experiments is done by the `engine` module. All
+other modules do what they say on the tin. For parallelizing the experiments, we
+use [ray](https://docs.ray.io/en/latest/).
 
 There are (relatively) comprehensive tests in the `tests` directory. They can be
 run with pytest:
