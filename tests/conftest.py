@@ -1,17 +1,38 @@
+import os
+import tempfile
+
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 
 
 @pytest.fixture
 def db_session():
-    """Create a new in-memory database and session for a test."""
-    engine = create_engine("sqlite:///:memory:")
+    """Create a new temporary file-based database and session for a test."""
+    # Create a temporary file
+    db_file_handle, db_file_path = tempfile.mkstemp(suffix=".sqlite")
+
+    # Close the file handle (SQLite will manage the file)
+    os.close(db_file_handle)
+
+    # Create the database connection
+    db_url = f"sqlite:///{db_file_path}"
+    engine = create_engine(db_url)
     SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
+        # Store the database URL and file path as session attributes
+        session.db_url = db_url
+        session.db_file_path = db_file_path
         yield session
 
-    # Database is automatically closed when the connection is closed
+    # Clean up: remove the temporary file
+    if os.path.exists(db_file_path):
+        try:
+            os.unlink(db_file_path)
+        except PermissionError:
+            # If we can't delete immediately (e.g., Windows might keep a lock)
+            # we can ignore - temp files will be cleaned up eventually
+            pass
 
 
 @pytest.fixture
