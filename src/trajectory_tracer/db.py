@@ -205,11 +205,10 @@ def print_run_info(run_id: UUID, session: Session):
 
     # Print basic run information
     print(f"Run {run.id}")
-    print(f"  Network: {', '.join(run.network)}")
+    print(f"  Network: {' -> '.join(run.network)} -> ...")
     print(f"  Seed: {run.seed}")
     print(f"  Max Length: {run.max_length}")
-    print(f"  Initial Prompt: {run.initial_prompt[:50]}..." if len(run.initial_prompt) > 50
-          else f"  Initial Prompt: {run.initial_prompt}")
+    print(f"  Initial Prompt: {run.initial_prompt}")
     print(f"  Number of Invocations: {len(run.invocations)}")
     print(f"  Stop Reason: {run.stop_reason}")
 
