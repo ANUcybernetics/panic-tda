@@ -1,5 +1,9 @@
 # TODO
 
+- use ray actors for each genai/embedding model (for better parallelism)
+
+- store the persistence entropy in the PD object
+
 - switch to fast flux (fp8) using
   [this](https://github.com/aredden/flux-fp8-api)
 
