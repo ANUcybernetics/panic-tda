@@ -86,3 +86,56 @@ def test_run_generator(db_session: Session):
         assert invocation is not None
         assert invocation.run_id == run.id
         assert invocation.sequence_number == i
+
+
+def test_run_generator_duplicate_detection(db_session: Session):
+    """Test that run_generator correctly detects and stops on duplicate outputs."""
+
+    # Create a test run with network that will produce duplicates
+    # Since DummyT2I always produces the same output for the same seed,
+    # we should get a duplicate when the cycle repeats
+    run = Run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for duplication",
+        seed=123,  # Use a fixed seed to ensure deterministic outputs
+        max_length=10,  # Set higher than expected to verify early termination
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the generator function
+    gen_ref = run_generator.remote(str(run.id), db_url)
+    ref_generator = ray.get(gen_ref)
+
+    # Get all invocation IDs
+    invocation_ids = []
+    for invocation_id_ref in ref_generator:
+        invocation_id = ray.get(invocation_id_ref)
+        invocation_ids.append(invocation_id)
+
+    # We expect 4 invocations before detecting a duplicate:
+    # 1. DummyT2I (produces image A)
+    # 2. DummyI2T (produces text B)
+    # 3. DummyT2I (produces image A again - should be detected as duplicate)
+    # 4. DummyI2T (this should not be executed due to duplicate detection)
+    assert len(invocation_ids) == 3, (
+        f"Expected 3 invocations but got {len(invocation_ids)}"
+    )
+
+    # Verify the invocations in the database
+    for i, invocation_id in enumerate(invocation_ids):
+        if isinstance(invocation_id, str):
+            invocation_id = uuid.UUID(invocation_id)
+
+        invocation = db_session.get(Invocation, invocation_id)
+        assert invocation is not None
+        assert invocation.run_id == run.id
+        assert invocation.sequence_number == i
+
+        # Check the model pattern matches our expectation
+        expected_model = run.network[i % len(run.network)]
+        assert invocation.model == expected_model
