@@ -299,6 +299,7 @@ def test_list_models():
     assert "GenAIModel" not in models, "list_models() should not include the base class"
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
 def test_model_memory_usage(model_name):
     """Test memory usage reporting for each model."""

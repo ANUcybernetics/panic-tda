@@ -258,6 +258,7 @@ def test_list_models():
     assert "EmbeddingModel" not in available_models
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
 def test_embedding_model_memory_usage(model_name):
     """Test memory usage reporting for each embedding model."""
