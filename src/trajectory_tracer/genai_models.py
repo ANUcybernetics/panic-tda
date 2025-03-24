@@ -1,11 +1,17 @@
 import random
 import sys
+
+# Suppress warnings and progress bars
+import warnings
 from typing import ClassVar, Union
 
+import diffusers
 import torch
+import transformers
 from diffusers import AutoPipelineForText2Image, FluxPipeline
 from PIL import Image
 from pydantic import BaseModel
+from tqdm import tqdm
 from transformers import (
     AutoModelForCausalLM,
     Blip2ForConditionalGeneration,
@@ -13,6 +19,27 @@ from transformers import (
 )
 
 from trajectory_tracer.schemas import InvocationType
+
+warnings.filterwarnings("ignore", message=".*megablocks not available.*")
+
+# Disable tqdm progress bars
+
+# Replace tqdm with a no-op version
+original_tqdm = tqdm
+tqdm.__init__ = lambda *args, **kwargs: None
+tqdm.update = lambda *args, **kwargs: None
+tqdm.close = lambda *args, **kwargs: None
+tqdm.__iter__ = lambda _: iter([])
+# tqdm.pandas = lambda *args, **kwargs: None
+
+# Disable HuggingFace progress bars
+
+transformers.logging.set_verbosity_error()
+transformers.utils.logging.disable_progress_bar()
+
+
+diffusers.utils.logging.set_verbosity_error()
+diffusers.utils.logging.disable_progress_bar()
 
 # Image size for all image operations
 IMAGE_SIZE = 512
