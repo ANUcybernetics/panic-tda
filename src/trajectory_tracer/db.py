@@ -33,6 +33,16 @@ class Database:
             session.close()
 
 
+# this one is helpful for Ray stuff, which for security reasons needs to pass the db around as a string, not a session object
+@contextmanager
+def get_session_from_connection_string(connection_string: str):
+    """Create a database session from a connection string."""
+
+    db = get_database(connection_string)
+    with db.get_session() as session:
+        yield session
+
+
 def get_database(
     connection_string: str = "sqlite:///trajectory_tracer.sqlite",
 ) -> Database:
@@ -41,6 +51,7 @@ def get_database(
 
 
 ## some helper functions
+
 
 def read_invocation(invocation_id: UUID, session: Session):
     """

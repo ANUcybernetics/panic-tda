@@ -2,15 +2,13 @@ import hashlib
 import io
 import itertools
 import logging
-from contextlib import contextmanager
 from datetime import datetime
-from typing import Generator
 
 import numpy as np
 import ray
 from PIL import Image
 
-from trajectory_tracer.db import get_database
+from trajectory_tracer.db import get_session_from_connection_string
 from trajectory_tracer.embeddings import embed
 from trajectory_tracer.genai_models import get_output_type, invoke, unload_all_models
 from trajectory_tracer.schemas import (
@@ -31,15 +29,6 @@ logger = logging.getLogger(__name__)
 
 # Initialize Ray (will be a no-op if already initialized)
 # ray.init(ignore_reinit_error=True)
-
-
-@contextmanager
-def get_session_from_connection_string(connection_string: str):
-    """Create a database session from a connection string."""
-
-    db = get_database(connection_string)
-    with db.get_session() as session:
-        yield session
 
 
 def get_output_hash(output):
@@ -66,7 +55,7 @@ def get_output_hash(output):
 
 
 @ray.remote(num_returns="dynamic")
-def run_generator(run_id: str, db_str: str) -> Generator[str, None, None]:
+def run_generator(run_id: str, db_str: str):
     """
     Generate invocations for a run in sequence.
 

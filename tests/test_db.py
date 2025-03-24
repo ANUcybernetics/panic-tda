@@ -1,3 +1,4 @@
+import tempfile
 from uuid import UUID
 
 import numpy as np
@@ -9,11 +10,12 @@ from uuid_v7.base import uuid7
 
 from trajectory_tracer.db import (
     Database,
+    get_session_from_connection_string,
     incomplete_embeddings,
     list_embeddings,
     list_invocations,
     read_invocation,
-    read_run
+    read_run,
 )
 from trajectory_tracer.schemas import (
     Embedding,
@@ -65,7 +67,10 @@ def test_read_run(db_session: Session):
     """Test the read_run function."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test read_run", network=["model1", "model2"], seed=42, max_length=5
+        initial_prompt="test read_run",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
     )
 
     # Add to the session
@@ -90,7 +95,10 @@ def test_run_creation(db_session: Session):
     """Test creating a Run object."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
     )
     db_session.add(sample_run)
     db_session.commit()
@@ -109,7 +117,10 @@ def test_text_invocation(db_session: Session):
     """Test creating a text Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
     )
 
     # Create a sample text invocation
@@ -139,7 +150,10 @@ def test_image_invocation(db_session: Session):
     """Test creating an image Invocation."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
     )
 
     # Create a simple test image
@@ -178,7 +192,10 @@ def test_embedding(db_session: Session):
     """Test creating and retrieving an Embedding."""
     # Create a sample text invocation
     sample_run = Run(
-        initial_prompt="once upon a...", network=["model1", "model2"], seed=42, max_length=5
+        initial_prompt="once upon a...",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
     )
 
     sample_text_invocation = Invocation(
@@ -393,7 +410,10 @@ def test_list_invocations(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list invocations", network=["model1"], seed=42, max_length=3
+        initial_prompt="test list invocations",
+        network=["model1"],
+        seed=42,
+        max_length=3,
     )
 
     # Create invocations with different creation times
@@ -492,3 +512,53 @@ def test_list_embeddings(db_session: Session):
     # Test with no filters
     results = list_embeddings(db_session)
     assert len(results) == 3
+
+
+def test_get_session_from_connection_string():
+    """Test the get_session_from_connection_string context manager."""
+
+    # Create a temporary directory that will be automatically cleaned up
+    temp_dir = tempfile.TemporaryDirectory()
+    # Use a file-based SQLite database in the temporary directory
+    connection_string = f"sqlite:///{temp_dir.name}/test_db.sqlite"
+
+    # Test normal operation
+    with get_session_from_connection_string(connection_string) as session:
+        # Create a sample run
+        sample_run = Run(
+            initial_prompt="testing get_session_from_connection_string",
+            network=["test"],
+            seed=789,
+            max_length=1,
+        )
+        session.add(sample_run)
+
+    # Create a new session to verify the run was committed
+    with get_session_from_connection_string(connection_string) as session:
+        statement = select(Run).where(
+            Run.initial_prompt == "testing get_session_from_connection_string"
+        )
+        runs = session.exec(statement).all()
+        assert len(runs) == 1
+        assert runs[0].seed == 789
+
+    # Test rollback on exception
+    try:
+        with get_session_from_connection_string(connection_string) as session:
+            # Create another sample run
+            sample_run = Run(
+                initial_prompt="should be rolled back too",
+                network=["test"],
+                seed=999,
+                max_length=1,
+            )
+            session.add(sample_run)
+            raise ValueError("Test exception to trigger rollback")
+    except ValueError:
+        pass
+
+    # Verify the run was rolled back
+    with get_session_from_connection_string(connection_string) as session:
+        statement = select(Run).where(Run.initial_prompt == "should be rolled back too")
+        runs = session.exec(statement).all()
+        assert len(runs) == 0
