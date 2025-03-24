@@ -3,6 +3,7 @@ import io
 import itertools
 import logging
 from datetime import datetime
+from uuid import UUID
 
 import numpy as np
 import ray
@@ -68,7 +69,8 @@ def run_generator(run_id: str, db_str: str):
     """
     with get_session_from_connection_string(db_str) as session:
         # Load the run
-        run = session.get(Run, run_id)
+        run_uuid = UUID(run_id)
+        run = session.get(Run, run_uuid)
         if not run:
             raise ValueError(f"Run {run_id} not found")
 
@@ -76,7 +78,7 @@ def run_generator(run_id: str, db_str: str):
 
         # Initialize with the first prompt
         current_input = run.initial_prompt
-        previous_invocation_id = None
+        previous_invocation_uuid = None
         network_length = len(run.network)
 
         # Track outputs to detect loops (only if seed is not -1)
@@ -93,9 +95,9 @@ def run_generator(run_id: str, db_str: str):
             invocation = Invocation(
                 model=model_name,
                 type=get_output_type(model_name),
-                run_id=run_id,
+                run_id=run_uuid,
                 sequence_number=sequence_number,
-                input_invocation_id=previous_invocation_id,
+                input_invocation_id=previous_invocation_uuid,
                 seed=run.seed,
             )
 
@@ -138,7 +140,7 @@ def run_generator(run_id: str, db_str: str):
 
             # Set up for next invocation
             current_input = invocation.output
-            previous_invocation_id = invocation_id
+            previous_invocation_uuid = UUID(invocation_id)
 
             logger.debug(
                 f"Completed invocation {sequence_number}/{run.max_length}: {model_name}"
@@ -162,13 +164,14 @@ def compute_embedding(invocation_id: str, embedding_model: str, db_str: str) -> 
     """
     with get_session_from_connection_string(db_str) as session:
         # Load the invocation
-        invocation = session.get(Invocation, invocation_id)
+        invocation_uuid = UUID(invocation_id)
+        invocation = session.get(Invocation, invocation_uuid)
         if not invocation:
             raise ValueError(f"Invocation {invocation_id} not found")
 
         # Create the embedding object
         embedding = Embedding(
-            invocation_id=invocation_id, embedding_model=embedding_model, vector=None
+            invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
         )
 
         # Save to database
@@ -215,6 +218,7 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
     """
     with get_session_from_connection_string(db_str) as session:
         # Create persistence diagram object with empty generators
+        run_uuid = UUID(run_id)
         pd = PersistenceDiagram(
             run_id=run_id, embedding_model=embedding_model, generators=[]
         )
@@ -228,7 +232,7 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         logger.debug(f"Created empty persistence diagram {pd_id} for run {run_id}")
 
         # Load the run and its embeddings
-        run = session.get(Run, run_id)
+        run = session.get(Run, run_uuid)
         if not run:
             raise ValueError(f"Run {run_id} not found")
 
