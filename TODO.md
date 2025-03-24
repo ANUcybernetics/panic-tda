@@ -25,3 +25,5 @@
 
 - generate big image grid (utils, or maybe analysis)... or perhaps move utils
   into analysis
+
+- run the tests in GitHub actions
