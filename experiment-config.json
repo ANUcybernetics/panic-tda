@@ -1,12 +1,11 @@
 {
     "networks": [
-        ["FluxDev", "Moondream"],
-        ["SDXLTurbo", "Moondream"],
-        ["FluxDev", "Nomic"],
-        ["SDXLTurbo", "Nomic"]
+        ["FluxSchnell", "Moondream"],
+        ["FluxSchnell", "Nomic"]
     ],
     "seeds": [
-        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, -1, -1
+        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, -1, -1, -1,
+        -1, -1
     ],
     "prompts": [
         "a red ball on a blue background",
@@ -14,8 +13,12 @@
         "une boule rouge sur fond bleu",
         "a horse riding an astronaut",
         "the unbearable lightness of being",
-        "a cyberpunk city at sunset with neon signs"
+        "a cyberpunk city at sunset with neon signs",
+        "a medieval castle surrounded by a moat at dawn",
+        "abstract geometric shapes in pastel colors",
+        "a tropical rainforest with exotic animals",
+        "a futuristic spaceship interior with advanced technology"
     ],
     "embedding_models": ["Nomic", "JinaClip"],
-    "max_length": 5000
+    "max_length": 2000
 }
