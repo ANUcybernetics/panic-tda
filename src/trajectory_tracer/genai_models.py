@@ -135,6 +135,71 @@ class FluxDev(GenAIModel):
         return image
 
 
+class FluxSchnell(GenAIModel):
+    output_type: ClassVar[InvocationType] = InvocationType.IMAGE
+
+    @classmethod
+    def load_to_device(cls):
+        # Check if CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Initialize the model with appropriate settings for GPU
+        pipe = FluxPipeline.from_pretrained(
+            "black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16
+        )
+
+        # Explicitly move to CUDA
+        pipe = pipe.to("cuda")
+
+        # Use a more targeted approach to compilation for complex models
+        try:
+            # Only compile the UNet's forward method, not the entire model
+            if hasattr(pipe, "unet") and hasattr(pipe.unet, "forward"):
+                original_forward = pipe.unet.forward
+                pipe.unet.forward = torch.compile(
+                    original_forward,
+                    mode="reduce-overhead",
+                    fullgraph=False,  # Important for complex models
+                    dynamic=True,  # Handle variable input sizes
+                )
+        except Exception as e:
+            print(f"Warning: Could not compile FluxSchnell UNet forward method: {e}")
+            # Continue without compilation
+
+        return pipe
+
+    @staticmethod
+    def invoke(prompt: str, seed: int = -1) -> Image:
+        """
+        Generate an image from a text prompt using the FLUX.1-schnell model.
+
+        Args:
+            prompt: A text description of the image to generate
+            seed: Random seed for deterministic generation. If -1, random generation is used.
+
+        Returns:
+            Image.Image: The generated PIL Image
+        """
+        # Get the cached model
+        pipe = FluxSchnell.get_model()
+
+        # Set up generator with seed if specified, otherwise use None for random generation
+        generator = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
+
+        # Generate the image with standard parameters
+        image = pipe(
+            prompt,
+            height=IMAGE_SIZE,
+            width=IMAGE_SIZE,
+            guidance_scale=3.5,
+            num_inference_steps=20,
+            generator=generator,  # Use provided seed or random
+        ).images[0]
+
+        return image
+
+
 class SDXLTurbo(GenAIModel):
     output_type: ClassVar[InvocationType] = InvocationType.IMAGE
 
