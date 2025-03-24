@@ -156,18 +156,10 @@ truths about the process).
   prompt more important? or the random seed? or is it an emergent property of
   the interactions between all models in the network?
 
-## Setup
-
-If you value your sanity you'll use [uv](https://docs.astral.sh/uv/) to manage
-your python environment, and then do this:
-
-```
-uv pip install -e .
-```
-
 ## Authors
 
-Ben Swift, Sunyeon Hong
+[Ben Swift](https://benswift.me) wrote the code, and Sunyeon Hong is the
+mastermind behind the TDA stuff.
 
 ## Licence
 
