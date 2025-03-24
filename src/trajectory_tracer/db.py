@@ -185,3 +185,56 @@ def count_invocations(session: Session) -> int:
     """
     statement = select(func.count()).select_from(Invocation)
     return session.exec(statement).one()
+
+
+def print_run_info(run_id: UUID, session: Session):
+    """
+    Prints detailed information about a run and its related entities.
+
+    Args:
+        run_id: UUID of the run to inspect
+        session: The database session
+
+    Returns:
+        None - information is printed to stdout
+    """
+    run = read_run(run_id, session)
+    if not run:
+        print(f"Run {run_id} not found")
+        return
+
+    # Print basic run information
+    print(f"Run {run.id}")
+    print(f"  Network: {', '.join(run.network)}")
+    print(f"  Seed: {run.seed}")
+    print(f"  Max Length: {run.max_length}")
+    print(f"  Initial Prompt: {run.initial_prompt[:50]}..." if len(run.initial_prompt) > 50
+          else f"  Initial Prompt: {run.initial_prompt}")
+    print(f"  Number of Invocations: {len(run.invocations)}")
+    print(f"  Stop Reason: {run.stop_reason}")
+
+    # Count embeddings by model
+    embedding_counts = {}
+    for emb in run.embeddings:
+        model = emb.embedding_model
+        if model not in embedding_counts:
+            embedding_counts[model] = 0
+        embedding_counts[model] += 1
+
+    print("  Embeddings:")
+    for model, count in embedding_counts.items():
+        print(f"    {model}: {count}")
+
+    # Print information about persistence diagrams
+    print("  Persistence Diagrams:")
+    for pd in run.persistence_diagrams:
+        generators = pd.get_generators_as_arrays()
+        print(f"    {pd.embedding_model}: {len(generators)} generators")
+
+        if len(generators) > 0:
+            # Print details about each generator
+            for i, gen in enumerate(generators[:3]):  # Show just first 3 for brevity
+                print(f"      Generator {i}: Shape {gen.shape}")
+
+            if len(generators) > 3:
+                print(f"      ... and {len(generators) - 3} more generators")
