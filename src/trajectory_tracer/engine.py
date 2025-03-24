@@ -220,7 +220,7 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         # Create persistence diagram object with empty generators
         run_uuid = UUID(run_id)
         pd = PersistenceDiagram(
-            run_id=run_id, embedding_model=embedding_model, generators=[]
+            run_id=run_uuid, embedding_model=embedding_model, generators=None
         )
 
         # Save to database

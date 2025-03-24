@@ -1,12 +1,18 @@
 import hashlib
 import io
+from datetime import datetime
 from uuid import UUID
 
 import ray
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.engine import compute_embedding, get_output_hash, run_generator
+from trajectory_tracer.engine import (
+    compute_embedding,
+    compute_persistence_diagram,
+    get_output_hash,
+    run_generator,
+)
 from trajectory_tracer.schemas import (
     Embedding,
     Invocation,
@@ -196,3 +202,92 @@ def test_compute_embedding(db_session: Session):
     assert embedding.started_at is not None
     assert embedding.completed_at is not None
     assert embedding.completed_at > embedding.started_at
+
+
+def test_compute_persistence_diagram(db_session: Session):
+    """Test that compute_persistence_diagram correctly computes a persistence diagram for a run."""
+    # Create a test run
+    run = Run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for persistence diagram",
+        seed=42,
+        max_length=3,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Create multiple invocations for the run
+    for i in range(3):
+        invocation = Invocation(
+            model=run.network[i % len(run.network)],
+            type="image" if i % 2 == 0 else "text",
+            run_id=run.id,
+            sequence_number=i,
+            seed=42,
+        )
+        db_session.add(invocation)
+        db_session.commit()
+        db_session.refresh(invocation)
+
+        # Generate output for the invocation
+        if i % 2 == 0:
+            output = Image.new(
+                "RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})"
+            )
+        else:
+            output = f"Test output for invocation {i}"
+
+        invocation.output = output
+        db_session.add(invocation)
+        db_session.commit()
+
+        # Compute embedding for the invocation
+        embedding = Embedding(
+            invocation_id=invocation.id,
+            embedding_model="Dummy",
+            vector=None,
+        )
+        db_session.add(embedding)
+        db_session.commit()
+        db_session.refresh(embedding)
+
+        # Set embedding vector (different for each invocation)
+        import numpy as np
+
+        embedding.vector = np.array(
+            [float(i), float(i + 1), float(i + 2)], dtype=np.float32
+        )
+        embedding.started_at = datetime.now()
+        embedding.completed_at = datetime.now()
+        db_session.add(embedding)
+        db_session.commit()
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Import compute_persistence_diagram and datetime that we'll need
+
+    # Call the compute_persistence_diagram function
+    pd_id_ref = compute_persistence_diagram.remote(str(run.id), "Dummy", db_url)
+    pd_id = ray.get(pd_id_ref)
+
+    # Convert string UUID to UUID object
+    from trajectory_tracer.schemas import PersistenceDiagram
+
+    pd_uuid = UUID(pd_id)
+
+    # Verify the persistence diagram is in the database
+    pd = db_session.get(PersistenceDiagram, pd_uuid)
+    assert pd is not None
+    assert pd.run_id == run.id
+    assert pd.embedding_model == "Dummy"
+    assert pd.generators is not None
+
+    # Verify the persistence diagram has start and complete timestamps
+    assert pd.started_at is not None
+    assert pd.completed_at is not None
+    assert pd.completed_at > pd.started_at
+
+    # We should have at least some generators with birth-death pairs
+    assert len(pd.generators) > 0
