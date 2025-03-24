@@ -3,19 +3,30 @@ import io
 from datetime import datetime
 from uuid import UUID
 
+import numpy as np
 import ray
 from PIL import Image
 from sqlmodel import Session
 
+from trajectory_tracer.db import (
+    list_embeddings,
+    list_invocations,
+    list_persistence_diagrams,
+    list_runs,
+)
 from trajectory_tracer.engine import (
     compute_embedding,
     compute_persistence_diagram,
     get_output_hash,
+    perform_experiment,
+    process_run_generators,
     run_generator,
 )
 from trajectory_tracer.schemas import (
     Embedding,
+    ExperimentConfig,
     Invocation,
+    PersistenceDiagram,
     Run,
 )
 
@@ -253,7 +264,6 @@ def test_compute_persistence_diagram(db_session: Session):
         db_session.refresh(embedding)
 
         # Set embedding vector (different for each invocation)
-        import numpy as np
 
         embedding.vector = np.array(
             [float(i), float(i + 1), float(i + 2)], dtype=np.float32
@@ -266,14 +276,11 @@ def test_compute_persistence_diagram(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Import compute_persistence_diagram and datetime that we'll need
-
     # Call the compute_persistence_diagram function
     pd_id_ref = compute_persistence_diagram.remote(str(run.id), "Dummy", db_url)
     pd_id = ray.get(pd_id_ref)
 
     # Convert string UUID to UUID object
-    from trajectory_tracer.schemas import PersistenceDiagram
 
     pd_uuid = UUID(pd_id)
 
@@ -291,3 +298,81 @@ def test_compute_persistence_diagram(db_session: Session):
 
     # We should have at least some generators with birth-death pairs
     assert len(pd.generators) > 0
+
+
+def test_process_run_generators(db_session: Session):
+    """Test that process_run_generators correctly processes multiple run generators."""
+    # Create multiple test runs
+    runs = []
+    for i in range(3):
+        run = Run(
+            network=["DummyT2I", "DummyI2T"],
+            initial_prompt=f"Test prompt {i}",
+            seed=42 + i,
+            max_length=2,
+        )
+        db_session.add(run)
+        db_session.commit()
+        db_session.refresh(run)
+        runs.append(run)
+
+    run_ids = [str(run.id) for run in runs]
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the process_run_generators function
+
+    invocation_ids = process_run_generators(run_ids, db_url)
+
+    # We expect 2 invocations for each run
+    assert len(invocation_ids) == 6
+
+    # Verify all invocations are in the database
+    for invocation_id in invocation_ids:
+        if isinstance(invocation_id, str):
+            invocation_id = UUID(invocation_id)
+
+        invocation = db_session.get(Invocation, invocation_id)
+        assert invocation is not None
+        assert invocation.run_id in [run.id for run in runs]
+
+
+def test_perform_experiment(db_session: Session):
+    """Test that perform_experiment correctly executes an experiment with multiple runs."""
+    # Create a test experiment config
+
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42, 43],
+        prompts=["Test prompt A", "Test prompt B"],
+        embedding_models=["Dummy"],
+        max_length=2,
+    )
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the perform_experiment function
+
+    perform_experiment(config, db_url)
+
+    # We should have 2*2*1 = 4 runs (2 seeds, 2 prompts, 1 network)
+    runs = list_runs(db_session)
+    assert len(runs) == 4
+
+    # Each run should have 2 invocations
+    invocations = list_invocations(db_session)
+    assert len(invocations) == 8
+
+    # Each invocation should have 1 embedding
+    embeddings = list_embeddings(db_session)
+    assert len(embeddings) == 8
+
+    pds = list_persistence_diagrams(db_session)
+    assert len(pds) == 4
+
+    # Verify all persistence diagrams have generators
+    for pd in pds:
+        assert pd.generators is not None
+        assert len(pd.generators) > 0

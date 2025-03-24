@@ -277,27 +277,35 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         return pd_id
 
 
-def interleave_generators(*generators):
+def process_run_generators(run_ids, db_str):
     """
-    Interleave the output of multiple generators into a single flat list.
-    Continues until all generators are exhausted.
+    Process multiple run generators in parallel, respecting dependencies within each run.
+
+    Args:
+        run_ids: List of run UUIDs as strings
+        db_str: Database connection string
+
+    Returns:
+        List of all invocation IDs from all generators
     """
-    result = []
-    generators = list(generators)  # Make a copy we can modify
+    # Create refs for all run generators
+    generator_refs = [run_generator.remote(run_id, db_str) for run_id in run_ids]
 
-    while generators:
-        # Use a slice copy to iterate safely while removing items
-        for i, gen in enumerate(generators[:]):
-            try:
-                result.append(next(gen))
-            except StopIteration:
-                # Remove exhausted generators
-                generators.pop(i)
+    all_invocation_ids = []
 
-                # Unload models after each generator is exhausted to conserve memory
-                unload_all_models()
+    # Get all results from all generators
+    for gen_ref in generator_refs:
+        try:
+            # Get the iterator object from the generator reference
+            iter_ref = ray.get(gen_ref)
 
-    return result
+            # Convert to list to get all elements
+            invocation_ids = list(ray.get(item) for item in iter_ref)
+            all_invocation_ids.extend(invocation_ids)
+        except Exception as e:
+            logger.error(f"Error processing generator: {e}")
+
+    return all_invocation_ids
 
 
 def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
@@ -349,15 +357,12 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
             except Exception as e:
                 logger.error(f"Error creating run {i + 1}/{total_combinations}: {e}")
 
-    # Create run generators for all runs
-    generator_refs = [run_generator.remote(run_id, db_str) for run_id in run_ids]
+    # Process all run generators in parallel while respecting dependencies
+    invocation_ids = process_run_generators(run_ids, db_str)
 
-    # Get all invocation IDs from all runs using interleaving
-    invocation_ids = []
+    # Unload all genai_models to conserve memory for the embedding models
+    unload_all_models()
 
-    # Get generator objects from Ray refs and interleave them
-    generator_objects = [ray.get(gen_ref) for gen_ref in generator_refs]
-    invocation_ids = interleave_generators(*generator_objects)
     logger.info(
         f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs"
     )
