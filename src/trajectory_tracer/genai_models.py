@@ -33,11 +33,8 @@ tqdm.__iter__ = lambda _: iter([])
 # tqdm.pandas = lambda *args, **kwargs: None
 
 # Disable HuggingFace progress bars
-
 transformers.logging.set_verbosity_error()
 transformers.utils.logging.disable_progress_bar()
-
-
 diffusers.utils.logging.set_verbosity_error()
 diffusers.utils.logging.disable_progress_bar()
 
