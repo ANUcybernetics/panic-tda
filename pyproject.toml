@@ -50,6 +50,8 @@ markers = [
     "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
 ]
 addopts = "-m 'not slow and not benchmark'"
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
 
 [dependency-groups]
 dev = ["pytest>=8.3.5", "ruff>=0.11.0"]
