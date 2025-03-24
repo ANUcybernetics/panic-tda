@@ -340,37 +340,40 @@ def test_process_run_generators(db_session: Session):
 
 def test_perform_experiment(db_session: Session):
     """Test that perform_experiment correctly executes an experiment with multiple runs."""
-    # Create a test experiment config
-
+    # Create a test experiment config with multiple embedding models and a -1 seed
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[42, 43],
+        seeds=[42, 43, -1],
         prompts=["Test prompt A", "Test prompt B"],
-        embedding_models=["Dummy"],
-        max_length=2,
+        embedding_models=["Dummy", "Dummy2"],  # Added second embedding model
+        max_length=5,  # Increased max length (especially for -1 seed)
     )
 
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
     # Call the perform_experiment function
-
     perform_experiment(config, db_url)
 
-    # We should have 2*2*1 = 4 runs (2 seeds, 2 prompts, 1 network)
+    # We should have 3*2*1 = 6 runs (3 seeds, 2 prompts, 1 network)
     runs = list_runs(db_session)
-    assert len(runs) == 4
+    assert len(runs) == 6
 
-    # Each run should have 2 invocations
+    # Total invocations will depend on the runs
+    # For -1 seed runs, we should have exactly max_length invocations (5 each)
+    # Regular seeds (42, 43) might have fewer than max_length if duplicates are detected
     invocations = list_invocations(db_session)
-    assert len(invocations) == 8
+    # At minimum, we should have 2 runs with -1 seed * max_length (5) = 10 invocations
+    # Plus some invocations from the other 4 runs (at least 3 each) = at least 22 total
+    assert len(invocations) >= 22
 
-    # Each invocation should have 1 embedding
+    # Each invocation should have 2 embeddings (one for each embedding model)
     embeddings = list_embeddings(db_session)
-    assert len(embeddings) == 8
+    assert len(embeddings) == len(invocations) * 2
 
+    # We should have 6 runs * 2 embedding models = 12 persistence diagrams
     pds = list_persistence_diagrams(db_session)
-    assert len(pds) == 4
+    assert len(pds) == 12
 
     # Verify all persistence diagrams have generators
     for pd in pds:
