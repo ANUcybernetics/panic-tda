@@ -118,7 +118,9 @@ class NumpyArrayListType(TypeDecorator):
 
         return buffer.getvalue()
 
-    def process_result_value(self, value: Optional[bytes], dialect) -> List[np.ndarray]:
+    def process_result_value(
+        self, value: Optional[bytes], dialect
+    ) -> Optional[List[np.ndarray]]:
         """
         Convert stored bytes back to a list of numpy arrays.
 
@@ -130,10 +132,10 @@ class NumpyArrayListType(TypeDecorator):
             dialect: SQLAlchemy dialect (unused)
 
         Returns:
-            List of restored numpy arrays, or empty list if input is None
+            List of restored numpy arrays, or None if input is None
         """
         if value is None:
-            return []
+            return None
 
         buffer = io.BytesIO(value)
         # Read the number of arrays
@@ -173,6 +175,7 @@ class InvocationType(str, Enum):
     TEXT: Invocation that produces text output
     IMAGE: Invocation that produces image output
     """
+
     TEXT = "text"
     IMAGE = "image"
 
@@ -187,6 +190,7 @@ class Invocation(SQLModel, table=True):
     be text or images). It maintains relationships to its parent run and any
     embedding calculations performed on its outputs.
     """
+
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -298,6 +302,7 @@ class Run(SQLModel, table=True):
     starting from an initial prompt. It tracks the entire sequence of generations
     and their embeddings, allowing for trajectory analysis.
     """
+
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -434,6 +439,7 @@ class Embedding(SQLModel, table=True):
     Embeddings enable analysis of trajectories in a consistent vector space regardless
     of whether the original outputs were text or images.
     """
+
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
@@ -482,14 +488,15 @@ class PersistenceDiagram(SQLModel, table=True):
     the sequence of embeddings from a run. The "generators" represent the birth-death
     pairs of topological features detected at different scales in the trajectory data.
     """
+
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 
-    generators: List[np.ndarray] = Field(
-        default=[], sa_column=Column(NumpyArrayListType)
+    generators: Optional[List[np.ndarray]] = Field(
+        default=None, sa_column=Column(NumpyArrayListType)
     )
 
     run_id: UUID = Field(foreign_key="run.id", index=True)
@@ -503,7 +510,9 @@ class PersistenceDiagram(SQLModel, table=True):
         Returns:
             List of numpy arrays representing the birth-death pairs of topological features
         """
-        return self.generators  # Already numpy arrays
+        return (
+            self.generators if self.generators is not None else []
+        )  # Return empty list if None
 
     @property
     def duration(self) -> float:
@@ -529,6 +538,7 @@ class ExperimentConfig(BaseModel):
     embedding models. It provides validation to ensure the configuration is valid
     before an experiment begins.
     """
+
     model_config = {"arbitrary_types_allowed": True}
 
     networks: List[List[str]] = Field(
