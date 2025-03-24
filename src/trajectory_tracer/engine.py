@@ -55,7 +55,7 @@ def get_output_hash(output):
         return hashlib.sha256(str(output).encode()).hexdigest()
 
 
-@ray.remote(num_cpus=1, num_gpus=0.3, num_returns="dynamic")
+@ray.remote(num_cpus=1, num_gpus=0.1, num_returns="dynamic")
 def run_generator(run_id: str, db_str: str):
     """
     Generate invocations for a run in sequence.
@@ -149,7 +149,7 @@ def run_generator(run_id: str, db_str: str):
             logger.debug(f"Run generator for {run_id} completed")
 
 
-@ray.remote(num_cpus=1, num_gpus=0.3)
+@ray.remote(num_cpus=1, num_gpus=0.1)
 def compute_embedding(invocation_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store embedding for an invocation.
@@ -203,7 +203,7 @@ def compute_embedding(invocation_id: str, embedding_model: str, db_str: str) -> 
         return embedding_id
 
 
-@ray.remote(num_cpus=24)
+@ray.remote(num_cpus=8)
 def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store persistence diagram for a run.
