@@ -1,5 +1,8 @@
+import sys
+
 import numpy as np
 import pytest
+import torch
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
@@ -294,3 +297,36 @@ def test_list_models():
 
     # Check that no non-GenAIModel classes are included
     assert "GenAIModel" not in models, "list_models() should not include the base class"
+
+
+@pytest.mark.parametrize("model_name", list_models())
+def test_model_memory_usage(model_name):
+    """Test memory usage reporting for each model."""
+    model_class = getattr(sys.modules["trajectory_tracer.genai_models"], model_name)
+
+    # Skip dummy models that don't need GPU
+    if model_name.startswith("Dummy"):
+        pytest.skip(f"Skipping memory usage test for dummy model {model_name}")
+
+    # Skip if CUDA is not available
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available, skipping GPU memory test")
+
+    # Call the report_memory_usage method
+    memory_info = model_class.report_memory_usage()
+
+    # Verify the returned structure has expected fields
+    assert isinstance(memory_info, dict)
+    assert "model_name" in memory_info
+    assert "model_size_gb" in memory_info
+    assert "peak_memory_gb" in memory_info
+    assert "current_memory_gb" in memory_info
+    assert "residual_memory_gb" in memory_info
+
+    # Print the memory info
+    print(f"\nMemory usage for {model_name}:")
+    for key, value in memory_info.items():
+        print(f"  {key}: {value}")
+
+    # Ensure we unload all models after the test
+    unload_all_models()

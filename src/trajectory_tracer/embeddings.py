@@ -67,6 +67,67 @@ class EmbeddingModel(BaseModel):
         """Compute the actual embedding vector."""
         raise NotImplementedError
 
+    @classmethod
+    def report_memory_usage(cls):
+        """
+        Load model to device, report VRAM usage, and unload.
+
+        Returns:
+            dict: Memory usage information in GB
+        """
+        # Ensure CUDA is available
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Get initial GPU memory usage
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        initial_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
+
+        # Load the model
+        print(f"Loading {cls.__name__} to measure memory usage...")
+        model = cls.load_to_device()
+
+        # Measure peak memory after loading
+        torch.cuda.synchronize()
+        loaded_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
+        peak_memory = torch.cuda.max_memory_allocated() / (1024 * 1024 * 1024)  # GB
+
+        # Calculate memory usage
+        model_size = loaded_memory - initial_memory
+
+        # Report memory usage
+        memory_info = {
+            "model_name": cls.__name__,
+            "model_size_gb": round(model_size, 2),
+            "peak_memory_gb": round(peak_memory, 2),
+            "current_memory_gb": round(loaded_memory, 2)
+        }
+
+        print(f"Memory usage for {cls.__name__}:")
+        print(f"  Model size: {memory_info['model_size_gb']} GB")
+        print(f"  Peak memory: {memory_info['peak_memory_gb']} GB")
+
+        # Unload model
+        if hasattr(model, "to") and callable(model.to):
+            model.to("cpu")
+        elif isinstance(model, dict):
+            for component_name, component in model.items():
+                if hasattr(component, "to") and callable(component.to):
+                    component.to("cpu")
+
+        # Force garbage collection
+        del model
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+
+        final_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
+        memory_info["residual_memory_gb"] = round(final_memory - initial_memory, 2)
+
+        print(f"  Residual memory after unloading: {memory_info['residual_memory_gb']} GB")
+
+        return memory_info
+
 
 class NomicText(EmbeddingModel):
     @classmethod
