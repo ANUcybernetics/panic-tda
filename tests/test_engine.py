@@ -6,7 +6,7 @@ import ray
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.engine import run_generator
+from trajectory_tracer.engine import get_output_hash, run_generator
 from trajectory_tracer.schemas import (
     Invocation,
     Run,
@@ -15,8 +15,6 @@ from trajectory_tracer.schemas import (
 
 def test_get_output_hash():
     """Test that get_output_hash correctly hashes different types of output."""
-
-    from trajectory_tracer.engine import get_output_hash
 
     # Test with string output
     text = "Hello, world!"
