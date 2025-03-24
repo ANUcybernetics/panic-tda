@@ -3,7 +3,7 @@ from uuid import UUID
 
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
-from sqlmodel import Session, create_engine, func, select
+from sqlmodel import Session, SQLModel, create_engine, func, select
 
 from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
 
@@ -45,9 +45,27 @@ def get_session_from_connection_string(db_str):
         session.close()
 
 
+def create_db_and_tables(db_str):
+    """
+    Creates all database tables if they don't exist.
+
+    Args:
+        db_str: Database connection string
+
+    Returns:
+        The SQLAlchemy engine
+    """
+    engine = get_engine_from_connection_string(db_str)
+
+    # Import SQLModel for creating tables
+
+    # Create all tables defined in SQLModel classes
+    SQLModel.metadata.create_all(engine)
+
+    return engine
+
 
 ## some helper functions
-
 
 def read_invocation(invocation_id: UUID, session: Session):
     """

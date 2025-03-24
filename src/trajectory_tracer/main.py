@@ -8,6 +8,7 @@ import typer
 import trajectory_tracer.engine as engine
 from trajectory_tracer.db import (
     count_invocations,
+    create_db_and_tables,
     get_session_from_connection_string,
     list_runs,
     print_run_info,
@@ -103,6 +104,7 @@ def perform_experiment(
     # Load configuration
     logger.info(f"Loading configuration from {config_file}")
 
+
     try:
         with open(config_file, "r") as f:
             config_data = json.load(f)
@@ -117,6 +119,9 @@ def perform_experiment(
         # Create database engine and tables
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Creating/connecting to database at {db_path}")
+
+        # Call the create_db_and_tables function
+        create_db_and_tables(db_str)
 
         # Run the experiment
         logger.info("Starting experiment...")
