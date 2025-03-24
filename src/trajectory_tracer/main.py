@@ -190,10 +190,19 @@ def list_models():
 
     typer.echo("## Available GenAI Models:")
 
-    # List GenAI models using the helper function
+    # Group models by output type
+    models_by_type = {}
     for model_name in list_genai_models():
         output_type = get_output_type(model_name).value
-        typer.echo(f"  {model_name:<15} (output: {output_type})")
+        if output_type not in models_by_type:
+            models_by_type[output_type] = []
+        models_by_type[output_type].append(model_name)
+
+    # Print models grouped by output type
+    for output_type, models in models_by_type.items():
+        typer.echo(f"\n  Output Type: {output_type}")
+        for model_name in models:
+            typer.echo(f"    {model_name}")
 
     typer.echo("\n## Available Embedding Models:")
 
