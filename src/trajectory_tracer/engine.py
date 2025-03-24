@@ -127,7 +127,7 @@ def run_generator(run_id: str, db_str: str):
                 output_hash = get_output_hash(invocation.output)
 
                 if output_hash in seen_outputs:
-                    logger.info(
+                    logger.debug(
                         f"Detected duplicate output in run {run_id} at sequence {sequence_number}. Stopping run."
                     )
                     # Yield the ID of the final invocation
