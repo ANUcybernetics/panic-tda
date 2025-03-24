@@ -1,53 +1,49 @@
 from contextlib import contextmanager
 from uuid import UUID
 
-# from sqlalchemy import func
-from sqlmodel import Session, SQLModel, create_engine, func, select
+import sqlalchemy
+from sqlalchemy.pool import QueuePool
+from sqlmodel import Session, create_engine, func, select
 
 from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
 
+# helper functions for working with db_str: str values
 
-class Database:
-    _instance = None
+def get_engine_from_connection_string(db_str):
+    engine = create_engine(
+        db_str,
+        poolclass=QueuePool,
+        pool_size=5,
+        max_overflow=10,
+        connect_args={"timeout": 30}
+    )
 
-    def __init__(self, connection_string: str):
-        """Initialize the database with a connection string."""
-        self.engine = create_engine(connection_string)
-        SQLModel.metadata.create_all(self.engine)
+    # Configure SQLite for better concurrency
+    @sqlalchemy.event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+        cursor.execute("PRAGMA synchronous=NORMAL")  # Less durability, more speed
+        cursor.execute("PRAGMA cache_size=10000")  # Larger cache
+        cursor.close()
 
-    def create_session(self) -> Session:
-        """Create and return a new database session."""
-        return Session(self.engine)
-
-    @contextmanager
-    def get_session(self):
-        """Provide a transactional scope around a series of operations."""
-        session = self.create_session()
-        try:
-            yield session
-            session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+    return engine
 
 
-# this one is helpful for Ray stuff, which for security reasons needs to pass the db around as a string, not a session object
 @contextmanager
-def get_session_from_connection_string(connection_string: str):
-    """Create a database session from a connection string."""
-
-    db = get_database(connection_string)
-    with db.get_session() as session:
+def get_session_from_connection_string(db_str):
+    """Get a session from the connection string with pooling"""
+    engine = get_engine_from_connection_string(db_str)
+    session = Session(engine)
+    try:
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
-
-def get_database(
-    connection_string: str = "sqlite:///trajectory_tracer.sqlite",
-) -> Database:
-    """Get or create a Database instance with the specified connection string."""
-    return Database(connection_string)
 
 
 ## some helper functions

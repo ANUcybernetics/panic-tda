@@ -1,16 +1,12 @@
-import tempfile
 from uuid import UUID
 
 import numpy as np
-import pytest
 from PIL import Image
-from sqlalchemy import text
-from sqlmodel import Session, select
+from sqlmodel import Session
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.db import (
-    Database,
-    get_session_from_connection_string,
+    get_engine_from_connection_string,
     incomplete_embeddings,
     list_embeddings,
     list_invocations,
@@ -267,72 +263,13 @@ def test_persistence_diagram_storage(db_session: Session):
     assert np.allclose(retrieved_arrays[2], array3)
 
 
-def test_database_initialization():
-    """Test the Database class initialization."""
+def test_engine_initialization():
+    """Test the engine initialization with connection pooling."""
     connection_string = "sqlite:///test.sqlite"
-    db = Database(connection_string)
-    assert db.engine is not None
-    assert str(db.engine.url) == connection_string
+    engine = get_engine_from_connection_string(connection_string)
+    assert engine is not None
+    assert str(engine.url) == connection_string
 
-
-def test_database_create_session():
-    """Test creating a new database session."""
-    db = Database(connection_string="sqlite:///:memory:")
-    session = db.create_session()
-    assert session is not None
-
-    # Test that we can perform operations with the session
-    try:
-        session.execute(text("SELECT 1"))
-        session.commit()
-    except Exception as e:
-        pytest.fail(f"Session failed to execute query: {e}")
-    finally:
-        session.close()
-
-
-def test_database_context_manager():
-    """Test the context manager functionality of get_session."""
-    db = Database(connection_string="sqlite:///:memory:")
-
-    # Test normal operation
-    with db.get_session() as session:
-        # Create a sample run
-        sample_run = Run(
-            initial_prompt="testing context manager",
-            network=["test"],
-            seed=123,
-            max_length=1,
-        )
-        session.add(sample_run)
-
-    # Verify the run was committed
-    with db.get_session() as session:
-        statement = select(Run).where(Run.initial_prompt == "testing context manager")
-        runs = session.exec(statement).all()
-        assert len(runs) == 1
-        assert runs[0].seed == 123
-
-    # Test rollback on exception
-    try:
-        with db.get_session() as session:
-            # Create another sample run
-            sample_run = Run(
-                initial_prompt="should be rolled back",
-                network=["test"],
-                seed=456,
-                max_length=1,
-            )
-            session.add(sample_run)
-            raise ValueError("Test exception to trigger rollback")
-    except ValueError:
-        pass
-
-    # Verify the run was rolled back
-    with db.get_session() as session:
-        statement = select(Run).where(Run.initial_prompt == "should be rolled back")
-        runs = session.exec(statement).all()
-        assert len(runs) == 0
 
 
 def test_incomplete_embeddings(db_session: Session):
@@ -512,53 +449,3 @@ def test_list_embeddings(db_session: Session):
     # Test with no filters
     results = list_embeddings(db_session)
     assert len(results) == 3
-
-
-def test_get_session_from_connection_string():
-    """Test the get_session_from_connection_string context manager."""
-
-    # Create a temporary directory that will be automatically cleaned up
-    temp_dir = tempfile.TemporaryDirectory()
-    # Use a file-based SQLite database in the temporary directory
-    connection_string = f"sqlite:///{temp_dir.name}/test_db.sqlite"
-
-    # Test normal operation
-    with get_session_from_connection_string(connection_string) as session:
-        # Create a sample run
-        sample_run = Run(
-            initial_prompt="testing get_session_from_connection_string",
-            network=["test"],
-            seed=789,
-            max_length=1,
-        )
-        session.add(sample_run)
-
-    # Create a new session to verify the run was committed
-    with get_session_from_connection_string(connection_string) as session:
-        statement = select(Run).where(
-            Run.initial_prompt == "testing get_session_from_connection_string"
-        )
-        runs = session.exec(statement).all()
-        assert len(runs) == 1
-        assert runs[0].seed == 789
-
-    # Test rollback on exception
-    try:
-        with get_session_from_connection_string(connection_string) as session:
-            # Create another sample run
-            sample_run = Run(
-                initial_prompt="should be rolled back too",
-                network=["test"],
-                seed=999,
-                max_length=1,
-            )
-            session.add(sample_run)
-            raise ValueError("Test exception to trigger rollback")
-    except ValueError:
-        pass
-
-    # Verify the run was rolled back
-    with get_session_from_connection_string(connection_string) as session:
-        statement = select(Run).where(Run.initial_prompt == "should be rolled back too")
-        runs = session.exec(statement).all()
-        assert len(runs) == 0

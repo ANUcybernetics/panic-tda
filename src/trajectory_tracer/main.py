@@ -5,7 +5,12 @@ from uuid import UUID
 
 import typer
 
-from trajectory_tracer.db import count_invocations, get_database, list_runs, read_run
+from trajectory_tracer.db import (
+    count_invocations,
+    get_session_from_connection_string,
+    list_runs,
+    read_run,
+)
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.genai_models import get_output_type
@@ -146,10 +151,9 @@ def list_runs_command(
         # Create database connection
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
-        database = get_database(connection_string=db_str)
 
         # List all runs
-        with database.get_session() as session:
+        with get_session_from_connection_string(db_str) as session:
             runs = list_runs(session)
 
             if not runs:
@@ -240,10 +244,9 @@ def export_images(
         # Create database connection
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
-        database = get_database(connection_string=db_str)
 
         # Get the run and export images
-        with database.get_session() as session:
+        with get_session_from_connection_string(db_str) as session:
             runs = []
 
             if run_id.lower() == "all":
@@ -297,10 +300,9 @@ def script(
     try:
         # Create database connection
         db_str = f"sqlite:///{db_path}"
-        database = get_database(connection_string=db_str)
 
         # Example script code - Fetch and print run info
-        with database.get_session() as session:
+        with get_session_from_connection_string(db_str) as session:
             run = read_run(UUID("067d8ada-9d90-70c2-b71e-da6b9c94fe24"), session)
             logger.info(f"Run: {run.id}")
             if run.persistence_diagrams:
