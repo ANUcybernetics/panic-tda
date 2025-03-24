@@ -5,14 +5,14 @@ from uuid import UUID
 
 import typer
 
+import trajectory_tracer.engine as engine
 from trajectory_tracer.db import (
     count_invocations,
     get_session_from_connection_string,
     list_runs,
-    read_run,
+    print_run_info,
 )
 from trajectory_tracer.embeddings import list_models as list_embedding_models
-from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig, Run
@@ -70,8 +70,8 @@ logger = logging.getLogger(__name__)
 app = typer.Typer()
 
 
-@app.command("run-experiment")
-def run_experiment(
+@app.command("perform-experiment")
+def perform_experiment(
     config_file: Path = typer.Argument(
         ...,
         help="Path to the configuration JSON file",
@@ -120,7 +120,7 @@ def run_experiment(
 
         # Run the experiment
         logger.info("Starting experiment...")
-        perform_experiment(config, db_str)
+        engine.perform_experiment(config, db_str)
 
         logger.info(f"Experiment completed successfully. Results saved to {db_path}")
 
@@ -303,19 +303,7 @@ def script(
 
         # Example script code - Fetch and print run info
         with get_session_from_connection_string(db_str) as session:
-            run = read_run(UUID("067d8ada-9d90-70c2-b71e-da6b9c94fe24"), session)
-            logger.info(f"Run: {run.id}")
-            if run.persistence_diagrams:
-                for i, pd in enumerate(run.persistence_diagrams):
-                    logger.info(
-                        f"  Persistence Diagram {i + 1} - Embedding Model: {pd.embedding_model}"
-                    )
-                    for j, gen in enumerate(pd.generators):
-                        logger.info(f"    Generator {j + 1}: {gen}")
-            else:
-                logger.info("  No persistence diagrams found for this run")
-        # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")
-
+            print_run_info(UUID("067e11c3-b89d-7a61-8fd3-45e02fdb51a4"), session)
         logger.info("Script execution completed")
 
     except Exception as e:

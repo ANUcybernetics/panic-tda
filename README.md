@@ -47,7 +47,7 @@ preferred way. Godspeed to you.
 
 The main CLI is `trajectory-tracer`. It has a few subcommands:
 
-- `run-experiment`: Run a trajectory tracer experiment defined in a
+- `perform-experiment`: Run a trajectory tracer experiment defined in a
   configuration file
 - `list-runs`: List all runs stored in the database, with options for detailed
   output
@@ -76,7 +76,7 @@ Then, to "run" the experiment:
 
 ```bash
 # Run an experiment with the above configuration
-trajectory-tracer run-experiment my_config.json
+trajectory-tracer perform-experiment my_config.json
 
 # List all runs in the database
 trajectory-tracer list-runs
@@ -87,7 +87,7 @@ trajectory-tracer export-images 123e4567-e89b-12d3-a456-426614174000
 
 If you're running it on a remote machine and kicking it off via ssh, you'll
 probably want to use `nohup` or `tmux` or something to keep it running after you
-log out (see `run-experiment.sh` for an example).
+log out (see `perform-experiment.sh` for an example).
 
 ## Repo structure
 
