@@ -55,7 +55,7 @@ def get_output_hash(output):
         return hashlib.sha256(str(output).encode()).hexdigest()
 
 
-@ray.remote(num_cpus=1, num_gpus=0.1, num_returns="dynamic")
+@ray.remote(num_cpus=1, num_gpus=1, num_returns="dynamic")
 def run_generator(run_id: str, db_str: str):
     """
     Generate invocations for a run in sequence.
