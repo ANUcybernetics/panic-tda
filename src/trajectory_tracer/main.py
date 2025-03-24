@@ -21,10 +21,12 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+
 # Create a special NullHandler that will silently discard all VIPS messages
 class VIPSNullHandler(logging.Handler):
     def emit(self, record):
         pass
+
 
 # Create a separate logger for VIPS messages
 vips_logger = logging.Logger("VIPS")
@@ -34,11 +36,13 @@ vips_logger.propagate = False  # Don't propagate to root logger
 # Store the original getLogger method
 original_getLogger = logging.getLogger
 
+
 # Define a replacement getLogger that catches VIPS loggers
 def patched_getLogger(name=None):
     if name == "VIPS" or (isinstance(name, str) and "VIPS" in name):
         return vips_logger
     return original_getLogger(name)
+
 
 # Replace the standard getLogger method
 logging.getLogger = patched_getLogger
@@ -46,10 +50,12 @@ logging.getLogger = patched_getLogger
 # Also capture direct root logger messages about VIPS
 original_log = logging.Logger._log
 
+
 def patched_log(self, level, msg, args, exc_info=None, extra=None, stack_info=False):
     if isinstance(msg, str) and "VIPS:" in msg:
         return None  # Skip logging VIPS messages
     return original_log(self, level, msg, args, exc_info, extra, stack_info)
+
 
 logging.Logger._log = patched_log
 
@@ -57,6 +63,7 @@ logging.Logger._log = patched_log
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
+
 
 @app.command("run-experiment")
 def run_experiment(
@@ -103,16 +110,12 @@ def run_experiment(
         )
 
         # Create database engine and tables
-        db_url = f"sqlite:///{db_path}"
+        db_str = f"sqlite:///{db_path}"
         logger.info(f"Creating/connecting to database at {db_path}")
 
-        # Get database instance with the specified path
-        database = get_database(connection_string=db_url)
-
         # Run the experiment
-        with database.get_session() as session:
-            logger.info("Starting experiment...")
-            perform_experiment(config=config, session=session)
+        logger.info("Starting experiment...")
+        perform_experiment(config, db_str)
 
         logger.info(f"Experiment completed successfully. Results saved to {db_path}")
 
@@ -141,9 +144,9 @@ def list_runs_command(
     """
     try:
         # Create database connection
-        db_url = f"sqlite:///{db_path}"
+        db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
-        database = get_database(connection_string=db_url)
+        database = get_database(connection_string=db_str)
 
         # List all runs
         with database.get_session() as session:
@@ -226,9 +229,9 @@ def export_images(
     """
     try:
         # Create database connection
-        db_url = f"sqlite:///{db_path}"
+        db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
-        database = get_database(connection_string=db_url)
+        database = get_database(connection_string=db_str)
 
         # Get the run and export images
         with database.get_session() as session:
@@ -284,8 +287,8 @@ def script(
     """
     try:
         # Create database connection
-        db_url = f"sqlite:///{db_path}"
-        database = get_database(connection_string=db_url)
+        db_str = f"sqlite:///{db_path}"
+        database = get_database(connection_string=db_str)
 
         # Example script code - Fetch and print run info
         with database.get_session() as session:
@@ -293,9 +296,11 @@ def script(
             logger.info(f"Run: {run.id}")
             if run.persistence_diagrams:
                 for i, pd in enumerate(run.persistence_diagrams):
-                    logger.info(f"  Persistence Diagram {i+1} - Embedding Model: {pd.embedding_model}")
+                    logger.info(
+                        f"  Persistence Diagram {i + 1} - Embedding Model: {pd.embedding_model}"
+                    )
                     for j, gen in enumerate(pd.generators):
-                        logger.info(f"    Generator {j+1}: {gen}")
+                        logger.info(f"    Generator {j + 1}: {gen}")
             else:
                 logger.info("  No persistence diagrams found for this run")
         # persistance_diagram_benchmark_vis(".benchmarks/Linux-CPython-3.12-64bit/0002_pd-timings.json")

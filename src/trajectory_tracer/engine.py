@@ -396,22 +396,3 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
     logger.info(f"Computed {len(pd_ids)} persistence diagrams")
 
     logger.info(f"Experiment completed with {len(run_ids)} successful runs")
-
-
-def perform_experiment_with_ray(config: ExperimentConfig, db_str: str) -> None:
-    """
-    Entry point for running an experiment with Ray parallelization.
-
-    Args:
-        config: The experiment configuration
-        db_str: Database connection string
-    """
-    try:
-        logger.info(f"Starting experiment with Ray, using {db_str}")
-        perform_experiment(config, db_str)
-    except Exception as e:
-        logger.error(f"Error in Ray experiment: {e}")
-        raise
-    finally:
-        # Make sure to clean up Ray resources
-        unload_all_models()

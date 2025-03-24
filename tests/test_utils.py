@@ -3,8 +3,8 @@ import json
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.engine import create_run, perform_run
 from trajectory_tracer.genai_models import IMAGE_SIZE
+from trajectory_tracer.schemas import Invocation, InvocationType, Run
 from trajectory_tracer.utils import export_run_images
 
 
@@ -15,22 +15,61 @@ def test_export_run_images(db_session: Session, tmp_path):
     initial_prompt = "Test prompt for image export"
     seed = 42
 
-    # Create and execute the run (just 4, because it'll hit the duplicate detection after that)
-    run = create_run(
+    # Create the run directly
+    run = Run(
         network=network,
         initial_prompt=initial_prompt,
         max_length=4,
-        session=db_session,
         seed=seed,
     )
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
 
-    run = perform_run(run, db_session)
+    # Create invocations manually instead of using perform_run
+    # First invocation - DummyT2I (text to image)
+    text_to_image = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=seed,
+        run_id=run.id,
+        sequence_number=0,
+    )
 
-    # The run should have image outputs from the DummyT2I model
-    # at sequence numbers 0, 2, 4
+    # Create a test image for the output
+    img1 = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color="red")
+    text_to_image.output = img1
+
+    # Second invocation - DummyI2T (image to text)
+    image_to_text = Invocation(
+        model="DummyI2T",
+        type=InvocationType.TEXT,
+        seed=seed,
+        run_id=run.id,
+        sequence_number=1,
+        input_invocation_id=text_to_image.id,
+        output_text="This is a description of the image",
+    )
+
+    # Third invocation - DummyT2I again (text to image)
+    text_to_image2 = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=seed,
+        run_id=run.id,
+        sequence_number=2,
+        input_invocation_id=image_to_text.id,
+    )
+
+    # Create a second test image
+    img2 = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color="blue")
+    text_to_image2.output = img2
+
+    # Add invocations to the database
+    db_session.add(text_to_image)
+    db_session.add(image_to_text)
+    db_session.add(text_to_image2)
+    db_session.commit()
 
     # Create a temporary output directory
     output_dir = tmp_path / "test_images"
@@ -41,7 +80,7 @@ def test_export_run_images(db_session: Session, tmp_path):
     # Check that image files were created
     image_files = list(output_dir.glob("*.jpg"))
 
-    # We should have image outputs from DummyT2I (at positions 0, 2, 4)
+    # We should have image outputs from DummyT2I (at positions 0 and 2)
     assert len(image_files) == 2
 
     # Verify each image file exists and is a valid image

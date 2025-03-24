@@ -20,7 +20,8 @@ def test_load_embeddings_df(db_session):
     )
 
     # Run the experiment to populate database
-    perform_experiment(config, db_session)
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(config, db_url)
 
     # Call function under test
     df = load_embeddings_df(db_session)
@@ -85,7 +86,8 @@ def test_load_persistence_diagram_df(db_session):
     )
 
     # Run the experiment to populate database
-    perform_experiment(config, db_session)
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(config, db_url)
 
     # Call function under test
     df = load_persistence_diagram_df(db_session)
