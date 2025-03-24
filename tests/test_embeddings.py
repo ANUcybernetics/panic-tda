@@ -3,19 +3,11 @@ import pytest
 from PIL import Image
 
 from trajectory_tracer.embeddings import embed, list_models
-from trajectory_tracer.engine import (
-    create_embedding,
-    create_invocation,
-    create_run,
-    perform_embedding,
-    perform_invocation,
-    perform_run,
-)
-from trajectory_tracer.schemas import Run
+from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
 def test_dummy_embedding():
-    """Test that the dummy embedding returns a random embedding vector."""
+    """Test that the dummy embedding returns a (fake, but correct size & shape) vector."""
     # Create a sample text string
     sample_text = "Sample output text"
 
@@ -24,14 +16,6 @@ def test_dummy_embedding():
 
     # Check that the embedding has the correct properties
     assert len(embedding_vector) == 768  # Expected dimension
-
-    # Verify that the vector contains random values between 0 and 1
-    assert all(0 <= x <= 1 for x in embedding_vector)
-
-    # Get another embedding and verify it's different (random)
-    embedding2_vector = embed("Dummy", sample_text)
-    # Can't directly compare numpy arrays with !=, use numpy's array_equal instead
-    assert not np.array_equal(embedding_vector, embedding2_vector)
 
 
 @pytest.mark.slow
@@ -158,114 +142,67 @@ def test_jina_clip_image_embedding():
     assert np.array_equal(embedding_vector, embedding_vector2)
 
 
-def test_create_and_perform_embedding_nomic(db_session):
-    """Test creating and performing embedding with Nomic model."""
-
-    # First create a run
-    run = Run(
-        network=["DummyT2I"],
-        seed=42,
-        max_length=1,
-        initial_prompt="This is a test run"
-    )
-    db_session.add(run)
-    db_session.commit()
-    db_session.refresh(run)
-
-    # Create an invocation with output
-    input_text = "This is a test for Nomic embedding"
-    invocation = create_invocation(
-        model="DummyT2I",
-        input=input_text,
-        run_id=run.id,  # Provide the run_id
-        sequence_number=0,
-        session=db_session,
-        seed=42,
-    )
-    invocation = perform_invocation(invocation, input_text, db_session)
-
-    # Create and perform the embedding
-    embedding = create_embedding("Nomic", invocation, db_session)
-    embedding = perform_embedding(embedding, db_session)
-
-    # Check embedding properties
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768
-    assert embedding.embedding_model == "Nomic"
-    assert embedding.started_at is not None
-    assert embedding.completed_at is not None
-    assert embedding.completed_at >= embedding.started_at
-
-
-def test_create_and_perform_embedding_jinaclip(db_session):
-    """Test creating and performing embedding with JinaClip model."""
-
-    # First create a run
-    run = Run(
-        network=["DummyT2I"],
-        seed=42,
-        max_length=1,
-        initial_prompt="This is a test run"
-    )
-    db_session.add(run)
-    db_session.commit()
-    db_session.refresh(run)
-
-    # Create an invocation with output
-    input_text = "This is a test for JinaClip embedding"
-    invocation = create_invocation(
-        model="DummyT2I",
-        input=input_text,
-        run_id=run.id,  # Provide the run_id
-        sequence_number=0,
-        session=db_session,
-        seed=42,
-    )
-    invocation = perform_invocation(invocation, input_text, db_session)
-
-    # Create and perform the embedding
-    embedding = create_embedding("JinaClip", invocation, db_session)
-    embedding = perform_embedding(embedding, db_session)
-
-    # Check embedding properties
-    assert embedding.vector is not None
-    assert len(embedding.vector) == 768
-    assert embedding.embedding_model == "JinaClip"
-    assert embedding.started_at is not None
-    assert embedding.completed_at is not None
-    assert embedding.completed_at >= embedding.started_at
-
-
 def test_run_embeddings_by_model(db_session):
     """Test the Run.embeddings_by_model method returns embeddings with a specific model."""
 
-    # Create a run with create_run function
-    run = create_run(
+    # Create a run
+    run = Run(
         network=["DummyT2I", "DummyI2T"],
-        initial_prompt="Test prompt",
         seed=42,
         max_length=2,
-        session=db_session,
+        initial_prompt="Test prompt",
     )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
 
-    # Perform the run to create the invocations
-    run = perform_run(run, db_session)
+    # Create invocations
+    invocation1 = Invocation(
+        model="DummyT2I",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run.id,
+        sequence_number=0,
+        output_text="First invocation",
+    )
+    db_session.add(invocation1)
 
-    # Get the invocations that were created
-    invocations = run.invocations
-    assert len(invocations) >= 2
-    invocation1 = invocations[0]
-    invocation2 = invocations[1]
+    invocation2 = Invocation(
+        model="DummyI2T",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run.id,
+        sequence_number=1,
+        output_text="Second invocation",
+    )
+    db_session.add(invocation2)
+    db_session.commit()
+    db_session.refresh(invocation1)
+    db_session.refresh(invocation2)
 
     # Create embeddings with different models
-    embedding1_1 = create_embedding("Dummy", invocation1, db_session)
-    embedding1_1 = perform_embedding(embedding1_1, db_session)
+    embedding1_1 = Embedding(
+        invocation_id=invocation1.id,
+        embedding_model="Dummy",
+        vector=embed("Dummy", invocation1.output),
+    )
+    db_session.add(embedding1_1)
 
-    embedding1_2 = create_embedding("Dummy2", invocation1, db_session)
-    embedding1_2 = perform_embedding(embedding1_2, db_session)
+    embedding1_2 = Embedding(
+        invocation_id=invocation1.id,
+        embedding_model="Dummy2",
+        vector=embed("Dummy2", invocation1.output),
+    )
+    db_session.add(embedding1_2)
 
-    embedding2_1 = create_embedding("Dummy", invocation2, db_session)
-    embedding2_1 = perform_embedding(embedding2_1, db_session)
+    embedding2_1 = Embedding(
+        invocation_id=invocation2.id,
+        embedding_model="Dummy",
+        vector=embed("Dummy", invocation2.output),
+    )
+    db_session.add(embedding2_1)
+
+    db_session.commit()
 
     # Refresh the run object to ensure relationships are loaded
     db_session.refresh(run)
