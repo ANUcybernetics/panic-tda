@@ -4,6 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 import numpy as np
+import pytest
 import ray
 from PIL import Image
 from sqlmodel import Session
@@ -374,6 +375,46 @@ def test_perform_experiment(db_session: Session):
     # We should have 6 runs * 2 embedding models = 12 persistence diagrams
     pds = list_persistence_diagrams(db_session)
     assert len(pds) == 12
+
+    # Verify all persistence diagrams have generators
+    for pd in pds:
+        assert pd.generators is not None
+        assert len(pd.generators) > 0
+
+@pytest.mark.slow
+def test_perform_experiment_real_models(db_session: Session):
+    """Test that perform_experiment correctly executes an experiment with multiple runs."""
+    # Create a test experiment config with multiple embedding models and a -1 seed
+    config = ExperimentConfig(
+        networks=[["FluxDev", "Moondream"]],
+        seeds=[-1],
+        prompts=["A real prompt, for real models"],
+        embedding_models=["Nomic"],  # Added second embedding model
+        max_length=10,  # Increased max length (especially for -1 seed)
+    )
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the perform_experiment function
+    perform_experiment(config, db_url)
+
+    # We should have 1*1*1 = 1 run (1 seed, 1 prompt, 1 network)
+    runs = list_runs(db_session)
+    assert len(runs) == 1
+
+    # Total invocations will depend on the runs
+    # For -1 seed runs, we should have exactly max_length invocations (10 each)
+    invocations = list_invocations(db_session)
+    # We should have 1 run with -1 seed * max_length (10) = 10 invocations
+    assert len(invocations) == 10
+
+    # Each invocation should have 1 embedding (one embedding model)
+    embeddings = list_embeddings(db_session)
+    assert len(embeddings) == len(invocations)
+
+    # We should have 1 run * 1 embedding model = 1 persistence diagram
+    pds = list_persistence_diagrams(db_session)
+    assert len(pds) == 1
 
     # Verify all persistence diagrams have generators
     for pd in pds:
