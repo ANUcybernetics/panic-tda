@@ -6,8 +6,8 @@ import ray
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
-    IMAGE_SIZE,
     BLIP2,
+    IMAGE_SIZE,
     DummyI2T,
     DummyT2I,
     FluxDev,
@@ -15,8 +15,10 @@ from trajectory_tracer.genai_models import (
     Moondream,
     SDXLTurbo,
     get_output_type,
+    list_models,
 )
 from trajectory_tracer.schemas import InvocationType
+
 
 @pytest.fixture(scope="module", autouse=True)
 def ray_cleanup():
@@ -427,3 +429,31 @@ def test_get_output_type(model_name, expected_type):
     # Test with nonexistent model
     with pytest.raises(ValueError):
         get_output_type("NonexistentModel")
+
+
+def test_list_models_function():
+    """Test that the list_models function returns a list of model names that matches our expectations."""
+
+    models = list_models()
+
+    # Check that we got a non-empty list
+    assert isinstance(models, list)
+    assert len(models) > 0
+
+    # Check that all expected models are in the list
+    expected_models = [
+        "BLIP2",
+        "DummyI2T",
+        "DummyT2I",
+        "FluxDev",
+        "FluxSchnell",
+        "Moondream",
+        "SDXLTurbo",
+    ]
+
+    for model_name in expected_models:
+        assert model_name in models, f"Expected model {model_name} not found in list_models() result"
+
+    # Check that all returned models exist in the module
+    for model_name in models:
+        assert model_name in globals(), f"Model {model_name} returned by list_models() not found in module"

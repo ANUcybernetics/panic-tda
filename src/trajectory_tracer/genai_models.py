@@ -1,10 +1,8 @@
-import base64
 import logging
 import random
 import sys
 import warnings
-from io import BytesIO
-from typing import ClassVar, List, Union, Dict, Any
+from typing import Union
 
 import diffusers
 import ray
@@ -335,3 +333,23 @@ def get_output_type(model_name: str) -> InvocationType:
         raise ValueError(f"Model '{model_name}' not found")
 
     return output_types[model_name]
+
+
+def list_models():
+    """
+    Returns a list of all available model names (GenAIModel subclasses).
+
+    Returns:
+        list: Names of all available models
+    """
+    current_module = sys.modules[__name__]
+
+    models = []
+    # Find all classes with type name ActorClass(class_name)
+    for name, cls in vars(current_module).items():
+        if type(cls).__name__ == f"ActorClass({name})":
+            models.append(name)
+
+    # Find all Ray actor classes derived from EmbeddingModel
+
+    return models

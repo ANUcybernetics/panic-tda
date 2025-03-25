@@ -1,334 +1,142 @@
+import base64
+import logging
 import sys
-from typing import Any, Dict, Union
+from io import BytesIO
+from typing import Union
 
 import numpy as np
+import ray
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 from transformers import AutoImageProcessor, AutoModel
 
-# other potential multimodal embedding models:
-# - https://huggingface.co/nvidia/MM-Embed
-# - https://huggingface.co/jinaai/jina-clip-v2
-# - https://huggingface.co/nielsr/imagebind-huge
+# Configure logging
+logger = logging.getLogger(__name__)
 
-# Model cache to avoid reloading models
-_MODEL_CACHE: Dict[str, Any] = {}
+# Fixed embedding dimension
+EMBEDDING_DIM = 768
 
+class EmbeddingModel:
+    """Base class for embedding models."""
 
-def unload_all_models():
-    """Unload all models from the cache and free memory."""
-    global _MODEL_CACHE
-
-    # Attempt to properly unload each model
-    for model_name, model in list(_MODEL_CACHE.items()):
-        # Handle different model types differently
-        try:
-            # For models with an explicit to() method
-            if hasattr(model, "to") and callable(model.to):
-                model.to("cpu")  # Move to CPU first
-            # For dictionary of components
-            elif isinstance(model, dict):
-                for component_name, component in model.items():
-                    if hasattr(component, "to") and callable(component.to):
-                        component.to("cpu")
-        except Exception as e:
-            print(f"Warning: Error unloading model {model_name}: {e}")
-
-    # Clear the cache
-    _MODEL_CACHE.clear()
-
-    # Force CUDA garbage collection
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()  # Make sure CUDA operations are completed
-
-    print("All embedding models unloaded.")
-
-
-class EmbeddingModel(BaseModel):
-    @classmethod
-    def get_model(cls):
-        """Get or create the model instance."""
-        model_name = cls.__name__
-        if model_name not in _MODEL_CACHE:
-            _MODEL_CACHE[model_name] = cls.load_to_device()
-        return _MODEL_CACHE[model_name]
-
-    @classmethod
-    def load_to_device(cls):
-        """Load the model to the appropriate device (typically GPU)."""
+    def __init__(self):
+        """Initialize the model and load to device."""
         raise NotImplementedError
 
-    @staticmethod
-    def embed(content: Union[str, Image.Image]) -> np.ndarray:
-        """Compute the actual embedding vector."""
+    def embed(self, content_data):
+        """Process the content and return an embedding."""
+        # Check if we need to deserialize an image
+        if isinstance(content_data, dict) and "image_data" in content_data:
+            # Deserialize the base64 image
+            image_bytes = base64.b64decode(content_data["image_data"])
+            content = Image.open(BytesIO(image_bytes))
+        else:
+            # Use content as is (text)
+            content = content_data
+
+        # Process content and return embedding
+        return self.process_content(content)
+
+    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
+        """Process the content and return an embedding vector."""
         raise NotImplementedError
 
-    @classmethod
-    def report_memory_usage(cls):
-        """
-        Load model to device, report VRAM usage, and unload.
 
-        Returns:
-            dict: Memory usage information in GB
-        """
-        # Ensure CUDA is available
+@ray.remote(num_gpus=0.5)
+class Nomic(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
 
-        # Get initial GPU memory usage
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
-        initial_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
-
-        # Load the model
-        print(f"Loading {cls.__name__} to measure memory usage...")
-        model = cls.load_to_device()
-
-        # Measure peak memory after loading
-        torch.cuda.synchronize()
-        loaded_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
-        peak_memory = torch.cuda.max_memory_allocated() / (1024 * 1024 * 1024)  # GB
-
-        # Calculate memory usage
-        model_size = loaded_memory - initial_memory
-
-        # Report memory usage
-        memory_info = {
-            "model_name": cls.__name__,
-            "model_size_gb": round(model_size, 2),
-            "peak_memory_gb": round(peak_memory, 2),
-            "current_memory_gb": round(loaded_memory, 2)
-        }
-
-        print(f"Memory usage for {cls.__name__}:")
-        print(f"  Model size: {memory_info['model_size_gb']} GB")
-        print(f"  Peak memory: {memory_info['peak_memory_gb']} GB")
-
-        # Unload model
-        if hasattr(model, "to") and callable(model.to):
-            model.to("cpu")
-        elif isinstance(model, dict):
-            for component_name, component in model.items():
-                if hasattr(component, "to") and callable(component.to):
-                    component.to("cpu")
-
-        # Force garbage collection
-        del model
-        torch.cuda.empty_cache()
-        torch.cuda.synchronize()
-
-        final_memory = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)  # GB
-        memory_info["residual_memory_gb"] = round(final_memory - initial_memory, 2)
-
-        print(f"  Residual memory after unloading: {memory_info['residual_memory_gb']} GB")
-
-        return memory_info
-
-
-class NomicText(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        return SentenceTransformer(
+        # Load text model
+        self.text_model = SentenceTransformer(
             "nomic-ai/nomic-embed-text-v1", trust_remote_code=True
-        )
+        ).to("cuda")
 
-    @staticmethod
-    def embed(text: str) -> np.ndarray:
-        """
-        Calculate the embedding vector for the given text.
-
-        Args:
-            text: The text to embed
-
-        Returns:
-            The calculated embedding vector
-        """
-        model = NomicText.get_model()
-        sentences = [f"clustering: {text}"]
-        return model.encode(sentences)[
-            0
-        ]  # Get first element to flatten (1, 768) to (768,)
-
-
-class NomicVision(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        processor = AutoImageProcessor.from_pretrained(
+        # Load vision model components
+        self.processor = AutoImageProcessor.from_pretrained(
             "nomic-ai/nomic-embed-vision-v1.5"
         )
-        vision_model = AutoModel.from_pretrained(
+        self.vision_model = AutoModel.from_pretrained(
             "nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True
-        )
-        vision_model.eval()
-        return {"processor": processor, "model": vision_model}
+        ).to("cuda").eval()
 
-    @staticmethod
-    def embed(image: Image.Image) -> np.ndarray:
-        """
-        Calculate the embedding vector for the given image.
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-        Args:
-            image: The image to embed
-
-        Returns:
-            The calculated embedding vector
-        """
-        # Get cached model components
-        cache = NomicVision.get_model()
-        processor = cache["processor"]
-        vision_model = cache["model"]
-
-        # Process the image
-        inputs = processor(image, return_tensors="pt")
-
-        # Calculate embeddings
-        with torch.no_grad():
-            img_emb = vision_model(**inputs).last_hidden_state
-            img_embeddings = F.normalize(img_emb[:, 0], p=2, dim=1)
-
-        # Convert to numpy array for storage
-        return img_embeddings[0].numpy()
-
-
-class Nomic(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        # This class uses other models, no need to cache anything specific
-        return None
-
-    @staticmethod
-    def embed(content: Union[str, Image.Image]) -> np.ndarray:
-        """
-        Compute the embedding vector based on content type.
-
-        Args:
-            content: Either text or image to embed
-
-        Returns:
-            The calculated embedding vector
-        """
+    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
+        """Calculate the embedding vector for either text or image."""
         if isinstance(content, str):
-            return NomicText.embed(content)
+            # Text embedding
+            sentences = [f"clustering: {content}"]
+            return self.text_model.encode(sentences)[0]  # Flatten (1, 768) to (768,)
+
         elif isinstance(content, Image.Image):
-            return NomicVision.embed(content)
+            # Image embedding
+            # Process the image
+            inputs = self.processor(content, return_tensors="pt")
+            if torch.cuda.is_available():
+                inputs = {k: v.to("cuda") for k, v in inputs.items()}
+
+            # Calculate embeddings
+            with torch.no_grad():
+                img_emb = self.vision_model(**inputs).last_hidden_state
+                img_embeddings = F.normalize(img_emb[:, 0], p=2, dim=1)
+
+            # Convert to numpy array
+            return img_embeddings[0].cpu().numpy()
         else:
-            raise ValueError(f"Unsupported content type for Nomic: {type(content)}")
+            raise ValueError(f"Unsupported content type: {type(content)}. Expected str or PIL.Image.")
 
 
+@ray.remote(num_gpus=0.5)
 class JinaClip(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        # Choose the standard embedding dimension
-        truncate_dim = 768
-        return SentenceTransformer(
-            "jinaai/jina-clip-v2", trust_remote_code=True, truncate_dim=truncate_dim
-        )
+    def __init__(self):
+        """Initialize the model and load to device."""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
 
-    @staticmethod
-    def embed(content: Union[str, Image.Image]) -> np.ndarray:
-        """
-        Calculate the embedding vector for the given content.
+        self.model = SentenceTransformer(
+            "jinaai/jina-clip-v2",
+            trust_remote_code=True,
+            truncate_dim=EMBEDDING_DIM
+        ).to("cuda")
 
-        Args:
-            content: Either text or image to embed
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-        Returns:
-            The calculated embedding vector
-        """
-        # Get cached model
-        model = JinaClip.get_model()
+    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
+        """Calculate the embedding vector for text or image."""
+        if not isinstance(content, (str, Image.Image)):
+            raise ValueError(f"Expected string or PIL.Image input, got {type(content)}")
 
-        # Get the embedding
-        return model.encode(content, normalize_embeddings=True)
+        # JINA CLIP handles both text and images
+        return self.model.encode(content, normalize_embeddings=True)
 
 
-## from here these ones used for testing
-
-
+@ray.remote
 class Dummy(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        # Dummy model doesn't need to create or cache anything
-        return None
+    def __init__(self):
+        """Initialize the dummy model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    @staticmethod
-    def embed(content: Union[str, Image.Image]) -> np.ndarray:
-        """
-        Generate a random embedding vector for testing purposes.
-
-        Args:
-            content: Either text or image (ignored in this dummy implementation)
-
-        Returns:
-            A random vector of dimension 768
-        """
+    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
+        """Generate a random embedding vector for testing."""
         # Generate a random vector of dimension 768
-        return np.random.rand(768).astype(np.float32)
+        return np.random.rand(EMBEDDING_DIM).astype(np.float32)
 
 
+@ray.remote
 class Dummy2(EmbeddingModel):
-    @classmethod
-    def load_to_device(cls):
-        # Dummy model doesn't need to create or cache anything
-        return None
+    def __init__(self):
+        """Initialize the dummy model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    @staticmethod
-    def embed(content: Union[str, Image.Image]) -> np.ndarray:
-        """
-        Generate a(nother) random embedding vector for testing purposes.
-
-        Args:
-            content: Either text or image (ignored in this dummy implementation)
-
-        Returns:
-            A random vector of dimension 768
-        """
+    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
+        """Generate a(nother) random embedding vector for testing."""
         # Generate a random vector of dimension 768
-        return np.random.rand(768).astype(np.float32)
-
-
-def embed(embedding_model_name: str, content: Union[str, Image.Image]) -> np.ndarray:
-    """
-    Dynamically dispatches to the specified embedding_model's embed method.
-
-    Args:
-        embedding_model_name: Name of the embedding_model to use
-        content: Either text or image to embed
-
-    Returns:
-        The calculated embedding vector
-
-    Raises:
-        ValueError: If the embedding_model doesn't exist
-    """
-    current_module = sys.modules[__name__]
-
-    # Special case for Nomic to dispatch based on content type
-    if embedding_model_name == "Nomic":
-        if isinstance(content, str):
-            return NomicText.embed(content)
-        elif isinstance(content, Image.Image):
-            return NomicVision.embed(content)
-        else:
-            raise ValueError(f"Unsupported content type for Nomic: {type(content)}")
-
-    # Try to find the model class in this module
-    if not hasattr(current_module, embedding_model_name):
-        raise ValueError(f"embedding_model '{embedding_model_name}' not found.")
-
-    # Get the model class
-    model_class = getattr(current_module, embedding_model_name)
-
-    # Check if it's a subclass of EmbeddingModel
-    if not issubclass(model_class, EmbeddingModel):
-        raise ValueError(f"'{embedding_model_name}' is not an EmbeddingModel subclass")
-
-    # Call the embed method with the content
-    return model_class.embed(content)
+        return np.random.rand(EMBEDDING_DIM).astype(np.float32)
 
 
 def list_models():
@@ -340,13 +148,12 @@ def list_models():
     """
     current_module = sys.modules[__name__]
 
-    # Find all EmbeddingModel subclasses in this module
-    models = [
-        cls
-        for cls in dir(current_module)
-        if isinstance(getattr(current_module, cls), type)
-        and issubclass(getattr(current_module, cls), EmbeddingModel)
-        and cls != "EmbeddingModel"  # Exclude the base class
-    ]
+    models = []
+    # Find all classes with type name ActorClass(class_name)
+    for name, cls in vars(current_module).items():
+        if type(cls).__name__ == f"ActorClass({name})":
+            models.append(name)
+
+    # Find all Ray actor classes derived from EmbeddingModel
 
     return models
