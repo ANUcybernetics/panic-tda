@@ -7,6 +7,7 @@ from uuid import UUID
 
 import numpy as np
 import ray
+from ray.util.queue import Queue
 from PIL import Image
 
 from trajectory_tracer.db import get_session_from_connection_string
@@ -344,7 +345,6 @@ def process_embeddings_with_queue(invocation_ids, embedding_model, db_str, num_a
     Returns:
         List of embedding IDs that were successfully created
     """
-    from ray.util.queue import Queue
 
     logger.info(f"Processing {len(invocation_ids)} embeddings with model {embedding_model}")
 
