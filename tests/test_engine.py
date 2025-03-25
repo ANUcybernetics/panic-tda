@@ -160,6 +160,66 @@ def test_run_generator_duplicate_detection(db_session: Session):
         assert invocation.model == expected_model
 
 
+@pytest.mark.slow
+def test_run_generator_real_models(db_session: Session):
+    """Test that run_generator correctly generates a sequence of invocations with real models."""
+
+    # Create a test run with real models
+    run = Run(
+        network=["FluxSchnell", "BLIP2"],
+        initial_prompt="A beautiful sunset over mountains",
+        seed=42,
+        max_length=4,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the generator function
+    gen_ref = run_generator.remote(str(run.id), db_url)
+
+    # Get the DynamicObjectRefGenerator object
+    ref_generator = ray.get(gen_ref)
+
+    # Get the invocation IDs
+    invocation_ids = []
+
+    # Iterate directly over the DynamicObjectRefGenerator
+    for invocation_id_ref in ref_generator:
+        # Each item is an ObjectRef containing an invocation ID
+        invocation_id = ray.get(invocation_id_ref)
+        invocation_ids.append(invocation_id)
+        if len(invocation_ids) >= 4:
+            break
+
+    # Verify we got the expected number of invocations
+    assert len(invocation_ids) == 4
+
+    # Verify the invocations are in the database with the right sequence and model pattern
+    for i, invocation_id in enumerate(invocation_ids):
+        # Convert string UUID to UUID object if needed
+        if isinstance(invocation_id, str):
+            invocation_id = UUID(invocation_id)
+
+        invocation = db_session.get(Invocation, invocation_id)
+        assert invocation is not None
+        assert invocation.run_id == run.id
+        assert invocation.sequence_number == i
+
+        # Check model alternates correctly
+        expected_model = run.network[i % len(run.network)]
+        assert invocation.model == expected_model
+
+        # Check inputs/outputs match expected types
+        if i % 2 == 0:  # FluxSchnell
+            assert invocation.type == "image"
+        else:  # BLIP2
+            assert invocation.type == "text"
+
+
 def test_compute_embedding(db_session: Session):
     """Test that compute_embedding correctly computes an embedding for an invocation."""
 
