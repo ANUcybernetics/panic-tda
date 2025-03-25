@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 import ray
 from PIL import Image
-from ray.util.queue import Queue
 from sqlmodel import Session
 
 from trajectory_tracer.db import (
@@ -21,8 +20,10 @@ from trajectory_tracer.engine import (
     compute_embedding,
     compute_persistence_diagram,
     get_output_hash,
+    perform_embeddings_stage,
     perform_experiment,
-    process_run_generators,
+    perform_pd_stage,
+    perform_runs_stage,
     run_generator,
 )
 from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
@@ -185,64 +186,41 @@ def test_run_generator_duplicate_detection(db_session: Session):
         ray.kill(actor)
 
 
-@pytest.mark.slow
-def test_run_generator_real_models(db_session: Session):
-    """Test that run_generator correctly generates a sequence of invocations with real models."""
+def test_perform_runs_stage(db_session: Session):
+    """Test that perform_runs_stage correctly processes multiple runs."""
+    # Create multiple test runs
+    runs = []
+    for i in range(3):
+        run = Run(
+            network=["DummyT2I", "DummyI2T"],
+            initial_prompt=f"Test prompt {i}",
+            seed=42 + i,
+            max_length=2,
+        )
+        db_session.add(run)
+        db_session.commit()
+        db_session.refresh(run)
+        runs.append(run)
 
-    # Create a test run with real models
-    run = Run(
-        network=["FluxSchnell", "BLIP2"],
-        initial_prompt="A beautiful sunset over mountains",
-        seed=42,
-        max_length=4,
-    )
-    db_session.add(run)
-    db_session.commit()
-    db_session.refresh(run)
+    run_ids = [str(run.id) for run in runs]
 
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the generator function
-    gen_ref = run_generator.remote(str(run.id), db_url)
+    # Call the perform_runs_stage function
+    invocation_ids = perform_runs_stage(run_ids, db_url)
 
-    # Get the DynamicObjectRefGenerator object
-    ref_generator = ray.get(gen_ref)
+    # We expect 2 invocations for each run
+    assert len(invocation_ids) == 6
 
-    # Get the invocation IDs
-    invocation_ids = []
-
-    # Iterate directly over the DynamicObjectRefGenerator
-    for invocation_id_ref in ref_generator:
-        # Each item is an ObjectRef containing an invocation ID
-        invocation_id = ray.get(invocation_id_ref)
-        invocation_ids.append(invocation_id)
-        if len(invocation_ids) >= 4:
-            break
-
-    # Verify we got the expected number of invocations
-    assert len(invocation_ids) == 4
-
-    # Verify the invocations are in the database with the right sequence and model pattern
-    for i, invocation_id in enumerate(invocation_ids):
-        # Convert string UUID to UUID object if needed
+    # Verify all invocations are in the database
+    for invocation_id in invocation_ids:
         if isinstance(invocation_id, str):
             invocation_id = UUID(invocation_id)
 
         invocation = db_session.get(Invocation, invocation_id)
         assert invocation is not None
-        assert invocation.run_id == run.id
-        assert invocation.sequence_number == i
-
-        # Check model alternates correctly
-        expected_model = run.network[i % len(run.network)]
-        assert invocation.model == expected_model
-
-        # Check inputs/outputs match expected types
-        if i % 2 == 0:  # FluxSchnell
-            assert invocation.type == "image"
-        else:  # BLIP2
-            assert invocation.type == "text"
+        assert invocation.run_id in [run.id for run in runs]
 
 
 def test_compute_embedding(db_session: Session):
@@ -280,20 +258,19 @@ def test_compute_embedding(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Create a queue with an embedding actor
+    # Create an embedding actor
     embedding_model = "Dummy"
-    actor_class = get_embedding_actor_class(embedding_model)
-    actor_queue = Queue()
-    actor_queue.put(actor_class.remote())
+    actor = get_embedding_actor_class(embedding_model).remote()
 
-    # Call the compute_embedding function with the actor queue
-    embedding_id_ref = compute_embedding.remote(
-        str(invocation.id), embedding_model, db_url, actor_queue
-    )
+    # Call the compute_embedding function with the actor
+    embedding_id_ref = compute_embedding.remote(actor, str(invocation.id), embedding_model, db_url)
     embedding_id = ray.get(embedding_id_ref)
 
-    # Convert string UUID to UUID object
-    embedding_uuid = UUID(embedding_id)
+    # Convert string UUID to UUID object if needed
+    if isinstance(embedding_id, str):
+        embedding_uuid = UUID(embedding_id)
+    else:
+        embedding_uuid = embedding_id
 
     # Verify the embedding is in the database
     embedding = db_session.get(Embedding, embedding_uuid)
@@ -308,10 +285,70 @@ def test_compute_embedding(db_session: Session):
     assert embedding.completed_at is not None
     assert embedding.completed_at > embedding.started_at
 
-    # Clean up the actor from the queue
-    while not actor_queue.empty():
-        actor = actor_queue.get()
-        ray.kill(actor)
+    # Clean up the actor
+    ray.kill(actor)
+
+
+def test_perform_embeddings_stage(db_session: Session):
+    """Test that perform_embeddings_stage correctly processes embeddings for multiple invocations."""
+    # Create a test run
+    run = Run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for embeddings stage",
+        seed=42,
+        max_length=3,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Create multiple invocations with outputs
+    invocation_ids = []
+    for i in range(3):
+        invocation = Invocation(
+            model=run.network[i % len(run.network)],
+            type="image" if i % 2 == 0 else "text",
+            run_id=run.id,
+            sequence_number=i,
+            seed=42,
+        )
+        db_session.add(invocation)
+        db_session.commit()
+        db_session.refresh(invocation)
+
+        # Generate output
+        if i % 2 == 0:
+            output = Image.new("RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})")
+        else:
+            output = f"Test output for invocation {i}"
+
+        invocation.output = output
+        db_session.add(invocation)
+        db_session.commit()
+
+        invocation_ids.append(str(invocation.id))
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the perform_embeddings_stage function with two embedding models
+    embedding_models = ["Dummy", "Dummy2"]
+    embedding_ids = perform_embeddings_stage(invocation_ids, embedding_models, db_url, num_actors=2)
+
+    # We expect 3 invocations * 2 embedding models = 6 embeddings
+    assert len(embedding_ids) == 6
+
+    # Verify all embeddings are in the database
+    for embedding_id in embedding_ids:
+        if isinstance(embedding_id, str):
+            embedding_id = UUID(embedding_id)
+
+        embedding = db_session.get(Embedding, embedding_id)
+        assert embedding is not None
+        assert str(embedding.invocation_id) in invocation_ids
+        assert embedding.embedding_model in embedding_models
+        assert embedding.vector is not None
+        assert len(embedding.vector) > 0
 
 
 def test_compute_persistence_diagram(db_session: Session):
@@ -380,7 +417,6 @@ def test_compute_persistence_diagram(db_session: Session):
     pd_id = ray.get(pd_id_ref)
 
     # Convert string UUID to UUID object
-
     pd_uuid = UUID(pd_id)
 
     # Verify the persistence diagram is in the database
@@ -399,51 +435,81 @@ def test_compute_persistence_diagram(db_session: Session):
     assert len(pd.generators) > 0
 
 
-def test_process_run_generators(db_session: Session):
-    """Test that process_run_generators correctly processes multiple run generators."""
+def test_perform_pd_stage(db_session: Session):
+    """Test that perform_pd_stage correctly computes persistence diagrams for multiple runs."""
     # Create multiple test runs
     runs = []
-    for i in range(3):
+    for i in range(2):
         run = Run(
             network=["DummyT2I", "DummyI2T"],
-            initial_prompt=f"Test prompt {i}",
+            initial_prompt=f"Test prompt for PD stage {i}",
             seed=42 + i,
-            max_length=2,
+            max_length=3,
         )
         db_session.add(run)
         db_session.commit()
         db_session.refresh(run)
         runs.append(run)
 
-    run_ids = [str(run.id) for run in runs]
+    # For each run, create invocations and embeddings
+    embedding_models = ["Dummy", "Dummy2"]
+
+    for run in runs:
+        for i in range(3):  # 3 invocations per run
+            invocation = Invocation(
+                model=run.network[i % len(run.network)],
+                type="image" if i % 2 == 0 else "text",
+                run_id=run.id,
+                sequence_number=i,
+                seed=run.seed,
+            )
+            db_session.add(invocation)
+            db_session.commit()
+            db_session.refresh(invocation)
+
+            # Generate output
+            if i % 2 == 0:
+                output = Image.new("RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})")
+            else:
+                output = f"Test output for invocation {i} in run {run.id}"
+
+            invocation.output = output
+            db_session.add(invocation)
+            db_session.commit()
+
+            # Add embeddings for each model
+            for model in embedding_models:
+                embedding = Embedding(
+                    invocation_id=invocation.id,
+                    embedding_model=model,
+                    vector=np.array([float(i), float(i + 1), float(i + 2)], dtype=np.float32),
+                    started_at=datetime.now(),
+                    completed_at=datetime.now(),
+                )
+                db_session.add(embedding)
+                db_session.commit()
 
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Create model actors for each model in the network
-    model_actors = {}
-    for model_name in ["DummyT2I", "DummyI2T"]:
-        actor_class = get_genai_actor_class(model_name)
-        model_actors[model_name] = actor_class.remote()
+    # Get run IDs
+    run_ids = [str(run.id) for run in runs]
 
-    # Call the process_run_generators function
-    invocation_ids = process_run_generators(run_ids, db_url)
+    # Call the perform_pd_stage function
+    pd_ids = perform_pd_stage(run_ids, embedding_models, db_url)
 
-    # We expect 2 invocations for each run
-    assert len(invocation_ids) == 6
+    # We expect 2 runs * 2 embedding models = 4 persistence diagrams
+    assert len(pd_ids) == 4
 
-    # Verify all invocations are in the database
-    for invocation_id in invocation_ids:
-        if isinstance(invocation_id, str):
-            invocation_id = UUID(invocation_id)
-
-        invocation = db_session.get(Invocation, invocation_id)
-        assert invocation is not None
-        assert invocation.run_id in [run.id for run in runs]
-
-    # Clean up the actor references
-    for actor in model_actors.values():
-        ray.kill(actor)
+    # Verify all persistence diagrams are in the database
+    for pd_id in pd_ids:
+        pd_uuid = UUID(pd_id)
+        pd = db_session.get(PersistenceDiagram, pd_uuid)
+        assert pd is not None
+        assert pd.run_id in [run.id for run in runs]
+        assert pd.embedding_model in embedding_models
+        assert pd.generators is not None
+        assert len(pd.generators) > 0
 
 
 def test_perform_experiment(db_session: Session):
@@ -488,16 +554,17 @@ def test_perform_experiment(db_session: Session):
         assert pd.generators is not None
         assert len(pd.generators) > 0
 
+
 @pytest.mark.slow
 def test_perform_experiment_real_models(db_session: Session):
-    """Test that perform_experiment correctly executes an experiment with multiple runs."""
+    """Test that perform_experiment correctly executes an experiment with real models."""
     # Create a test experiment config with multiple embedding models and a -1 seed
     config = ExperimentConfig(
         networks=[["FluxDev", "Moondream"]],
         seeds=[-1],
         prompts=["A real prompt, for real models"],
-        embedding_models=["Nomic"],  # Added second embedding model
-        max_length=10,  # Increased max length (especially for -1 seed)
+        embedding_models=["Nomic"],
+        max_length=10,
     )
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)

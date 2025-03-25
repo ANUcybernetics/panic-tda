@@ -7,12 +7,11 @@ from uuid import UUID
 
 import numpy as np
 import ray
-from ray.util.queue import Queue
+from ray.util import ActorPool
 from PIL import Image
 
 from trajectory_tracer.db import get_session_from_connection_string
-
-# from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
+from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
 from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.schemas import (
@@ -161,70 +160,47 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
         logger.debug(f"Run generator for {run_id} completed")
 
 
-@ray.remote(num_cpus=1)
-def compute_embedding(invocation_id: str, embedding_model: str, db_str: str, actor_queue) -> str:
-    """
-    Compute embedding using an actor from a queue for load balancing.
+@ray.remote
+def compute_embedding(actor, invocation_id, embedding_model, db_str):
+    """Process a single embedding calculation task"""
+    with get_session_from_connection_string(db_str) as session:
+        # Load the invocation
+        invocation_uuid = UUID(invocation_id)
+        invocation = session.get(Invocation, invocation_uuid)
+        if not invocation:
+            raise ValueError(f"Invocation {invocation_id} not found")
 
-    Args:
-        invocation_id: UUID string of the invocation
-        embedding_model: Name of the embedding model to use
-        db_str: Database connection string
-        actor_queue: Ray Queue containing embedding model actors
+        # Create the embedding object
+        embedding = Embedding(
+            invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
+        )
 
-    Returns:
-        Embedding ID as string or None if failed
-    """
-    # Get an actor from the queue
-    actor = actor_queue.get()
+        # Save to database
+        session.add(embedding)
+        session.commit()
+        session.refresh(embedding)
 
-    try:
-        with get_session_from_connection_string(db_str) as session:
-            # Load the invocation
-            invocation_uuid = UUID(invocation_id)
-            invocation = session.get(Invocation, invocation_uuid)
-            if not invocation:
-                raise ValueError(f"Invocation {invocation_id} not found")
+        embedding_id = str(embedding.id)
+        logger.debug(f"Created empty embedding {embedding_id} for invocation {invocation_id}")
 
-            # Create the embedding object
-            embedding = Embedding(
-                invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
-            )
+        # Set the start timestamp
+        embedding.started_at = datetime.now()
 
-            # Save to database
-            session.add(embedding)
-            session.commit()
-            session.refresh(embedding)
+        # Get the content to embed from the invocation output
+        content = invocation.output
 
-            embedding_id = str(embedding.id)
-            logger.debug(f"Created empty embedding {embedding_id} for invocation {invocation_id}")
+        # Use the actor to compute the embedding
+        embedding.vector = ray.get(actor.embed.remote(content))
 
-            # Set the start timestamp
-            embedding.started_at = datetime.now()
+        # Set the completion timestamp
+        embedding.completed_at = datetime.now()
 
-            # Get the content to embed from the invocation output
-            content = invocation.output
+        # Save to database
+        session.add(embedding)
+        session.commit()
 
-            # Use the actor to compute the embedding
-            embedding.vector = ray.get(actor.embed.remote(content))
-
-            # Set the completion timestamp
-            embedding.completed_at = datetime.now()
-
-            # Save to database
-            session.add(embedding)
-            session.commit()
-
-            logger.debug(f"Successfully computed vector for embedding {embedding_id}")
-            return embedding_id
-
-    except Exception as e:
-        logger.error(f"Error computing embedding for invocation {invocation_id}: {e}")
-        return None
-
-    finally:
-        # Always return the actor to the queue, even if there was an error
-        actor_queue.put(actor)
+        logger.debug(f"Successfully computed vector for embedding {embedding_id}")
+        return embedding_id
 
 
 @ray.remote(num_cpus=8)
@@ -301,9 +277,10 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         return pd_id
 
 
-def process_run_generators(run_ids, db_str):
+def perform_runs_stage(run_ids, db_str):
     """
     Process multiple run generators in parallel, respecting dependencies within each run.
+    Creates model actors and dispatches tasks appropriately.
 
     Args:
         run_ids: List of run UUIDs as strings
@@ -312,79 +289,119 @@ def process_run_generators(run_ids, db_str):
     Returns:
         List of all invocation IDs from all generators
     """
+    # Create a dictionary to hold actors for each required model
+    model_actors = {}
+    used_models = set()
+
+    # First collect all models needed for these runs
+    with get_session_from_connection_string(db_str) as session:
+        for run_id in run_ids:
+            run = session.get(Run, UUID(run_id))
+            if run:
+                for model_name in run.network:
+                    used_models.add(model_name)
+
+    # Create actors for each unique model
+    for model_name in used_models:
+        model_actor_class = get_genai_actor_class(model_name)
+        model_actors[model_name] = model_actor_class.remote()
+        logger.debug(f"Created actor for model {model_name}")
+
     # Create refs for all run generators
-    generator_refs = [run_generator.remote(run_id, db_str) for run_id in run_ids]
+    generator_refs = [run_generator.remote(run_id, db_str, model_actors) for run_id in run_ids]
 
     all_invocation_ids = []
 
     # Get all results from all generators
     for gen_ref in generator_refs:
-        try:
-            # Get the iterator object from the generator reference
-            iter_ref = ray.get(gen_ref)
+        # Get the iterator object from the generator reference
+        iter_ref = ray.get(gen_ref)
 
-            # Convert to list to get all elements
-            invocation_ids = list(ray.get(item) for item in iter_ref)
-            all_invocation_ids.extend(invocation_ids)
-        except Exception as e:
-            logger.error(f"Error processing generator: {e}")
+        # Convert to list to get all elements
+        invocation_ids = list(ray.get(item) for item in iter_ref)
+        all_invocation_ids.extend(invocation_ids)
+
+    # Clean up model actors
+    for model_name, actor in model_actors.items():
+        ray.kill(actor)
+        logger.debug(f"Terminated actor for model {model_name}")
 
     return all_invocation_ids
 
 
-def process_embeddings_with_queue(invocation_ids, embedding_model, db_str, num_actors=4):
+def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=4):
     """
-    Process embeddings for multiple invocations using a queue of actors for load balancing.
+    Process embeddings for multiple invocations using ActorPool for load balancing.
 
     Args:
         invocation_ids: List of invocation IDs to process
-        embedding_model: Name of the embedding model to use
+        embedding_models: List of embedding model names to use
         db_str: Database connection string
-        num_actors: Number of actors to create in the queue (default: 4)
+        num_actors: Number of actors to create per model (default: 4)
 
     Returns:
         List of embedding IDs that were successfully created
     """
+    all_embedding_ids = []
 
-    logger.info(f"Processing {len(invocation_ids)} embeddings with model {embedding_model}")
+    for embedding_model in embedding_models:
+        logger.info(f"Processing {len(invocation_ids)} embeddings with model {embedding_model}")
 
-    try:
         # Get the actor class for this embedding model
         embedding_actor_class = get_embedding_actor_class(embedding_model)
 
         # Limit the number of actors based on the number of invocations
-        num_actors = min(num_actors, len(invocation_ids))
+        actor_count = min(num_actors, len(invocation_ids))
 
-        # Create a queue of actors
-        actor_queue = Queue()
-        for _ in range(num_actors):
-            actor_queue.put(embedding_actor_class.remote())
+        # Create actor instances
+        actors = [embedding_actor_class.remote() for _ in range(actor_count)]
 
-        logger.info(f"Created queue with {num_actors} actors for model {embedding_model}")
+        # Create an ActorPool
+        pool = ActorPool(actors)
 
-        # Create embedding calculation tasks
-        embedding_tasks = []
-        for invocation_id in invocation_ids:
-            embedding_tasks.append(
-                compute_embedding.remote(
-                    invocation_id, embedding_model, db_str, actor_queue
-                )
-            )
+        logger.info(f"Created actor pool with {actor_count} actors for model {embedding_model}")
 
-        # Wait for all embedding computations to complete
-        embedding_ids = ray.get(embedding_tasks)
+        # Process embeddings in parallel using the actor pool
+        # The map_unordered function returns an iterator of actual results, not object references
+        embedding_ids = list(pool.map_unordered(
+            lambda actor, invocation_id: compute_embedding.remote(actor, invocation_id, embedding_model, db_str),
+            invocation_ids
+        ))
+
+        # Add all successfully computed embedding IDs
+        all_embedding_ids.extend(embedding_ids)
+
         logger.info(f"Computed {len(embedding_ids)} embeddings with model {embedding_model}")
 
-        # Clean up actors in the queue
-        while not actor_queue.empty():
-            actor = actor_queue.get()
+        # Clean up actors
+        for actor in actors:
             ray.kill(actor)
 
-        return embedding_ids
+    return all_embedding_ids
 
-    except Exception as e:
-        logger.error(f"Error while computing embeddings with model {embedding_model}: {e}")
-        return []
+
+def perform_pd_stage(run_ids, embedding_models, db_str):
+    """
+    Compute persistence diagrams for all runs using specified embedding models.
+
+    Args:
+        run_ids: List of run UUIDs as strings
+        embedding_models: List of embedding model names to use
+        db_str: Database connection string
+
+    Returns:
+        List of persistence diagram IDs
+    """
+    pd_tasks = []
+    for run_id in run_ids:
+        for embedding_model in embedding_models:
+            pd_tasks.append(compute_persistence_diagram.remote( run_id, embedding_model, db_str))
+
+    # Wait for all persistence diagram computations to complete
+    pd_ids = ray.get(pd_tasks)
+    logger.info(f"Computed {len(pd_ids)} persistence diagrams")
+
+    return pd_ids
 
 
 def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
@@ -395,79 +412,61 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
         config: The experiment configuration
         db_str: Database connection string
     """
-    # Generate cartesian product of all parameters
-    combinations = list(
-        itertools.product(
-            config.networks,
-            config.seeds,
-            config.prompts,
-        )
-    )
-
-    total_combinations = len(combinations)
-    logger.debug(
-        f"Starting experiment with {total_combinations} total run configurations"
-    )
-
-    # Create runs for all combinations
-    run_ids = []
-    with get_session_from_connection_string(db_str) as session:
-        for i, (network, seed, prompt) in enumerate(combinations):
-            try:
-                # Create the run
-                logger.debug(
-                    f"Creating run {i + 1}/{total_combinations}: {network} with seed {seed}"
-                )
-                run = Run(
-                    network=network,
-                    initial_prompt=prompt,
-                    seed=seed,
-                    max_length=config.max_length,
-                )
-
-                # Save to database
-                session.add(run)
-                session.commit()
-                session.refresh(run)
-
-                run_ids.append(str(run.id))
-                logger.debug(f"Created run with ID: {run.id}")
-
-            except Exception as e:
-                logger.error(f"Error creating run {i + 1}/{total_combinations}: {e}")
-
-    # Process all run generators in parallel while respecting dependencies
-    invocation_ids = process_run_generators(run_ids, db_str)
-
-    logger.info(
-        f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs"
-    )
-
-    # Compute embeddings for all invocations (for each embedding model)
-    all_embedding_ids = []
-    for embedding_model in config.embedding_models:
-        # Process embeddings for this model
-        embedding_ids = process_embeddings_with_queue(
-            invocation_ids, embedding_model, db_str, num_actors=4
-        )
-        all_embedding_ids.extend(embedding_ids)
-
-    logger.info(f"Computed {len(all_embedding_ids)} embeddings")
-
-    # Compute persistence diagrams for all runs (for each embedding model)
-    # Use limited parallelism for persistence diagram computation as it uses all CPU cores
-    pd_tasks = []
-    for run_id in run_ids:
-        for embedding_model in config.embedding_models:
-            # Option to limit concurrency by processing in batches
-            pd_tasks.append(
-                compute_persistence_diagram.options(num_cpus=0.5).remote(
-                    run_id, embedding_model, db_str
-                )
+    try:
+        # Generate cartesian product of all parameters
+        combinations = list(
+            itertools.product(
+                config.networks,
+                config.seeds,
+                config.prompts,
             )
+        )
 
-    # Wait for all persistence diagram computations to complete
-    pd_ids = ray.get(pd_tasks)
-    logger.info(f"Computed {len(pd_ids)} persistence diagrams")
+        total_combinations = len(combinations)
+        logger.debug(
+            f"Starting experiment with {total_combinations} total run configurations"
+        )
 
-    logger.info(f"Experiment completed with {len(run_ids)} successful runs")
+        # Create runs for all combinations
+        run_ids = []
+        with get_session_from_connection_string(db_str) as session:
+            for i, (network, seed, prompt) in enumerate(combinations):
+                try:
+                    # Create the run
+                    logger.debug(
+                        f"Creating run {i + 1}/{total_combinations}: {network} with seed {seed}"
+                    )
+                    run = Run(
+                        network=network,
+                        initial_prompt=prompt,
+                        seed=seed,
+                        max_length=config.max_length,
+                    )
+
+                    # Save to database
+                    session.add(run)
+                    session.commit()
+                    session.refresh(run)
+
+                    run_ids.append(str(run.id))
+                    logger.debug(f"Created run with ID: {run.id}")
+
+                except Exception as e:
+                    logger.error(f"Error creating run {i + 1}/{total_combinations}: {e}")
+
+        # Process all runs and generate invocations
+        invocation_ids = perform_runs_stage(run_ids, db_str)
+        logger.info(f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs")
+
+        # Compute embeddings for all invocations
+        embedding_ids = perform_embeddings_stage(invocation_ids, config.embedding_models, db_str)
+        logger.info(f"Computed {len(embedding_ids)} embeddings")
+
+        # Compute persistence diagrams for all runs
+        # Note: perform_pd_stage already returns resolved string IDs, not ObjectRefs
+        pd_ids = perform_pd_stage(run_ids, config.embedding_models, db_str)
+        logger.info(f"Experiment completed with {len(run_ids)} successful runs")
+
+    except Exception as e:
+        logger.error(f"Error performing experiment: {e}")
+        raise
