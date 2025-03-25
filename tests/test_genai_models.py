@@ -1,39 +1,48 @@
-import sys
+import time
 
 import numpy as np
 import pytest
-import torch
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
-    BLIP2,
     IMAGE_SIZE,
-    DummyI2T,
-    DummyT2I,
-    FluxDev,
-    Moondream,
-    SDXLTurbo,
+    get_actor_stats,
+    get_output_type,
+    invoke,
     list_models,
-    unload_all_models,
+    terminate_all_model_actors,
 )
+from trajectory_tracer.schemas import InvocationType
+
+
+@pytest.fixture(scope="module", autouse=True)
+def ray_cleanup():
+    """Fixture to ensure Ray resources are cleaned up after tests."""
+    # Setup - Ray is initialized at module import
+    yield
+    # Teardown - ensure all actors are terminated
+    terminate_all_model_actors()
+    # Wait briefly to ensure cleanup completes
+    time.sleep(1)
 
 
 @pytest.mark.slow
 def test_flux_dev_t2i():
-    """Test that flux_dev_t2i returns an image with the expected dimensions and is deterministic with fixed seed."""
+    """Test that FluxDev returns an image with the expected dimensions and is deterministic with fixed seed."""
     try:
+        model_name = "FluxDev"
         prompt = "A beautiful mountain landscape at sunset"
 
         # Test with fixed seed
         seed = 42
         # First invocation
-        image1 = FluxDev.invoke(prompt, seed)
+        image1 = invoke(model_name, prompt, seed)
         assert isinstance(image1, Image.Image)
         assert image1.width == IMAGE_SIZE
         assert image1.height == IMAGE_SIZE
 
         # Second invocation with same seed
-        image2 = FluxDev.invoke(prompt, seed)
+        image2 = invoke(model_name, prompt, seed)
         assert isinstance(image2, Image.Image)
 
         # Save the image as a webp file for inspection
@@ -49,9 +58,9 @@ def test_flux_dev_t2i():
         # Test with -1 seed (should be non-deterministic)
         seed = -1
         # First invocation
-        image_random1 = FluxDev.invoke(prompt, seed)
+        image_random1 = invoke(model_name, prompt, seed)
         # Second invocation with -1 seed
-        image_random2 = FluxDev.invoke(prompt, seed)
+        image_random2 = invoke(model_name, prompt, seed)
 
         # Check that the images are different
         np_img_random1 = np.array(image_random1)
@@ -62,26 +71,27 @@ def test_flux_dev_t2i():
             "Images should be different when using seed=-1"
         )
     finally:
-        # Explicitly unload model after test to free GPU memory
-        unload_all_models()
+        # Terminate the actor after test to free GPU memory
+        terminate_all_model_actors()
 
 
 @pytest.mark.slow
 def test_sdxl_turbo():
     """Test that SDXLTurbo returns an image with the expected dimensions and is deterministic with fixed seed."""
     try:
+        model_name = "SDXLTurbo"
         prompt = "A serene forest with a small lake"
 
         # Test with fixed seed
         seed = 43
         # First invocation
-        image1 = SDXLTurbo.invoke(prompt, seed)
+        image1 = invoke(model_name, prompt, seed)
         assert isinstance(image1, Image.Image)
         assert image1.width == IMAGE_SIZE
         assert image1.height == IMAGE_SIZE
 
         # Second invocation with same seed
-        image2 = SDXLTurbo.invoke(prompt, seed)
+        image2 = invoke(model_name, prompt, seed)
         assert isinstance(image2, Image.Image)
 
         # Save the image as a webp file for inspection
@@ -97,9 +107,9 @@ def test_sdxl_turbo():
         # Test with -1 seed (should be non-deterministic)
         seed = -1
         # First invocation
-        image_random1 = SDXLTurbo.invoke(prompt, seed)
+        image_random1 = invoke(model_name, prompt, seed)
         # Second invocation with -1 seed
-        image_random2 = SDXLTurbo.invoke(prompt, seed)
+        image_random2 = invoke(model_name, prompt, seed)
 
         # Check that the images are different
         np_img_random1 = np.array(image_random1)
@@ -108,26 +118,27 @@ def test_sdxl_turbo():
             "Images should be different when using seed=-1"
         )
     finally:
-        # Explicitly unload model after test to free GPU memory
-        unload_all_models()
+        # Terminate the actor after test to free GPU memory
+        terminate_all_model_actors()
 
 
 @pytest.mark.slow
 def test_blip2_i2t():
     """Test that BLIP2 returns a text caption for an input image and is deterministic with fixed seed."""
     try:
+        model_name = "BLIP2"
         # Create a simple test image
         image = Image.new("RGB", (100, 100), color="green")
 
         # Test with fixed seed
         seed = 44
         # First invocation
-        caption1 = BLIP2.invoke(image, seed)
+        caption1 = invoke(model_name, image, seed)
         assert isinstance(caption1, str)
         assert len(caption1) > 0  # Caption should not be empty
 
         # Second invocation with same seed
-        caption2 = BLIP2.invoke(image, seed)
+        caption2 = invoke(model_name, image, seed)
         assert isinstance(caption2, str)
 
         # Check that the captions are identical
@@ -138,35 +149,36 @@ def test_blip2_i2t():
         # Test with -1 seed (should be non-deterministic)
         seed = -1
         # First invocation
-        caption_random1 = BLIP2.invoke(image, seed)
+        caption_random1 = invoke(model_name, image, seed)
         # Second invocation with -1 seed
-        caption_random2 = BLIP2.invoke(image, seed)
+        caption_random2 = invoke(model_name, image, seed)
 
         # Check that the captions are different (note: there's a small chance they could be the same by coincidence)
         assert caption_random1 != caption_random2, (
             "Captions should be different when using seed=-1"
         )
     finally:
-        # Explicitly unload model after test to free GPU memory
-        unload_all_models()
+        # Terminate the actor after test to free GPU memory
+        terminate_all_model_actors()
 
 
 @pytest.mark.slow
 def test_moondream_i2t():
-    """Test that moondream_i2t returns a text caption for an input image and is deterministic with fixed seed."""
+    """Test that Moondream returns a text caption for an input image and is deterministic with fixed seed."""
     try:
+        model_name = "Moondream"
         # Create a simple test image
         image = Image.new("RGB", (100, 100), color="red")
 
         # Test with fixed seed
         seed = 45
         # First invocation
-        caption1 = Moondream.invoke(image, seed)
+        caption1 = invoke(model_name, image, seed)
         assert isinstance(caption1, str)
         assert len(caption1) > 0  # Caption should not be empty
 
         # Second invocation with same seed
-        caption2 = Moondream.invoke(image, seed)
+        caption2 = invoke(model_name, image, seed)
         assert isinstance(caption2, str)
 
         # Check that the captions are identical
@@ -177,96 +189,100 @@ def test_moondream_i2t():
         # Test with -1 seed (should be non-deterministic)
         seed = -1
         # First invocation
-        _caption_random1 = Moondream.invoke(image, seed)
+        _caption_random1 = invoke(model_name, image, seed)
         # Second invocation with -1 seed
-        _caption_random2 = Moondream.invoke(image, seed)
+        _caption_random2 = invoke(model_name, image, seed)
 
         # NOTE: Moondream currently doesn't respect the seed (TODO figure out why), so this final assertion commented-out for now
         # Check that the captions are different (note: there's a small chance they could be the same by coincidence)
         # assert caption_random1 != caption_random2, "Captions should be different when using seed=-1"
     finally:
-        # Explicitly unload model after test to free GPU memory
-        unload_all_models()
+        # Terminate the actor after test to free GPU memory
+        terminate_all_model_actors()
 
 
 def test_dummy_i2t():
-    """Test that dummy_i2t returns a text caption that varies based on the seed."""
+    """Test that DummyI2T returns a text caption that varies based on the seed."""
+    try:
+        model_name = "DummyI2T"
+        # Create a test image
+        image = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color="blue")
 
-    # Create a test image
-    image = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color="blue")
+        # Test with fixed seed
+        seed = 46
+        # First invocation
+        caption1 = invoke(model_name, image, seed)
+        assert isinstance(caption1, str)
+        assert "dummy text caption (seed 46)" == caption1
 
-    # Test with fixed seed
-    seed = 46
-    # First invocation
-    caption1 = DummyI2T.invoke(image, seed)
-    assert isinstance(caption1, str)
-    assert "dummy text caption (seed 46)" == caption1
+        # Second invocation with same seed
+        caption2 = invoke(model_name, image, seed)
+        assert isinstance(caption2, str)
 
-    # Second invocation with same seed
-    caption2 = DummyI2T.invoke(image, seed)
-    assert isinstance(caption2, str)
+        # Check that the captions are identical
+        assert caption1 == caption2, "Captions should be identical when using the same seed"
 
-    # Check that the captions are identical
-    assert caption1 == caption2, "Captions should be identical when using the same seed"
+        # Test with -1 seed (should be non-deterministic for dummy model)
+        seed = -1
+        # First invocation
+        caption_random1 = invoke(model_name, image, seed)
+        # Second invocation with -1 seed
+        caption_random2 = invoke(model_name, image, seed)
 
-    # Test with -1 seed (should be non-deterministic for dummy model)
-    seed = -1
-    # First invocation
-    caption_random1 = DummyI2T.invoke(image, seed)
-    # Second invocation with -1 seed
-    caption_random2 = DummyI2T.invoke(image, seed)
+        # Check both contain the expected prefix
+        assert caption_random1.startswith("dummy text caption (random ")
+        assert caption_random2.startswith("dummy text caption (random ")
 
-    # Check both contain the expected prefix
-    assert caption_random1.startswith("dummy text caption (random ")
-    assert caption_random2.startswith("dummy text caption (random ")
-
-    # With seed=-1, outputs should be different
-    assert caption_random1 != caption_random2, (
-        "Captions should be different when using seed=-1"
-    )
-
-    # No need to unload dummy models as they don't use GPU resources
+        # With seed=-1, outputs should be different
+        assert caption_random1 != caption_random2, (
+            "Captions should be different when using seed=-1"
+        )
+    finally:
+        # Terminate the actor to clean up
+        terminate_all_model_actors()
 
 
 def test_dummy_t2i():
-    """Test that dummy_t2i returns a colored image with correct dimensions that depends on the seed."""
+    """Test that DummyT2I returns a colored image with correct dimensions that depends on the seed."""
+    try:
+        model_name = "DummyT2I"
+        prompt = "This prompt will be ignored"
 
-    prompt = "This prompt will be ignored"
+        # Test with fixed seed
+        seed = 47
+        # First invocation
+        image1 = invoke(model_name, prompt, seed)
+        assert isinstance(image1, Image.Image)
+        assert image1.width == IMAGE_SIZE
+        assert image1.height == IMAGE_SIZE
 
-    # Test with fixed seed
-    seed = 47
-    # First invocation
-    image1 = DummyT2I.invoke(prompt, seed)
-    assert isinstance(image1, Image.Image)
-    assert image1.width == IMAGE_SIZE
-    assert image1.height == IMAGE_SIZE
+        # Second invocation with same seed
+        image2 = invoke(model_name, prompt, seed)
+        assert isinstance(image2, Image.Image)
 
-    # Second invocation with same seed
-    image2 = DummyT2I.invoke(prompt, seed)
-    assert isinstance(image2, Image.Image)
+        # Check that the images are identical
+        np_img1 = np.array(image1)
+        np_img2 = np.array(image2)
+        assert np.array_equal(np_img1, np_img2), (
+            "Images should be identical when using the same seed"
+        )
 
-    # Check that the images are identical
-    np_img1 = np.array(image1)
-    np_img2 = np.array(image2)
-    assert np.array_equal(np_img1, np_img2), (
-        "Images should be identical when using the same seed"
-    )
+        # Test with -1 seed (should be non-deterministic for dummy model)
+        seed = -1
+        # First invocation
+        image_random1 = invoke(model_name, prompt, seed)
+        # Second invocation with -1 seed
+        image_random2 = invoke(model_name, prompt, seed)
 
-    # Test with -1 seed (should be non-deterministic for dummy model)
-    seed = -1
-    # First invocation
-    image_random1 = DummyT2I.invoke(prompt, seed)
-    # Second invocation with -1 seed
-    image_random2 = DummyT2I.invoke(prompt, seed)
-
-    # With seed=-1, outputs should be different
-    np_img_random1 = np.array(image_random1)
-    np_img_random2 = np.array(image_random2)
-    assert not np.array_equal(np_img_random1, np_img_random2), (
-        "Images should be different when using seed=-1"
-    )
-
-    # No need to unload dummy models as they don't use GPU resources
+        # With seed=-1, outputs should be different
+        np_img_random1 = np.array(image_random1)
+        np_img_random2 = np.array(image_random2)
+        assert not np.array_equal(np_img_random1, np_img_random2), (
+            "Images should be different when using seed=-1"
+        )
+    finally:
+        # Terminate the actor to clean up
+        terminate_all_model_actors()
 
 
 def test_list_models():
@@ -287,6 +303,7 @@ def test_list_models():
         "DummyI2T",
         "DummyT2I",
         "FluxDev",
+        "FluxSchnell",
         "Moondream",
         "SDXLTurbo",
     ]
@@ -301,33 +318,59 @@ def test_list_models():
 
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
-def test_model_memory_usage(model_name):
-    """Test memory usage reporting for each model."""
-    model_class = getattr(sys.modules["trajectory_tracer.genai_models"], model_name)
+def test_model_output_types(model_name):
+    """Test that each model has the correct output type."""
+    # Get output type for the model
+    output_type = get_output_type(model_name)
 
-    # Skip dummy models that don't need GPU
-    if model_name.startswith("Dummy"):
-        pytest.skip(f"Skipping memory usage test for dummy model {model_name}")
+    # Check that output_type is not None
+    assert output_type is not None, f"Model {model_name} has no output_type defined"
 
-    # Skip if CUDA is not available
-    if not torch.cuda.is_available():
-        pytest.skip("CUDA not available, skipping GPU memory test")
+    # Models should have either TEXT or IMAGE output types
+    from trajectory_tracer.schemas import InvocationType
+    assert output_type in [InvocationType.TEXT, InvocationType.IMAGE], (
+        f"Model {model_name} has invalid output_type: {output_type}"
+    )
 
-    # Call the report_memory_usage method
-    memory_info = model_class.report_memory_usage()
 
-    # Verify the returned structure has expected fields
-    assert isinstance(memory_info, dict)
-    assert "model_name" in memory_info
-    assert "model_size_gb" in memory_info
-    assert "peak_memory_gb" in memory_info
-    assert "current_memory_gb" in memory_info
-    assert "residual_memory_gb" in memory_info
+@pytest.mark.slow
+def test_actor_stats():
+    """Test that actor stats reporting works correctly."""
+    # Create an actor by invoking a model
+    invoke("DummyT2I", "Test prompt", 42)
 
-    # Print the memory info
-    print(f"\nMemory usage for {model_name}:")
-    for key, value in memory_info.items():
-        print(f"  {key}: {value}")
+    # Get stats for all actors
+    stats = get_actor_stats()
 
-    # Ensure we unload all models after the test
-    unload_all_models()
+    # There should be at least one actor (the one we just used)
+    assert len(stats) > 0, "No actor stats found"
+
+    # Check that DummyT2I is in the stats
+    assert "DummyT2I" in stats, "DummyT2I actor not found in stats"
+
+    # Check that inference_count is properly tracked
+    assert stats["DummyT2I"]["inference_count"] > 0, "Inference count not tracked"
+
+    # Clean up
+    terminate_all_model_actors()
+
+
+@pytest.mark.parametrize("model_name,expected_type", [
+    ("FluxDev", InvocationType.IMAGE),
+    ("FluxSchnell", InvocationType.IMAGE),
+    ("SDXLTurbo", InvocationType.IMAGE),
+    ("BLIP2", InvocationType.TEXT),
+    ("Moondream", InvocationType.TEXT),
+    ("DummyI2T", InvocationType.TEXT),
+    ("DummyT2I", InvocationType.IMAGE),
+])
+def test_get_output_type(model_name, expected_type):
+    """Test that get_output_type returns the correct type for each model."""
+    output_type = get_output_type(model_name)
+    assert output_type == expected_type, (
+        f"Expected {expected_type} for {model_name}, got {output_type}"
+    )
+
+    # Test with nonexistent model
+    with pytest.raises(ValueError):
+        get_output_type("NonexistentModel")

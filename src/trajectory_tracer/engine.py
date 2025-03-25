@@ -11,7 +11,7 @@ from PIL import Image
 
 from trajectory_tracer.db import get_session_from_connection_string
 from trajectory_tracer.embeddings import embed
-from trajectory_tracer.genai_models import get_output_type, invoke, unload_all_models
+from trajectory_tracer.genai_models import get_output_type, invoke
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
@@ -359,9 +359,6 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
 
     # Process all run generators in parallel while respecting dependencies
     invocation_ids = process_run_generators(run_ids, db_str)
-
-    # Unload all genai_models to conserve memory for the embedding models
-    unload_all_models()
 
     logger.info(
         f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs"
