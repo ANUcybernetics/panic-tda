@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 import ray
 from PIL import Image
+from ray.util.queue import Queue
 from sqlmodel import Session
 
 from trajectory_tracer.db import (
@@ -15,6 +16,7 @@ from trajectory_tracer.db import (
     list_persistence_diagrams,
     list_runs,
 )
+from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
 from trajectory_tracer.engine import (
     compute_embedding,
     compute_persistence_diagram,
@@ -23,6 +25,7 @@ from trajectory_tracer.engine import (
     process_run_generators,
     run_generator,
 )
+from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
@@ -76,8 +79,16 @@ def test_run_generator(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the generator function with the same DB that db_session is using
-    gen_ref = run_generator.remote(str(run.id), db_url)
+    # Create model actors
+
+    # Create a dictionary mapping model names to their actors
+    model_actors = {}
+    for model_name in ["DummyT2I", "DummyI2T"]:
+        actor_class = get_genai_actor_class(model_name)
+        model_actors[model_name] = actor_class.remote()
+
+    # Call the generator function with the same DB that db_session is using and the model actors
+    gen_ref = run_generator.remote(str(run.id), db_url, model_actors)
 
     # Get the DynamicObjectRefGenerator object
     ref_generator = ray.get(gen_ref)
@@ -106,6 +117,10 @@ def test_run_generator(db_session: Session):
         assert invocation.run_id == run.id
         assert invocation.sequence_number == i
 
+    # Clean up the actor references from the model_actors dictionary
+    for actor in model_actors.values():
+        ray.kill(actor)
+
 
 def test_run_generator_duplicate_detection(db_session: Session):
     """Test that run_generator correctly detects and stops on duplicate outputs."""
@@ -126,8 +141,14 @@ def test_run_generator_duplicate_detection(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the generator function
-    gen_ref = run_generator.remote(str(run.id), db_url)
+    # Create model actors
+    model_actors = {}
+    for model_name in ["DummyT2I", "DummyI2T"]:
+        actor_class = get_genai_actor_class(model_name)
+        model_actors[model_name] = actor_class.remote()
+
+    # Call the generator function with the model actors
+    gen_ref = run_generator.remote(str(run.id), db_url, model_actors)
     ref_generator = ray.get(gen_ref)
 
     # Get all invocation IDs
@@ -158,6 +179,10 @@ def test_run_generator_duplicate_detection(db_session: Session):
         # Check the model pattern matches our expectation
         expected_model = run.network[i % len(run.network)]
         assert invocation.model == expected_model
+
+    # Clean up the actor references from the model_actors dictionary
+    for actor in model_actors.values():
+        ray.kill(actor)
 
 
 @pytest.mark.slow
@@ -255,8 +280,16 @@ def test_compute_embedding(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the compute_embedding function
-    embedding_id_ref = compute_embedding.remote(str(invocation.id), "Dummy", db_url)
+    # Create a queue with an embedding actor
+    embedding_model = "Dummy"
+    actor_class = get_embedding_actor_class(embedding_model)
+    actor_queue = Queue()
+    actor_queue.put(actor_class.remote())
+
+    # Call the compute_embedding function with the actor queue
+    embedding_id_ref = compute_embedding.remote(
+        str(invocation.id), embedding_model, db_url, actor_queue
+    )
     embedding_id = ray.get(embedding_id_ref)
 
     # Convert string UUID to UUID object
@@ -266,7 +299,7 @@ def test_compute_embedding(db_session: Session):
     embedding = db_session.get(Embedding, embedding_uuid)
     assert embedding is not None
     assert embedding.invocation_id == invocation.id
-    assert embedding.embedding_model == "Dummy"
+    assert embedding.embedding_model == embedding_model
     assert embedding.vector is not None
     assert len(embedding.vector) > 0  # Vector should not be empty
 
@@ -274,6 +307,11 @@ def test_compute_embedding(db_session: Session):
     assert embedding.started_at is not None
     assert embedding.completed_at is not None
     assert embedding.completed_at > embedding.started_at
+
+    # Clean up the actor from the queue
+    while not actor_queue.empty():
+        actor = actor_queue.get()
+        ray.kill(actor)
 
 
 def test_compute_persistence_diagram(db_session: Session):
@@ -382,8 +420,13 @@ def test_process_run_generators(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the process_run_generators function
+    # Create model actors for each model in the network
+    model_actors = {}
+    for model_name in ["DummyT2I", "DummyI2T"]:
+        actor_class = get_genai_actor_class(model_name)
+        model_actors[model_name] = actor_class.remote()
 
+    # Call the process_run_generators function
     invocation_ids = process_run_generators(run_ids, db_url)
 
     # We expect 2 invocations for each run
@@ -397,6 +440,10 @@ def test_process_run_generators(db_session: Session):
         invocation = db_session.get(Invocation, invocation_id)
         assert invocation is not None
         assert invocation.run_id in [run.id for run in runs]
+
+    # Clean up the actor references
+    for actor in model_actors.values():
+        ray.kill(actor)
 
 
 def test_perform_experiment(db_session: Session):

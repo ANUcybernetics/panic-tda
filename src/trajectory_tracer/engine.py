@@ -10,8 +10,10 @@ import ray
 from PIL import Image
 
 from trajectory_tracer.db import get_session_from_connection_string
-from trajectory_tracer.embeddings import embed
-from trajectory_tracer.genai_models import get_output_type, invoke
+
+# from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
+from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
+from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
@@ -55,14 +57,15 @@ def get_output_hash(output):
         return hashlib.sha256(str(output).encode()).hexdigest()
 
 
-@ray.remote(num_cpus=1, num_gpus=1, num_returns="dynamic")
-def run_generator(run_id: str, db_str: str):
+@ray.remote(num_cpus=1, num_gpus=0, num_returns="dynamic")
+def run_generator(run_id: str, db_str: str, model_actors: dict):
     """
     Generate invocations for a run in sequence.
 
     Args:
         run_id: UUID string of the run
         db_str: Database connection string
+        model_actors: Dictionary mapping model names to Ray actor handles
 
     Yields:
         Invocation IDs as strings
@@ -109,12 +112,20 @@ def run_generator(run_id: str, db_str: str):
             invocation_id = str(invocation.id)
             logger.debug(f"Created invocation with ID: {invocation_id}")
 
-            # Execute the invocation
+            # Execute the invocation using the appropriate actor from model_actors
             logger.debug(
                 f"Invoking model {invocation.model} with {type(current_input).__name__} input"
             )
             invocation.started_at = datetime.now()
-            result = invoke(invocation.model, current_input, invocation.seed)
+
+            # Get the actor for this model
+            actor = model_actors.get(model_name)
+            if not actor:
+                raise ValueError(f"No actor found for model {model_name}")
+
+            # Call the invoke method on the actor
+            result = ray.get(actor.invoke.remote(current_input, invocation.seed))
+
             invocation.completed_at = datetime.now()
             invocation.output = result
 
@@ -146,61 +157,73 @@ def run_generator(run_id: str, db_str: str):
                 f"Completed invocation {sequence_number}/{run.max_length}: {model_name}"
             )
 
-            logger.debug(f"Run generator for {run_id} completed")
+        logger.debug(f"Run generator for {run_id} completed")
 
 
-@ray.remote(num_cpus=1, num_gpus=0.1)
-def compute_embedding(invocation_id: str, embedding_model: str, db_str: str) -> str:
+@ray.remote(num_cpus=1)
+def compute_embedding(invocation_id: str, embedding_model: str, db_str: str, actor_queue) -> str:
     """
-    Compute and store embedding for an invocation.
+    Compute embedding using an actor from a queue for load balancing.
 
     Args:
         invocation_id: UUID string of the invocation
         embedding_model: Name of the embedding model to use
         db_str: Database connection string
+        actor_queue: Ray Queue containing embedding model actors
 
     Returns:
-        Embedding ID as string
+        Embedding ID as string or None if failed
     """
-    with get_session_from_connection_string(db_str) as session:
-        # Load the invocation
-        invocation_uuid = UUID(invocation_id)
-        invocation = session.get(Invocation, invocation_uuid)
-        if not invocation:
-            raise ValueError(f"Invocation {invocation_id} not found")
+    # Get an actor from the queue
+    actor = actor_queue.get()
 
-        # Create the embedding object
-        embedding = Embedding(
-            invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
-        )
+    try:
+        with get_session_from_connection_string(db_str) as session:
+            # Load the invocation
+            invocation_uuid = UUID(invocation_id)
+            invocation = session.get(Invocation, invocation_uuid)
+            if not invocation:
+                raise ValueError(f"Invocation {invocation_id} not found")
 
-        # Save to database
-        session.add(embedding)
-        session.commit()
-        session.refresh(embedding)
+            # Create the embedding object
+            embedding = Embedding(
+                invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
+            )
 
-        embedding_id = str(embedding.id)
-        logger.debug(
-            f"Created empty embedding {embedding_id} for invocation {invocation_id}"
-        )
+            # Save to database
+            session.add(embedding)
+            session.commit()
+            session.refresh(embedding)
 
-        # Set the start timestamp
-        embedding.started_at = datetime.now()
+            embedding_id = str(embedding.id)
+            logger.debug(f"Created empty embedding {embedding_id} for invocation {invocation_id}")
 
-        # Get the content to embed from the invocation output
-        content = invocation.output
-        # Use the embed function from embeddings to calculate the vector
-        embedding.vector = embed(embedding.embedding_model, content)
+            # Set the start timestamp
+            embedding.started_at = datetime.now()
 
-        # Set the completion timestamp
-        embedding.completed_at = datetime.now()
+            # Get the content to embed from the invocation output
+            content = invocation.output
 
-        # Save to database
-        session.add(embedding)
-        session.commit()
+            # Use the actor to compute the embedding
+            embedding.vector = ray.get(actor.embed.remote(content))
 
-        logger.debug(f"Successfully computed vector for embedding {embedding_id}")
-        return embedding_id
+            # Set the completion timestamp
+            embedding.completed_at = datetime.now()
+
+            # Save to database
+            session.add(embedding)
+            session.commit()
+
+            logger.debug(f"Successfully computed vector for embedding {embedding_id}")
+            return embedding_id
+
+    except Exception as e:
+        logger.error(f"Error computing embedding for invocation {invocation_id}: {e}")
+        return None
+
+    finally:
+        # Always return the actor to the queue, even if there was an error
+        actor_queue.put(actor)
 
 
 @ray.remote(num_cpus=8)
@@ -308,6 +331,62 @@ def process_run_generators(run_ids, db_str):
     return all_invocation_ids
 
 
+def process_embeddings_with_queue(invocation_ids, embedding_model, db_str, num_actors=4):
+    """
+    Process embeddings for multiple invocations using a queue of actors for load balancing.
+
+    Args:
+        invocation_ids: List of invocation IDs to process
+        embedding_model: Name of the embedding model to use
+        db_str: Database connection string
+        num_actors: Number of actors to create in the queue (default: 4)
+
+    Returns:
+        List of embedding IDs that were successfully created
+    """
+    from ray.util.queue import Queue
+
+    logger.info(f"Processing {len(invocation_ids)} embeddings with model {embedding_model}")
+
+    try:
+        # Get the actor class for this embedding model
+        embedding_actor_class = get_embedding_actor_class(embedding_model)
+
+        # Limit the number of actors based on the number of invocations
+        num_actors = min(num_actors, len(invocation_ids))
+
+        # Create a queue of actors
+        actor_queue = Queue()
+        for _ in range(num_actors):
+            actor_queue.put(embedding_actor_class.remote())
+
+        logger.info(f"Created queue with {num_actors} actors for model {embedding_model}")
+
+        # Create embedding calculation tasks
+        embedding_tasks = []
+        for invocation_id in invocation_ids:
+            embedding_tasks.append(
+                compute_embedding.remote(
+                    invocation_id, embedding_model, db_str, actor_queue
+                )
+            )
+
+        # Wait for all embedding computations to complete
+        embedding_ids = ray.get(embedding_tasks)
+        logger.info(f"Computed {len(embedding_ids)} embeddings with model {embedding_model}")
+
+        # Clean up actors in the queue
+        while not actor_queue.empty():
+            actor = actor_queue.get()
+            ray.kill(actor)
+
+        return embedding_ids
+
+    except Exception as e:
+        logger.error(f"Error while computing embeddings with model {embedding_model}: {e}")
+        return []
+
+
 def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
     """
     Create and execute runs for all combinations defined in the ExperimentConfig using Ray.
@@ -365,16 +444,15 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
     )
 
     # Compute embeddings for all invocations (for each embedding model)
-    embedding_tasks = []
-    for invocation_id in invocation_ids:
-        for embedding_model in config.embedding_models:
-            embedding_tasks.append(
-                compute_embedding.remote(invocation_id, embedding_model, db_str)
-            )
+    all_embedding_ids = []
+    for embedding_model in config.embedding_models:
+        # Process embeddings for this model
+        embedding_ids = process_embeddings_with_queue(
+            invocation_ids, embedding_model, db_str, num_actors=4
+        )
+        all_embedding_ids.extend(embedding_ids)
 
-    # Wait for all embedding computations to complete
-    embedding_ids = ray.get(embedding_tasks)
-    logger.info(f"Computed {len(embedding_ids)} embeddings")
+    logger.info(f"Computed {len(all_embedding_ids)} embeddings")
 
     # Compute persistence diagrams for all runs (for each embedding model)
     # Use limited parallelism for persistence diagram computation as it uses all CPU cores
