@@ -353,3 +353,27 @@ def list_models():
     # Find all Ray actor classes derived from EmbeddingModel
 
     return models
+
+
+def get_actor_class(model_name: str) -> ray.actor.ActorClass:
+    """
+    Get the Ray actor class for a specific model name.
+
+    Args:
+        model_name: Name of the model to get the class for
+
+    Returns:
+        Ray actor class for the specified model
+
+    Raises:
+        ValueError: If the model name is not found
+    """
+    current_module = sys.modules[__name__]
+
+    # Find the class in the current module
+    model_class = getattr(current_module, model_name, None)
+
+    if model_class is None or type(model_class).__name__ != f"ActorClass({model_name})":
+        raise ValueError(f"Model '{model_name}' not found or is not a Ray actor class")
+
+    return model_class

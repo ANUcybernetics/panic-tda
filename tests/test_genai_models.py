@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pytest
 import ray
+import ray.actor
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
@@ -14,6 +15,7 @@ from trajectory_tracer.genai_models import (
     FluxSchnell,
     Moondream,
     SDXLTurbo,
+    get_actor_class,
     get_output_type,
     list_models,
 )
@@ -457,3 +459,21 @@ def test_list_models_function():
     # Check that all returned models exist in the module
     for model_name in models:
         assert model_name in globals(), f"Model {model_name} returned by list_models() not found in module"
+
+
+def test_get_actor_class():
+    """Test that the get_model_class function returns the correct Ray actor class for a given model name."""
+
+    # Test for a few models
+    for model_name in ["FluxDev", "BLIP2", "DummyT2I"]:
+        model_class = get_actor_class(model_name)
+
+        # Verify it's a Ray actor class
+        assert isinstance(model_class, ray.actor.ActorClass)
+
+        # Verify the class name matches our expectations
+        assert type(model_class).__name__ == f"ActorClass({model_name})"
+
+    # Test with nonexistent model
+    with pytest.raises(ValueError):
+        get_actor_class("NonexistentModel")

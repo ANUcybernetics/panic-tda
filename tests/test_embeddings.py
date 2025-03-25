@@ -4,7 +4,14 @@ import ray
 import torch
 from PIL import Image
 
-from trajectory_tracer.embeddings import Dummy, Dummy2, JinaClip, Nomic, list_models
+from trajectory_tracer.embeddings import (
+    Dummy,
+    Dummy2,
+    JinaClip,
+    Nomic,
+    get_actor_class,
+    list_models,
+)
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
@@ -360,3 +367,21 @@ def test_embedding_model_memory_usage(model_name):
         # Terminate the actor to clean up GPU resources
         if 'model' in locals():
             ray.kill(model)
+
+
+def test_get_actor_class():
+    """Test that the get_model_class function returns the correct Ray actor class for a given model name."""
+
+    # Test for a few models
+    for model_name in ["Nomic", "JinaClip"]:
+        model_class = get_actor_class(model_name)
+
+        # Verify it's a Ray actor class
+        assert isinstance(model_class, ray.actor.ActorClass)
+
+        # Verify the class name matches our expectations
+        assert type(model_class).__name__ == f"ActorClass({model_name})"
+
+    # Test with nonexistent model
+    with pytest.raises(ValueError):
+        get_actor_class("NonexistentModel")
