@@ -86,7 +86,8 @@ class FluxDev(GenAIModel):
         # Initialize the model with appropriate settings for GPU
         self._model = FluxPipeline.from_pretrained(
             "black-forest-labs/FLUX.1-dev",
-            torch_dtype=torch.bfloat16
+            torch_dtype=torch.bfloat16,
+            use_fast=True
         ).to("cuda")
 
         # Try to compile the UNet's forward method
@@ -130,7 +131,8 @@ class FluxSchnell(GenAIModel):
         # Initialize the model with appropriate settings for GPU
         self._model = FluxPipeline.from_pretrained(
             "black-forest-labs/FLUX.1-schnell",
-            torch_dtype=torch.bfloat16
+            torch_dtype=torch.bfloat16,
+            use_fast=True
         ).to("cuda")
 
         # Try to compile the UNet's forward method
@@ -175,7 +177,8 @@ class SDXLTurbo(GenAIModel):
         self._model = AutoPipelineForText2Image.from_pretrained(
             "stabilityai/sdxl-turbo",
             torch_dtype=torch.float16,
-            variant="fp16"
+            variant="fp16",
+            use_fast=True
         ).to("cuda")
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
@@ -240,11 +243,12 @@ class BLIP2(GenAIModel):
             raise RuntimeError("CUDA GPU is required but not available")
 
         # Initialize the model with half-precision
-        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b", use_fast=True)
         self.model = Blip2ForConditionalGeneration.from_pretrained(
             "Salesforce/blip2-opt-2.7b",
             torch_dtype=torch.float16,
-            device_map="auto"
+            device_map="auto",
+            use_fast=True
         )
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
