@@ -18,8 +18,8 @@ def test_embedding_model(model_name):
     """Test that the embedding model returns valid vectors for both text and images and is deterministic."""
     try:
         # Create a sample text string and image
-        sample_text = "Sample output text"
-        sample_image = Image.new("RGB", (100, 100), color="blue")
+        sample_text = ["Sample output text"]
+        sample_image = [Image.new("RGB", (100, 100), color="blue")]
 
         # Get the model actor
         model_class = get_actor_class(model_name)
@@ -27,11 +27,13 @@ def test_embedding_model(model_name):
 
         # Test with text
         text_embedding_ref = model.embed.remote(sample_text)
-        text_embedding = ray.get(text_embedding_ref)
+        text_embeddings = ray.get(text_embedding_ref)
+        text_embedding = text_embeddings[0]  # Get the first embedding
 
         # Run it again to verify determinism
         text_embedding2_ref = model.embed.remote(sample_text)
-        text_embedding2 = ray.get(text_embedding2_ref)
+        text_embeddings2 = ray.get(text_embedding2_ref)
+        text_embedding2 = text_embeddings2[0]  # Get the first embedding
 
         # Check that the embedding has the correct properties
         assert text_embedding is not None
@@ -47,11 +49,13 @@ def test_embedding_model(model_name):
 
         # Test with image
         image_embedding_ref = model.embed.remote(sample_image)
-        image_embedding = ray.get(image_embedding_ref)
+        image_embeddings = ray.get(image_embedding_ref)
+        image_embedding = image_embeddings[0]  # Get the first embedding
 
         # Run it again to verify determinism
         image_embedding2_ref = model.embed.remote(sample_image)
-        image_embedding2 = ray.get(image_embedding2_ref)
+        image_embeddings2 = ray.get(image_embedding2_ref)
+        image_embedding2 = image_embeddings2[0]  # Get the first embedding
 
         # Check that the embedding has the correct properties
         assert image_embedding is not None
@@ -79,7 +83,7 @@ def test_nomic_embedding_specific_text():
     """Test that the Nomic embedding model handles a specific text case correctly."""
     try:
         # The specific text to test
-        specific_text = "the adventures of person, one"
+        specific_text = ["the adventures of person, one"]
 
         # Get the model actor
         model_class = get_actor_class("Nomic")
@@ -87,7 +91,8 @@ def test_nomic_embedding_specific_text():
 
         # Test with the specific text
         embedding_ref = model.embed.remote(specific_text)
-        embedding = ray.get(embedding_ref)
+        embeddings = ray.get(embedding_ref)
+        embedding = embeddings[0]  # Get the first embedding
 
         # Check that the embedding has the correct properties
         assert embedding is not None
@@ -97,15 +102,17 @@ def test_nomic_embedding_specific_text():
 
         # Run it again to verify determinism
         embedding2_ref = model.embed.remote(specific_text)
-        embedding2 = ray.get(embedding2_ref)
+        embeddings2 = ray.get(embedding2_ref)
+        embedding2 = embeddings2[0]  # Get the first embedding
 
         # Verify determinism
         assert np.array_equal(embedding, embedding2)
 
         # Test with a slightly different text to ensure embeddings are different
-        different_text = "a different text"
+        different_text = ["a different text"]
         different_embedding_ref = model.embed.remote(different_text)
-        different_embedding = ray.get(different_embedding_ref)
+        different_embeddings = ray.get(different_embedding_ref)
+        different_embedding = different_embeddings[0]  # Get the first embedding
 
         # Verify embeddings are different for different texts
         assert not np.array_equal(embedding, different_embedding)
@@ -156,8 +163,9 @@ def test_run_embeddings_by_model(db_session):
 
         # Create embeddings with different models - now with Ray actors
         dummy_model = Dummy.remote()
-        embedding_vector1_ref = dummy_model.embed.remote(invocation1.output)
-        embedding_vector1 = ray.get(embedding_vector1_ref)
+        embedding_vector1_ref = dummy_model.embed.remote([invocation1.output])
+        embedding_vectors1 = ray.get(embedding_vector1_ref)
+        embedding_vector1 = embedding_vectors1[0]  # Get the first embedding
         embedding1_1 = Embedding(
             invocation_id=invocation1.id,
             embedding_model="Dummy",
@@ -166,8 +174,9 @@ def test_run_embeddings_by_model(db_session):
         db_session.add(embedding1_1)
 
         dummy2_model = Dummy2.remote()
-        embedding_vector2_ref = dummy2_model.embed.remote(invocation1.output)
-        embedding_vector2 = ray.get(embedding_vector2_ref)
+        embedding_vector2_ref = dummy2_model.embed.remote([invocation1.output])
+        embedding_vectors2 = ray.get(embedding_vector2_ref)
+        embedding_vector2 = embedding_vectors2[0]  # Get the first embedding
         embedding1_2 = Embedding(
             invocation_id=invocation1.id,
             embedding_model="Dummy2",
@@ -175,8 +184,9 @@ def test_run_embeddings_by_model(db_session):
         )
         db_session.add(embedding1_2)
 
-        embedding_vector3_ref = dummy_model.embed.remote(invocation2.output)
-        embedding_vector3 = ray.get(embedding_vector3_ref)
+        embedding_vector3_ref = dummy_model.embed.remote([invocation2.output])
+        embedding_vectors3 = ray.get(embedding_vector3_ref)
+        embedding_vector3 = embedding_vectors3[0]  # Get the first embedding
         embedding2_1 = Embedding(
             invocation_id=invocation2.id,
             embedding_model="Dummy",

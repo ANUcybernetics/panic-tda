@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 import ray
@@ -22,8 +22,8 @@ class EmbeddingModel:
         """Initialize the model and load to device."""
         raise NotImplementedError
 
-    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding."""
+    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
         raise NotImplementedError
 
 
@@ -55,11 +55,19 @@ class Nomic(EmbeddingModel):
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding."""
-        if isinstance(content, str):
+    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        if not contents:
+            return []
+
+        # Check content types in batch
+        content_type = type(contents[0])
+        if not all(isinstance(item, content_type) for item in contents):
+            raise ValueError("All items in batch must be of the same type (either all strings or all images)")
+
+        if all(isinstance(item, str) for item in contents):
             # Text embedding using transformers directly
-            sentences = [f"clustering: {content.strip()}"]
+            sentences = [f"clustering: {content.strip()}" for content in contents]
 
             # Tokenize input
             encoded_input = self.tokenizer(sentences, padding=True, truncation=True, return_tensors='pt')
@@ -76,13 +84,12 @@ class Nomic(EmbeddingModel):
             embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
             embeddings = F.normalize(embeddings, p=2, dim=1)
 
-            # Return numpy array
-            return embeddings[0].cpu().numpy()
+            # Return numpy arrays
+            return [emb.cpu().numpy() for emb in embeddings]
 
-        elif isinstance(content, Image.Image):
-            # Image embedding
-            # Process the image
-            inputs = self.processor(content, return_tensors="pt")
+        elif all(isinstance(item, Image.Image) for item in contents):
+            # Process the batch of images
+            inputs = self.processor(images=contents, return_tensors="pt")
             if torch.cuda.is_available():
                 inputs = {k: v.to("cuda") for k, v in inputs.items()}
 
@@ -91,10 +98,10 @@ class Nomic(EmbeddingModel):
                 img_emb = self.vision_model(**inputs).last_hidden_state
                 img_embeddings = F.normalize(img_emb[:, 0], p=2, dim=1)
 
-            # Convert to numpy array
-            return img_embeddings[0].cpu().numpy()
+            # Convert to list of numpy arrays
+            return [emb.cpu().numpy() for emb in img_embeddings]
         else:
-            raise ValueError(f"Unsupported content type: {type(content)}. Expected str or PIL.Image.")
+            raise ValueError(f"Unsupported content type: {content_type}. Expected str or PIL.Image.")
 
 
 @ray.remote(num_gpus=0.2)
@@ -112,27 +119,34 @@ class JinaClip(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding."""
-        if not isinstance(content, (str, Image.Image)):
-            raise ValueError(f"Expected string or PIL.Image input, got {type(content)}")
+    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        if not contents:
+            return []
+
+        # Check that all items are of same type
+        if not all(isinstance(item, type(contents[0])) for item in contents):
+            raise ValueError("All items in batch must be of the same type")
+
+        if not isinstance(contents[0], (str, Image.Image)):
+            raise ValueError(f"Expected string or PIL.Image input, got {type(contents[0])}")
 
         with torch.no_grad():
-            if isinstance(content, str):
+            if isinstance(contents[0], str):
                 # Text embedding
                 text_embeddings = self.model.encode_text(
-                    [content],
+                    contents,
                     truncate_dim=EMBEDDING_DIM,
                     task='retrieval.query'
                 )
-                return text_embeddings[0]
+                return [emb for emb in text_embeddings]
             else:
                 # Image embedding
                 image_embeddings = self.model.encode_image(
-                    [content],  # Wrap in list to match encode_text format
+                    contents,
                     truncate_dim=EMBEDDING_DIM
                 )
-                return image_embeddings[0]  # Return the first (and only) embedding
+                return [emb for emb in image_embeddings]
 
 
 @ray.remote
@@ -141,27 +155,32 @@ class Dummy(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding."""
-        if isinstance(content, str):
-            # For text, use the hash of the string to seed a deterministic vector
-            seed = sum(ord(c) for c in content)
-            np.random.seed(seed)
-        elif isinstance(content, Image.Image):
-            # For images, use basic image properties to create a deterministic seed
-            img_array = np.array(content)
-            # Use the sum of pixel values as a seed
-            seed = int(np.sum(img_array) % 10000)
-            np.random.seed(seed)
-        else:
-            # Fall back to a fixed seed for unknown types
-            np.random.seed(42)
+    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        embeddings = []
 
-        # Generate a deterministic vector using the seeded random number generator
-        vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        for content in contents:
+            if isinstance(content, str):
+                # For text, use the hash of the string to seed a deterministic vector
+                seed = sum(ord(c) for c in content)
+                np.random.seed(seed)
+            elif isinstance(content, Image.Image):
+                # For images, use basic image properties to create a deterministic seed
+                img_array = np.array(content)
+                # Use the sum of pixel values as a seed
+                seed = int(np.sum(img_array) % 10000)
+                np.random.seed(seed)
+            else:
+                # Fall back to a fixed seed for unknown types
+                np.random.seed(42)
+
+            # Generate a deterministic vector using the seeded random number generator
+            vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+            embeddings.append(vector)
+
         # Reset the random seed to avoid affecting other code
         np.random.seed(None)
-        return vector
+        return embeddings
 
 
 @ray.remote
@@ -170,28 +189,33 @@ class Dummy2(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding."""
-        if isinstance(content, str):
-            # For text, create deterministic values based on character positions
-            chars = [ord(c) for c in (content[:100] if len(content) > 100 else content)]
-            # Pad or truncate to ensure we have enough values
-            chars = (chars + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
-            # Normalize to 0-1 range
-            vector = np.array(chars) / 255.0
-        elif isinstance(content, Image.Image):
-            # Resize image to a small fixed size and use pixel values
-            small_img = content.resize((16, 16)).convert('L')  # Convert to grayscale
-            pixels = np.array(small_img).flatten()
-            # Repeat or truncate to match embedding dimension
-            pixels = np.tile(pixels, EMBEDDING_DIM // len(pixels) + 1)[:EMBEDDING_DIM]
-            # Normalize to 0-1 range
-            vector = pixels / 255.0
-        else:
-            # Create a fixed pattern for unknown types
-            vector = np.linspace(0, 1, EMBEDDING_DIM)
+    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        embeddings = []
 
-        return vector.astype(np.float32)
+        for content in contents:
+            if isinstance(content, str):
+                # For text, create deterministic values based on character positions
+                chars = [ord(c) for c in (content[:100] if len(content) > 100 else content)]
+                # Pad or truncate to ensure we have enough values
+                chars = (chars + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+                # Normalize to 0-1 range
+                vector = np.array(chars) / 255.0
+            elif isinstance(content, Image.Image):
+                # Resize image to a small fixed size and use pixel values
+                small_img = content.resize((16, 16)).convert('L')  # Convert to grayscale
+                pixels = np.array(small_img).flatten()
+                # Repeat or truncate to match embedding dimension
+                pixels = np.tile(pixels, EMBEDDING_DIM // len(pixels) + 1)[:EMBEDDING_DIM]
+                # Normalize to 0-1 range
+                vector = pixels / 255.0
+            else:
+                # Create a fixed pattern for unknown types
+                vector = np.linspace(0, 1, EMBEDDING_DIM)
+
+            embeddings.append(vector.astype(np.float32))
+
+        return embeddings
 
 
 def list_models():
