@@ -22,7 +22,7 @@ class EmbeddingModel:
         """Initialize the model and load to device."""
         raise NotImplementedError
 
-    def embed(self, content: Union[str, Image.Image]):
+    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
         """Process the content and return an embedding."""
         raise NotImplementedError
 
@@ -55,7 +55,7 @@ class Nomic(EmbeddingModel):
         input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
 
-    def embed(self, content: Union[str, Image.Image]):
+    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
         """Process the content and return an embedding."""
         if isinstance(content, str):
             # Text embedding using transformers directly
@@ -112,7 +112,7 @@ class JinaClip(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]):
+    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
         """Process the content and return an embedding."""
         if not isinstance(content, (str, Image.Image)):
             raise ValueError(f"Expected string or PIL.Image input, got {type(content)}")
@@ -141,7 +141,7 @@ class Dummy(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]):
+    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
         """Process the content and return an embedding."""
         if isinstance(content, str):
             # For text, use the hash of the string to seed a deterministic vector
@@ -170,7 +170,7 @@ class Dummy2(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, content: Union[str, Image.Image]):
+    def embed(self, content: Union[str, Image.Image]) -> np.ndarray:
         """Process the content and return an embedding."""
         if isinstance(content, str):
             # For text, create deterministic values based on character positions
