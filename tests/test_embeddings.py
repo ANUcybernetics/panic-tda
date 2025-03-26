@@ -16,10 +16,6 @@ from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 @pytest.mark.parametrize("model_name", list_models())
 def test_embedding_model(model_name):
     """Test that the embedding model returns valid vectors for both text and images and is deterministic."""
-    # Add slow marker for non-dummy models
-    if not model_name.startswith("Dummy"):
-        pytest.mark.slow(test_embedding_model)
-
     try:
         # Create a sample text string and image
         sample_text = "Sample output text"
