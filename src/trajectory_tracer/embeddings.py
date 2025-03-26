@@ -44,7 +44,7 @@ class EmbeddingModel:
         raise NotImplementedError
 
 
-@ray.remote(num_gpus=0.5)
+@ray.remote(num_gpus=0.25)
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -91,7 +91,7 @@ class Nomic(EmbeddingModel):
             raise ValueError(f"Unsupported content type: {type(content)}. Expected str or PIL.Image.")
 
 
-@ray.remote(num_gpus=0.5)
+@ray.remote(num_gpus=0.25)
 class JinaClip(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -122,9 +122,26 @@ class Dummy(EmbeddingModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Generate a random embedding vector for testing."""
-        # Generate a random vector of dimension 768
-        return np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        """Generate a deterministic embedding vector based on the content."""
+        if isinstance(content, str):
+            # For text, use the hash of the string to seed a deterministic vector
+            seed = sum(ord(c) for c in content)
+            np.random.seed(seed)
+        elif isinstance(content, Image.Image):
+            # For images, use basic image properties to create a deterministic seed
+            img_array = np.array(content)
+            # Use the sum of pixel values as a seed
+            seed = int(np.sum(img_array) % 10000)
+            np.random.seed(seed)
+        else:
+            # Fall back to a fixed seed for unknown types
+            np.random.seed(42)
+
+        # Generate a deterministic vector using the seeded random number generator
+        vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        # Reset the random seed to avoid affecting other code
+        np.random.seed(None)
+        return vector
 
 
 @ray.remote
@@ -134,9 +151,27 @@ class Dummy2(EmbeddingModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Generate a(nother) random embedding vector for testing."""
-        # Generate a random vector of dimension 768
-        return np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        """Generate a deterministic embedding vector using a different approach than Dummy."""
+        if isinstance(content, str):
+            # For text, create deterministic values based on character positions
+            chars = [ord(c) for c in (content[:100] if len(content) > 100 else content)]
+            # Pad or truncate to ensure we have enough values
+            chars = (chars + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+            # Normalize to 0-1 range
+            vector = np.array(chars) / 255.0
+        elif isinstance(content, Image.Image):
+            # Resize image to a small fixed size and use pixel values
+            small_img = content.resize((16, 16)).convert('L')  # Convert to grayscale
+            pixels = np.array(small_img).flatten()
+            # Repeat or truncate to match embedding dimension
+            pixels = np.tile(pixels, EMBEDDING_DIM // len(pixels) + 1)[:EMBEDDING_DIM]
+            # Normalize to 0-1 range
+            vector = pixels / 255.0
+        else:
+            # Create a fixed pattern for unknown types
+            vector = np.linspace(0, 1, EMBEDDING_DIM)
+
+        return vector.astype(np.float32)
 
 
 def list_models():

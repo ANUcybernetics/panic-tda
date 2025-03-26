@@ -15,191 +15,68 @@ from trajectory_tracer.embeddings import (
 from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
-def test_dummy_embedding():
-    """Test that the dummy embedding returns a (fake, but correct size & shape) vector."""
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", list_models())
+def test_embedding_model(model_name):
+    """Test that the embedding model returns valid vectors for both text and images and is deterministic."""
+    # Add slow marker for non-dummy models
+    if not model_name.startswith("Dummy"):
+        pytest.mark.slow(test_embedding_model)
+
     try:
-        # Create a sample text string
+        # Create a sample text string and image
         sample_text = "Sample output text"
+        sample_image = Image.new("RGB", (100, 100), color="blue")
 
-        # Get the embedding using the Dummy model - now with Ray actor
-        model = Dummy.remote()
-        embedding_vector_ref = model.embed.remote(sample_text)
-        embedding_vector = ray.get(embedding_vector_ref)
-
-        # Check that the embedding has the correct properties
-        assert len(embedding_vector) == 768  # Expected dimension
-    finally:
-        # Terminate the actor to clean up resources
-        if 'model' in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
-def test_nomic_text_embedding():
-    """Test that the nomic text embedding returns a valid embedding vector."""
-    try:
-        # Create a sample text
-        sample_text = "Sample output text"
-
-        # Get the embedding using the actual model - now with Ray actor
-        model = Nomic.remote()
-        embedding_vector_ref = model.embed.remote(sample_text)
-        embedding_vector = ray.get(embedding_vector_ref)
-
-        # Run it again to verify determinism
-        embedding_vector2_ref = model.embed.remote(sample_text)
-        embedding_vector2 = ray.get(embedding_vector2_ref)
-
-        # Check that the embedding has the correct properties
-        assert embedding_vector is not None
-        assert len(embedding_vector) == 768  # Expected dimension
-
-        # Verify it's a proper embedding vector
-        assert embedding_vector.dtype == np.float32
-        assert not np.all(embedding_vector == 0)  # Should not be all zeros
-
-        # Verify determinism
-        assert np.array_equal(embedding_vector, embedding_vector2)
-    finally:
-        # Terminate the actor to clean up GPU resources
-        if 'model' in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
-def test_nomic_vision_embedding():
-    """Test that the nomic vision embedding returns a valid embedding vector."""
-    try:
-        # Create a sample image (red square)
-        image = Image.new("RGB", (100, 100), color="red")
-
-        # Get the embedding using the actual model - now with Ray actor
-        model = Nomic.remote()
-        embedding_vector_ref = model.embed.remote(image)
-        embedding_vector = ray.get(embedding_vector_ref)
-
-        # Run it again to verify determinism
-        embedding_vector2_ref = model.embed.remote(image)
-        embedding_vector2 = ray.get(embedding_vector2_ref)
-
-        # Check that the embedding has the correct properties
-        assert embedding_vector is not None
-        assert len(embedding_vector) == 768
-
-        # Verify it's a proper embedding vector
-        assert embedding_vector.dtype == np.float32
-        assert not np.all(embedding_vector == 0)  # Should not be all zeros
-
-        # Verify determinism
-        assert np.array_equal(embedding_vector, embedding_vector2)
-    finally:
-        # Terminate the actor to clean up GPU resources
-        if 'model' in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
-def test_nomic_combined_embedding():
-    """Test that the Nomic embedding works for both text and images."""
-    try:
         # Get the model actor
-        model = Nomic.remote()
+        model_class = get_actor_class(model_name)
+        model = model_class.remote()
 
         # Test with text
-        sample_text = "Sample output text"
         text_embedding_ref = model.embed.remote(sample_text)
         text_embedding = ray.get(text_embedding_ref)
 
+        # Run it again to verify determinism
         text_embedding2_ref = model.embed.remote(sample_text)
         text_embedding2 = ray.get(text_embedding2_ref)
 
+        # Check that the embedding has the correct properties
         assert text_embedding is not None
-        assert len(text_embedding) == 768
-        assert text_embedding.dtype == np.float32
+        assert len(text_embedding) == 768  # Expected dimension
 
-        # Verify determinism for text
+        # Verify it's a proper embedding vector (except for dummy models which may not use float32)
+        if not model_name.startswith("Dummy"):
+            assert text_embedding.dtype == np.float32
+            assert not np.all(text_embedding == 0)  # Should not be all zeros
+
+        # Verify determinism
         assert np.array_equal(text_embedding, text_embedding2)
 
         # Test with image
-        image = Image.new("RGB", (100, 100), color="green")
-        image_embedding_ref = model.embed.remote(image)
+        image_embedding_ref = model.embed.remote(sample_image)
         image_embedding = ray.get(image_embedding_ref)
 
-        image_embedding2_ref = model.embed.remote(image)
+        # Run it again to verify determinism
+        image_embedding2_ref = model.embed.remote(sample_image)
         image_embedding2 = ray.get(image_embedding2_ref)
 
+        # Check that the embedding has the correct properties
         assert image_embedding is not None
-        assert len(image_embedding) == 768
-        assert image_embedding.dtype == np.float32
+        assert len(image_embedding) == 768  # Expected dimension
 
-        # Verify determinism for image
+        # Verify it's a proper embedding vector (except for dummy models which may not use float32)
+        if not model_name.startswith("Dummy"):
+            assert image_embedding.dtype == np.float32
+            assert not np.all(image_embedding == 0)  # Should not be all zeros
+
+        # Verify determinism
         assert np.array_equal(image_embedding, image_embedding2)
+
+        # Verify text and image embeddings are different
+        assert not np.array_equal(text_embedding, image_embedding)
+
     finally:
-        # Terminate the actor to clean up GPU resources
-        if 'model' in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
-def test_jina_clip_text_embedding():
-    """Test that the JinaClip embedding returns a valid embedding vector for text."""
-    try:
-        # Create a sample text
-        sample_text = "Sample output text"
-
-        # Get the embedding using the actual model - now with Ray actor
-        model = JinaClip.remote()
-        embedding_vector_ref = model.embed.remote(sample_text)
-        embedding_vector = ray.get(embedding_vector_ref)
-
-        # Run it again to verify determinism
-        embedding_vector2_ref = model.embed.remote(sample_text)
-        embedding_vector2 = ray.get(embedding_vector2_ref)
-
-        # Check that the embedding has the correct properties
-        assert embedding_vector is not None
-        assert len(embedding_vector) == 768  # Expected dimension
-
-        # Verify it's a proper embedding vector
-        assert embedding_vector.dtype == np.float32
-        assert not np.all(embedding_vector == 0)  # Should not be all zeros
-
-        # Verify determinism
-        assert np.array_equal(embedding_vector, embedding_vector2)
-    finally:
-        # Terminate the actor to clean up GPU resources
-        if 'model' in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
-def test_jina_clip_image_embedding():
-    """Test that the JinaClip embedding returns a valid embedding vector for images."""
-    try:
-        # Create a sample image (blue square)
-        image = Image.new("RGB", (100, 100), color="blue")
-
-        # Get the embedding using the actual model - now with Ray actor
-        model = JinaClip.remote()
-        embedding_vector_ref = model.embed.remote(image)
-        embedding_vector = ray.get(embedding_vector_ref)
-
-        # Run it again to verify determinism
-        embedding_vector2_ref = model.embed.remote(image)
-        embedding_vector2 = ray.get(embedding_vector2_ref)
-
-        # Check that the embedding has the correct properties
-        assert embedding_vector is not None
-        assert len(embedding_vector) == 768  # Expected dimension
-
-        # Verify it's a proper embedding vector
-        assert embedding_vector.dtype == np.float32
-        assert not np.all(embedding_vector == 0)  # Should not be all zeros
-
-        # Verify determinism
-        assert np.array_equal(embedding_vector, embedding_vector2)
-    finally:
-        # Terminate the actor to clean up GPU resources
+        # Terminate the actor to clean up resources
         if 'model' in locals():
             ray.kill(model)
 

@@ -32,6 +32,7 @@ def ray_cleanup():
     time.sleep(1)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
 def test_model_functionality(model_name):
     """Test that model returns expected output and is deterministic with fixed seed."""
