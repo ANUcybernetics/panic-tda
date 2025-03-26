@@ -356,7 +356,7 @@ class Run(SQLModel, table=True):
         return result
 
     @property
-    def stop_reason(self) -> str:
+    def stop_reason(self) -> Union[str, tuple]:
         """
         Determine why the run stopped.
 
@@ -365,7 +365,7 @@ class Run(SQLModel, table=True):
 
         Returns:
             "length": If the run completed its full length
-            "duplicate": If the run was stopped because of a duplicate output
+            ("duplicate", loop_length): If the run was stopped because of a duplicate output, with loop_length indicating the distance between duplicates
             "unknown": If the reason can't be determined
         """
         # Check if we have all invocations up to the specified length
@@ -377,8 +377,8 @@ class Run(SQLModel, table=True):
 
         # Check for duplicate outputs if seed is not -1
         if self.seed != -1 and len(self.invocations) > 1:
-            # Track seen outputs
-            seen_outputs = set()
+            # Track seen outputs with their sequence numbers
+            seen_outputs = {}
 
             for invocation in sorted(
                 self.invocations, key=lambda inv: inv.sequence_number
@@ -400,9 +400,12 @@ class Run(SQLModel, table=True):
 
                 # Check if we've seen this output before
                 if hashable_output in seen_outputs:
-                    return "duplicate"
+                    # Calculate loop length - difference in sequence numbers
+                    previous_seq = seen_outputs[hashable_output]
+                    loop_length = invocation.sequence_number - previous_seq
+                    return ("duplicate", loop_length)
 
-                seen_outputs.add(hashable_output)
+                seen_outputs[hashable_output] = invocation.sequence_number
 
         # If we can't determine a specific reason
         return "unknown"
