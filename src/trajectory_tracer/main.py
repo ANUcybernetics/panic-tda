@@ -11,7 +11,6 @@ from trajectory_tracer.db import (
     create_db_and_tables,
     get_session_from_connection_string,
     list_runs,
-    print_run_info,
 )
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
@@ -111,9 +110,13 @@ def perform_experiment(
 
         # Create experiment config from JSON
         config = ExperimentConfig(**config_data)
+        # Calculate total number of runs that will be generated
+        total_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
+
         logger.info(
             f"Configuration loaded successfully: {len(config.networks)} networks, "
-            f"{len(config.seeds)} seeds, {len(config.prompts)} prompts"
+            f"{len(config.seeds)} seeds, {len(config.prompts)} prompts, "
+            f"for a total of {total_runs} runs"
         )
 
         # Create database engine and tables
@@ -305,10 +308,34 @@ def script(
     try:
         # Create database connection
         db_str = f"sqlite:///{db_path}"
-
-        # Example script code - Fetch and print run info
+        # Iterate over all runs, printing only those with stop reason ("duplicate", loop_length)
         with get_session_from_connection_string(db_str) as session:
-            print_run_info(UUID("067e11c3-b89d-7a61-8fd3-45e02fdb51a4"), session)
+            # Get the requested runs by ID
+            run_ids = ['067e39a7-91ce-766b-bf5e-0a79502d904c', '067e39a7-91e3-7c8f-83f9-83c287302678']
+            for run_id in run_ids:
+                try:
+                    run = session.get(Run, UUID(run_id))
+                    if not run:
+                        logger.info(f"Run with ID {run_id} not found")
+                        continue
+
+                    # Count embeddings
+                    embedding_count = len(run.embeddings)
+                    logger.info(f"Run {run_id}: {embedding_count} embeddings")
+
+                    # Count and describe persistence diagrams
+                    pd_count = len(run.persistence_diagrams)
+
+                    if pd_count > 0:
+                        logger.info(f"Run {run_id}: {pd_count} persistence diagrams:")
+                        for i, pd in enumerate(run.persistence_diagrams):
+                            generators = pd.get_generators_as_arrays()
+                            logger.info(f"  - PD #{i+1}: using {pd.embedding_model} model, {len(generators)} generators")
+                    else:
+                        logger.info(f"Run {run_id}: No persistence diagrams")
+
+                except ValueError as e:
+                    logger.error(f"Invalid run ID format: {e}")
         logger.info("Script execution completed")
 
     except Exception as e:
