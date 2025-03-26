@@ -27,7 +27,7 @@ class EmbeddingModel:
         raise NotImplementedError
 
 
-@ray.remote(num_gpus=0.25)
+@ray.remote(num_gpus=0.2)
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -97,7 +97,7 @@ class Nomic(EmbeddingModel):
             raise ValueError(f"Unsupported content type: {type(content)}. Expected str or PIL.Image.")
 
 
-@ray.remote(num_gpus=0.25)
+@ray.remote(num_gpus=0.2)
 class JinaClip(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
