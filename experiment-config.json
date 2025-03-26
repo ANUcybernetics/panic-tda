@@ -1,7 +1,7 @@
 {
     "networks": [
         ["FluxSchnell", "Moondream"],
-        ["FluxSchnell", "Nomic"]
+        ["FluxSchnell", "BLIP2"]
     ],
     "seeds": [
         -1167030881, 946055951, 1208166234, 1999933489, 1770877318, -1, -1, -1,
