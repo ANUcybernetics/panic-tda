@@ -7,6 +7,7 @@ from uuid import UUID
 
 import numpy as np
 import ray
+import torch
 from PIL import Image
 from ray.util import ActorPool
 
@@ -350,6 +351,8 @@ def perform_runs_stage(run_ids, db_str):
     for model_name, actor in model_actors.items():
         ray.kill(actor)
         logger.debug(f"Terminated actor for model {model_name}")
+    # free up GPU respources
+    torch.cuda.empty_cache()
 
     return all_invocation_ids
 
@@ -424,6 +427,9 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
         # Clean up actors
         for actor in actors:
             ray.kill(actor)
+
+    # free up GPU respources
+    torch.cuda.empty_cache()
 
     return all_embedding_ids
 
