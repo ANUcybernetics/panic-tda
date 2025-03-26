@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from sentence_transformers import SentenceTransformer
-from transformers import AutoImageProcessor, AutoModel
+from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -32,13 +32,13 @@ class EmbeddingModel:
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required but not available")
-
-        # Load text model
-        self.text_model = SentenceTransformer(
-            "nomic-ai/nomic-embed-text-v1", trust_remote_code=True
-        ).to("cuda")
+        # Load text model components using transformers directly
+        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.text_model = AutoModel.from_pretrained(
+            "nomic-ai/nomic-embed-text-v1.5",
+            trust_remote_code=True,
+            safe_serialization=True
+        ).to("cuda").eval()
 
         # Load vision model components
         self.processor = AutoImageProcessor.from_pretrained(
@@ -50,12 +50,35 @@ class Nomic(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
+    def mean_pooling(self, model_output, attention_mask):
+        """Perform mean pooling on token embeddings."""
+        token_embeddings = model_output[0]
+        input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+
     def embed(self, content: Union[str, Image.Image]):
         """Process the content and return an embedding."""
         if isinstance(content, str):
-            # Text embedding
+            # Text embedding using transformers directly
             sentences = [f"clustering: {content.strip()}"]
-            return self.text_model.encode(sentences)[0]  # Flatten (1, 768) to (768,)
+
+            # Tokenize input
+            encoded_input = self.tokenizer(sentences, padding=True, truncation=True, return_tensors='pt')
+
+            # Move to GPU
+            encoded_input = {k: v.to("cuda") for k, v in encoded_input.items()}
+
+            # Get embeddings
+            with torch.no_grad():
+                model_output = self.text_model(**encoded_input)
+
+            # Process embeddings
+            embeddings = self.mean_pooling(model_output, encoded_input['attention_mask'])
+            embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
+            embeddings = F.normalize(embeddings, p=2, dim=1)
+
+            # Return numpy array
+            return embeddings[0].cpu().numpy()
 
         elif isinstance(content, Image.Image):
             # Image embedding
