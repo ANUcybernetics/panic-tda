@@ -337,3 +337,66 @@ def test_nomic_embedding_batch_performance(batch_size):
         # Terminate the actor to clean up resources
         if 'model' in locals():
             ray.kill(model)
+
+
+@pytest.mark.slow
+def test_nomic_embedding_actor_pool():
+    """Test that the Nomic embedding model works correctly with actor pooling."""
+    try:
+        # Create a batch of text inputs
+        batch_size = 32
+        num_batches = 4
+        total_samples = batch_size * num_batches
+
+        text_samples = [f"Sample text {i}" for i in range(total_samples)]
+        batches = [text_samples[i:i+batch_size] for i in range(0, total_samples, batch_size)]
+
+        # Create multiple actors (similar to engine.py implementation)
+        model_name = "Nomic"
+        model_class = get_actor_class(model_name)
+        actor_count = 4
+        actors = [model_class.remote() for _ in range(actor_count)]
+
+        # Create an ActorPool
+        pool = ray.util.ActorPool(actors)
+
+        # Process batches in parallel using map_unordered
+        # This returns an iterator that yields results directly
+        batch_results = list(pool.map_unordered(
+            lambda actor, batch: actor.embed.remote(batch),
+            batches
+        ))
+
+        # Get results - batch_results already contains the actual results
+        all_embeddings = []
+        for batch_embeddings in batch_results:
+            all_embeddings.extend(batch_embeddings)
+
+        # Verify results
+        assert len(all_embeddings) == total_samples
+
+        # Check embedding properties
+        for embedding in all_embeddings:
+            assert embedding is not None
+            assert len(embedding) == 768  # Expected dimension
+            assert embedding.dtype == np.float32
+            assert not np.all(embedding == 0)  # Should not be all zeros
+
+        # Test for determinism by running the same input through different actors
+        test_input = ["Test determinism across actors"]
+        embeddings_from_actors = []
+
+        for actor in actors:
+            embedding_ref = actor.embed.remote(test_input)
+            embedding = ray.get(embedding_ref)[0]
+            embeddings_from_actors.append(embedding)
+
+        # Verify all actors produce the same embedding for the same input
+        for i in range(1, len(embeddings_from_actors)):
+            assert np.array_equal(embeddings_from_actors[0], embeddings_from_actors[i])
+
+    finally:
+        # Clean up actors
+        if 'actors' in locals():
+            for actor in actors:
+                ray.kill(actor)
