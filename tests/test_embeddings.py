@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import pytest
 import ray
@@ -262,6 +264,74 @@ def test_embedding_model(model_name):
 
         # Verify text and image embeddings are different
         assert not np.array_equal(text_embedding, image_embedding)
+
+    finally:
+        # Terminate the actor to clean up resources
+        if 'model' in locals():
+            ray.kill(model)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("batch_size", [1, 8, 32, 64, 256])
+def test_nomic_embedding_batch_performance(batch_size):
+    """Test the Nomic embedding model with increasingly larger batch sizes."""
+    try:
+        # Get the model actor
+        model_class = get_actor_class("Nomic")
+        model = model_class.remote()
+
+        # Create dummy text strings for the batch
+        sample_texts = [f"Sample text {i}" for i in range(batch_size)]
+
+        # Measure time to process the batch
+        start_time = time.time()
+
+        # Get embeddings for the batch
+        text_embedding_ref = model.embed.remote(sample_texts)
+        text_embeddings = ray.get(text_embedding_ref)
+
+        elapsed_time = time.time() - start_time
+
+        # Verify we got the correct number of embeddings
+        assert len(text_embeddings) == batch_size
+
+        # Check that all embeddings have the expected properties
+        for embedding in text_embeddings:
+            assert embedding is not None
+            assert len(embedding) == 768  # Expected dimension
+            assert embedding.dtype == np.float32
+            assert not np.all(embedding == 0)  # Should not be all zeros
+
+        # Log performance metrics
+        print(f"Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+              f"{elapsed_time/batch_size:.3f}s per item")
+
+        # Create dummy images for the batch
+        sample_images = [Image.new("RGB", (100, 100), color=(i % 255, (i + 50) % 255, (i + 100) % 255))
+                         for i in range(batch_size)]
+
+        # Measure time to process the image batch
+        start_time = time.time()
+
+        # Get embeddings for the batch
+        image_embedding_ref = model.embed.remote(sample_images)
+        image_embeddings = ray.get(image_embedding_ref)
+
+        elapsed_time = time.time() - start_time
+
+        # Verify we got the correct number of embeddings
+        assert len(image_embeddings) == batch_size
+
+        # Check that all embeddings have the expected properties
+        for embedding in image_embeddings:
+            assert embedding is not None
+            assert len(embedding) == 768  # Expected dimension
+            assert embedding.dtype == np.float32
+            assert not np.all(embedding == 0)  # Should not be all zeros
+
+        # Log performance metrics
+        print(f"Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+              f"{elapsed_time/batch_size:.3f}s per item")
 
     finally:
         # Terminate the actor to clean up resources
