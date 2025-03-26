@@ -594,3 +594,43 @@ def test_perform_experiment_real_models(db_session: Session):
     for pd in pds:
         assert pd.generators is not None
         assert len(pd.generators) > 0
+
+
+@pytest.mark.slow
+def test_perform_experiment_real_models_2(db_session: Session):
+    # Create a test experiment config with multiple embedding models and -1 seeds
+    config = ExperimentConfig(
+        networks=[["SDXLTurbo", "BLIP2"]],
+        seeds=[-1, -1],
+        prompts=["Test prompt 1"],
+        embedding_models=["Nomic", "JinaClip"],
+        max_length=100,
+    )
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call the perform_experiment function
+    perform_experiment(config, db_url)
+
+    # We should have 2*1*1 = 2 runs (2 seeds, 1 prompt, 1 network)
+    runs = list_runs(db_session)
+    assert len(runs) == 2
+
+    # For -1 seed runs, we should have exactly max_length invocations (100 each)
+    invocations = list_invocations(db_session)
+    # We should have 2 runs with -1 seed * max_length (100) = 200 invocations
+    assert len(invocations) == 200
+
+    # Each invocation should have 2 embeddings (two embedding models)
+    embeddings = list_embeddings(db_session)
+    assert len(embeddings) == len(invocations) * 2
+
+    # We should have 2 runs * 2 embedding models = 4 persistence diagrams
+    pds = list_persistence_diagrams(db_session)
+    assert len(pds) == 4
+
+    # Verify all persistence diagrams have generators
+    for pd in pds:
+        assert pd.generators is not None
+        assert len(pd.generators) > 0
