@@ -247,8 +247,7 @@ class BLIP2(GenAIModel):
         self.model = Blip2ForConditionalGeneration.from_pretrained(
             "Salesforce/blip2-opt-2.7b",
             torch_dtype=torch.float16,
-            device_map="auto",
-            use_fast=True
+            device_map="auto"
         )
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
