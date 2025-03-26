@@ -7,8 +7,6 @@ from PIL import Image
 from trajectory_tracer.embeddings import (
     Dummy,
     Dummy2,
-    JinaClip,
-    Nomic,
     get_actor_class,
     list_models,
 )

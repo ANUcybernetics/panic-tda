@@ -7,14 +7,7 @@ import ray.actor
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
-    BLIP2,
     IMAGE_SIZE,
-    DummyI2T,
-    DummyT2I,
-    FluxDev,
-    FluxSchnell,
-    Moondream,
-    SDXLTurbo,
     get_actor_class,
     get_output_type,
     list_models,
