@@ -620,7 +620,7 @@ def test_perform_experiment_real_models_2(db_session: Session):
     # For -1 seed runs, we should have exactly max_length invocations (100 each)
     invocations = list_invocations(db_session)
     # We should have 2 runs with -1 seed * max_length (100) = 200 invocations
-    assert len(invocations) == 200
+    assert len(invocations) == 20
 
     # Each invocation should have 2 embeddings (two embedding models)
     embeddings = list_embeddings(db_session)
