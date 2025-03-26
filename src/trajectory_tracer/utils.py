@@ -22,8 +22,11 @@ def export_run_images(
         session: SQLModel Session for database operations
         output_dir: Directory where images will be saved (default: "output/images")
     """
+    # Create run-specific directory
+    run_dir = os.path.join(output_dir, str(run.id))
+
     # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(run_dir, exist_ok=True)
 
     # Ensure invocations are loaded
     session.refresh(run)
@@ -55,7 +58,7 @@ def export_run_images(
 
             # Prepare file path for image
             # Use JPEG format instead of WebP for better EXIF support
-            file_path = os.path.join(output_dir, f"{invocation.sequence_number:05d}--{invocation.id}.jpg")
+            file_path = os.path.join(run_dir, f"{invocation.sequence_number:05d}--{invocation.id}.jpg")
 
             # Create metadata
             metadata = {
