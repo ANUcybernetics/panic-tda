@@ -1,5 +1,7 @@
 import hashlib
 import io
+import os
+import tempfile
 from datetime import datetime
 from uuid import UUID
 
@@ -10,6 +12,7 @@ from PIL import Image
 from sqlmodel import Session
 
 from trajectory_tracer.db import (
+    create_db_and_tables,
     list_embeddings,
     list_invocations,
     list_persistence_diagrams,
@@ -634,3 +637,56 @@ def test_perform_experiment_real_models_2(db_session: Session):
     for pd in pds:
         assert pd.generators is not None
         assert len(pd.generators) > 0
+
+
+@pytest.mark.slow
+def test_perform_experiment_with_file_db():
+    """Test perform_experiment with a file-based database instead of in-memory."""
+
+    # Create a temporary directory for the database file
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a file-based SQLite database path
+        db_path = os.path.join(temp_dir, "test_trajectory.db")
+        db_url = f"sqlite:///{db_path}"
+        # Create the database and tables
+        create_db_and_tables(db_url)
+
+        # Create a test experiment config identical to test_perform_experiment_real_models_2
+        config = ExperimentConfig(
+            networks=[["SDXLTurbo", "BLIP2"]],
+            seeds=[-1, -1],
+            prompts=["Test prompt 1"],
+            embedding_models=["Nomic", "JinaClip"],
+            max_length=10,
+        )
+
+        # Call the perform_experiment function with the file-based database
+        perform_experiment(config, db_url)
+
+        # Create a new session to verify the results
+        from sqlmodel import Session, SQLModel, create_engine
+        engine = create_engine(db_url)
+        SQLModel.metadata.create_all(engine)
+
+        with Session(engine) as session:
+            # We should have 2*1*1 = 2 runs (2 seeds, 1 prompt, 1 network)
+            runs = list_runs(session)
+            assert len(runs) == 2
+
+            # For -1 seed runs, we should have exactly max_length invocations (10 each)
+            invocations = list_invocations(session)
+            # We should have 2 runs with -1 seed * max_length (10) = 20 invocations
+            assert len(invocations) == 20
+
+            # Each invocation should have 2 embeddings (two embedding models)
+            embeddings = list_embeddings(session)
+            assert len(embeddings) == len(invocations) * 2
+
+            # We should have 2 runs * 2 embedding models = 4 persistence diagrams
+            pds = list_persistence_diagrams(session)
+            assert len(pds) == 4
+
+            # Verify all persistence diagrams have generators
+            for pd in pds:
+                assert pd.generators is not None
+                assert len(pd.generators) > 0
