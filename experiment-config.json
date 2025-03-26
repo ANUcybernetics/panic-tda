@@ -1,13 +1,16 @@
 {
     "networks": [
-        ["FluxSchnell", "Moondream"],
-        ["FluxSchnell", "BLIP2"]
+        ["SDXLTurbo", "Moondream"],
+        ["SDXLTurbo", "BLIP2"]
     ],
     "seeds": [
-        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, -1, -1, -1,
-        -1, -1
+        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, 123457890,
+        -97654321, 200202020, -101001010, 141592653, -1, -1, -1, -1, -1
     ],
     "prompts": [
+        "potato",
+        "tree",
+        "Monday",
         "a red ball on a blue background",
         "a blue ball on a red background",
         "une boule rouge sur fond bleu",
@@ -19,6 +22,6 @@
         "a tropical rainforest with exotic animals",
         "a futuristic spaceship interior with advanced technology"
     ],
-    "embedding_models": ["Nomic", "JinaClip"],
-    "max_length": 2000
+    "embedding_models": ["Nomic"],
+    "max_length": 1000
 }
