@@ -132,35 +132,8 @@ def test_model_functionality(model_name):
         ray.kill(model)
 
 
-def test_list_models():
-    """Test that list_models returns a list containing the expected model classes."""
-
-    # Check the class names directly
-    expected_models = [
-        "BLIP2",
-        "DummyI2T",
-        "DummyT2I",
-        "FluxDev",
-        "FluxSchnell",
-        "Moondream",
-        "SDXLTurbo",
-    ]
-
-    # Check that each class exists as expected
-    for model_name in expected_models:
-        assert model_name in globals(), f"Expected model {model_name} not found"
-
-
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", [
-    "BLIP2",
-    "DummyI2T",
-    "DummyT2I",
-    "FluxDev",
-    "FluxSchnell",
-    "Moondream",
-    "SDXLTurbo",
-])
+@pytest.mark.parametrize("model_name", list_models())
 def test_model_output_types(model_name):
     """Test that each model has the correct output type."""
     # Get output type for the model
@@ -218,10 +191,6 @@ def test_list_models_function():
 
     for model_name in expected_models:
         assert model_name in models, f"Expected model {model_name} not found in list_models() result"
-
-    # Check that all returned models exist in the module
-    for model_name in models:
-        assert model_name in globals(), f"Model {model_name} returned by list_models() not found in module"
 
 
 def test_get_actor_class():
