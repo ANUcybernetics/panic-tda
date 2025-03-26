@@ -463,8 +463,7 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
         logger.info(f"Computed {len(embedding_ids)} embeddings")
 
         # Compute persistence diagrams for all runs
-        # Note: perform_pd_stage already returns resolved string IDs, not ObjectRefs
-        pd_ids = perform_pd_stage(run_ids, config.embedding_models, db_str)
+        perform_pd_stage(run_ids, config.embedding_models, db_str)
         logger.info(f"Experiment completed with {len(run_ids)} successful runs")
 
     except Exception as e:
