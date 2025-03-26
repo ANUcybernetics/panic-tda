@@ -7,12 +7,12 @@ from uuid import UUID
 
 import numpy as np
 import ray
-from ray.util import ActorPool
 from PIL import Image
+from ray.util import ActorPool
 
 from trajectory_tracer.db import get_session_from_connection_string
-from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
 from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
+from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.schemas import (
     Embedding,
