@@ -9,9 +9,10 @@
 
 - add data analysis & vis code
 
-  - pull a run or series of runs (experiment? or just everything) into a polars
-    df
-  - do some basic vis with altair
+  - plot loop length for all "stopped because of loop" cases
+  - plot persistence diagrams and entropy
+  - store the persistence entropy in the PD object
+  - visualise the time taken for the various different invocations
   - do some statistical tests with e.g. scikit.learn
   - overall (dim-reduced) clustering of the embeddings, colored by the different
     factor levels
@@ -27,3 +28,5 @@
   into analysis
 
 - run the tests in GitHub actions
+
+- batch those suckers, all of them. might get 5x just like that.
