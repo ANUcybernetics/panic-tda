@@ -7,7 +7,6 @@ import ray
 import torch
 import torch.nn.functional as F
 from PIL import Image
-from sentence_transformers import SentenceTransformer
 from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
 # Configure logging
@@ -105,11 +104,11 @@ class JinaClip(EmbeddingModel):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
 
-        self.model = SentenceTransformer(
-            "jinaai/jina-clip-v2",
-            trust_remote_code=True,
-            truncate_dim=EMBEDDING_DIM
-        ).to("cuda")
+        # Load model using transformers directly
+        self.model = AutoModel.from_pretrained(
+            'jinaai/jina-clip-v2',
+            trust_remote_code=True
+        ).to("cuda").eval()
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
@@ -118,8 +117,22 @@ class JinaClip(EmbeddingModel):
         if not isinstance(content, (str, Image.Image)):
             raise ValueError(f"Expected string or PIL.Image input, got {type(content)}")
 
-        # JINA CLIP handles both text and images
-        return self.model.encode(content, normalize_embeddings=True)
+        with torch.no_grad():
+            if isinstance(content, str):
+                # Text embedding
+                text_embeddings = self.model.encode_text(
+                    [content],
+                    truncate_dim=EMBEDDING_DIM,
+                    task='retrieval.query'
+                )
+                return text_embeddings[0]
+            else:
+                # Image embedding
+                image_embeddings = self.model.encode_image(
+                    content,
+                    truncate_dim=EMBEDDING_DIM
+                )
+                return image_embeddings[0]
 
 
 @ray.remote
