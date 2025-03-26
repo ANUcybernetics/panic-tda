@@ -18,6 +18,7 @@ from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
+    InvocationType,
     PersistenceDiagram,
     Run,
 )
@@ -161,46 +162,70 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
 
 
 @ray.remote
-def compute_embedding(actor, invocation_id, embedding_model, db_str):
-    """Process a single embedding calculation task"""
+def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
+    """Process a batch of embedding calculation tasks"""
     with get_session_from_connection_string(db_str) as session:
-        # Load the invocation
-        invocation_uuid = UUID(invocation_id)
-        invocation = session.get(Invocation, invocation_uuid)
-        if not invocation:
-            raise ValueError(f"Invocation {invocation_id} not found")
+        # Load all invocations
+        invocations = {}
+        missing_invocations = []
+        # TODO does sqlalchemy support bulk loading?
+        for invocation_id in invocation_ids:
+            invocation_uuid = UUID(invocation_id)
+            invocation = session.get(Invocation, invocation_uuid)
+            if invocation:
+                invocations[invocation_id] = invocation
+            else:
+                missing_invocations.append(invocation_id)
 
-        # Create the embedding object
-        embedding = Embedding(
-            invocation_id=invocation_uuid, embedding_model=embedding_model, vector=None
-        )
+        # Raise an error if any invocations couldn't be found
+        if missing_invocations:
+            raise ValueError(f"Invocations not found: {missing_invocations}")
 
-        # Save to database
-        session.add(embedding)
+        # Create embedding objects for all valid invocations
+        embeddings = []
+        embedding_mapping = {}  # Maps invocation_id to corresponding embedding
+
+        for invocation_id, invocation in invocations.items():
+            embedding = Embedding(
+                invocation_id=UUID(invocation_id),
+                embedding_model=embedding_model,
+                vector=None,
+                started_at=datetime.now()
+            )
+            embeddings.append(embedding)
+            embedding_mapping[invocation_id] = embedding
+
+        # Save empty embeddings
+        session.add_all(embeddings)
         session.commit()
-        session.refresh(embedding)
+        for embedding in embeddings:
+            session.refresh(embedding)
 
-        embedding_id = str(embedding.id)
-        logger.debug(f"Created empty embedding {embedding_id} for invocation {invocation_id}")
+        # Prepare content batch for embedding
+        contents = []
+        for invocation_id in invocation_ids:
+            if invocation_id in invocations:
+                contents.append(invocations[invocation_id].output)
 
-        # Set the start timestamp
-        embedding.started_at = datetime.now()
+        # Compute embeddings in batch if there's content to process
+        if contents:
+            vectors = ray.get(actor.embed.remote(contents))
 
-        # Get the content to embed from the invocation output
-        content = invocation.output
+            # Match vectors back to embeddings
+            for i, invocation_id in enumerate(invocation_ids):
+                if invocation_id in embedding_mapping:
+                    embedding = embedding_mapping[invocation_id]
+                    embedding.vector = vectors[i]
+                    embedding.completed_at = datetime.now()
 
-        # Use the actor to compute the embedding
-        embedding.vector = ray.get(actor.embed.remote(content))
+            # Save updated embeddings
+            session.add_all(embeddings)
+            session.commit()
 
-        # Set the completion timestamp
-        embedding.completed_at = datetime.now()
-
-        # Save to database
-        session.add(embedding)
-        session.commit()
-
-        logger.debug(f"Successfully computed vector for embedding {embedding_id}")
-        return embedding_id
+        # Return list of embedding IDs
+        embedding_ids = [str(embedding.id) for embedding in embeddings]
+        logger.debug(f"Successfully computed {len(embedding_ids)} vectors in batch")
+        return embedding_ids
 
 
 @ray.remote(num_cpus=8)
@@ -329,7 +354,7 @@ def perform_runs_stage(run_ids, db_str):
     return all_invocation_ids
 
 
-def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=4):
+def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=1, batch_size=32):
     """
     Process embeddings for multiple invocations using ActorPool for load balancing.
 
@@ -338,6 +363,7 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
         embedding_models: List of embedding model names to use
         db_str: Database connection string
         num_actors: Number of actors to create per model (default: 4)
+        batch_size: Size of batches to process at once (default: 32)
 
     Returns:
         List of embedding IDs that were successfully created
@@ -350,8 +376,9 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
         # Get the actor class for this embedding model
         embedding_actor_class = get_embedding_actor_class(embedding_model)
 
-        # Limit the number of actors based on the number of invocations
-        actor_count = min(num_actors, len(invocation_ids))
+        # Limit the number of actors based on the number of batches
+        num_batches = (len(invocation_ids) + batch_size - 1) // batch_size
+        actor_count = min(num_actors, num_batches)
 
         # Create actor instances
         actors = [embedding_actor_class.remote() for _ in range(actor_count)]
@@ -361,17 +388,38 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
 
         logger.info(f"Created actor pool with {actor_count} actors for model {embedding_model}")
 
-        # Process embeddings in parallel using the actor pool
+        # Create batches of invocation_ids
+        # Group invocations by type (text or image)
+        with get_session_from_connection_string(db_str) as session:
+            text_invocations = []
+            image_invocations = []
+            for invocation_id in invocation_ids:
+                invocation = session.get(Invocation, UUID(invocation_id))
+                if invocation.type == InvocationType.TEXT:
+                    text_invocations.append(invocation_id)
+                else:  # image
+                    image_invocations.append(invocation_id)
+
+        # Create batches by type
+        text_batches = [text_invocations[i:i+batch_size] for i in range(0, len(text_invocations), batch_size)]
+        image_batches = [image_invocations[i:i+batch_size] for i in range(0, len(image_invocations), batch_size)]
+
+        # Combine all batches
+        batches = text_batches + image_batches
+        logger.info(f"Processing {len(batches)} batches with batch size {batch_size}")
+
+        # Process embedding batches in parallel using the actor pool
         # The map_unordered function returns an iterator of actual results, not object references
-        embedding_ids = list(pool.map_unordered(
-            lambda actor, invocation_id: compute_embedding.remote(actor, invocation_id, embedding_model, db_str),
-            invocation_ids
+        batch_embedding_ids = list(pool.map_unordered(
+            lambda actor, batch: compute_embeddings.remote(actor, batch, embedding_model, db_str),
+            batches
         ))
 
-        # Add all successfully computed embedding IDs
-        all_embedding_ids.extend(embedding_ids)
+        # Flatten the list of lists of embedding IDs
+        for batch_ids in batch_embedding_ids:
+            all_embedding_ids.extend(batch_ids)
 
-        logger.info(f"Computed {len(embedding_ids)} embeddings with model {embedding_model}")
+        logger.info(f"Computed {len(all_embedding_ids)} embeddings with model {embedding_model}")
 
         # Clean up actors
         for actor in actors:

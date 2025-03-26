@@ -20,7 +20,7 @@ from trajectory_tracer.db import (
 )
 from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
 from trajectory_tracer.engine import (
-    compute_embedding,
+    compute_embeddings,
     compute_persistence_diagram,
     get_output_hash,
     perform_embeddings_stage,
@@ -226,37 +226,41 @@ def test_perform_runs_stage(db_session: Session):
         assert invocation.run_id in [run.id for run in runs]
 
 
-def test_compute_embedding(db_session: Session):
-    """Test that compute_embedding correctly computes an embedding for an invocation."""
+def test_compute_embeddings(db_session: Session):
+    """Test that compute_embeddings correctly computes embeddings for multiple invocations."""
 
     # Create a test run
     run = Run(
         network=["DummyT2I"],
         initial_prompt="Test prompt for embedding",
         seed=42,
-        max_length=1,
+        max_length=2,
     )
     db_session.add(run)
     db_session.commit()
     db_session.refresh(run)
 
-    # Create an invocation
-    invocation = Invocation(
-        model="DummyT2I",
-        type="image",
-        run_id=run.id,
-        sequence_number=0,
-        seed=42,
-    )
-    db_session.add(invocation)
-    db_session.commit()
-    db_session.refresh(invocation)
+    # Create two invocations
+    invocations = []
+    for i in range(2):
+        invocation = Invocation(
+            model="DummyT2I",
+            type="image",
+            run_id=run.id,
+            sequence_number=i,
+            seed=42,
+        )
+        db_session.add(invocation)
+        db_session.commit()
+        db_session.refresh(invocation)
 
-    # Generate output for the invocation
-    image = Image.new("RGB", (50, 50), color="red")
-    invocation.output = image
-    db_session.add(invocation)
-    db_session.commit()
+        # Generate output for the invocation
+        image = Image.new("RGB", (50, 50), color=f"rgb({i * 50}, {i * 50}, {i * 50})")
+        invocation.output = image
+        db_session.add(invocation)
+        db_session.commit()
+
+        invocations.append(invocation)
 
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
@@ -265,28 +269,36 @@ def test_compute_embedding(db_session: Session):
     embedding_model = "Dummy"
     actor = get_embedding_actor_class(embedding_model).remote()
 
-    # Call the compute_embedding function with the actor
-    embedding_id_ref = compute_embedding.remote(actor, str(invocation.id), embedding_model, db_url)
-    embedding_id = ray.get(embedding_id_ref)
+    # Get invocation IDs as strings for the batch
+    invocation_ids = [str(inv.id) for inv in invocations]
 
-    # Convert string UUID to UUID object if needed
-    if isinstance(embedding_id, str):
-        embedding_uuid = UUID(embedding_id)
-    else:
-        embedding_uuid = embedding_id
+    # Call the compute_embeddings function with the batch of invocation IDs
+    embedding_ids_ref = compute_embeddings.remote(actor, invocation_ids, embedding_model, db_url)
+    embedding_ids = ray.get(embedding_ids_ref)
 
-    # Verify the embedding is in the database
-    embedding = db_session.get(Embedding, embedding_uuid)
-    assert embedding is not None
-    assert embedding.invocation_id == invocation.id
-    assert embedding.embedding_model == embedding_model
-    assert embedding.vector is not None
-    assert len(embedding.vector) > 0  # Vector should not be empty
+    # Verify we got the right number of embeddings back
+    assert len(embedding_ids) == len(invocations)
 
-    # Verify the embedding has start and complete timestamps
-    assert embedding.started_at is not None
-    assert embedding.completed_at is not None
-    assert embedding.completed_at > embedding.started_at
+    # Verify each embedding in the database
+    for i, embedding_id in enumerate(embedding_ids):
+        # Convert string UUID to UUID object if needed
+        if isinstance(embedding_id, str):
+            embedding_uuid = UUID(embedding_id)
+        else:
+            embedding_uuid = embedding_id
+
+        # Verify the embedding is in the database
+        embedding = db_session.get(Embedding, embedding_uuid)
+        assert embedding is not None
+        assert embedding.invocation_id == invocations[i].id
+        assert embedding.embedding_model == embedding_model
+        assert embedding.vector is not None
+        assert len(embedding.vector) > 0  # Vector should not be empty
+
+        # Verify the embedding has start and complete timestamps
+        assert embedding.started_at is not None
+        assert embedding.completed_at is not None
+        assert embedding.completed_at > embedding.started_at
 
     # Clean up the actor
     ray.kill(actor)
