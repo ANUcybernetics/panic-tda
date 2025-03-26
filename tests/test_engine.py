@@ -604,7 +604,7 @@ def test_perform_experiment_real_models_2(db_session: Session):
         seeds=[-1, -1],
         prompts=["Test prompt 1"],
         embedding_models=["Nomic", "JinaClip"],
-        max_length=100,
+        max_length=10,
     )
 
     # Get the SQLite connection string from the session
