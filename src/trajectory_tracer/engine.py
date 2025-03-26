@@ -443,7 +443,7 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     pd_tasks = []
     for run_id in run_ids:
         for embedding_model in embedding_models:
-            pd_tasks.append(compute_persistence_diagram.remote( run_id, embedding_model, db_str))
+            pd_tasks.append(compute_persistence_diagram.remote(run_id, embedding_model, db_str))
 
     # Wait for all persistence diagram computations to complete
     pd_ids = ray.get(pd_tasks)
