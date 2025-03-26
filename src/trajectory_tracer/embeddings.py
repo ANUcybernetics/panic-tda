@@ -129,10 +129,10 @@ class JinaClip(EmbeddingModel):
             else:
                 # Image embedding
                 image_embeddings = self.model.encode_image(
-                    content,
+                    [content],  # Wrap in list to match encode_text format
                     truncate_dim=EMBEDDING_DIM
                 )
-                return image_embeddings[0]
+                return image_embeddings[0]  # Return the first (and only) embedding
 
 
 @ray.remote
