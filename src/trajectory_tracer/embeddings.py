@@ -1,7 +1,5 @@
-import base64
 import logging
 import sys
-from io import BytesIO
 from typing import Union
 
 import numpy as np
@@ -25,22 +23,8 @@ class EmbeddingModel:
         """Initialize the model and load to device."""
         raise NotImplementedError
 
-    def embed(self, content_data):
+    def embed(self, content: Union[str, Image.Image]):
         """Process the content and return an embedding."""
-        # Check if we need to deserialize an image
-        if isinstance(content_data, dict) and "image_data" in content_data:
-            # Deserialize the base64 image
-            image_bytes = base64.b64decode(content_data["image_data"])
-            content = Image.open(BytesIO(image_bytes))
-        else:
-            # Use content as is (text)
-            content = content_data
-
-        # Process content and return embedding
-        return self.process_content(content)
-
-    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Process the content and return an embedding vector."""
         raise NotImplementedError
 
 
@@ -66,11 +50,11 @@ class Nomic(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Calculate the embedding vector for either text or image."""
+    def embed(self, content: Union[str, Image.Image]):
+        """Process the content and return an embedding."""
         if isinstance(content, str):
             # Text embedding
-            sentences = [f"clustering: {content}"]
+            sentences = [f"clustering: {content.strip()}"]
             return self.text_model.encode(sentences)[0]  # Flatten (1, 768) to (768,)
 
         elif isinstance(content, Image.Image):
@@ -106,8 +90,8 @@ class JinaClip(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Calculate the embedding vector for text or image."""
+    def embed(self, content: Union[str, Image.Image]):
+        """Process the content and return an embedding."""
         if not isinstance(content, (str, Image.Image)):
             raise ValueError(f"Expected string or PIL.Image input, got {type(content)}")
 
@@ -121,8 +105,8 @@ class Dummy(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Generate a deterministic embedding vector based on the content."""
+    def embed(self, content: Union[str, Image.Image]):
+        """Process the content and return an embedding."""
         if isinstance(content, str):
             # For text, use the hash of the string to seed a deterministic vector
             seed = sum(ord(c) for c in content)
@@ -150,8 +134,8 @@ class Dummy2(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def process_content(self, content: Union[str, Image.Image]) -> np.ndarray:
-        """Generate a deterministic embedding vector using a different approach than Dummy."""
+    def embed(self, content: Union[str, Image.Image]):
+        """Process the content and return an embedding."""
         if isinstance(content, str):
             # For text, create deterministic values based on character positions
             chars = [ord(c) for c in (content[:100] if len(content) > 100 else content)]

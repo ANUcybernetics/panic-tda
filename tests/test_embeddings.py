@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 import ray
-import torch
 from PIL import Image
 
 from trajectory_tracer.embeddings import (
@@ -72,6 +71,48 @@ def test_embedding_model(model_name):
 
         # Verify text and image embeddings are different
         assert not np.array_equal(text_embedding, image_embedding)
+
+    finally:
+        # Terminate the actor to clean up resources
+        if 'model' in locals():
+            ray.kill(model)
+
+
+@pytest.mark.slow
+def test_nomic_embedding_specific_text():
+    """Test that the Nomic embedding model handles a specific text case correctly."""
+    try:
+        # The specific text to test
+        specific_text = "the adventures of person, one"
+
+        # Get the model actor
+        model_class = get_actor_class("Nomic")
+        model = model_class.remote()
+
+        # Test with the specific text
+        embedding_ref = model.embed.remote(specific_text)
+        embedding = ray.get(embedding_ref)
+
+        # Check that the embedding has the correct properties
+        assert embedding is not None
+        assert len(embedding) == 768  # Expected dimension
+        assert embedding.dtype == np.float32
+        assert not np.all(embedding == 0)  # Should not be all zeros
+
+        # Run it again to verify determinism
+        embedding2_ref = model.embed.remote(specific_text)
+        embedding2 = ray.get(embedding2_ref)
+
+        # Verify determinism
+        assert np.array_equal(embedding, embedding2)
+
+        # Test with a slightly different text to ensure embeddings are different
+        different_text = "a different text"
+        different_embedding_ref = model.embed.remote(different_text)
+        different_embedding = ray.get(different_embedding_ref)
+
+        # Verify embeddings are different for different texts
+        assert not np.array_equal(embedding, different_embedding)
 
     finally:
         # Terminate the actor to clean up resources
@@ -202,46 +243,6 @@ def test_list_models():
 
     # Verify the base class is not included
     assert "EmbeddingModel" not in available_models
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("model_name", list_models())
-def test_embedding_model_memory_usage(model_name):
-    """Test memory usage reporting for each embedding model."""
-    # Skip dummy models that don't need GPU
-    if model_name.startswith("Dummy"):
-        pytest.skip(f"Skipping memory usage test for dummy model {model_name}")
-
-    # Skip if CUDA is not available
-    if not torch.cuda.is_available():
-        pytest.skip("CUDA not available, skipping GPU memory test")
-
-    try:
-        # Create the model actor
-        model_class = globals()[model_name]
-        model = model_class.remote()
-
-        # Get memory usage information
-        # This would typically be a method on the actor that returns memory usage info
-        memory_info = {"model_name": model_name, "status": "initialized"}
-
-        # For actual implementations, you would call something like:
-        # memory_info_ref = model.get_memory_usage.remote()
-        # memory_info = ray.get(memory_info_ref)
-
-        # Verify the returned structure has basic information
-        assert isinstance(memory_info, dict)
-        assert "model_name" in memory_info
-        assert "gpu_memory_used" in memory_info or "status" in memory_info
-
-        # Print the memory info
-        print(f"\nMemory usage for {model_name}:")
-        for key, value in memory_info.items():
-            print(f"  {key}: {value}")
-    finally:
-        # Terminate the actor to clean up GPU resources
-        if 'model' in locals():
-            ray.kill(model)
 
 
 def test_get_actor_class():
