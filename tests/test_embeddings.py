@@ -116,6 +116,89 @@ def test_run_embeddings_by_model(db_session):
             ray.kill(dummy2_model)
 
 
+def test_invocation_embedding_property(db_session):
+    """Test that the Invocation.embedding() method returns the correct embedding for a model."""
+    # Create a run
+    run = Run(
+        network=["DummyT2I", "DummyI2T"],
+        seed=42,
+        max_length=2,
+        initial_prompt="Test prompt",
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Create an invocation
+    invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run.id,
+        sequence_number=0,
+        output_text="Test output",
+    )
+    db_session.add(invocation)
+    db_session.commit()
+    db_session.refresh(invocation)
+
+    # Create embeddings with different models
+    try:
+        dummy_model = Dummy.remote()
+        dummy2_model = Dummy2.remote()
+
+        # Get embeddings from models
+        embedding_vector1_ref = dummy_model.embed.remote([invocation.output])
+        embedding_vector2_ref = dummy2_model.embed.remote([invocation.output])
+
+        embedding_vectors1 = ray.get(embedding_vector1_ref)
+        embedding_vectors2 = ray.get(embedding_vector2_ref)
+
+        embedding_vector1 = embedding_vectors1[0]
+        embedding_vector2 = embedding_vectors2[0]
+
+        # Create embedding objects
+        embedding1 = Embedding(
+            invocation_id=invocation.id,
+            embedding_model="Dummy",
+            vector=embedding_vector1,
+        )
+        db_session.add(embedding1)
+
+        embedding2 = Embedding(
+            invocation_id=invocation.id,
+            embedding_model="Dummy2",
+            vector=embedding_vector2,
+        )
+        db_session.add(embedding2)
+
+        db_session.commit()
+        db_session.refresh(invocation)
+
+        # Test the embedding method
+        dummy_embedding = invocation.embedding("Dummy")
+        dummy2_embedding = invocation.embedding("Dummy2")
+        nonexistent_embedding = invocation.embedding("NonexistentModel")
+
+        # Verify the results
+        assert dummy_embedding is not None
+        assert dummy_embedding.embedding_model == "Dummy"
+        assert np.array_equal(dummy_embedding.vector, embedding_vector1)
+
+        assert dummy2_embedding is not None
+        assert dummy2_embedding.embedding_model == "Dummy2"
+        assert np.array_equal(dummy2_embedding.vector, embedding_vector2)
+
+        # Should return None for a model that doesn't exist
+        assert nonexistent_embedding is None
+    finally:
+        # Terminate the actors to clean up resources
+        if 'dummy_model' in locals():
+            ray.kill(dummy_model)
+        if 'dummy2_model' in locals():
+            ray.kill(dummy2_model)
+
+
 def test_list_models():
     """Test that list_models returns a list of available embedding models."""
 

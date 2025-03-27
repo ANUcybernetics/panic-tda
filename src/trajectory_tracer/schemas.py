@@ -293,6 +293,20 @@ class Invocation(SQLModel, table=True):
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
 
+    def embedding(self, model_name: str) -> Optional["Embedding"]:
+        """
+        Get the embedding for this invocation created by a specific model.
+
+        Args:
+            model_name: Name of the embedding model to retrieve
+
+        Returns:
+            The matching Embedding object, or None if no embedding exists for this model
+        """
+        for embedding in self.embeddings:
+            if embedding.embedding_model == model_name:
+                return embedding
+        return None
 
 class Run(SQLModel, table=True):
     """
