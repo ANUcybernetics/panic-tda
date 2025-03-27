@@ -27,14 +27,14 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         invocation = embedding.invocation
 
         row = {
-            "id": embedding.id,
-            "invocation_id": invocation.id,
+            "id": str(embedding.id),
+            "invocation_id": str(invocation.id),
             "embedding_started_at": embedding.started_at,
             "embedding_completed_at": embedding.completed_at,
             "invocation_started_at": invocation.started_at,
             "invocation_completed_at": invocation.completed_at,
             "duration": embedding.duration,
-            "run_id": invocation.run_id,
+            "run_id": str(invocation.run_id),
             "type": invocation.type,
             "initial_prompt": invocation.run.initial_prompt,
             "seed": invocation.run.seed,
@@ -69,7 +69,7 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         if not run.invocations:
             continue
         row = {
-            "run_id": run.id,
+            "run_id": str(run.id),
             "network": run.network,
             "initial_prompt": run.initial_prompt,
             "seed": run.seed,
