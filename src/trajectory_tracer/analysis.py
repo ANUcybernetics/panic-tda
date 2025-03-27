@@ -93,10 +93,7 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         data.append(row)
 
     # Create a polars DataFrame with explicit schema for loop_length
-    schema = {
-        "loop_length": pl.Int64  # Specify loop_length as Int64 (which can be null)
-    }
-    return pl.DataFrame(data, schema=schema)
+    return pl.DataFrame(data, schema_overrides={"loop_length": pl.Int64})
 
 
 ## visualisation
