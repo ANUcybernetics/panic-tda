@@ -49,17 +49,6 @@ diffusers.utils.logging.disable_progress_bar()
 # Image size for all image operations
 IMAGE_SIZE = 512
 
-# Model resource requirements (fraction of GPU needed)
-MODEL_GPU_REQUIREMENTS = {
-    "FluxDev": 0.8,
-    "FluxSchnell": 0.8,
-    "SDXLTurbo": 0.6,
-    "Moondream": 0.3,
-    "BLIP2": 0.3,
-    "DummyI2T": 0.0,
-    "DummyT2I": 0.0
-}
-
 
 class GenAIModel:
     """Base class for generative AI models."""
