@@ -1,16 +1,29 @@
 import logging
 import sys
+import warnings
 from typing import List, Union
 
 import numpy as np
 import ray
 import torch
 import torch.nn.functional as F
+import transformers
 from PIL import Image
 from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Suppress warnings and progress bars
+warnings.filterwarnings("ignore", message=".*megablocks not available.*")
+warnings.filterwarnings("ignore", message=".*Flash attention is not installed.*")
+warnings.filterwarnings("ignore", message=".*xFormers is not installed.*")
+warnings.filterwarnings("ignore", message=".*Using a slow image processor.*")
+warnings.filterwarnings("ignore", category=UserWarning)
+
+# You can also suppress the "All keys matched successfully" by setting
+# the transformers logging level even more aggressively
+transformers.logging.set_verbosity_error()
 
 # Fixed embedding dimension
 EMBEDDING_DIM = 768
@@ -41,7 +54,7 @@ class Nomic(EmbeddingModel):
 
         # Load vision model components
         self.processor = AutoImageProcessor.from_pretrained(
-            "nomic-ai/nomic-embed-vision-v1.5"
+            "nomic-ai/nomic-embed-vision-v1.5", use_fast=True
         )
         self.vision_model = AutoModel.from_pretrained(
             "nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True
