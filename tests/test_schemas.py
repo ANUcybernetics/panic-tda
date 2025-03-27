@@ -144,6 +144,58 @@ def test_run_validation_success():
     assert len(run.invocations) == 3
 
 
+def test_invocation_input_property():
+    """Test that the input property correctly returns the appropriate input."""
+    # Create a run
+    run_id = uuid7()
+    run = Run(
+        id=run_id,
+        seed=42,
+        max_length=5,
+        network=["DummyI2T", "DummyT2I"],
+        initial_prompt="Test initial prompt",
+    )
+
+    # First invocation in sequence (should return initial_prompt)
+    first_invocation = Invocation(
+        model="DummyI2T",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run_id,
+        sequence_number=0,
+    )
+    first_invocation.run = run
+    assert first_invocation.input == "Test initial prompt"
+
+    # Set output for first invocation
+    first_invocation.output = "First output"
+
+    # Second invocation in sequence (should return output of first invocation)
+    second_invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=run_id,
+        sequence_number=1,
+        input_invocation_id=first_invocation.id,
+    )
+    second_invocation.run = run
+    second_invocation.input_invocation = first_invocation
+
+    assert second_invocation.input == "First output"
+
+    # Test with no input_invocation set
+    orphan_invocation = Invocation(
+        model="DummyT2I",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=run_id,
+        sequence_number=3,
+    )
+    orphan_invocation.run = run
+    assert orphan_invocation.input is None
+
+
 def test_embedding_creation():
     """Test Embedding creation and dimension property."""
     invocation_id = uuid7()
