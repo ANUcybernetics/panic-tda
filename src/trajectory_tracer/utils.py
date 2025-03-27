@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import subprocess
 from io import BytesIO
 from uuid import UUID
 
@@ -87,27 +88,36 @@ def export_run_images(
 
 
 def export_run_mosaic(
-    run_ids: list[str], session: Session, cols: int, output_dir: str = "output/mosaic"
+    run_ids: list[str], session: Session, cols: int, cell_size: int = 512, output_dir: str = "output/mosaic", fps: int = 30, output_video: str = "mosaic.mp4"
 ) -> None:
     """
-    Export a mosaic of images from multiple runs.
+    Export a mosaic of images from multiple runs and create a video from the mosaic images.
 
     Args:
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
         cols: Number of columns in the mosaic grid
+        cell_size: Size of each cell in pixels (default: 512)
         output_dir: Directory where mosaic images will be saved (default: "output/mosaic")
+        fps: Frames per second for the output video (default: 30)
+        output_video: Name of the output video file (default: "mosaic.mp4")
     """
-
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load all specified runs using the db helper
+    # Load all specified runs using the db helper, maintaining the order from run_ids
     runs = []
+    run_map = {}  # Dictionary to map run_id to run object
+
     for run_id in run_ids:
         run = read_run(UUID(run_id), session)
         if run:
-            runs.append(run)
+            run_map[run_id] = run
+
+    # Maintain original order from run_ids
+    for run_id in run_ids:
+        if run_id in run_map:
+            runs.append(run_map[run_id])
 
     # Find max sequence number across all runs
     max_seq = 0
@@ -116,11 +126,21 @@ def export_run_mosaic(
             if invocation.type == InvocationType.IMAGE and invocation.sequence_number > max_seq:
                 max_seq = invocation.sequence_number
 
+    # Calculate rows based on number of runs
+    rows = (len(runs) + cols - 1) // cols  # Ceiling division
+
     # Process each sequence number
-    for seq_num in range(max_seq + 1):
-        # Collect all images for this sequence number
-        images = []
-        for run in runs:
+    for seq_num in range(0, max_seq + 1, 2):
+        # Create a blank canvas for the mosaic
+        mosaic = Image.new('RGB', (cols * cell_size, rows * cell_size), (0, 0, 0))
+
+        # Place each run's image at this sequence number into the mosaic
+        # The order is preserved from the original run_ids list
+        for idx, run in enumerate(runs):
+            row = idx // cols
+            col = idx % cols
+
+            # Find the invocation with this sequence number in this run
             for invocation in run.invocations:
                 if (invocation.type == InvocationType.IMAGE and
                     invocation.sequence_number == seq_num and
@@ -130,33 +150,63 @@ def export_run_mosaic(
                     image_data = BytesIO(invocation.output_image_data)
                     image_data.seek(0)
                     img = Image.open(image_data).convert("RGB")
-                    images.append((run.id, invocation.id, img))
 
-        # Sort images for consistent ordering
-        images.sort(key=lambda x: str(x[0]) + str(x[1]))
-        just_images = [img for _, _, img in images]
+                    # If this is our first image, use its dimensions
+                    if cell_size == 512 and idx == 0:
+                        cell_size = img.width
+                        # Recreate the mosaic with the correct dimensions
+                        mosaic = Image.new('RGB', (cols * cell_size, rows * cell_size), (0, 0, 0))
 
-        # Calculate mosaic dimensions
-        rows = (len(just_images) + cols - 1) // cols  # Ceiling division
+                    # Calculate position and paste
+                    x_offset = col * cell_size
+                    y_offset = row * cell_size
+                    mosaic.paste(img, (x_offset, y_offset))
 
-        # Find max width and height for consistent cell size
-        max_width = max(img.width for img in just_images) if just_images else 0
-        max_height = max(img.height for img in just_images) if just_images else 0
-
-        # Create a blank canvas for the mosaic
-        mosaic = Image.new('RGB', (cols * max_width, rows * max_height), (0, 0, 0))
-
-        # Place images in the mosaic
-        for idx, img in enumerate(just_images):
-            row = idx // cols
-            col = idx % cols
-            # Center the image in its cell
-            x_offset = col * max_width + (max_width - img.width) // 2
-            y_offset = row * max_height + (max_height - img.height) // 2
-            mosaic.paste(img, (x_offset, y_offset))
+                    # Only use the first matching invocation
+                    break
 
         # Save the mosaic
         output_path = os.path.join(output_dir, f"{seq_num:05d}.jpg")
         mosaic.save(output_path, format="JPEG", quality=95)
 
-        logger.info(f"Saved mosaic for sequence {seq_num} with {len(just_images)} images")
+        logger.info(f"Saved mosaic for sequence {seq_num}")
+
+    # Create video from the mosaic images using ffmpeg
+    try:
+        # Get full path to output video
+        video_path = os.path.join(output_dir, output_video)
+
+        # Construct the ffmpeg command with modern settings
+        ffmpeg_cmd = [
+            'ffmpeg',
+            '-y',  # Overwrite output file if it exists
+            '-framerate', str(fps),
+            '-pattern_type', 'glob',
+            '-i', os.path.join(output_dir, '*.jpg'),
+
+            # Video codec settings - using libx264 with high quality
+            '-c:v', 'libx264',
+            '-preset', 'slow',  # Better compression at the cost of encoding speed
+            '-crf', '18',       # High quality (lower is better, 18-23 is good range)
+
+            # Color handling
+            '-color_primaries', 'bt709',
+            '-color_trc', 'bt709',
+            '-colorspace', 'bt709',
+
+            # Properly handle pixel format
+            '-pix_fmt', 'yuv420p',
+
+            # Use movflags to enable streaming
+            '-movflags', '+faststart',
+
+            video_path
+        ]
+
+        # Execute the command
+        logger.info(f"Creating video with command: {' '.join(ffmpeg_cmd)}")
+        subprocess.run(ffmpeg_cmd, check=True)
+
+        logger.info(f"Created mosaic video at {video_path}")
+    except Exception as e:
+        logger.error(f"Error creating mosaic video: {e}")
