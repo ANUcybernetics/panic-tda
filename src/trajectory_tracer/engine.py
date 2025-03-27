@@ -302,7 +302,7 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         pd.started_at = datetime.now()
 
         # Compute persistence diagram
-        pd.generators = giotto_phd(point_cloud)
+        pd.generators = giotto_phd(point_cloud)["dgms"]
 
         # Set completion timestamp
         pd.completed_at = datetime.now()
