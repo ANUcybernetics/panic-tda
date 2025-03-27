@@ -6,6 +6,7 @@ from sqlmodel import Session
 from uuid_v7.base import uuid7
 
 from trajectory_tracer.db import (
+    delete_invocation,
     get_engine_from_connection_string,
     incomplete_embeddings,
     list_embeddings,
@@ -449,3 +450,64 @@ def test_list_embeddings(db_session: Session):
     # Test with no filters
     results = list_embeddings(db_session)
     assert len(results) == 3
+
+
+def test_delete_invocation(db_session: Session):
+    """Test the delete_invocation function."""
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test delete_invocation",
+        network=["model1"],
+        seed=42,
+        max_length=3
+    )
+
+    # Create a sample invocation
+    sample_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="Sample output text",
+    )
+
+    # Create embeddings associated with the invocation
+    embedding1 = Embedding(
+        invocation_id=sample_invocation.id,
+        embedding_model="embedding_model-1"
+    )
+    embedding1.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+    embedding2 = Embedding(
+        invocation_id=sample_invocation.id,
+        embedding_model="embedding_model-2"
+    )
+    embedding2.vector = np.array([0.4, 0.5, 0.6], dtype=np.float32)
+
+    # Add everything to the session
+    db_session.add(sample_run)
+    db_session.add(sample_invocation)
+    db_session.add(embedding1)
+    db_session.add(embedding2)
+    db_session.commit()
+
+    # Verify invocation and embeddings exist
+    assert db_session.get(Invocation, sample_invocation.id) is not None
+    assert db_session.get(Embedding, embedding1.id) is not None
+    assert db_session.get(Embedding, embedding2.id) is not None
+
+    # Test delete with valid ID
+    result = delete_invocation(sample_invocation.id, db_session)
+    assert result is True
+
+    # Verify invocation and related embeddings are deleted
+    assert db_session.get(Invocation, sample_invocation.id) is None
+    assert db_session.get(Embedding, embedding1.id) is None
+    assert db_session.get(Embedding, embedding2.id) is None
+
+    # Test delete with invalid ID
+    nonexistent_id = uuid7()
+    result = delete_invocation(nonexistent_id, db_session)
+    assert result is False
