@@ -81,6 +81,27 @@ def read_invocation(invocation_id: UUID, session: Session):
     return session.get(Invocation, invocation_id)
 
 
+def delete_invocation(invocation_id: UUID, session: Session):
+    """
+    Deletes an invocation and all its related embeddings.
+
+    Args:
+        invocation_id: UUID of the invocation to fetch
+        session: The database session
+
+    Returns:
+        True if the invocation was deleted, False if not found
+    """
+    invocation = session.get(Invocation, invocation_id)
+    if not invocation:
+        return False
+
+    # This will automatically delete all related embeddings due to cascade configuration
+    session.delete(invocation)
+    session.commit()
+    return True
+
+
 def read_run(run_id: UUID, session: Session):
     """
     Fetches a single run by its UUID.
