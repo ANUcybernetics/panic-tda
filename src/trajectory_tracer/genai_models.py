@@ -24,6 +24,14 @@ logger = logging.getLogger(__name__)
 
 # Suppress warnings and progress bars
 warnings.filterwarnings("ignore", message=".*megablocks not available.*")
+warnings.filterwarnings("ignore", message=".*Flash attention is not installed.*")
+warnings.filterwarnings("ignore", message=".*xFormers is not installed.*")
+warnings.filterwarnings("ignore", message=".*Using a slow image processor.*")
+warnings.filterwarnings("ignore", category=UserWarning)
+
+# You can also suppress the "All keys matched successfully" by setting
+# the transformers logging level even more aggressively
+transformers.logging.set_verbosity_error()
 
 # Disable progress bars
 original_tqdm = tqdm
