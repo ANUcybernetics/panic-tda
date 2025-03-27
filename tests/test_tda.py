@@ -12,7 +12,7 @@ def test_giotto_phd():
     point_cloud = np.column_stack((np.cos(theta), np.sin(theta)))
 
     # Compute the persistence diagram
-    diagrams = giotto_phd(point_cloud, max_dim=1)
+    diagrams = giotto_phd(point_cloud, max_dim=2)
 
     # Check that the output is a list of ndarrays
     assert isinstance(diagrams, list)
