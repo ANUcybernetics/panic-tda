@@ -98,72 +98,34 @@ def load_runs_df(session: Session) -> pl.DataFrame:
 
 ## visualisation
 
-def plot_loop_length_by_prompt(session: Session, output_file: str) -> None:
+def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     """
-    Create a bar plot of loop length by initial prompt with jittered points.
+    Create a faceted histogram of loop length by initial prompt.
 
     Args:
-        session: SQLModel database session
+        df: a Polars DataFrame
         output_file: Path to save the visualization
     """
-    # Load embeddings data
-    df = load_embeddings_df(session)
-
     # Filter to only include rows with loop_length
     df_filtered = df.filter(pl.col("loop_length").is_not_null())
 
-    # Create Altair chart
-    # Bar chart for averages
-    bar_chart = (
+    # Create Altair faceted histogram chart
+    chart = (
         alt.Chart(df_filtered)
-        .mark_bar(opacity=0.5, color="steelblue")
+        .mark_bar()
         .encode(
-            x=alt.X("initial_prompt:N", title="Initial Prompt"),
-            y=alt.Y("mean(loop_length):Q", title="Loop Length")
+            x=alt.X("loop_length:Q", title="Loop Length", axis=alt.Axis(tickMinStep=1)),
+            y=alt.Y("count()", title=None),
+            row=alt.Row("initial_prompt:N", title=None)
         )
-    )
-
-    # Point chart with jitter for individual data points
-    point_chart = (
-        alt.Chart(df_filtered)
-        .mark_circle(size=60)
-        .encode(
-            x=alt.X(
-                "initial_prompt:N",
-                title="Initial Prompt"
-            ),
-            y=alt.Y("loop_length:Q", title="Loop Length"),
-            color=alt.Color("run_id:N", legend=None),
-            tooltip=["run_id", "loop_length", "model", "embedding_model"]
-        )
-    )
-
-    # Add jitter to points
-    jittered_points = point_chart.transform_calculate(
-        jitter="random() * 0.5"
-    ).encode(
-        x=alt.X(
-            "initial_prompt:N",
-            title="Initial Prompt",
-            band=0.5,
-            axis=alt.Axis(labelAngle=-45)
-        )
-    )
-
-    # Combine the charts
-    combined_chart = (
-        (bar_chart + jittered_points)
         .properties(
-            title="Loop Length by Initial Prompt",
-            width=800,
-            height=500
+            width=500,
+            height=300  # 3x as wide as tall
         )
-        .configure_title(fontSize=16)
-        .configure_axis(labelFontSize=12, titleFontSize=14)
     )
 
     # Save the chart
-    combined_chart.save(output_file)
+    chart.save(output_file)
 
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
