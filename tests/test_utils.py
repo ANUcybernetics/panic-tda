@@ -77,8 +77,13 @@ def test_export_run_images(db_session: Session, tmp_path):
     # Export the images
     export_run_images(run, db_session, output_dir=str(output_dir))
 
-    # Check that image files were created
-    image_files = list(output_dir.glob("*.jpg"))
+    # Check that the run-specific directory was created
+    run_dir = output_dir / str(run.id)
+    assert run_dir.exists()
+    assert run_dir.is_dir()
+
+    # Check that image files were created in the run-specific directory
+    image_files = list(run_dir.glob("*.jpg"))
 
     # We should have image outputs from DummyT2I (at positions 0 and 2)
     assert len(image_files) == 2

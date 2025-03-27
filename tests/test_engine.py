@@ -304,6 +304,92 @@ def test_compute_embeddings(db_session: Session):
     ray.kill(actor)
 
 
+def test_compute_embeddings_skips_existing(db_session: Session):
+    """Test that compute_embeddings skips invocations that already have embeddings."""
+
+    # Create a test run
+    run = Run(
+        network=["DummyT2I"],
+        initial_prompt="Test prompt for embedding skipping",
+        seed=42,
+        max_length=3,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+
+    # Create three invocations
+    invocations = []
+    for i in range(3):
+        invocation = Invocation(
+            model="DummyT2I",
+            type="image",
+            run_id=run.id,
+            sequence_number=i,
+            seed=42,
+        )
+        db_session.add(invocation)
+        db_session.commit()
+        db_session.refresh(invocation)
+
+        # Generate output for the invocation
+        image = Image.new("RGB", (50, 50), color=f"rgb({i * 50}, {i * 50}, {i * 50})")
+        invocation.output = image
+        db_session.add(invocation)
+        db_session.commit()
+
+        invocations.append(invocation)
+
+    # Create an embedding for the first invocation
+    embedding_model = "Dummy"
+    existing_embedding = Embedding(
+        invocation_id=invocations[0].id,
+        embedding_model=embedding_model,
+        vector=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+        started_at=datetime.now(),
+        completed_at=datetime.now(),
+    )
+    db_session.add(existing_embedding)
+    db_session.commit()
+    db_session.refresh(existing_embedding)
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Create an embedding actor
+    actor = get_embedding_actor_class(embedding_model).remote()
+
+    # Get invocation IDs as strings for the batch
+    invocation_ids = [str(inv.id) for inv in invocations]
+
+    # Call the compute_embeddings function with the batch of invocation IDs
+    embedding_ids_ref = compute_embeddings.remote(actor, invocation_ids, embedding_model, db_url)
+    embedding_ids = ray.get(embedding_ids_ref)
+
+    # Verify we got the right number of embeddings back (3 total)
+    assert len(embedding_ids) == 3
+
+    # Verify the first embedding ID matches our existing embedding
+    assert str(existing_embedding.id) in embedding_ids
+
+    # Verify only 2 new embeddings were actually computed
+    # (by checking embeddings for invocations 1 and 2 are different from the existing one)
+    new_embedding_ids = [eid for eid in embedding_ids if eid != str(existing_embedding.id)]
+    assert len(new_embedding_ids) == 2
+
+    # Verify each embedding in the database
+    for embedding_id in embedding_ids:
+        embedding_uuid = UUID(embedding_id)
+        embedding = db_session.get(Embedding, embedding_uuid)
+        assert embedding is not None
+        assert embedding.embedding_model == embedding_model
+        assert embedding.vector is not None
+        assert len(embedding.vector) > 0
+
+    # Clean up the actor
+    ray.kill(actor)
+
+
 def test_perform_embeddings_stage(db_session: Session):
     """Test that perform_embeddings_stage correctly processes embeddings for multiple invocations."""
     # Create a test run

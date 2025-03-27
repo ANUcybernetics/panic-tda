@@ -169,7 +169,9 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         # Load all invocations
         invocations = {}
         missing_invocations = []
-        # TODO does sqlalchemy support bulk loading?
+        existing_embedding_ids = []
+
+        # First load all invocations from database
         for invocation_id in invocation_ids:
             invocation_uuid = UUID(invocation_id)
             invocation = session.get(Invocation, invocation_uuid)
@@ -182,19 +184,35 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         if missing_invocations:
             raise ValueError(f"Invocations not found: {missing_invocations}")
 
-        # Create embedding objects for all valid invocations
+        # Create embedding objects for invocations that don't already have them
         embeddings = []
         embedding_mapping = {}  # Maps invocation_id to corresponding embedding
+        contents = []  # Contents to be embedded
+        invocations_to_process = {}  # Only invocations that need new embeddings
 
         for invocation_id, invocation in invocations.items():
-            embedding = Embedding(
-                invocation_id=UUID(invocation_id),
-                embedding_model=embedding_model,
-                vector=None,
-                started_at=datetime.now()
-            )
-            embeddings.append(embedding)
-            embedding_mapping[invocation_id] = embedding
+            # Check if this invocation already has an embedding for this model
+            existing_embedding = invocation.embedding(embedding_model)
+            if existing_embedding:
+                # If embedding already exists, add its ID to the results and skip processing
+                existing_embedding_ids.append(str(existing_embedding.id))
+            else:
+                # Only process invocations that don't have embeddings yet
+                embedding = Embedding(
+                    invocation_id=UUID(invocation_id),
+                    embedding_model=embedding_model,
+                    vector=None,
+                    started_at=datetime.now()
+                )
+                embeddings.append(embedding)
+                embedding_mapping[invocation_id] = embedding
+                contents.append(invocation.output)
+                invocations_to_process[invocation_id] = invocation
+
+        # If all invocations already have embeddings, return their IDs
+        if not embeddings:
+            logger.debug(f"All {len(existing_embedding_ids)} embeddings already exist, skipping computation")
+            return existing_embedding_ids
 
         # Save empty embeddings
         session.add_all(embeddings)
@@ -202,31 +220,25 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         for embedding in embeddings:
             session.refresh(embedding)
 
-        # Prepare content batch for embedding
-        contents = []
-        for invocation_id in invocation_ids:
-            if invocation_id in invocations:
-                contents.append(invocations[invocation_id].output)
-
         # Compute embeddings in batch if there's content to process
         if contents:
             vectors = ray.get(actor.embed.remote(contents))
 
             # Match vectors back to embeddings
-            for i, invocation_id in enumerate(invocation_ids):
-                if invocation_id in embedding_mapping:
-                    embedding = embedding_mapping[invocation_id]
-                    embedding.vector = vectors[i]
-                    embedding.completed_at = datetime.now()
+            for i, invocation_id in enumerate(invocations_to_process.keys()):
+                embedding = embedding_mapping[invocation_id]
+                embedding.vector = vectors[i]
+                embedding.completed_at = datetime.now()
 
             # Save updated embeddings
             session.add_all(embeddings)
             session.commit()
 
-        # Return list of embedding IDs
-        embedding_ids = [str(embedding.id) for embedding in embeddings]
-        logger.debug(f"Successfully computed {len(embedding_ids)} vectors in batch")
-        return embedding_ids
+        # Return list of embedding IDs (both new and existing)
+        new_embedding_ids = [str(embedding.id) for embedding in embeddings]
+        all_embedding_ids = existing_embedding_ids + new_embedding_ids
+        logger.debug(f"Successfully computed {len(new_embedding_ids)} vectors in batch (plus {len(existing_embedding_ids)} existing)")
+        return all_embedding_ids
 
 
 @ray.remote(num_cpus=8)
