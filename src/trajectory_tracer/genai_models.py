@@ -73,7 +73,7 @@ class GenAIModel:
 
 # Text2Image models
 
-@ray.remote(num_gpus=0.75)
+@ray.remote(num_gpus=0.7)
 class FluxDev(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -118,7 +118,7 @@ class FluxDev(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.75)
+@ray.remote(num_gpus=0.7)
 class FluxSchnell(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -163,7 +163,7 @@ class FluxSchnell(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.75)
+@ray.remote(num_gpus=0.7)
 class SDXLTurbo(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -198,7 +198,7 @@ class SDXLTurbo(GenAIModel):
 
 # Image2Text models
 
-@ray.remote(num_gpus=0.2)
+@ray.remote(num_gpus=0.1)
 class Moondream(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -232,7 +232,7 @@ class Moondream(GenAIModel):
         return result["caption"]
 
 
-@ray.remote(num_gpus=0.2)
+@ray.remote(num_gpus=0.1)
 class BLIP2(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
