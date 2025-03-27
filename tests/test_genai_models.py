@@ -4,6 +4,8 @@ import numpy as np
 import pytest
 import ray
 import ray.actor
+import torch
+from diffusers import FluxPipeline
 from PIL import Image
 
 from trajectory_tracer.genai_models import (
@@ -220,3 +222,58 @@ def test_image_to_text_models(model_name):
     finally:
         # Terminate the actor after test to free GPU memory
         ray.kill(model)
+
+
+@pytest.mark.slow
+def test_fluxdev_without_ray():
+    """Test FluxDev model without using Ray."""
+
+    # Skip test if no CUDA is available
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA GPU is required but not available")
+
+    # Initialize the model directly (without Ray)
+    model = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        use_fast=True
+    ).to("cuda")
+
+    # Generate image with same parameters as in FluxDev class
+    prompt = "A beautiful mountain landscape at sunset"
+    seed = 42
+    generator = torch.Generator("cuda").manual_seed(seed)
+
+    image = model(
+        prompt,
+        height=IMAGE_SIZE,
+        width=IMAGE_SIZE,
+        guidance_scale=3.5,
+        num_inference_steps=20,
+        generator=generator,
+    ).images[0]
+
+    # Verify the output
+    assert isinstance(image, Image.Image)
+    assert image.width == IMAGE_SIZE
+    assert image.height == IMAGE_SIZE
+
+    # Generate again with same seed to test determinism
+    generator = torch.Generator("cuda").manual_seed(seed)
+    image2 = model(
+        prompt,
+        height=IMAGE_SIZE,
+        width=IMAGE_SIZE,
+        guidance_scale=3.5,
+        num_inference_steps=20,
+        generator=generator,
+    ).images[0]
+
+    # Check that results are identical with same seed
+    np_image1 = np.array(image)
+    np_image2 = np.array(image2)
+    assert np.array_equal(np_image1, np_image2), "Images should be identical when using the same seed"
+
+    # Clean up GPU memory
+    del model
+    torch.cuda.empty_cache()
