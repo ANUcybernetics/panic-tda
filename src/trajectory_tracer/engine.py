@@ -470,32 +470,48 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     return pd_ids
 
 
-def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
+def perform_experiment(experiment_config_id: str, db_str: str) -> None:
     """
     Create and execute runs for all combinations defined in the ExperimentConfig using Ray.
 
     Args:
-        config: The experiment configuration
+        experiment_config_id: UUID string of the experiment configuration
         db_str: Database connection string
     """
     try:
-        # Generate cartesian product of all parameters
-        combinations = list(
-            itertools.product(
-                config.networks,
-                config.seeds,
-                config.prompts,
-            )
-        )
+        # Load the experiment config from the database
+        with get_session_from_connection_string(db_str) as session:
+            experiment_id = UUID(experiment_config_id)
+            config = session.get(ExperimentConfig, experiment_id)
+            if not config:
+                raise ValueError(f"Experiment config {experiment_config_id} not found")
 
-        total_combinations = len(combinations)
-        logger.debug(
-            f"Starting experiment with {total_combinations} total run configurations"
-        )
+            # Set started_at timestamp for experiment
+            config.started_at = datetime.now()
+            session.add(config)
+            session.commit()
+            logger.info(f"Started experiment with ID: {experiment_id}")
+
+            # Generate cartesian product of all parameters
+            combinations = list(
+                itertools.product(
+                    config.networks,
+                    config.seeds,
+                    config.prompts,
+                )
+            )
+
+            total_combinations = len(combinations)
+            logger.debug(
+                f"Starting experiment with {total_combinations} total run configurations"
+            )
 
         # Create runs for all combinations
         run_ids = []
         with get_session_from_connection_string(db_str) as session:
+            # Get the experiment again to link runs
+            config = session.get(ExperimentConfig, experiment_id)
+
             for i, (network, seed, prompt) in enumerate(combinations):
                 try:
                     # Create the run
@@ -507,6 +523,7 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
                         initial_prompt=prompt,
                         seed=seed,
                         max_length=config.max_length,
+                        experiment_id=experiment_id
                     )
 
                     # Save to database
@@ -524,13 +541,26 @@ def perform_experiment(config: ExperimentConfig, db_str: str) -> None:
         invocation_ids = perform_runs_stage(run_ids, db_str)
         logger.info(f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs")
 
+        # Reload config to get embedding models
+        with get_session_from_connection_string(db_str) as session:
+            config = session.get(ExperimentConfig, experiment_id)
+            embedding_models = config.embedding_models
+
         # Compute embeddings for all invocations
-        embedding_ids = perform_embeddings_stage(invocation_ids, config.embedding_models, db_str)
+        embedding_ids = perform_embeddings_stage(invocation_ids, embedding_models, db_str)
         logger.info(f"Computed {len(embedding_ids)} embeddings")
 
         # Compute persistence diagrams for all runs
-        perform_pd_stage(run_ids, config.embedding_models, db_str)
+        perform_pd_stage(run_ids, embedding_models, db_str)
         logger.info(f"Experiment completed with {len(run_ids)} successful runs")
+
+        # Set completed_at timestamp for experiment
+        with get_session_from_connection_string(db_str) as session:
+            experiment = session.get(ExperimentConfig, experiment_id)
+            experiment.completed_at = datetime.now()
+            session.add(experiment)
+            session.commit()
+            logger.info(f"Experiment {experiment_id} marked as completed")
 
     except Exception as e:
         logger.error(f"Error performing experiment: {e}")

@@ -16,6 +16,7 @@ from trajectory_tracer.db import (
 )
 from trajectory_tracer.schemas import (
     Embedding,
+    ExperimentConfig,
     Invocation,
     InvocationType,
     PersistenceDiagram,
@@ -511,3 +512,120 @@ def test_delete_invocation(db_session: Session):
     nonexistent_id = uuid7()
     result = delete_invocation(nonexistent_id, db_session)
     assert result is False
+
+
+def test_experiment_config_storage(db_session: Session):
+    """Test storing and retrieving ExperimentConfig objects."""
+    # Create a sample experiment config
+    experiment_config = ExperimentConfig(
+        networks=[["model1", "model2"], ["model3"]],
+        seeds=[42, 43],
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["embedding_model_1", "embedding_model_2"],
+        max_length=5,
+    )
+
+    db_session.add(experiment_config)
+    db_session.commit()
+
+    # Retrieve the experiment config from the database
+    retrieved = db_session.get(ExperimentConfig, experiment_config.id)
+
+    assert retrieved is not None
+    assert retrieved.id == experiment_config.id
+    assert retrieved.networks == [["model1", "model2"], ["model3"]]
+    assert retrieved.seeds == [42, 43]
+    assert retrieved.prompts == ["test prompt 1", "test prompt 2"]
+    assert retrieved.embedding_models == ["embedding_model_1", "embedding_model_2"]
+    assert retrieved.max_length == 5
+
+    # Test relationships
+    # Create a run linked to this experiment
+    sample_run = Run(
+        initial_prompt="test experiment config",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=5,
+        experiment_id=experiment_config.id
+    )
+
+    db_session.add(sample_run)
+    db_session.commit()
+
+    # Refresh the experiment config to get the updated relationships
+    db_session.refresh(retrieved)
+
+    # Verify the relationship
+    assert len(retrieved.runs) == 1
+    assert retrieved.runs[0].id == sample_run.id
+
+
+def test_experiment_config_cascading_delete(db_session: Session):
+    """Test that deleting an ExperimentConfig cascades to all related entities."""
+    # Create experiment config
+    experiment_config = ExperimentConfig(
+        networks=[["model1"]],
+        seeds=[42],
+        prompts=["test prompt"],
+        embedding_models=["embedding_model"],
+        max_length=3,
+    )
+
+    # Create a run linked to this experiment
+    run = Run(
+        initial_prompt="test cascade delete",
+        network=["model1"],
+        seed=42,
+        max_length=3,
+        experiment_id=experiment_config.id
+    )
+
+    # Create an invocation linked to the run
+    invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=run.id,
+        sequence_number=1,
+        output_text="Sample text",
+    )
+
+    # Create an embedding linked to the invocation
+    embedding = Embedding(
+        invocation_id=invocation.id,
+        embedding_model="embedding_model"
+    )
+    embedding.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+
+    # Add persistence diagram linked to the run
+    diagram = PersistenceDiagram(
+        run_id=run.id,
+        embedding_model="embedding_model",
+        generators=[np.array([[0.1, 0.5], [0.2, 0.7]])]
+    )
+
+    # Add everything to the session
+    db_session.add(experiment_config)
+    db_session.add(run)
+    db_session.add(invocation)
+    db_session.add(embedding)
+    db_session.add(diagram)
+    db_session.commit()
+
+    # Verify all entities exist
+    assert db_session.get(ExperimentConfig, experiment_config.id) is not None
+    assert db_session.get(Run, run.id) is not None
+    assert db_session.get(Invocation, invocation.id) is not None
+    assert db_session.get(Embedding, embedding.id) is not None
+    assert db_session.get(PersistenceDiagram, diagram.id) is not None
+
+    # Delete the experiment config
+    db_session.delete(experiment_config)
+    db_session.commit()
+
+    # Verify all related entities are deleted
+    assert db_session.get(ExperimentConfig, experiment_config.id) is None
+    assert db_session.get(Run, run.id) is None
+    assert db_session.get(Invocation, invocation.id) is None
+    assert db_session.get(Embedding, embedding.id) is None
+    assert db_session.get(PersistenceDiagram, diagram.id) is None

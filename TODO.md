@@ -1,5 +1,7 @@
 # TODO
 
+- store ExperimentConfig in the db
+
 - clustering (with optional dimensionality reduction)
 
 - visualise the time taken for the various different invocations

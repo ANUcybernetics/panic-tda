@@ -5,7 +5,13 @@ import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
 
-from trajectory_tracer.schemas import Embedding, Invocation, PersistenceDiagram, Run
+from trajectory_tracer.schemas import (
+    Embedding,
+    ExperimentConfig,
+    Invocation,
+    PersistenceDiagram,
+    Run,
+)
 
 # helper functions for working with db_str: str values
 
@@ -100,6 +106,20 @@ def delete_invocation(invocation_id: UUID, session: Session):
     session.delete(invocation)
     session.commit()
     return True
+
+
+def read_experiment_config(experiment_id: UUID, session: Session):
+    """
+    Fetches a single experiment configuration by its UUID.
+
+    Args:
+        experiment_id: UUID string of the experiment config to fetch
+        session: The database session
+
+    Returns:
+        An ExperimentConfig object or None if not found
+    """
+    return session.get(ExperimentConfig, experiment_id)
 
 
 def read_run(run_id: UUID, session: Session):

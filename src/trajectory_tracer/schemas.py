@@ -6,7 +6,7 @@ from uuid import UUID
 
 import numpy as np
 from PIL import Image
-from pydantic import BaseModel, model_validator
+from pydantic import model_validator
 from sqlalchemy import Column, LargeBinary, TypeDecorator
 from sqlmodel import JSON, Field, Relationship, SQLModel
 from uuid_v7.base import uuid7
@@ -308,6 +308,7 @@ class Invocation(SQLModel, table=True):
                 return embedding
         return None
 
+
 class Run(SQLModel, table=True):
     """
     Represents a complete run of a generative AI trajectory experiment.
@@ -324,6 +325,7 @@ class Run(SQLModel, table=True):
     seed: int
     max_length: int
     initial_prompt: str
+    experiment_id: Optional[UUID] = Field(default=None, foreign_key="experimentconfig.id", index=True)
     invocations: List[Invocation] = Relationship(
         back_populates="run",
         sa_relationship_kwargs={
@@ -334,6 +336,7 @@ class Run(SQLModel, table=True):
     persistence_diagrams: List["PersistenceDiagram"] = Relationship(
         back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
+    experiment: Optional["ExperimentConfig"] = Relationship(back_populates="runs")
 
     @model_validator(mode="after")
     def validate_fields(self):
@@ -546,7 +549,7 @@ class PersistenceDiagram(SQLModel, table=True):
         return delta.total_seconds()
 
 
-class ExperimentConfig(BaseModel):
+class ExperimentConfig(SQLModel, table=True):
     """
     Configuration for a trajectory tracer experiment.
 
@@ -558,15 +561,22 @@ class ExperimentConfig(BaseModel):
 
     model_config = {"arbitrary_types_allowed": True}
 
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
     networks: List[List[str]] = Field(
-        ..., description="List of networks (each network is a list of model names)"
+        default=None, sa_type=JSON, description="List of networks (each network is a list of model names)"
     )
-    seeds: List[int] = Field(..., description="List of random seeds to use")
-    prompts: List[str] = Field(..., description="List of initial text prompts")
+    seeds: List[int] = Field(default=None, sa_type=JSON, description="List of random seeds to use")
+    prompts: List[str] = Field(default=None, sa_type=JSON, description="List of initial text prompts")
     embedding_models: List[str] = Field(
-        ..., description="List of embedding model class names"
+        default=None, sa_type=JSON, description="List of embedding model class names"
     )
     max_length: int = Field(..., description="Number of invocations in each run")
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: datetime = Field(default_factory=datetime.now)
+    runs: List[Run] = Relationship(
+        back_populates="experiment",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
 
     @model_validator(mode="after")
     def validate_fields(self):
@@ -579,6 +589,8 @@ class ExperimentConfig(BaseModel):
         - Prompts list is not empty
         - Embedding models list is not empty
         - Maximum length is positive
+        - All models in networks are valid models in genai_models.list_models()
+        - All models in embedding_models are valid models in embeddings.list_models()
 
         Returns:
             Self if validation passes
@@ -596,4 +608,22 @@ class ExperimentConfig(BaseModel):
             raise ValueError("embedding_models list cannot be empty")
         if self.max_length <= 0:
             raise ValueError("Run length must be greater than 0")
+
+        # Import here to avoid circular imports
+        from trajectory_tracer.genai_models import list_models as list_genai_models
+        from trajectory_tracer.embeddings import list_models as list_embedding_models
+
+        # Validate genai models
+        valid_genai_models = list_genai_models()
+        for network in self.networks:
+            for model in network:
+                if model not in valid_genai_models:
+                    raise ValueError(f"Invalid generative model: {model}. Available models: {valid_genai_models}")
+
+        # Validate embedding models
+        valid_embedding_models = list_embedding_models()
+        for model in self.embedding_models:
+            if model not in valid_embedding_models:
+                raise ValueError(f"Invalid embedding model: {model}. Available models: {valid_embedding_models}")
+
         return self

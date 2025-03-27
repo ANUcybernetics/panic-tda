@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import ray
 from PIL import Image
-from sqlmodel import Session
+from sqlmodel import Session, SQLModel, create_engine
 
 from trajectory_tracer.db import (
     create_db_and_tables,
@@ -627,12 +627,37 @@ def test_perform_experiment(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the perform_experiment function
-    perform_experiment(config, db_url)
+    # Save the config to the database first
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    experiment_id = config.id
+
+    # Call the perform_experiment function with the config ID
+    perform_experiment(str(experiment_id), db_url)
+
+    # Refresh the session to see changes made by perform_experiment
+    db_session.expire_all()  # Clear any cached objects
+
+    # Verify the experiment config is stored in the database
+    stored_config = db_session.get(ExperimentConfig, experiment_id)
+    assert stored_config is not None
+    assert stored_config.networks == config.networks
+    assert stored_config.seeds == config.seeds
+    assert stored_config.prompts == config.prompts
+    assert stored_config.embedding_models == config.embedding_models
+    assert stored_config.max_length == config.max_length
+    assert stored_config.started_at is not None
+    assert stored_config.completed_at is not None
 
     # We should have 3*2*1 = 6 runs (3 seeds, 2 prompts, 1 network)
     runs = list_runs(db_session)
     assert len(runs) == 6
+
+    # Verify that all runs are linked to the experiment
+    for run in runs:
+        assert run.experiment_id == experiment_id
 
     # Total invocations will depend on the runs
     # For -1 seed runs, we should have exactly max_length invocations (5 each)
@@ -670,12 +695,31 @@ def test_perform_experiment_real_models(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the perform_experiment function
-    perform_experiment(config, db_url)
+    # Save the config to the database first
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    experiment_id = str(config.id)
+
+    # Call the perform_experiment function with the config ID
+    perform_experiment(experiment_id, db_url)
+
+    # Verify the experiment config is stored in the database
+    stored_config = db_session.get(ExperimentConfig, UUID(experiment_id))
+    assert stored_config is not None
+    assert stored_config.networks == config.networks
+    assert stored_config.seeds == config.seeds
+    assert stored_config.prompts == config.prompts
+    assert stored_config.embedding_models == config.embedding_models
+    assert stored_config.max_length == config.max_length
 
     # We should have 1*1*1 = 1 run (1 seed, 1 prompt, 1 network)
     runs = list_runs(db_session)
     assert len(runs) == 1
+
+    # Verify the run is linked to the experiment
+    assert runs[0].experiment_id == UUID(experiment_id)
 
     # Total invocations will depend on the runs
     # For -1 seed runs, we should have exactly max_length invocations (10 each)
@@ -711,12 +755,32 @@ def test_perform_experiment_real_models_2(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
-    # Call the perform_experiment function
-    perform_experiment(config, db_url)
+    # Save the config to the database first
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    experiment_id = str(config.id)
+
+    # Call the perform_experiment function with the config ID
+    perform_experiment(experiment_id, db_url)
+
+    # Verify the experiment config is stored in the database
+    stored_config = db_session.get(ExperimentConfig, UUID(experiment_id))
+    assert stored_config is not None
+    assert stored_config.networks == config.networks
+    assert stored_config.seeds == config.seeds
+    assert stored_config.prompts == config.prompts
+    assert stored_config.embedding_models == config.embedding_models
+    assert stored_config.max_length == config.max_length
 
     # We should have 2*1*1 = 2 runs (2 seeds, 1 prompt, 1 network)
     runs = list_runs(db_session)
     assert len(runs) == 2
+
+    # Verify all runs are linked to the experiment
+    for run in runs:
+        assert run.experiment_id == UUID(experiment_id)
 
     # For -1 seed runs, we should have exactly max_length invocations (100 each)
     invocations = list_invocations(db_session)
@@ -758,18 +822,37 @@ def test_perform_experiment_with_file_db():
             max_length=10,
         )
 
-        # Call the perform_experiment function with the file-based database
-        perform_experiment(config, db_url)
-
-        # Create a new session to verify the results
-        from sqlmodel import Session, SQLModel, create_engine
+        # Create an engine and session to save the config
         engine = create_engine(db_url)
         SQLModel.metadata.create_all(engine)
 
         with Session(engine) as session:
+            session.add(config)
+            session.commit()
+            session.refresh(config)
+            experiment_id = str(config.id)
+
+        # Call the perform_experiment function with the config ID and file-based database
+        perform_experiment(experiment_id, db_url)
+
+        # Create a new session to verify the results
+        with Session(engine) as session:
+            # Verify the experiment config is stored in the database
+            stored_config = session.get(ExperimentConfig, UUID(experiment_id))
+            assert stored_config is not None
+            assert stored_config.networks == config.networks
+            assert stored_config.seeds == config.seeds
+            assert stored_config.prompts == config.prompts
+            assert stored_config.embedding_models == config.embedding_models
+            assert stored_config.max_length == config.max_length
+
             # We should have 2*1*1 = 2 runs (2 seeds, 1 prompt, 1 network)
             runs = list_runs(session)
             assert len(runs) == 2
+
+            # Verify all runs are linked to the experiment
+            for run in runs:
+                assert run.experiment_id == UUID(experiment_id)
 
             # For -1 seed runs, we should have exactly max_length invocations (10 each)
             invocations = list_invocations(session)

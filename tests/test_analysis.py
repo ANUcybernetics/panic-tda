@@ -19,9 +19,14 @@ def test_load_embeddings_df(db_session):
         max_length=2,
     )
 
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
     # Run the experiment to populate database
     db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(config, db_url)
+    perform_experiment(str(config.id), db_url)
 
     # Call function under test
     df = load_embeddings_df(db_session)
@@ -85,9 +90,14 @@ def test_load_runs_df(db_session):
         max_length=2,
     )
 
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
     # Run the experiment to populate database
     db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(config, db_url)
+    perform_experiment(str(config.id), db_url)
 
     # Call function under test
     from trajectory_tracer.analysis import load_runs_df
