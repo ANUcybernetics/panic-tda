@@ -218,18 +218,6 @@ class Invocation(SQLModel, table=True):
     )
 
     @property
-    def input_data(self) -> Union[str, Image.Image, None]:
-        """
-        Get the input data for this invocation.
-
-        Returns:
-            The output of the input invocation, or None if there is no input invocation.
-        """
-        if self.input_invocation is None:
-            return None
-        return self.input_invocation.output
-
-    @property
     def output(self) -> Union[str, Image.Image, None]:
         """
         Get the output of this invocation as the appropriate type.
