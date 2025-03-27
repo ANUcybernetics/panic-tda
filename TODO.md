@@ -30,3 +30,6 @@
 - run the tests in GitHub actions
 
 - batch those suckers, all of them. might get 5x just like that.
+
+- store the loop_length in the invocation (so it doesn't have to be
+  recalculated)
