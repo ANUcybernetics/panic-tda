@@ -25,6 +25,84 @@ def ray_cleanup():
     time.sleep(1)
 
 
+@pytest.mark.parametrize("model_name", list_models())
+def test_model_output_types(model_name):
+    """Test that each model has the correct output type."""
+    # Get output type for the model
+    output_type = get_output_type(model_name)
+
+    # Check that output_type is not None
+    assert output_type is not None, f"Model {model_name} has no output_type defined"
+
+    # Models should have either TEXT or IMAGE output types
+    assert output_type in [InvocationType.TEXT, InvocationType.IMAGE], (
+        f"Model {model_name} has invalid output_type: {output_type}"
+    )
+
+
+@pytest.mark.parametrize("model_name,expected_type", [
+    ("FluxDev", InvocationType.IMAGE),
+    ("FluxSchnell", InvocationType.IMAGE),
+    ("SDXLTurbo", InvocationType.IMAGE),
+    ("BLIP2", InvocationType.TEXT),
+    ("Moondream", InvocationType.TEXT),
+    ("DummyI2T", InvocationType.TEXT),
+    ("DummyT2I", InvocationType.IMAGE),
+])
+def test_get_output_type(model_name, expected_type):
+    """Test that get_output_type returns the correct type for each model."""
+    output_type = get_output_type(model_name)
+    assert output_type == expected_type, (
+        f"Expected {expected_type} for {model_name}, got {output_type}"
+    )
+
+    # Test with nonexistent model
+    with pytest.raises(ValueError):
+        get_output_type("NonexistentModel")
+
+
+def test_list_models_function():
+    """Test that the list_models function returns a list of model names that matches our expectations."""
+
+    models = list_models()
+
+    # Check that we got a non-empty list
+    assert isinstance(models, list)
+    assert len(models) > 0
+
+    # Check that all expected models are in the list
+    expected_models = [
+        "BLIP2",
+        "DummyI2T",
+        "DummyT2I",
+        "FluxDev",
+        "FluxSchnell",
+        "Moondream",
+        "SDXLTurbo",
+    ]
+
+    for model_name in expected_models:
+        assert model_name in models, f"Expected model {model_name} not found in list_models() result"
+
+
+def test_get_actor_class():
+    """Test that the get_model_class function returns the correct Ray actor class for a given model name."""
+
+    # Test for a few models
+    for model_name in ["FluxDev", "BLIP2", "DummyT2I"]:
+        model_class = get_actor_class(model_name)
+
+        # Verify it's a Ray actor class
+        assert isinstance(model_class, ray.actor.ActorClass)
+
+        # Verify the class name matches our expectations
+        assert type(model_class).__name__ == f"ActorClass({model_name})"
+
+    # Test with nonexistent model
+    with pytest.raises(ValueError):
+        get_actor_class("NonexistentModel")
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE])
 def test_text_to_image_models(model_name):
@@ -142,82 +220,3 @@ def test_image_to_text_models(model_name):
     finally:
         # Terminate the actor after test to free GPU memory
         ray.kill(model)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("model_name", list_models())
-def test_model_output_types(model_name):
-    """Test that each model has the correct output type."""
-    # Get output type for the model
-    output_type = get_output_type(model_name)
-
-    # Check that output_type is not None
-    assert output_type is not None, f"Model {model_name} has no output_type defined"
-
-    # Models should have either TEXT or IMAGE output types
-    assert output_type in [InvocationType.TEXT, InvocationType.IMAGE], (
-        f"Model {model_name} has invalid output_type: {output_type}"
-    )
-
-
-@pytest.mark.parametrize("model_name,expected_type", [
-    ("FluxDev", InvocationType.IMAGE),
-    ("FluxSchnell", InvocationType.IMAGE),
-    ("SDXLTurbo", InvocationType.IMAGE),
-    ("BLIP2", InvocationType.TEXT),
-    ("Moondream", InvocationType.TEXT),
-    ("DummyI2T", InvocationType.TEXT),
-    ("DummyT2I", InvocationType.IMAGE),
-])
-def test_get_output_type(model_name, expected_type):
-    """Test that get_output_type returns the correct type for each model."""
-    output_type = get_output_type(model_name)
-    assert output_type == expected_type, (
-        f"Expected {expected_type} for {model_name}, got {output_type}"
-    )
-
-    # Test with nonexistent model
-    with pytest.raises(ValueError):
-        get_output_type("NonexistentModel")
-
-
-def test_list_models_function():
-    """Test that the list_models function returns a list of model names that matches our expectations."""
-
-    models = list_models()
-
-    # Check that we got a non-empty list
-    assert isinstance(models, list)
-    assert len(models) > 0
-
-    # Check that all expected models are in the list
-    expected_models = [
-        "BLIP2",
-        "DummyI2T",
-        "DummyT2I",
-        "FluxDev",
-        "FluxSchnell",
-        "Moondream",
-        "SDXLTurbo",
-    ]
-
-    for model_name in expected_models:
-        assert model_name in models, f"Expected model {model_name} not found in list_models() result"
-
-
-def test_get_actor_class():
-    """Test that the get_model_class function returns the correct Ray actor class for a given model name."""
-
-    # Test for a few models
-    for model_name in ["FluxDev", "BLIP2", "DummyT2I"]:
-        model_class = get_actor_class(model_name)
-
-        # Verify it's a Ray actor class
-        assert isinstance(model_class, ray.actor.ActorClass)
-
-        # Verify the class name matches our expectations
-        assert type(model_class).__name__ == f"ActorClass({model_name})"
-
-    # Test with nonexistent model
-    with pytest.raises(ValueError):
-        get_actor_class("NonexistentModel")
