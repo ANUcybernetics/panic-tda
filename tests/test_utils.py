@@ -5,7 +5,7 @@ from sqlmodel import Session
 
 from trajectory_tracer.genai_models import IMAGE_SIZE
 from trajectory_tracer.schemas import Invocation, InvocationType, Run
-from trajectory_tracer.utils import export_run_images
+from trajectory_tracer.utils import export_run_images, export_run_mosaic
 
 
 def test_export_run_images(db_session: Session, tmp_path):
@@ -117,3 +117,58 @@ def test_export_run_images(db_session: Session, tmp_path):
         assert (
             metadata["model"] == "DummyT2I"
         )  # Image invocations come from DummyT2I in this test
+
+
+def test_export_run_mosaic(db_session: Session, tmp_path):
+    """Test that export_run_mosaic correctly creates a mosaic grid from multiple runs."""
+    # Create 4 test runs with dummy models that will generate images
+    run_ids = []
+    for i in range(4):
+        # Create the run
+        run = Run(
+            network=["DummyT2I"],
+            initial_prompt=f"Test prompt {i} for mosaic export",
+            max_length=2,
+            seed=42 + i,
+        )
+        db_session.add(run)
+        db_session.commit()
+        db_session.refresh(run)
+        run_ids.append(str(run.id))
+
+        # Create an image invocation for each run
+        text_to_image = Invocation(
+            model="DummyT2I",
+            type=InvocationType.IMAGE,
+            seed=42 + i,
+            run_id=run.id,
+            sequence_number=0,
+        )
+
+        # Create a different colored test image for each run
+        colors = ["red", "blue", "green", "yellow"]
+        img = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=colors[i])
+        text_to_image.output = img
+
+        db_session.add(text_to_image)
+        db_session.commit()
+
+    # Create a temporary output directory
+    output_dir = tmp_path / "test_mosaic"
+
+    # Call the export_run_mosaic function with 2 columns
+    export_run_mosaic(run_ids, db_session, cols=2, output_dir=str(output_dir))
+
+    # Check that the mosaic directory was created
+    assert output_dir.exists()
+    assert output_dir.is_dir()
+
+    # Check that the mosaic file for sequence 0 was created
+    mosaic_file = output_dir / "00000.jpg"
+    assert mosaic_file.exists()
+
+    # Verify the mosaic is a valid image with expected dimensions
+    mosaic_img = Image.open(mosaic_file)
+    # Should be a 2x2 grid of IMAGE_SIZE images
+    assert mosaic_img.width == IMAGE_SIZE * 2
+    assert mosaic_img.height == IMAGE_SIZE * 2

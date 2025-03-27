@@ -2,10 +2,12 @@ import json
 import logging
 import os
 from io import BytesIO
+from uuid import UUID
 
 from PIL import Image
 from sqlmodel import Session
 
+from trajectory_tracer.db import read_run
 from trajectory_tracer.schemas import InvocationType, Run
 
 logger = logging.getLogger(__name__)
@@ -82,3 +84,79 @@ def export_run_images(
 
         except Exception as e:
             logger.error(f"Error exporting image for invocation {invocation.id}: {e}")
+
+
+def export_run_mosaic(
+    run_ids: list[str], session: Session, cols: int, output_dir: str = "output/mosaic"
+) -> None:
+    """
+    Export a mosaic of images from multiple runs.
+
+    Args:
+        run_ids: List of run IDs to include in the mosaic
+        session: SQLModel Session for database operations
+        cols: Number of columns in the mosaic grid
+        output_dir: Directory where mosaic images will be saved (default: "output/mosaic")
+    """
+
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Load all specified runs using the db helper
+    runs = []
+    for run_id in run_ids:
+        run = read_run(UUID(run_id), session)
+        if run:
+            runs.append(run)
+
+    # Find max sequence number across all runs
+    max_seq = 0
+    for run in runs:
+        for invocation in run.invocations:
+            if invocation.type == InvocationType.IMAGE and invocation.sequence_number > max_seq:
+                max_seq = invocation.sequence_number
+
+    # Process each sequence number
+    for seq_num in range(max_seq + 1):
+        # Collect all images for this sequence number
+        images = []
+        for run in runs:
+            for invocation in run.invocations:
+                if (invocation.type == InvocationType.IMAGE and
+                    invocation.sequence_number == seq_num and
+                    invocation.output_image_data):
+
+                    # Load the image
+                    image_data = BytesIO(invocation.output_image_data)
+                    image_data.seek(0)
+                    img = Image.open(image_data).convert("RGB")
+                    images.append((run.id, invocation.id, img))
+
+        # Sort images for consistent ordering
+        images.sort(key=lambda x: str(x[0]) + str(x[1]))
+        just_images = [img for _, _, img in images]
+
+        # Calculate mosaic dimensions
+        rows = (len(just_images) + cols - 1) // cols  # Ceiling division
+
+        # Find max width and height for consistent cell size
+        max_width = max(img.width for img in just_images) if just_images else 0
+        max_height = max(img.height for img in just_images) if just_images else 0
+
+        # Create a blank canvas for the mosaic
+        mosaic = Image.new('RGB', (cols * max_width, rows * max_height), (0, 0, 0))
+
+        # Place images in the mosaic
+        for idx, img in enumerate(just_images):
+            row = idx // cols
+            col = idx % cols
+            # Center the image in its cell
+            x_offset = col * max_width + (max_width - img.width) // 2
+            y_offset = row * max_height + (max_height - img.height) // 2
+            mosaic.paste(img, (x_offset, y_offset))
+
+        # Save the mosaic
+        output_path = os.path.join(output_dir, f"{seq_num:05d}.jpg")
+        mosaic.save(output_path, format="JPEG", quality=95)
+
+        logger.info(f"Saved mosaic for sequence {seq_num} with {len(just_images)} images")
