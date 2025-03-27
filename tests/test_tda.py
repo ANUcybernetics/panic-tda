@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from gtda.plotting import plot_diagram
 
 from trajectory_tracer.tda import giotto_phd
 
@@ -13,6 +14,7 @@ def test_giotto_phd():
 
     # Compute the persistence diagram
     result = giotto_phd(point_cloud, max_dim=2)
+    print(result)
 
     # Check that the output is a dictionary
     assert isinstance(result, dict)
@@ -38,6 +40,39 @@ def test_giotto_phd():
 
     # Check that entropy was computed
     assert "entropy" in result
+
+
+def test_plot_diagram():
+    """Test plotting a persistence diagram."""
+    # Create a simple point cloud (a circle-like shape)
+    n_points = 100
+    theta = np.linspace(0, 2 * np.pi, n_points)
+    point_cloud = np.column_stack((np.cos(theta), np.sin(theta)))
+
+    # Compute the persistence diagram
+    result = giotto_phd(point_cloud, max_dim=2)
+    diagrams = result["dgms"]
+
+    # Import the plotting function
+
+    # Plot the 1-dimensional homology features (the circle)
+    h1_diagram = diagrams[1]
+
+    # Add homology dimension as third column
+    h1_diagram_with_dim = np.column_stack((h1_diagram, np.ones(h1_diagram.shape[0])))
+
+    # Create the plot
+    fig = plot_diagram(h1_diagram_with_dim)
+
+    # Assert the figure is created
+    assert fig is not None
+
+    # Optional: customize the plot
+    fig.update_layout(title="Persistence Diagram for a Circle")
+
+    # Save the figure as HTML and/or image file
+    # fig.write_html("circle_persistence_diagram.html")
+    # fig.write_image("circle_persistence_diagram.png")
 
 
 @pytest.mark.benchmark
