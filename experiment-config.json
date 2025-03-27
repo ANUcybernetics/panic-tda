@@ -1,27 +1,23 @@
 {
     "networks": [
-        ["SDXLTurbo", "Moondream"],
-        ["SDXLTurbo", "BLIP2"]
+        ["FluxDev", "Moondream"],
+        ["FluxDev", "BLIP2"]
     ],
-    "seeds": [
-        -1167030881, 946055951, 1208166234, 1999933489, 1770877318, 123457890,
-        -97654321, 200202020, -101001010, 141592653, -1, -1, -1, -1, -1
-    ],
+    "seeds": [-1, -1, -1, -1, -1, -1],
     "prompts": [
-        "potato",
-        "tree",
-        "Monday",
-        "a red ball on a blue background",
-        "a blue ball on a red background",
-        "une boule rouge sur fond bleu",
-        "a horse riding an astronaut",
-        "the unbearable lightness of being",
-        "a cyberpunk city at sunset with neon signs",
-        "a medieval castle surrounded by a moat at dawn",
-        "abstract geometric shapes in pastel colors",
-        "a tropical rainforest with exotic animals",
-        "a futuristic spaceship interior with advanced technology"
+        "rat",
+        "ox",
+        "tiger",
+        "rabbit",
+        "dragon",
+        "snake",
+        "horse",
+        "goat",
+        "monkey",
+        "rooster",
+        "dog",
+        "pig"
     ],
-    "embedding_models": ["Nomic"],
+    "embedding_models": ["Nomic", "JinaClip"],
     "max_length": 1000
 }
