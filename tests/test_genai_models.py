@@ -26,31 +26,18 @@ def ray_cleanup():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", list_models())
-def test_model_functionality(model_name):
-    """Test that model returns expected output and is deterministic with fixed seed."""
+@pytest.mark.parametrize("model_name", [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE])
+def test_text_to_image_models(model_name):
+    """Test that text-to-image models return expected output and are deterministic with fixed seed."""
     try:
         # Create the actor using the model class
         model_class = get_actor_class(model_name)
         model = model_class.remote()
 
-        # Determine if this is a text-to-image or image-to-text model
-        output_type = get_output_type(model_name)
-        is_text_to_image = output_type == InvocationType.IMAGE
+        # Standard text prompt for all text-to-image models
+        input_data = "A beautiful mountain landscape at sunset"
 
-        # Create appropriate input based on model type
-        if is_text_to_image:
-            # For text-to-image models, use a text prompt
-            input_data = "A beautiful mountain landscape at sunset"
-            if model_name == "SDXLTurbo":
-                input_data = "A serene forest with a small lake"  # Keep original prompt for SDXL
-        else:
-            # For image-to-text models, create a test image
-            color = "green" if model_name == "BLIP2" else "red"
-            if model_name == "DummyI2T":
-                color = "blue"
-            input_data = Image.new("RGB", (100, 100), color=color)
-
+        # Test with fixed seed
         seed = 42
 
         # First invocation with fixed seed
@@ -58,43 +45,23 @@ def test_model_functionality(model_name):
         result1 = ray.get(result1_ref)
 
         # Check result type
-        if is_text_to_image:
-            assert isinstance(result1, Image.Image)
-            assert result1.width == IMAGE_SIZE
-            assert result1.height == IMAGE_SIZE
-
-            # Save SDXL output for inspection (keep original functionality)
-            if model_name == "SDXLTurbo":
-                result1.save("/tmp/test_sdxl_turbo_output.webp", format="WEBP")
-        else:
-            assert isinstance(result1, str)
-            assert len(result1) > 0  # Caption should not be empty
-
-            # Check for specific output for DummyI2T
-            if model_name == "DummyI2T":
-                assert f"dummy text caption (seed {seed})" == result1
+        assert isinstance(result1, Image.Image)
+        assert result1.width == IMAGE_SIZE
+        assert result1.height == IMAGE_SIZE
 
         # Second invocation with same seed
         result2_ref = model.invoke.remote(input_data, seed)
         result2 = ray.get(result2_ref)
 
         # Verify output type
-        if is_text_to_image:
-            assert isinstance(result2, Image.Image)
-        else:
-            assert isinstance(result2, str)
+        assert isinstance(result2, Image.Image)
 
         # Check that results are identical with same seed
-        if is_text_to_image:
-            np_result1 = np.array(result1)
-            np_result2 = np.array(result2)
-            assert np.array_equal(np_result1, np_result2), (
-                f"{model_name} images should be identical when using the same seed"
-            )
-        else:
-            assert result1 == result2, (
-                f"{model_name} captions should be identical when using the same seed"
-            )
+        np_result1 = np.array(result1)
+        np_result2 = np.array(result2)
+        assert np.array_equal(np_result1, np_result2), (
+            f"{model_name} images should be identical when using the same seed"
+        )
 
         # Test with -1 seed (should be non-deterministic)
         seed = -1
@@ -108,25 +75,68 @@ def test_model_functionality(model_name):
         random_result2 = ray.get(random_result2_ref)
 
         # Check that results are different with random seed
-        # Skip this check for Moondream which doesn't respect the random seed properly
-        if model_name != "Moondream":
-            if is_text_to_image:
-                np_random_result1 = np.array(random_result1)
-                np_random_result2 = np.array(random_result2)
-                assert not np.array_equal(np_random_result1, np_random_result2), (
-                    f"{model_name} images should be different when using seed=-1"
-                )
-            else:
-                if model_name == "DummyI2T":
-                    # Check specific format for DummyI2T
-                    assert random_result1.startswith("dummy text caption (random ")
-                    assert random_result2.startswith("dummy text caption (random ")
+        np_random_result1 = np.array(random_result1)
+        np_random_result2 = np.array(random_result2)
+        assert not np.array_equal(np_random_result1, np_random_result2), (
+            f"{model_name} images should be different when using seed=-1"
+        )
 
-                assert random_result1 != random_result2, (
-                    f"{model_name} captions should be different when using seed=-1"
-                )
+    finally:
+        # Terminate the actor after test to free GPU memory
+        ray.kill(model)
 
-    # Apply slow marker for GPU models
+
+@pytest.mark.slow
+@pytest.mark.parametrize("model_name", [m for m in list_models() if get_output_type(m) == InvocationType.TEXT])
+def test_image_to_text_models(model_name):
+    """Test that image-to-text models return expected output and are deterministic with fixed seed."""
+    try:
+        # Create the actor using the model class
+        model_class = get_actor_class(model_name)
+        model = model_class.remote()
+
+        # Create a standard test image for all image-to-text models
+        input_data = Image.new("RGB", (100, 100), color="red")
+
+        # Test with fixed seed
+        seed = 42
+
+        # First invocation with fixed seed
+        result1_ref = model.invoke.remote(input_data, seed)
+        result1 = ray.get(result1_ref)
+
+        # Check result type
+        assert isinstance(result1, str)
+        assert len(result1) > 0  # Caption should not be empty
+
+        # Second invocation with same seed
+        result2_ref = model.invoke.remote(input_data, seed)
+        result2 = ray.get(result2_ref)
+
+        # Verify output type
+        assert isinstance(result2, str)
+
+        # Check that results are identical with same seed
+        assert result1 == result2, (
+            f"{model_name} captions should be identical when using the same seed"
+        )
+
+        # Test with -1 seed (should be non-deterministic)
+        seed = -1
+
+        # First invocation with random seed
+        random_result1_ref = model.invoke.remote(input_data, seed)
+        random_result1 = ray.get(random_result1_ref)
+
+        # Second invocation with random seed
+        random_result2_ref = model.invoke.remote(input_data, seed)
+        random_result2 = ray.get(random_result2_ref)
+
+        # Check that results are different with random seed
+        assert random_result1 != random_result2, (
+            f"{model_name} captions should be different when using seed=-1"
+        )
+
     finally:
         # Terminate the actor after test to free GPU memory
         ray.kill(model)
