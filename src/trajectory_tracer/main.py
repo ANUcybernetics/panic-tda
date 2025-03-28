@@ -10,6 +10,7 @@ from trajectory_tracer.db import (
     count_invocations,
     create_db_and_tables,
     get_session_from_connection_string,
+    latest_experiment,
     list_experiments,
     list_runs
 )
