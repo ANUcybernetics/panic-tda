@@ -23,3 +23,5 @@ nohup uv run trajectory-tracer perform-experiment "$CONFIG_FILE" > "$LOG_FILE" 2
 
 # Print the background job PID
 echo "Started background job with PID: $!"
+
+tail -f $LOG_FILE
