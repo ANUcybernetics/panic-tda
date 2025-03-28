@@ -491,6 +491,7 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             session.add(config)
             session.commit()
             logger.info(f"Started experiment with ID: {experiment_id}")
+            logger.info(f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`")
 
             # Generate cartesian product of all parameters
             combinations = list(
