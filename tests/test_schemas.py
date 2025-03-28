@@ -228,87 +228,83 @@ def test_run_network_property():
 def test_experiment_config():
     """Test that ExperimentConfig can be properly loaded and validated."""
 
-    config_data = {
-        "networks": [["DummyI2T", "DummyT2I"], ["DummyT2I"]],
-        "seeds": [42, 123],
-        "prompts": ["First prompt", "Second prompt"],
-        "embedding_models": ["embedding_model1", "embedding_model2"],
-        "max_length": 5,
-    }
+    # Create config directly without going through JSON file
+    config = ExperimentConfig(
+        networks=[["DummyI2T", "DummyT2I"]],
+        seeds=[42, 123],
+        prompts=["First prompt", "Second prompt"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=5,
+    )
 
-    # Create a temporary JSON file
-    with tempfile.NamedTemporaryFile(suffix=".json", mode="w+", delete=False) as f:
-        json.dump(config_data, f)
-        config_path = Path(f.name)
+    # Manually call validate_fields since it doesn't happen in constructor
+    config.validate_fields()
 
-    try:
-        # Load the config from the file
-        with open(config_path, "r") as f:
-            loaded_data = json.load(f)
+    # Validate the config
+    assert len(config.networks) == 1
+    assert config.networks[0] == ["DummyI2T", "DummyT2I"]
+    assert config.seeds == [42, 123]
+    assert config.prompts == ["First prompt", "Second prompt"]
+    assert config.embedding_models == ["Dummy", "Dummy2"]
+    assert config.max_length == 5
 
-        config = ExperimentConfig(**loaded_data)
-
-        # Validate the config
-        assert len(config.networks) == 2
-        assert config.networks[0] == ["DummyI2T", "DummyT2I"]
-        assert config.seeds == [42, 123]
-        assert config.prompts == ["First prompt", "Second prompt"]
-        assert config.embedding_models == ["embedding_model1", "embedding_model2"]
-        assert config.max_length == 5
-
-        # Test validation error with unequal list lengths
-        invalid_data = config_data.copy()
-        invalid_data["seeds"] = []  # no seeds now
-
-        with pytest.raises(ValueError):
-            config = ExperimentConfig(**invalid_data)
-
-    finally:
-        # Clean up the temporary file
-        config_path.unlink()
+    # Test validation error with empty seeds list
+    config_with_empty_seeds = ExperimentConfig(
+        networks=[["DummyI2T", "DummyT2I"]],
+        seeds=[],  # empty seeds list
+        prompts=["First prompt", "Second prompt"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=5,
+    )
+    with pytest.raises(ValueError):
+        config_with_empty_seeds.validate_fields()
 
 
 def test_experiment_config_invalid_values():
     """Test that ExperimentConfig raises errors for invalid values."""
     # Test empty list validation
+    config = ExperimentConfig(
+        networks=[],
+        seeds=[42],
+        prompts=["test"],
+        embedding_models=["test"],
+        max_length=5,
+    )
     with pytest.raises(ValueError, match="Networks list cannot be empty"):
-        ExperimentConfig(
-            networks=[],
-            seeds=[42],
-            prompts=["test"],
-            embedding_models=["test"],
-            max_length=5,
-        )
+        config.validate_fields()
 
     # Test zero max_length validation
+    config = ExperimentConfig(
+        networks=[["DummyI2T"]],
+        seeds=[42],
+        prompts=["test"],
+        embedding_models=["test"],
+        max_length=0,
+    )
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
-        ExperimentConfig(
-            networks=[["DummyI2T"]],
-            seeds=[42],
-            prompts=["test"],
-            embedding_models=["test"],
-            max_length=0,
-        )
+        config.validate_fields()
 
     # Test negative max_length validation
+    config = ExperimentConfig(
+        networks=[["DummyI2T"]],
+        seeds=[42],
+        prompts=["test"],
+        embedding_models=["test"],
+        max_length=-5,
+    )
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
-        ExperimentConfig(
-            networks=[["DummyI2T"]],
-            seeds=[42],
-            prompts=["test"],
-            embedding_models=["test"],
-            max_length=-5,
-        )
+        config.validate_fields()
 
     # Test missing required field
     with pytest.raises(ValueError):
-        ExperimentConfig(
+        config = ExperimentConfig(
             networks=[["DummyI2T"]],
             seeds=[42],
             prompts=["test"],
             # Missing embedding_models
             max_length=5,
         )
+        config.validate_fields()  # Call validate explicitly
 
 
 def test_invocation_duration_property():
@@ -355,7 +351,7 @@ def test_persistence_diagram_creation():
         np.array([[0.3, 0.6], [0.4, 0.9]], dtype=np.float32),
     ]
 
-    diagram = PersistenceDiagram(run_id=run_id, generators=generators)
+    diagram = PersistenceDiagram(run_id=run_id, generators=generators, embedding_model="test-model")
 
     assert diagram.run_id == run_id
     assert len(diagram.generators) == 2
@@ -369,7 +365,7 @@ def test_persistence_diagram_creation():
 def test_persistence_diagram_duration_property():
     """Test the duration property of PersistenceDiagram."""
     run_id = uuid7()
-    diagram = PersistenceDiagram(run_id=run_id)
+    diagram = PersistenceDiagram(run_id=run_id, embedding_model="test-model")
 
     # With no timestamps, duration should be 0
     assert diagram.duration == 0.0
