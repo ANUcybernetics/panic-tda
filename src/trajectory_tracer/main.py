@@ -210,8 +210,8 @@ def list_experiments_command(
 @app.command("experiment-status")
 def experiment_status(
     experiment_id: str = typer.Argument(
-        ...,
-        help="ID of the experiment to check status for",
+        None,
+        help="ID of the experiment to check status for (defaults to the most recent experiment)",
     ),
     db_path: Path = typer.Option(
         "output/db/trajectory_data.sqlite",
@@ -232,10 +232,19 @@ def experiment_status(
 
     # Get the experiment and print status
     with get_session_from_connection_string(db_str) as session:
-        experiment = session.get(ExperimentConfig, UUID(experiment_id))
-        if not experiment:
-            logger.error(f"Experiment with ID {experiment_id} not found")
-            raise typer.Exit(code=1)
+        experiment = None
+
+        if experiment_id is None or experiment_id.lower() == "latest":
+            experiment = latest_experiment(session)
+            if not experiment:
+                logger.error("No experiments found in the database")
+                raise typer.Exit(code=1)
+            logger.info(f"Using latest experiment with ID: {experiment.id}")
+        else:
+            experiment = session.get(ExperimentConfig, UUID(experiment_id))
+            if not experiment:
+                logger.error(f"Experiment with ID {experiment_id} not found")
+                raise typer.Exit(code=1)
 
         experiment.print_status()
 
