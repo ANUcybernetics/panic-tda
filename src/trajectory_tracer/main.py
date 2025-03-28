@@ -108,17 +108,6 @@ def perform_experiment(
         with open(config_file, "r") as f:
             config_data = json.load(f)
 
-        # Create experiment config from JSON
-        config = ExperimentConfig(**config_data)
-        # Calculate total number of runs that will be generated
-        total_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
-
-        logger.info(
-            f"Configuration loaded successfully: {len(config.networks)} networks, "
-            f"{len(config.seeds)} seeds, {len(config.prompts)} prompts, "
-            f"for a total of {total_runs} runs"
-        )
-
         # Create database engine and tables
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Creating/connecting to database at {db_path}")
@@ -126,12 +115,30 @@ def perform_experiment(
         # Call the create_db_and_tables function
         create_db_and_tables(db_str)
 
+        # Create experiment config from JSON and save to database
+        with get_session_from_connection_string(db_str) as session:
+            config = ExperimentConfig(**config_data)
+            session.add(config)
+            session.commit()
+            session.refresh(config)
+
+            # Calculate total number of runs that will be generated
+            total_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
+
+            logger.info(
+                f"Configuration loaded successfully: {len(config.networks)} networks, "
+                f"{len(config.seeds)} seeds, {len(config.prompts)} prompts, "
+                f"for a total of {total_runs} runs"
+            )
+
+            # Get the config ID to pass to the engine
+            config_id = str(config.id)
+
         # Run the experiment
-        logger.info("Starting experiment...")
-        engine.perform_experiment(config, db_str)
+        logger.info(f"Starting experiment with config ID: {config_id}")
+        engine.perform_experiment(config_id, db_str)
 
         logger.info(f"Experiment completed successfully. Results saved to {db_path}")
-
     except Exception as e:
         logger.error(f"Early termination of experiment: {e}")
         raise typer.Exit(code=1)
