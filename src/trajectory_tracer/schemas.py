@@ -642,7 +642,7 @@ class ExperimentConfig(SQLModel, table=True):
         if min_sequence == float('inf'):
             min_sequence = 0
 
-        invocation_percent = (min_sequence / (self.max_length - 1)) * 100
+        invocation_percent = ((min_sequence + 1) / self.max_length) * 100
 
         # Embedding progress
         total_invocations = sum(len(run.invocations) for run in self.runs)
@@ -658,7 +658,7 @@ class ExperimentConfig(SQLModel, table=True):
         # Format the status report
         print(
             f"Experiment Status:\n"
-            f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence}/{self.max_length - 1})\n"
+            f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence + 1}/{self.max_length})\n"
             f"  Embedding Progress:  {embedding_percent:.1f}% ({actual_embeddings}/{expected_embeddings})\n"
             f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs})"
             f"\n  Elapsed Time: {(datetime.now() - self.started_at).total_seconds():.1f} seconds"
