@@ -10,7 +10,8 @@ from trajectory_tracer.db import (
     count_invocations,
     create_db_and_tables,
     get_session_from_connection_string,
-    list_runs,
+    list_experiments,
+    list_runs
 )
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
@@ -142,6 +143,101 @@ def perform_experiment(
     except Exception as e:
         logger.error(f"Early termination of experiment: {e}")
         raise typer.Exit(code=1)
+
+
+@app.command("list-experiments")
+def list_experiments_command(
+    db_path: Path = typer.Option(
+        "output/db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show full experiment details"
+    ),
+):
+    """
+    List all experiments stored in the database.
+
+    Displays experiment IDs and basic information about each experiment.
+    Use --verbose for more detailed output.
+    """
+    try:
+        # Create database connection
+        db_str = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+
+        # List all experiments using the function from db module
+        with get_session_from_connection_string(db_str) as session:
+            experiments = list_experiments(session)
+
+            if not experiments:
+                typer.echo("No experiments found in the database.")
+                return
+
+            typer.echo(f"Found {len(experiments)} experiments:")
+
+            for experiment in experiments:
+                run_count = len(experiment.runs)
+
+                if verbose:
+                    # Detailed output
+                    typer.echo(f"\nExperiment ID: {experiment.id}")
+                    typer.echo(f"  Started: {experiment.started_at}")
+                    typer.echo(f"  Completed: {experiment.completed_at}")
+                    typer.echo(f"  Networks: {len(experiment.networks)}")
+                    typer.echo(f"  Seeds: {len(experiment.seeds)}")
+                    typer.echo(f"  Prompts: {len(experiment.prompts)}")
+                    typer.echo(f"  Embedding models: {experiment.embedding_models}")
+                    typer.echo(f"  Max length: {experiment.max_length}")
+                    typer.echo(f"  Runs: {run_count}")
+                else:
+                    # Simple output
+                    elapsed = (experiment.completed_at - experiment.started_at).total_seconds()
+                    typer.echo(
+                        f"{experiment.id} - runs: {run_count}, "
+                        f"max_length: {experiment.max_length}, "
+                        f"started: {experiment.started_at.strftime('%Y-%m-%d %H:%M')}, "
+                        f"elapsed: {elapsed:.1f}s"
+                    )
+
+    except Exception as e:
+        logger.error(f"Error listing experiments: {e}")
+        raise typer.Exit(code=1)
+
+
+@app.command("experiment-status")
+def experiment_status(
+    experiment_id: str = typer.Argument(
+        ...,
+        help="ID of the experiment to check status for",
+    ),
+    db_path: Path = typer.Option(
+        "output/db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+):
+    """
+    Get the status of a trajectory tracer experiment.
+
+    Shows the progress of the experiment, including invocation, embedding, and
+    persistence diagram completion percentages.
+    """
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    # Get the experiment and print status
+    with get_session_from_connection_string(db_str) as session:
+        experiment = session.get(ExperimentConfig, UUID(experiment_id))
+        if not experiment:
+            logger.error(f"Experiment with ID {experiment_id} not found")
+            raise typer.Exit(code=1)
+
+        experiment.print_status()
 
 
 @app.command("list-runs")
