@@ -166,6 +166,21 @@ def list_runs(session: Session):
     statement = select(Run)
     return session.exec(statement).all()
 
+
+def latest_experiment(session: Session):
+    """
+    Returns the most recent experiment configuration ordered by started_at time.
+
+    Args:
+        session: The database session
+
+    Returns:
+        The most recent ExperimentConfig object or None if no experiments exist
+    """
+    statement = select(ExperimentConfig).order_by(ExperimentConfig.started_at.desc()).limit(1)
+    return session.exec(statement).first()
+
+
 def list_experiments(session: Session):
     """
     Returns all experiment configurations.

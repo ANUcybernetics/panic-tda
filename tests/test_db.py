@@ -1,3 +1,4 @@
+import time
 from uuid import UUID
 
 import numpy as np
@@ -9,6 +10,7 @@ from trajectory_tracer.db import (
     delete_invocation,
     get_engine_from_connection_string,
     incomplete_embeddings,
+    latest_experiment,
     list_embeddings,
     list_invocations,
     read_invocation,
@@ -629,3 +631,50 @@ def test_experiment_config_cascading_delete(db_session: Session):
     assert db_session.get(Invocation, invocation.id) is None
     assert db_session.get(Embedding, embedding.id) is None
     assert db_session.get(PersistenceDiagram, diagram.id) is None
+
+
+def test_latest_experiment(db_session: Session):
+    """Test the latest_experiment function."""
+    # Create multiple experiment configs with different timestamps
+    experiment_config1 = ExperimentConfig(
+        networks=[["model1"]],
+        seeds=[42],
+        prompts=["test prompt 1"],
+        embedding_models=["embedding_model_1"],
+        max_length=3,
+    )
+
+    experiment_config2 = ExperimentConfig(
+        networks=[["model2"]],
+        seeds=[43],
+        prompts=["test prompt 2"],
+        embedding_models=["embedding_model_2"],
+        max_length=4,
+    )
+
+    # Add to the session with a delay to ensure different timestamps
+    db_session.add(experiment_config1)
+    db_session.commit()
+
+    time.sleep(0.1)  # Small delay to ensure different timestamps
+
+    db_session.add(experiment_config2)
+    db_session.commit()
+
+    # Import the function to test
+
+    # Test the function
+    latest = latest_experiment(db_session)
+
+    # Verify we got the most recent experiment
+    assert latest is not None
+    assert latest.id == experiment_config2.id
+    assert latest.prompts == ["test prompt 2"]
+    assert latest.networks == [["model2"]]
+
+    # Test with no experiments in the database
+    db_session.delete(experiment_config1)
+    db_session.delete(experiment_config2)
+    db_session.commit()
+
+    assert latest_experiment(db_session) is None
