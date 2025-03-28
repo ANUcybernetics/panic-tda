@@ -12,7 +12,7 @@ from trajectory_tracer.db import (
     get_session_from_connection_string,
     latest_experiment,
     list_experiments,
-    list_runs
+    list_runs,
 )
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
