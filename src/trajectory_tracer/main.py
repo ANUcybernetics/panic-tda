@@ -110,6 +110,12 @@ def perform_experiment(
         with open(config_file, "r") as f:
             config_data = json.load(f)
 
+        # Handle seed_count if present
+        if "seed_count" in config_data:
+            seed_count = config_data.pop("seed_count")
+            config_data["seeds"] = [-1] * seed_count
+            logger.info(f"Using seed_count={seed_count}, generated {seed_count} seeds with value -1")
+
         # Create database engine and tables
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Creating/connecting to database at {db_path}")
