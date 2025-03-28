@@ -610,3 +610,61 @@ def test_nomic_embedding_actor_pool():
         if 'actors' in locals():
             for actor in actors:
                 ray.kill(actor)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("batch_size", [1, 8, 32, 64])
+@pytest.mark.parametrize("size", [100, 512, 1024])
+def test_jinaclip_image_embedding(batch_size, size):
+    """Test the JinaClip embedding model with various image sizes and batch sizes."""
+    try:
+        # Create the model actor
+        model_name = "JinaClip"
+        model_class = get_actor_class(model_name)
+        model = model_class.remote()
+
+        # Create square images with varied content
+        sample_images = [
+            Image.new("RGB", (size, size),
+                     color=((i*37) % 255, (i*73) % 255, (i*113) % 255))
+            for i in range(batch_size)
+        ]
+
+        # Measure time to process the image batch
+        start_time = time.time()
+
+        # Get embeddings for the batch
+        image_embedding_ref = model.embed.remote(sample_images)
+        image_embeddings = ray.get(image_embedding_ref)
+
+        elapsed_time = time.time() - start_time
+
+        # Verify we got the correct number of embeddings
+        assert len(image_embeddings) == batch_size
+
+        # Check that all embeddings have the expected properties
+        for embedding in image_embeddings:
+            assert embedding is not None
+            assert len(embedding) == 768  # Expected dimension
+            assert embedding.dtype == np.float32
+            assert not np.all(embedding == 0)  # Should not be all zeros
+            # Check for valid range of values
+            assert -10 < np.min(embedding) < 10
+            assert -10 < np.max(embedding) < 10
+
+        # Run again with same inputs to test determinism
+        image_embedding_ref2 = model.embed.remote(sample_images)
+        image_embeddings2 = ray.get(image_embedding_ref2)
+
+        # Verify determinism
+        for i in range(batch_size):
+            assert np.array_equal(image_embeddings[i], image_embeddings2[i])
+
+        # Log performance metrics
+        print(f"JinaClip - Image size {size}x{size}, batch size {batch_size}: "
+              f"processed in {elapsed_time:.3f}s, {elapsed_time/batch_size:.3f}s per item")
+
+    finally:
+        # Terminate the actor to clean up resources
+        if 'model' in locals():
+            ray.kill(model)
