@@ -609,3 +609,57 @@ class ExperimentConfig(SQLModel, table=True):
                 raise ValueError(f"Invalid embedding model: {model}. Available models: {valid_embedding_models}")
 
         return self
+
+    def print_status(self) -> None:
+        """
+        Get a status report of the experiment's progress.
+
+        Reports:
+        - Invocation progress: Percentage of maximum sequence number out of max_length
+        - Embedding progress: Percentage of completed embeddings out of expected total
+        - Persistence diagram progress: Percentage of runs with completed diagrams
+
+        Returns:
+            A multi-line string with the formatted status report
+        """
+        # Initialize counters
+        total_runs = len(self.runs)
+        if total_runs == 0:
+            return "No runs found in experiment"
+
+        # Invocation progress
+        min_sequence = float('inf')
+        for run in self.runs:
+            # Skip runs that stopped due to duplicate outputs
+            if isinstance(run.stop_reason, tuple) and run.stop_reason[0] == "duplicate":
+                continue
+
+            # Find max sequence number for this run
+            max_seq = max([inv.sequence_number for inv in run.invocations], default=0)
+            min_sequence = min(min_sequence, max_seq)
+
+        # If all runs were duplicates, set to 0
+        if min_sequence == float('inf'):
+            min_sequence = 0
+
+        invocation_percent = (min_sequence / (self.max_length - 1)) * 100
+
+        # Embedding progress
+        total_invocations = sum(len(run.invocations) for run in self.runs)
+        expected_embeddings = total_invocations * len(self.embedding_models)
+        actual_embeddings = sum(len(run.embeddings.get(model, [])) for run in self.runs
+                            for model in self.embedding_models)
+        embedding_percent = (actual_embeddings / expected_embeddings) * 100
+
+        # Persistence diagram progress
+        runs_with_diagrams = sum(1 for run in self.runs if len(run.persistence_diagrams) > 0)
+        diagram_percent = (runs_with_diagrams / total_runs) * 100
+
+        # Format the status report
+        print(
+            f"Experiment Status:\n"
+            f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence}/{self.max_length - 1})\n"
+            f"  Embedding Progress:  {embedding_percent:.1f}% ({actual_embeddings}/{expected_embeddings})\n"
+            f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs})"
+            f"\n  Elapsed Time: {(datetime.now() - self.started_at).total_seconds():.1f} seconds"
+        )
