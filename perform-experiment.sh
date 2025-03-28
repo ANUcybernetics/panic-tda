@@ -12,7 +12,7 @@ CONFIG_FILE=$1
 mkdir -p logs
 
 # Generate a timestamp for the log file
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 LOG_FILE="logs/experiment_${TIMESTAMP}.log"
 
 echo "Starting experiment with config: $CONFIG_FILE"

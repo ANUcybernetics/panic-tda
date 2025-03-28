@@ -4,7 +4,7 @@
 mkdir -p logs
 
 # Generate a timestamp for the log file
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 LOG_FILE="logs/script_${TIMESTAMP}.log"
 
 echo "Starting script with config: $CONFIG_FILE"
