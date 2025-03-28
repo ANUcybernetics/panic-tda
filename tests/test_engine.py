@@ -802,6 +802,69 @@ def test_perform_experiment_real_models_2(db_session: Session):
 
 
 @pytest.mark.slow
+def test_perform_experiment_with_real_models_3(db_session: Session):
+    """Test that perform_experiment correctly executes an experiment with FluxSchnell and Moondream."""
+    # Create a test experiment config from test-config.json
+    config = ExperimentConfig(
+        networks=[["FluxSchnell", "Moondream"]],
+        seeds=[-1],
+        prompts=["Look on my Works, ye Mighty, and despair!"],
+        embedding_models=["JinaClip"],
+        max_length=2,
+    )
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Save the config to the database first
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    experiment_id = str(config.id)
+
+    # Call the perform_experiment function with the config ID
+    perform_experiment(experiment_id, db_url)
+
+    # Verify the experiment config is stored in the database
+    stored_config = db_session.get(ExperimentConfig, UUID(experiment_id))
+    assert stored_config is not None
+    assert stored_config.networks == config.networks
+    assert stored_config.seeds == config.seeds
+    assert stored_config.prompts == config.prompts
+    assert stored_config.embedding_models == config.embedding_models
+    assert stored_config.max_length == config.max_length
+
+    # We should have 1*1*1 = 1 run (1 seed, 1 prompt, 1 network)
+    runs = list_runs(db_session)
+    assert len(runs) == 1
+
+    # Verify the run is linked to the experiment
+    assert runs[0].experiment_id == UUID(experiment_id)
+
+    # For -1 seed run with max_length 2, we should have exactly 2 invocations
+    invocations = list_invocations(db_session)
+    assert len(invocations) == 2
+
+    # Each invocation should have 1 embedding (one embedding model)
+    embeddings = list_embeddings(db_session)
+    assert len(embeddings) == len(invocations)
+
+    # We should have 1 run * 1 embedding model = 1 persistence diagram
+    pds = list_persistence_diagrams(db_session)
+    assert len(pds) == 1
+
+    # Verify the persistence diagram has generators
+    pd = pds[0]
+    assert pd.generators is not None
+    assert len(pd.generators) > 0
+
+    # Verify the invocation models match our expected network
+    assert invocations[0].model == "FluxSchnell"
+    assert invocations[1].model == "Moondream"
+
+
+@pytest.mark.slow
 def test_perform_experiment_with_file_db():
     """Test perform_experiment with a file-based database instead of in-memory."""
 
