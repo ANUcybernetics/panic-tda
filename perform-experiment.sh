@@ -16,7 +16,7 @@ TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 LOG_FILE="logs/experiment_${TIMESTAMP}.log"
 
 echo "Starting experiment with config: $CONFIG_FILE"
-echo "Output will be logged to: $LOG_FILE"
+echo "To tail log file: tail -f $LOG_FILE"
 
 # Run the experiment in background with nohup
 nohup uv run trajectory-tracer perform-experiment "$CONFIG_FILE" > "$LOG_FILE" 2>&1 &
