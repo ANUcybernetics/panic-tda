@@ -243,6 +243,132 @@ def test_get_actor_class():
         get_actor_class("NonexistentModel")
 
 
+def test_run_missing_embeddings(db_session):
+    """Test that the Run.missing_embeddings method correctly identifies invocations without embeddings."""
+    try:
+        # Create a run
+        run = Run(
+            network=["DummyT2I", "DummyI2T"],
+            seed=42,
+            max_length=3,
+            initial_prompt="Test prompt",
+        )
+        db_session.add(run)
+        db_session.commit()
+        db_session.refresh(run)
+
+        # Create three invocations
+        invocation1 = Invocation(
+            model="DummyT2I",
+            type=InvocationType.TEXT,
+            seed=42,
+            run_id=run.id,
+            sequence_number=0,
+            output_text="First invocation",
+        )
+        db_session.add(invocation1)
+
+        invocation2 = Invocation(
+            model="DummyI2T",
+            type=InvocationType.TEXT,
+            seed=42,
+            run_id=run.id,
+            sequence_number=1,
+            output_text="Second invocation",
+        )
+        db_session.add(invocation2)
+
+        invocation3 = Invocation(
+            model="DummyT2I",
+            type=InvocationType.TEXT,
+            seed=42,
+            run_id=run.id,
+            sequence_number=2,
+            output_text="Third invocation",
+        )
+        db_session.add(invocation3)
+        db_session.commit()
+        db_session.refresh(run)
+
+        # Create a dummy model for embeddings
+        dummy_model = Dummy.remote()
+
+        # Get embeddings for the first and third invocations only
+        embedding_vector1_ref = dummy_model.embed.remote([invocation1.output])
+        embedding_vectors1 = ray.get(embedding_vector1_ref)
+        embedding_vector1 = embedding_vectors1[0]
+
+        embedding_vector3_ref = dummy_model.embed.remote([invocation3.output])
+        embedding_vectors3 = ray.get(embedding_vector3_ref)
+        embedding_vector3 = embedding_vectors3[0]
+
+        # Add embeddings for only the first and third invocations with "Dummy" model
+        embedding1 = Embedding(
+            invocation_id=invocation1.id,
+            embedding_model="Dummy",
+            vector=embedding_vector1,
+        )
+        db_session.add(embedding1)
+
+        embedding3 = Embedding(
+            invocation_id=invocation3.id,
+            embedding_model="Dummy",
+            vector=embedding_vector3,
+        )
+        db_session.add(embedding3)
+
+        # Add an embedding for the first invocation with "Dummy2" model
+        dummy2_model = Dummy2.remote()
+        embedding_vector1_2_ref = dummy2_model.embed.remote([invocation1.output])
+        embedding_vectors1_2 = ray.get(embedding_vector1_2_ref)
+        embedding_vector1_2 = embedding_vectors1_2[0]
+
+        embedding1_2 = Embedding(
+            invocation_id=invocation1.id,
+            embedding_model="Dummy2",
+            vector=embedding_vector1_2,
+        )
+        db_session.add(embedding1_2)
+
+        # Add an embedding with null vector for the second invocation
+        embedding2 = Embedding(
+            invocation_id=invocation2.id,
+            embedding_model="Dummy",
+            vector=None,
+        )
+        db_session.add(embedding2)
+
+        db_session.commit()
+        db_session.refresh(run)
+
+        # Test missing_embeddings for "Dummy" model
+        missing_dummy = run.missing_embeddings("Dummy")
+
+        # Should return invocation2 because it has a null vector
+        assert len(missing_dummy) == 1
+        assert missing_dummy[0].id == invocation2.id
+
+        # Test missing_embeddings for "Dummy2" model
+        missing_dummy2 = run.missing_embeddings("Dummy2")
+
+        # Should return invocation2 and invocation3 (both missing for Dummy2)
+        assert len(missing_dummy2) == 2
+        assert {inv.id for inv in missing_dummy2} == {invocation2.id, invocation3.id}
+
+        # Test missing_embeddings for a model that doesn't exist
+        missing_nonexistent = run.missing_embeddings("NonexistentModel")
+
+        # Should return all three invocations
+        assert len(missing_nonexistent) == 3
+        assert {inv.id for inv in missing_nonexistent} == {invocation1.id, invocation2.id, invocation3.id}
+    finally:
+        # Terminate the actors to clean up resources
+        if 'dummy_model' in locals():
+            ray.kill(dummy_model)
+        if 'dummy2_model' in locals():
+            ray.kill(dummy2_model)
+
+
 @pytest.mark.slow
 def test_nomic_embedding_specific_text():
     """Test that the Nomic embedding model handles a specific text case correctly."""
@@ -355,12 +481,13 @@ def test_embedding_model(model_name):
 
 
 @pytest.mark.slow
+@pytest.mark.parametrize("model_name", ["Nomic", "JinaClip"])
 @pytest.mark.parametrize("batch_size", [1, 8, 32, 64, 256])
-def test_nomic_embedding_batch_performance(batch_size):
-    """Test the Nomic embedding model with increasingly larger batch sizes."""
+def test_embedding_batch_performance(model_name, batch_size):
+    """Test the embedding models with increasingly larger batch sizes."""
     try:
         # Get the model actor
-        model_class = get_actor_class("Nomic")
+        model_class = get_actor_class(model_name)
         model = model_class.remote()
 
         # Create dummy text strings for the batch
@@ -386,7 +513,7 @@ def test_nomic_embedding_batch_performance(batch_size):
             assert not np.all(embedding == 0)  # Should not be all zeros
 
         # Log performance metrics
-        print(f"Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+        print(f"{model_name} - Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
               f"{elapsed_time/batch_size:.3f}s per item")
 
         # Create dummy images for the batch
@@ -413,7 +540,7 @@ def test_nomic_embedding_batch_performance(batch_size):
             assert not np.all(embedding == 0)  # Should not be all zeros
 
         # Log performance metrics
-        print(f"Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+        print(f"{model_name} - Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
               f"{elapsed_time/batch_size:.3f}s per item")
 
     finally:

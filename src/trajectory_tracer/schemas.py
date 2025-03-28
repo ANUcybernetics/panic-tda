@@ -376,6 +376,24 @@ class Run(SQLModel, table=True):
                 result[model_name].append(embedding)
         return result
 
+    def missing_embeddings(self, model_name: str) -> List[Invocation]:
+        """
+        Get all invocations that either don't have an embedding for a specific model
+        or have an embedding with a null vector.
+
+        Args:
+            model_name: Name of the embedding model to check
+
+        Returns:
+            List of invocations missing valid embeddings for the specified model
+        """
+        missing = []
+        for invocation in self.invocations:
+            embedding = invocation.embedding(model_name)
+            if embedding is None or embedding.vector is None:
+                missing.append(invocation)
+        return missing
+
     @property
     def stop_reason(self) -> Union[str, tuple]:
         """
@@ -592,8 +610,8 @@ class ExperimentConfig(SQLModel, table=True):
             raise ValueError("Run length must be greater than 0")
 
         # Import here to avoid circular imports
-        from trajectory_tracer.genai_models import list_models as list_genai_models
         from trajectory_tracer.embeddings import list_models as list_embedding_models
+        from trajectory_tracer.genai_models import list_models as list_genai_models
 
         # Validate genai models
         valid_genai_models = list_genai_models()
