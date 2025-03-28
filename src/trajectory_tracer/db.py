@@ -166,6 +166,19 @@ def list_runs(session: Session):
     statement = select(Run)
     return session.exec(statement).all()
 
+def list_experiments(session: Session):
+    """
+    Returns all experiment configurations.
+
+    Args:
+        session: The database session
+
+    Returns:
+        A list of ExperimentConfig objects
+    """
+    statement = select(ExperimentConfig)
+    return session.exec(statement).all()
+
 
 def list_embeddings(session: Session):
     """
