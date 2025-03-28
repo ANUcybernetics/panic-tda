@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
 
+from trajectory_tracer.schemas import PersistenceDiagram, Run
 from trajectory_tracer.tda import giotto_phd
 
 
@@ -102,3 +103,75 @@ def test_giotto_phd_large_point_cloud(benchmark, n_points):
 
     # Log the size of the point cloud
     print(f"Processed point cloud with {n_points} points in {n_dims} dimensions")
+
+
+def test_persistence_diagram_type_decorator(db_session):
+    """Test that the PersistenceDiagramResultType can serialize and deserialize persistence diagram results."""
+    # Create a simple point cloud
+    n_points = 100
+    theta = np.linspace(0, 2 * np.pi, n_points)
+    point_cloud = np.column_stack((np.cos(theta), np.sin(theta)))
+
+    # Compute the persistence diagram
+    result = giotto_phd(point_cloud, max_dim=2)
+
+    # Create a run to associate with the diagram
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test persistence diagram storage",
+        network=["model1"],
+        seed=42,
+        max_length=3
+    )
+
+    # Create a persistence diagram
+    diagram = PersistenceDiagram(
+        run_id=sample_run.id,
+        embedding_model="test-embedding-model",
+        diagram_data=result
+    )
+
+    # Add to the database
+    db_session.add(sample_run)
+    db_session.add(diagram)
+    db_session.commit()
+
+    # Retrieve the diagram from the database
+    # Replace select statement with session.get
+    retrieved = db_session.get(PersistenceDiagram, diagram.id)
+
+    # Verify the data is correctly serialized and deserialized
+    assert retrieved.diagram_data is not None
+    assert "dgms" in retrieved.diagram_data
+    assert "entropy" in retrieved.diagram_data
+    assert "gens" in retrieved.diagram_data
+
+    # Check that the diagrams match
+    original_dgms = result["dgms"]
+    retrieved_dgms = retrieved.diagram_data["dgms"]
+
+    assert len(original_dgms) == len(retrieved_dgms)
+
+    # Check each dimension's diagram
+    for dim in range(len(original_dgms)):
+        assert np.array_equal(original_dgms[dim], retrieved_dgms[dim])
+
+    # Verify entropy values match
+    assert np.array_equal(result["entropy"], retrieved.diagram_data["entropy"])
+
+    # Verify generators match
+    original_gens = result["gens"]
+    retrieved_gens = retrieved.diagram_data["gens"]
+
+    assert len(original_gens) == len(retrieved_gens)
+
+    # Check generators for each dimension
+    for dim in range(len(original_gens)):
+        # For non-empty generator lists
+        if len(original_gens[dim]) > 0:
+            assert len(original_gens[dim]) == len(retrieved_gens[dim])
+
+            # Check each generator
+            for i in range(len(original_gens[dim])):
+                assert np.array_equal(original_gens[dim][i], retrieved_gens[dim][i])

@@ -338,26 +338,6 @@ def test_embedding_duration_property():
     assert embedding.duration == 1.5
 
 
-def test_persistence_diagram_creation():
-    """Test PersistenceDiagram creation and generators property."""
-    run_id = uuid7()
-
-    # Create some test generators (birth-death pairs)
-    generators = [
-        np.array([[0.1, 0.5], [0.2, 0.7]], dtype=np.float32),
-        np.array([[0.3, 0.6], [0.4, 0.9]], dtype=np.float32),
-    ]
-
-    diagram = PersistenceDiagram(run_id=run_id, generators=generators, embedding_model="test-model")
-
-    assert diagram.run_id == run_id
-    assert len(diagram.generators) == 2
-
-    retrieved_generators = diagram.get_generators_as_arrays()
-    assert len(retrieved_generators) == 2
-    np.testing.assert_array_equal(retrieved_generators[0], generators[0])
-    np.testing.assert_array_equal(retrieved_generators[1], generators[1])
-
 
 def test_persistence_diagram_duration_property():
     """Test the duration property of PersistenceDiagram."""

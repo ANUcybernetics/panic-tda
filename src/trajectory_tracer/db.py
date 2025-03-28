@@ -242,24 +242,6 @@ def incomplete_embeddings(session: Session):
     return session.exec(statement).all()
 
 
-def incomplete_persistence_diagrams(session: Session):
-    """
-    Returns all PersistenceDiagram objects without generator data.
-
-    Args:
-        session: The database session
-
-    Returns:
-        A list of PersistenceDiagram objects that have empty generators
-    """
-
-    statement = select(PersistenceDiagram).where(
-        # Check for empty generators list
-        PersistenceDiagram.generators == []
-    )
-    return session.exec(statement).all()
-
-
 def count_invocations(session: Session) -> int:
     """
     Returns the count of invocations in the database.

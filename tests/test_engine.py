@@ -525,15 +525,16 @@ def test_compute_persistence_diagram(db_session: Session):
     assert pd is not None
     assert pd.run_id == run.id
     assert pd.embedding_model == "Dummy"
-    assert pd.generators is not None
+    assert pd.diagram_data is not None
 
     # Verify the persistence diagram has start and complete timestamps
     assert pd.started_at is not None
     assert pd.completed_at is not None
     assert pd.completed_at > pd.started_at
 
-    # We should have at least some generators with birth-death pairs
-    assert len(pd.generators) > 0
+    # We should have at least some data in the diagram
+    assert "dgms" in pd.diagram_data
+    assert len(pd.diagram_data["dgms"]) > 0
 
 
 def test_perform_pd_stage(db_session: Session):
@@ -609,8 +610,9 @@ def test_perform_pd_stage(db_session: Session):
         assert pd is not None
         assert pd.run_id in [run.id for run in runs]
         assert pd.embedding_model in embedding_models
-        assert pd.generators is not None
-        assert len(pd.generators) > 0
+        assert pd.diagram_data is not None
+        assert "dgms" in pd.diagram_data
+        assert len(pd.diagram_data["dgms"]) > 0
 
 
 def test_perform_experiment(db_session: Session):
@@ -675,12 +677,11 @@ def test_perform_experiment(db_session: Session):
     pds = list_persistence_diagrams(db_session)
     assert len(pds) == 12
 
-    # Verify all persistence diagrams have generators
+    # Verify all persistence diagrams have diagram_data
     for pd in pds:
-        assert pd.generators is not None
-        assert len(pd.generators) > 0
-
-
+        assert pd.diagram_data is not None
+        assert "dgms" in pd.diagram_data
+        assert len(pd.diagram_data["dgms"]) > 0
 @pytest.mark.slow
 def test_perform_experiment_real_models(db_session: Session):
     """Test that perform_experiment correctly executes an experiment with real models."""

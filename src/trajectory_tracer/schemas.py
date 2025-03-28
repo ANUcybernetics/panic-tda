@@ -13,7 +13,6 @@ from uuid_v7.base import uuid7
 
 ## numpy storage helper classes
 
-
 class NumpyArrayType(TypeDecorator):
     """
     SQLAlchemy type for storing numpy arrays as binary data.
@@ -61,108 +60,202 @@ class NumpyArrayType(TypeDecorator):
         return np.frombuffer(value, dtype=np.float32)
 
 
-class NumpyArrayListType(TypeDecorator):
+class PersistenceDiagramResultType(TypeDecorator):
     """
-    SQLAlchemy type for storing a list of numpy arrays as binary data.
+    SQLAlchemy type for storing persistence diagram results from TDA computations.
 
-    This custom type enables efficient storage of multiple numpy arrays in a single
-    database field by serializing their shapes and contents into a compact binary format.
-    All arrays are stored with float32 dtype for consistency.
+    This type is specifically designed to store the structure returned by persistence
+    diagram calculations, which consists of:
+
+    - Lists of numpy int64 arrays with various shapes (including empty arrays)
+    - Dictionaries with metadata like 'entropy' as float32 arrays
+
+    This specialized type preserves both data types and array shapes during serialization.
     """
 
-    impl = LargeBinary
+    impl = JSON
     cache_ok = True
 
-    def process_bind_param(
-        self, value: Optional[List[np.ndarray]], dialect
-    ) -> Optional[bytes]:
-        """
-        Convert a list of numpy arrays to bytes for storage.
+    # Type to represent the complex structure returned by persistence diagram calculations
+    # Typically includes arrays, lists of arrays, and dictionaries with arrays
+    DiagramResultType = Dict[str, Union[List[np.ndarray], np.ndarray]]
 
-        The format stores:
-        1. The number of arrays (int32)
-        2. For each array:
-           a. The dimensionality of the shape (int32)
-           b. The shape dimensions (each as int32)
-           c. The array data (as float32)
+    def process_bind_param(
+        self, value: Optional[DiagramResultType], dialect
+    ) -> Optional[Dict]:
+        """
+        Convert a persistence diagram result structure to JSON-serializable format.
 
         Args:
-            value: List of numpy arrays to convert, or None
+            value: The persistence diagram data structure to convert, or None
             dialect: SQLAlchemy dialect (unused)
 
         Returns:
-            Bytes representation of the array list, or None if input is None
+            JSON-serializable dictionary, or None if input is None
         """
         if value is None:
             return None
 
-        buffer = io.BytesIO()
-        # Save the number of arrays
-        num_arrays = len(value)
-        buffer.write(np.array([num_arrays], dtype=np.int32).tobytes())
+        result = {}
 
-        # For each array, save its shape, dtype, and data
-        for arr in value:
-            arr_np = np.asarray(
-                arr, dtype=np.float32
-            )  # Ensure it's a numpy array with float32 dtype
-            shape = np.array(arr_np.shape, dtype=np.int32)
+        # Process diagrams (dgms key) - list of arrays
+        if "dgms" in value:
+            result["dgms"] = []
+            for arr in value["dgms"]:
+                if isinstance(arr, np.ndarray):
+                    result["dgms"].append({
+                        "_type": "ndarray",
+                        "shape": arr.shape,
+                        "dtype": str(arr.dtype),
+                        "data": arr.tolist()
+                    })
+                else:
+                    result["dgms"].append(arr)
 
-            # Save shape dimensions
-            shape_length = len(shape)
-            buffer.write(np.array([shape_length], dtype=np.int32).tobytes())
-            buffer.write(shape.tobytes())
+        # Process generators (gens key) - complex nested structure
+        if "gens" in value:
+            gens_serializable = []
+            for gen_list in value["gens"]:
+                if isinstance(gen_list, list):
+                    # Each generator is a list of arrays
+                    gen_list_serializable = []
+                    for g in gen_list:
+                        if isinstance(g, np.ndarray):
+                            gen_list_serializable.append({
+                                "_type": "ndarray",
+                                "shape": g.shape,
+                                "dtype": str(g.dtype),
+                                "data": g.tolist()
+                            })
+                        else:
+                            gen_list_serializable.append(g)
+                    gens_serializable.append(gen_list_serializable)
+                elif isinstance(gen_list, np.ndarray):
+                    # Or sometimes a single array
+                    gens_serializable.append({
+                        "_type": "ndarray",
+                        "shape": gen_list.shape,
+                        "dtype": str(gen_list.dtype),
+                        "data": gen_list.tolist()
+                    })
+                else:
+                    gens_serializable.append(gen_list)
+            result["gens"] = gens_serializable
 
-            # Save the array data
-            buffer.write(arr_np.tobytes())
+        # Process entropy - usually a numpy array
+        if "entropy" in value:
+            if isinstance(value["entropy"], np.ndarray):
+                result["entropy"] = {
+                    "_type": "ndarray",
+                    "shape": value["entropy"].shape,
+                    "dtype": str(value["entropy"].dtype),
+                    "data": value["entropy"].tolist()
+                }
+            else:
+                result["entropy"] = value["entropy"]
 
-        return buffer.getvalue()
+        # Handle any other keys that might be present
+        for key, val in value.items():
+            if key not in result:
+                if isinstance(val, np.ndarray):
+                    result[key] = {
+                        "_type": "ndarray",
+                        "shape": val.shape,
+                        "dtype": str(val.dtype),
+                        "data": val.tolist()
+                    }
+                elif isinstance(val, list):
+                    # Handle lists of arrays
+                    serialized_list = []
+                    for item in val:
+                        if isinstance(item, np.ndarray):
+                            serialized_list.append({
+                                "_type": "ndarray",
+                                "shape": item.shape,
+                                "dtype": str(item.dtype),
+                                "data": item.tolist()
+                            })
+                        else:
+                            serialized_list.append(item)
+                    result[key] = serialized_list
+                else:
+                    result[key] = val
+
+        return result
 
     def process_result_value(
-        self, value: Optional[bytes], dialect
-    ) -> Optional[List[np.ndarray]]:
+        self, value: Optional[Dict], dialect
+    ) -> Optional[DiagramResultType]:
         """
-        Convert stored bytes back to a list of numpy arrays.
-
-        Decodes the binary format created by process_bind_param to reconstruct
-        the original list of arrays with their proper shapes.
+        Convert stored JSON data back to a persistence diagram result structure.
 
         Args:
-            value: Bytes to convert, or None
+            value: JSON dictionary to convert, or None
             dialect: SQLAlchemy dialect (unused)
 
         Returns:
-            List of restored numpy arrays, or None if input is None
+            The restored persistence diagram data structure, or None if input is None
         """
         if value is None:
             return None
 
-        buffer = io.BytesIO(value)
-        # Read the number of arrays
-        num_arrays_bytes = buffer.read(4)  # int32 is 4 bytes
-        num_arrays = np.frombuffer(num_arrays_bytes, dtype=np.int32)[0]
+        result = {}
 
-        arrays = []
-        for _ in range(num_arrays):
-            # Read shape information
-            shape_length_bytes = buffer.read(4)  # int32 is 4 bytes
-            shape_length = np.frombuffer(shape_length_bytes, dtype=np.int32)[0]
+        def restore_array(arr_dict):
+            """Helper to restore a numpy array from its serialized form"""
+            if isinstance(arr_dict, dict) and arr_dict.get("_type") == "ndarray":
+                # Get the shape and dtype
+                shape = tuple(arr_dict["shape"])
+                dtype_str = arr_dict["dtype"]
 
-            shape_bytes = buffer.read(
-                4 * shape_length
-            )  # Each dimension is an int32 (4 bytes)
-            shape = tuple(np.frombuffer(shape_bytes, dtype=np.int32))
+                # Determine the right NumPy dtype
+                if 'int' in dtype_str:
+                    dtype = np.int64
+                elif 'float' in dtype_str:
+                    dtype = np.float32
+                else:
+                    dtype = np.dtype(dtype_str)
 
-            # Calculate number of elements and bytes needed
-            n_elements = np.prod(shape)
-            n_bytes = n_elements * 4  # float32 is 4 bytes per element
+                # Handle empty arrays correctly
+                if shape == (0,) or 0 in shape:
+                    # Create empty array with the right shape
+                    return np.zeros(shape, dtype=dtype)[:0].reshape(shape)
+                else:
+                    return np.array(arr_dict["data"], dtype=dtype)
+            return arr_dict
 
-            # Read array data
-            array_bytes = buffer.read(n_bytes)
-            array_data = np.frombuffer(array_bytes, dtype=np.float32)
-            arrays.append(array_data.reshape(shape))
+        # Restore diagrams (dgms key) - convert lists back to numpy arrays
+        if "dgms" in value:
+            result["dgms"] = [restore_array(arr) for arr in value["dgms"]]
 
-        return arrays
+        # Restore generators (gens key)
+        if "gens" in value:
+            gens_arrays = []
+            for gen_list in value["gens"]:
+                if isinstance(gen_list, list):
+                    # Each generator is a list of arrays
+                    gen_arrays = [restore_array(g) for g in gen_list]
+                    gens_arrays.append(gen_arrays)
+                else:
+                    # Or sometimes a single value
+                    gens_arrays.append(restore_array(gen_list))
+            result["gens"] = gens_arrays
+
+        # Restore entropy
+        if "entropy" in value:
+            result["entropy"] = restore_array(value["entropy"])
+
+        # Handle any other keys
+        for key, val in value.items():
+            if key not in result:
+                if isinstance(val, dict) and val.get("_type") == "ndarray":
+                    result[key] = restore_array(val)
+                elif isinstance(val, list):
+                    result[key] = [restore_array(item) for item in val]
+                else:
+                    result[key] = val
+
+        return result
 
 
 ## main DB classes
@@ -505,8 +598,9 @@ class PersistenceDiagram(SQLModel, table=True):
     Represents the topological features of a run's trajectory through embedding space.
 
     This class stores the results of persistent homology computations performed on
-    the sequence of embeddings from a run. The "generators" represent the birth-death
-    pairs of topological features detected at different scales in the trajectory data.
+    the sequence of embeddings from a run. The persistent homology diagram contains
+    information about topological features (connected components, loops, voids) detected
+    at different scales in the trajectory data.
     """
 
     model_config = {"arbitrary_types_allowed": True}
@@ -515,24 +609,13 @@ class PersistenceDiagram(SQLModel, table=True):
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
 
-    generators: Optional[List[np.ndarray]] = Field(
-        default=None, sa_column=Column(NumpyArrayListType)
+    diagram_data: Optional[Dict] = Field(
+        default=None, sa_column=Column(PersistenceDiagramResultType)
     )
 
     run_id: UUID = Field(foreign_key="run.id", index=True)
     embedding_model: str = Field(..., description="Embedding model class name")
     run: Run = Relationship(back_populates="persistence_diagrams")
-
-    def get_generators_as_arrays(self) -> List[np.ndarray]:
-        """
-        Get the persistence diagram generators as a list of numpy arrays.
-
-        Returns:
-            List of numpy arrays representing the birth-death pairs of topological features
-        """
-        return (
-            self.generators if self.generators is not None else []
-        )  # Return empty list if None
 
     @property
     def duration(self) -> float:
@@ -547,6 +630,29 @@ class PersistenceDiagram(SQLModel, table=True):
             return 0.0
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
+
+    def get_generators_as_arrays(self) -> List[np.ndarray]:
+        """
+        Get generators from the persistence diagram as a list of numpy arrays.
+
+        Extracts and converts the persistence generators from the JSON-serialized
+        format back to numpy arrays for computation and analysis.
+
+        Returns:
+            List of numpy arrays containing the generators
+        """
+        if not self.diagram_data or 'gens' not in self.diagram_data:
+            return []
+
+        result = []
+        for gens in self.diagram_data['gens']:
+            if isinstance(gens, list) and gens:
+                for g in gens:
+                    if isinstance(g, np.ndarray) and g.size > 0:
+                        result.append(g)
+                    elif isinstance(g, list) and len(g) > 0:
+                        result.append(np.array(g))
+        return result
 
 
 class ExperimentConfig(SQLModel, table=True):

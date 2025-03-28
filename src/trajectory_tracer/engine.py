@@ -255,10 +255,10 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         PersistenceDiagram ID as string
     """
     with get_session_from_connection_string(db_str) as session:
-        # Create persistence diagram object with empty generators
+        # Create persistence diagram object with empty diagram data
         run_uuid = UUID(run_id)
         pd = PersistenceDiagram(
-            run_id=run_uuid, embedding_model=embedding_model, generators=None
+            run_id=run_uuid, embedding_model=embedding_model, diagram_data=None
         )
 
         # Save to database
@@ -301,8 +301,8 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         # Set start timestamp
         pd.started_at = datetime.now()
 
-        # Compute persistence diagram
-        pd.generators = giotto_phd(point_cloud)["dgms"]
+        # Compute persistence diagram - store the entire result
+        pd.diagram_data = giotto_phd(point_cloud)
 
         # Set completion timestamp
         pd.completed_at = datetime.now()
