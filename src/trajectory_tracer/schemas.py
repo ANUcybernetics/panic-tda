@@ -1,7 +1,7 @@
 import io
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 from uuid import UUID
 
 import numpy as np
@@ -360,16 +360,20 @@ class Run(SQLModel, table=True):
         return self
 
     @property
-    def embeddings(self) -> List["Embedding"]:
+    def embeddings(self) -> Dict[str, List["Embedding"]]:
         """
-        Get all embeddings for all invocations in this run.
+        Get all embeddings for all invocations in this run, organized by model.
 
         Returns:
-            A flat list of all embedding objects across all invocations in the run
+            A dictionary mapping embedding model names to lists of Embedding objects
         """
-        result = []
+        result: Dict[str, List["Embedding"]] = {}
         for invocation in self.invocations:
-            result.extend(invocation.embeddings)
+            for embedding in invocation.embeddings:
+                model_name = embedding.embedding_model
+                if model_name not in result:
+                    result[model_name] = []
+                result[model_name].append(embedding)
         return result
 
     @property
@@ -426,28 +430,6 @@ class Run(SQLModel, table=True):
 
         # If we can't determine a specific reason
         return "unknown"
-
-    def embeddings_by_model(self, embedding_model: str) -> List["Embedding"]:
-        """
-        Get embeddings with a specific model name across all invocations in this run.
-
-        Filters all embeddings in the run to return only those created by the
-        specified embedding model.
-
-        Args:
-            embedding_model: Name of the embedding model to filter by
-
-        Returns:
-            List of Embedding objects matching the specified model
-        """
-        result = []
-        for invocation in self.invocations:
-            # Get embeddings for this invocation that match the model name
-            matching_embeddings = [
-                e for e in invocation.embeddings if e.embedding_model == embedding_model
-            ]
-            result.extend(matching_embeddings)
-        return result
 
 
 class Embedding(SQLModel, table=True):

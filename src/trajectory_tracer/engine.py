@@ -275,7 +275,7 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
             raise ValueError(f"Run {run_id} not found")
 
         # Get embeddings for the specific embedding model
-        embeddings = run.embeddings_by_model(embedding_model)
+        embeddings = run.embeddings[embedding_model]
 
         # Check if there are enough embeddings to compute a persistence diagram
         if len(embeddings) < 2:

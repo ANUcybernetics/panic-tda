@@ -15,7 +15,7 @@ from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
 
 
 def test_run_embeddings_by_model(db_session):
-    """Test the Run.embeddings_by_model method returns embeddings with a specific model."""
+    """Test the Run.embeddings method returns embeddings for a specific model."""
     try:
         # Create a run
         run = Run(
@@ -91,8 +91,8 @@ def test_run_embeddings_by_model(db_session):
         db_session.refresh(run)
 
         # Test filtering by model name
-        dummy_embeddings = run.embeddings_by_model("Dummy")
-        dummy2_embeddings = run.embeddings_by_model("Dummy2")
+        dummy_embeddings = run.embeddings["Dummy"]
+        dummy2_embeddings = run.embeddings["Dummy2"]
 
         # Verify the filtering works correctly
         assert len(dummy_embeddings) == 2
