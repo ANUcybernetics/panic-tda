@@ -1679,7 +1679,7 @@ requires-dist = [
     { name = "timm", specifier = ">=1.0.15" },
     { name = "torch", specifier = ">=2.6.0" },
     { name = "torchvision", specifier = ">=0.21.0" },
-    { name = "transformers", specifier = ">=4.50.2" },
+    { name = "transformers", specifier = ">=4.49.0" },
     { name = "typer", specifier = ">=0.15.2" },
     { name = "uuid-v7", specifier = ">=1.0.0" },
 ]
