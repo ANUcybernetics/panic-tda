@@ -1,7 +1,5 @@
 # TODO
 
-- store ExperimentConfig in the db
-
 - clustering (with optional dimensionality reduction)
 
 - visualise the time taken for the various different invocations
@@ -29,4 +27,4 @@
   calculated properties like loop_length become a PITA)
 
 - write an orphans (or some other validation that the run is all there)
-  property/method for Run
+  property/method for Run. Or maybe just a cleanup function
