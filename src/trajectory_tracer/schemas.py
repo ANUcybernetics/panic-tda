@@ -696,7 +696,7 @@ class ExperimentConfig(SQLModel, table=True):
 
         status_report += (
             f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs})"
-            f"\n  Elapsed Time: {int((datetime.now() - self.started_at).total_seconds() // 3600):02d}h{int(((datetime.now() - self.started_at).total_seconds() % 3600) // 60):02d}m{int((datetime.now() - self.started_at).total_seconds() % 60):02d}s"
+            f"\n  Elapsed Time: {int((datetime.now() - self.started_at).total_seconds() // 3600):02d}h {int(((datetime.now() - self.started_at).total_seconds() % 3600) // 60):02d}m {int((datetime.now() - self.started_at).total_seconds() % 60):02d}s"
         )
 
         print(status_report)
