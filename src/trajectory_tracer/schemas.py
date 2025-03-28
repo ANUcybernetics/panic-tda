@@ -634,7 +634,7 @@ class ExperimentConfig(SQLModel, table=True):
 
         Reports:
         - Invocation progress: Percentage of maximum sequence number out of max_length
-        - Embedding progress: Percentage of completed embeddings out of expected total
+        - Embedding progress: Percentage of completed embeddings broken down by model
         - Persistence diagram progress: Percentage of runs with completed diagrams
 
         Returns:
@@ -662,22 +662,41 @@ class ExperimentConfig(SQLModel, table=True):
 
         invocation_percent = ((min_sequence + 1) / self.max_length) * 100
 
-        # Embedding progress
+        # Embedding progress - overall and per model
         total_invocations = sum(len(run.invocations) for run in self.runs)
-        expected_embeddings = total_invocations * len(self.embedding_models)
-        actual_embeddings = sum(len(run.embeddings.get(model, [])) for run in self.runs
+
+        # Overall embedding statistics
+        expected_embeddings_total = total_invocations * len(self.embedding_models)
+        actual_embeddings_total = sum(len(run.embeddings.get(model, [])) for run in self.runs
                             for model in self.embedding_models)
-        embedding_percent = (actual_embeddings / expected_embeddings) * 100
+        embedding_percent_total = (actual_embeddings_total / expected_embeddings_total) * 100 if expected_embeddings_total > 0 else 0
+
+        # Per-model embedding statistics
+        model_stats = {}
+        for model in self.embedding_models:
+            expected_for_model = total_invocations
+            actual_for_model = sum(len(run.embeddings.get(model, [])) for run in self.runs)
+            percent_for_model = (actual_for_model / expected_for_model) * 100 if expected_for_model > 0 else 0
+            model_stats[model] = (actual_for_model, expected_for_model, percent_for_model)
 
         # Persistence diagram progress
         runs_with_diagrams = sum(1 for run in self.runs if len(run.persistence_diagrams) > 0)
         diagram_percent = (runs_with_diagrams / total_runs) * 100
 
         # Format the status report
-        print(
+        status_report = (
             f"Experiment Status:\n"
             f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence + 1}/{self.max_length})\n"
-            f"  Embedding Progress:  {embedding_percent:.1f}% ({actual_embeddings}/{expected_embeddings})\n"
+            f"  Embedding Progress (Overall): {embedding_percent_total:.1f}% ({actual_embeddings_total}/{expected_embeddings_total})\n"
+        )
+
+        # Add per-model embedding statistics
+        for model, (actual, expected, percent) in model_stats.items():
+            status_report += f"    - {model}: {percent:.1f}% ({actual}/{expected})\n"
+
+        status_report += (
             f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs})"
             f"\n  Elapsed Time: {(datetime.now() - self.started_at).total_seconds():.1f} seconds"
         )
+
+        print(status_report)
