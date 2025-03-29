@@ -1,6 +1,6 @@
 import polars as pl
 
-from trajectory_tracer.analysis import load_embeddings_df
+from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
 from trajectory_tracer.engine import (
     perform_experiment,
 )
@@ -100,7 +100,6 @@ def test_load_runs_df(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Call function under test
-    from trajectory_tracer.analysis import load_runs_df
     df = load_runs_df(db_session)
 
     # Assertions
@@ -116,7 +115,21 @@ def test_load_runs_df(db_session):
         "max_length",
         "num_invocations",
         "stop_reason",
-        "loop_length"
+        "loop_length",
+        "persistence_diagram_id",
+        "embedding_model",
+        "persistence_diagram_started_at",
+        "persistence_diagram_completed_at",
+        "persistence_diagram_duration",
+        "entropy_dim_0",
+        "entropy_dim_1",
+        "entropy_dim_2",
+        "feature_count_dim_0",
+        "feature_count_dim_1",
+        "feature_count_dim_2",
+        "generator_count_dim_0",
+        "generator_count_dim_1",
+        "generator_count_dim_2"
     ]
     assert all(col in df.columns for col in expected_columns)
 
@@ -128,3 +141,12 @@ def test_load_runs_df(db_session):
     assert row[df.columns.index("max_length")] == 2
     assert row[df.columns.index("num_invocations")] == 2
     assert row[df.columns.index("stop_reason")] == "length"
+
+    # Verify persistence diagram related fields
+    assert row[df.columns.index("embedding_model")] == "Dummy"
+    assert row[df.columns.index("persistence_diagram_id")] is not None
+
+    # Check that feature counts are present and numeric
+    assert isinstance(row[df.columns.index("feature_count_dim_0")], int)
+    assert isinstance(row[df.columns.index("entropy_dim_0")], float)
+    assert isinstance(row[df.columns.index("generator_count_dim_0")], int)

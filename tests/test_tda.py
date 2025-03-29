@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
@@ -15,7 +16,33 @@ def test_giotto_phd():
 
     # Compute the persistence diagram
     result = giotto_phd(point_cloud, max_dim=2)
-    print(result)
+
+    # Print each key and full values from the result to a file
+    with open('persistence_diagram_keys.txt', 'w') as f:
+        for key, value in result.items():
+            f.write(f"Key: {key}\n")
+            f.write(f"Type: {type(value)}\n")
+            f.write(f"Shape/Length: {len(value) if hasattr(value, '__len__') else 'N/A'}\n")
+
+            # Print full values for each key
+            if key == "dgms":
+                f.write("Persistence diagrams for each dimension:\n")
+                for i, dgm in enumerate(value):
+                    f.write(f"  Dimension {i}: array of shape {dgm.shape}\n")
+                    f.write(f"  Full array values:\n{dgm}\n\n")
+            elif key == "gens":
+                f.write("Generators for each dimension:\n")
+                for i, gen_list in enumerate(value):
+                    f.write(f"  Dimension {i}: {len(gen_list)} generators\n")
+                    for j, gen in enumerate(gen_list):
+                        f.write(f"    Generator {j}: {gen}\n")
+            elif key == "entropy":
+                f.write(f"Entropy value: {value}\n")
+            else:
+                # For any other keys
+                f.write(f"Value:\n{value}\n")
+
+            f.write("\n" + "-"*50 + "\n\n")
 
     # Check that the output is a dictionary
     assert isinstance(result, dict)
@@ -46,7 +73,7 @@ def test_giotto_phd():
 def test_plot_diagram():
     """Test plotting a persistence diagram."""
     # Create a simple point cloud (a circle-like shape)
-    n_points = 100
+    n_points = 1000
     theta = np.linspace(0, 2 * np.pi, n_points)
     point_cloud = np.column_stack((np.cos(theta), np.sin(theta)))
 
@@ -72,7 +99,7 @@ def test_plot_diagram():
     fig.update_layout(title="Persistence Diagram for a Circle")
 
     # Save the figure as HTML and/or image file
-    # fig.write_html("circle_persistence_diagram.html")
+    fig.write_html("pd.html")
     # fig.write_image("circle_persistence_diagram.png")
 
 

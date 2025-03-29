@@ -69,13 +69,14 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
 def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
     """
     Load all runs from the database and flatten them into a polars DataFrame.
+    Includes persistence diagrams and generators for each run.
 
     Args:
         session: SQLModel database session
         use_cache: Whether to use cached dataframe if available
 
     Returns:
-        A polars DataFrame containing all run data
+        A polars DataFrame containing all run data with persistence diagrams
     """
     cache_path = "output/cache/runs.parquet"
 
@@ -94,14 +95,6 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         # Skip runs with no invocations
         if not run.invocations:
             continue
-        row = {
-            "run_id": str(run.id),
-            "network": run.network,
-            "initial_prompt": run.initial_prompt,
-            "seed": run.seed,
-            "max_length": run.max_length,
-            "num_invocations": len(run.invocations)
-        }
 
         # Process stop_reason to separate into reason and loop_length
         stop_reason_value = run.stop_reason
@@ -113,13 +106,65 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         else:
             stop_reason = stop_reason_value
 
-        row["stop_reason"] = stop_reason
-        row["loop_length"] = loop_length
+        # Base run information
+        base_row = {
+            "run_id": str(run.id),
+            "network": run.network,
+            "initial_prompt": run.initial_prompt,
+            "seed": run.seed,
+            "max_length": run.max_length,
+            "num_invocations": len(run.invocations),
+            "stop_reason": stop_reason,
+            "loop_length": loop_length
+        }
 
-        data.append(row)
+        # If run has persistence diagrams, create a row for each
+        if run.persistence_diagrams:
+            for pd in run.persistence_diagrams:
+                row = base_row.copy()
+                row["persistence_diagram_id"] = str(pd.id)
+                row["embedding_model"] = pd.embedding_model
+                row["persistence_diagram_started_at"] = pd.started_at
+                row["persistence_diagram_completed_at"] = pd.completed_at
+                row["persistence_diagram_duration"] = pd.duration
+
+                # Handle diagram data if available
+                if pd.diagram_data:
+                    # Store entropy values
+                    if "entropy" in pd.diagram_data:
+                        entropy = pd.diagram_data["entropy"]
+                        if isinstance(entropy, list):
+                            for i, e in enumerate(entropy):
+                                row[f"entropy_dim_{i}"] = float(e)
+                        else:
+                            row["entropy"] = float(entropy)
+
+                    # Store basic counts of topological features by dimension
+                    if "dgms" in pd.diagram_data:
+                        for dim, dgm in enumerate(pd.diagram_data["dgms"]):
+                            row[f"feature_count_dim_{dim}"] = len(dgm)
+
+                    # Store generator counts
+                    if "gens" in pd.diagram_data:
+                        for dim, gens in enumerate(pd.diagram_data["gens"]):
+                            if isinstance(gens, list):
+                                row[f"generator_count_dim_{dim}"] = len(gens)
+
+                data.append(row)
+        else:
+            # If no persistence diagrams, still include the run
+            data.append(base_row)
 
     # Create a polars DataFrame with explicit schema for loop_length
-    df = pl.DataFrame(data, schema_overrides={"loop_length": pl.Int64})
+    schema_overrides = {"loop_length": pl.Int64}
+
+    # Add schema overrides for entropy columns
+    for i in range(5):  # Assuming max 5 dimensions
+        schema_overrides[f"entropy_dim_{i}"] = pl.Float64
+        schema_overrides[f"feature_count_dim_{i}"] = pl.Int64
+        schema_overrides[f"generator_count_dim_{i}"] = pl.Int64
+
+    df = pl.DataFrame(data, schema_overrides=schema_overrides)
 
     # Save to cache
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
