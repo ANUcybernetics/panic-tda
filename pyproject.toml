@@ -3,7 +3,7 @@ name = "trajectory-tracer"
 version = "0.1.0"
 description = "A package to collect traces of different AI trajectories under different initial conditions"
 readme = "README.md"
-requires-python = "~=3.12.0"
+requires-python = ">=3.12.0"
 dependencies = [
     "accelerate>=1.4.0",
     "altair>=5.5.0",
@@ -34,6 +34,9 @@ dependencies = [
     "uuid-v7>=1.0.0",
 ]
 
+[project.optional-dependencies]
+dev = ["pytest>=8.3.5", "ruff>=0.11.0"]
+
 [project.scripts]
 trajectory-tracer = "trajectory_tracer.main:app"
 
@@ -54,9 +57,6 @@ markers = [
 addopts = "-m 'not slow and not benchmark'"
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-
-[dependency-groups]
-dev = ["pytest>=8.3.5", "ruff>=0.11.0"]
 
 [tool.ruff.format]
 # Enable preview style formatting.
