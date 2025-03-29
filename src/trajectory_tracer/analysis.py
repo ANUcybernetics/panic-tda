@@ -1,11 +1,12 @@
 import os
 import json
-
+import numpy as np
+from typing import Dict, List, Any
 import altair as alt
 import polars as pl
 from sqlmodel import Session
-
-from trajectory_tracer.db import list_embeddings, list_runs
+from trajectory_tracer.db import list_embeddings, list_runs, get_db_session
+from trajectory_tracer.schemas import PersistenceDiagram, Run
 
 ## load the DB objects into dataframes
 
@@ -175,6 +176,189 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
 
 
 ## visualisation
+
+
+def plot_persistence_diagram(df: pl.DataFrame, output_dir: str = "output/vis/persistence") -> None:
+    """
+    Create and save a visualization of persistence diagrams for runs in the DataFrame.
+
+    Args:
+        df: DataFrame containing run data with persistence diagram information
+        output_dir: Directory to save the visualizations
+    """
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Filter to only rows with persistence diagram IDs
+    if "persistence_diagram_id" not in df.columns:
+        print("No persistence diagram data found in DataFrame")
+        return
+
+    # Process each run in the DataFrame
+    for row in df.filter(pl.col("persistence_diagram_id").is_not_null()).iter_rows(named=True):
+        run_id = row["run_id"]
+        embedding_model = row["embedding_model"]
+
+        # Load persistence diagram data from run_id and embedding_model
+        # In production, this should be part of the DataFrame or passed separately
+
+        # Get the persistence diagram data
+        with get_db_session() as session:
+            pd = session.query(PersistenceDiagram).filter(
+                PersistenceDiagram.run_id == run_id,
+                PersistenceDiagram.embedding_model == embedding_model
+            ).first()
+
+            if not pd or not pd.diagram_data or "dgms" not in pd.diagram_data:
+                print(f"No valid diagram data for run {run_id}, embedding {embedding_model}")
+                continue
+
+            # Convert persistence diagram data to DataFrame
+            records = []
+
+            for dim, diagram in enumerate(pd.diagram_data["dgms"]):
+                for i, (birth, death) in enumerate(diagram):
+                    # Skip infinite death values for visualization
+                    if np.isinf(death):
+                        continue
+
+                    # Add record for each feature
+                    records.append({
+                        "dimension": dim,
+                        "feature_id": i,
+                        "birth": float(birth),
+                        "death": float(death),
+                        "persistence": float(death - birth)
+                    })
+
+                    # Add generator information if available
+                    if "gens" in pd.diagram_data and dim < len(pd.diagram_data["gens"]) and i < len(pd.diagram_data["gens"][dim]):
+                        generator = pd.diagram_data["gens"][dim][i]
+                        # Convert generator to a list if it's a numpy array
+                        if hasattr(generator, "tolist"):
+                            generator = generator.tolist()
+                        records[-1]["generator"] = str(generator)
+                        records[-1]["generator_size"] = len(generator) if isinstance(generator, list) else 1
+
+            if not records:
+                print(f"No finite features in persistence diagram for run {run_id}, embedding {embedding_model}")
+                continue
+
+            # Create DataFrame
+            feature_df = pl.DataFrame(records)
+
+            # Create diagonal reference line data
+            max_value = max(feature_df["death"].max(), feature_df["birth"].max())
+            diagonal_df = pl.DataFrame({
+                "x": [0, max_value],
+                "y": [0, max_value]
+            })
+
+            # Create the persistence diagram visualization
+            diagram = alt.Chart(feature_df).mark_point(filled=True, size=100, opacity=0.7).encode(
+                x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
+                y=alt.Y("death:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
+                color=alt.Color("dimension:N", title="Dimension",
+                                scale=alt.Scale(scheme="category10")),
+                size=alt.Size("persistence:Q", title="Persistence",
+                            scale=alt.Scale(range=[20, 400])),
+                tooltip=["dimension:N", "birth:Q", "death:Q", "persistence:Q", "generator:N"]
+            ).properties(
+                width=500,
+                height=500,
+                title=f"Persistence Diagram - {embedding_model}"
+            )
+
+            # Add diagonal line
+            diagonal = alt.Chart(diagonal_df).mark_line(
+                color="gray", strokeDash=[5, 5]
+            ).encode(
+                x="x:Q",
+                y="y:Q"
+            )
+
+            # Combine chart with diagonal
+            combined = diagram + diagonal
+
+            # Save chart
+            output_file = f"{output_dir}/persistence_diagram_{run_id}_{embedding_model}.html"
+            combined.save(output_file)
+            print(f"Saved persistence diagram to {output_file}")
+
+
+def plot_barcode(run_id: str, session: Session, output_dir: str = "output/vis/barcodes") -> None:
+    """
+    Create and save a barcode visualization for a specific run.
+
+    Args:
+        run_id: ID of the run to visualize
+        session: SQLModel database session
+        output_dir: Directory to save the visualization
+    """
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Get the run and its persistence diagrams
+    run = session.get(Run, run_id)
+    if not run or not run.persistence_diagrams:
+        print(f"No persistence diagrams found for run {run_id}")
+        return
+
+    for pd in run.persistence_diagrams:
+        if not pd.diagram_data or "dgms" not in pd.diagram_data:
+            continue
+
+        # Convert persistence diagram data to DataFrame for barcode viz
+        records = []
+
+        for dim, diagram in enumerate(pd.diagram_data["dgms"]):
+            for i, (birth, death) in enumerate(diagram):
+                # For infinite death values, use a large value for visualization
+                if np.isinf(death):
+                    death = birth + (np.max(diagram[:, 1][~np.isinf(diagram[:, 1])]) if np.any(~np.isinf(diagram[:, 1])) else 10.0)
+
+                # Add record for each feature
+                records.append({
+                    "dimension": f"H{dim}",
+                    "feature_id": f"{dim}_{i}",
+                    "birth": float(birth),
+                    "death": float(death),
+                    "persistence": float(death - birth)
+                })
+
+        if not records:
+            continue
+
+        # Create DataFrame
+        df = pl.DataFrame(records)
+
+        # Sort by persistence (descending) within each dimension
+        df = df.sort(by=["dimension", "persistence"], descending=[False, True])
+
+        # Create the barcode visualization
+        barcode = alt.Chart(df).mark_rule(strokeWidth=3).encode(
+            y=alt.Y(
+                "feature_id:N",
+                title=None,
+                sort=alt.EncodingSortField(field="feature_id", order="ascending"),
+                axis=alt.Axis(labels=False, ticks=False)
+            ),
+            x=alt.X("birth:Q", title="Parameter value"),
+            x2="death:Q",
+            color=alt.Color("dimension:N", title="Homology Dimension"),
+            tooltip=["dimension:N", "birth:Q", "death:Q", "persistence:Q"]
+        ).properties(
+            width=600,
+            height=alt.Step(10),  # Controls the bar thickness
+            title=f"Barcode - {pd.embedding_model}"
+        ).facet(
+            row=alt.Row("dimension:N", title=None, header=alt.Header(labelAngle=0))
+        )
+
+        # Save chart
+        output_file = f"{output_dir}/barcode_{run_id}_{pd.embedding_model}.html"
+        barcode.save(output_file)
+        print(f"Saved barcode to {output_file}")
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     """
