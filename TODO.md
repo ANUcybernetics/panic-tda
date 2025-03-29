@@ -1,9 +1,11 @@
 # TODO
 
-- persist all the PD results to disk
+- check that "PD in df" stuff works
 
-- do clustering (with optional dimensionality reduction), with some "timeline"
-  vis
+- look at change-point detection with ruptures library, and visualise the run
+  lengths
+
+- add faceted PD plot
 
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models
@@ -26,3 +28,7 @@
 
 - write an orphans (or some other validation that the run is all there)
   property/method for Run. Or maybe just a cleanup function
+
+- embeddings: are they normalised? should they be?
+
+- create similarity matrices for runs
