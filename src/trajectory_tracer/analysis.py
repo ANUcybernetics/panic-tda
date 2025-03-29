@@ -1,3 +1,4 @@
+import os
 import json
 
 import altair as alt
@@ -9,16 +10,26 @@ from trajectory_tracer.db import list_embeddings, list_runs
 ## load the DB objects into dataframes
 
 
-def load_embeddings_df(session: Session) -> pl.DataFrame:
+
+def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
     """
     Load all embeddings from the database and flatten them into a polars DataFrame.
 
     Args:
         session: SQLModel database session
+        use_cache: Whether to use cached dataframe if available
 
     Returns:
         A polars DataFrame containing all embedding data
     """
+    cache_path = "output/cache/embeddings.parquet"
+
+    # Check if cache exists and should be used
+    if use_cache and os.path.exists(cache_path):
+        print(f"Loading embeddings from cache: {cache_path}")
+        return pl.read_parquet(cache_path)
+
+    print("Loading embeddings from database...")
     embeddings = list_embeddings(session)
 
     # Convert the embeddings to a format suitable for a DataFrame
@@ -45,20 +56,35 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         data.append(row)
 
     # Create a polars DataFrame
-    return pl.DataFrame(data)
+    df = pl.DataFrame(data)
+
+    # Save to cache
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    df.write_parquet(cache_path)
+    print(f"Saved embeddings to cache: {cache_path}")
+
+    return df
 
 
-def load_runs_df(session: Session) -> pl.DataFrame:
+def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
     """
     Load all runs from the database and flatten them into a polars DataFrame.
 
     Args:
         session: SQLModel database session
+        use_cache: Whether to use cached dataframe if available
 
     Returns:
         A polars DataFrame containing all run data
     """
+    cache_path = "output/cache/runs.parquet"
 
+    # Check if cache exists and should be used
+    if use_cache and os.path.exists(cache_path):
+        print(f"Loading runs from cache: {cache_path}")
+        return pl.read_parquet(cache_path)
+
+    print("Loading runs from database...")
     runs = list_runs(session)
     # Print the number of runs
     print(f"Number of runs: {len(runs)}")
@@ -93,7 +119,14 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         data.append(row)
 
     # Create a polars DataFrame with explicit schema for loop_length
-    return pl.DataFrame(data, schema_overrides={"loop_length": pl.Int64})
+    df = pl.DataFrame(data, schema_overrides={"loop_length": pl.Int64})
+
+    # Save to cache
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    df.write_parquet(cache_path)
+    print(f"Saved runs to cache: {cache_path}")
+
+    return df
 
 
 ## visualisation
