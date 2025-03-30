@@ -344,17 +344,29 @@ def list_models():
         typer.echo(f"  {model_name}")
 
 
-@app.command("export-images")
-def export_images(
-    run_id: str = typer.Argument(
+@app.command("export-video")
+def export_video(
+    experiment_id: str = typer.Argument(
         ...,
-        help="ID of the run to export images from (or 'all' to export from all runs)",
+        help="ID of the experiment to create a mosaic video from",
     ),
-    output_dir: str = typer.Option(
-        "output/images",
-        "--output-dir",
-        "-o",
-        help="Directory where images will be saved",
+    cols: int = typer.Option(
+        3,
+        "--cols",
+        "-c",
+        help="Number of columns in the mosaic grid",
+    ),
+    cell_size: int = typer.Option(
+        512,
+        "--cell-size",
+        "-s",
+        help="Size of each cell in pixels",
+    ),
+    fps: int = typer.Option(
+        4,
+        "--fps",
+        "-f",
+        help="Frames per second for the output video",
     ),
     db_path: Path = typer.Option(
         "output/db/trajectory_data.sqlite",
@@ -364,51 +376,60 @@ def export_images(
     ),
 ):
     """
-    Export all image invocations from a run to JPEG files with embedded metadata.
+    Generate a mosaic video from all runs in an experiment.
 
-    Images are saved to the specified output directory with metadata embedded in EXIF.
-    If 'all' is specified as the run_id, exports images from all runs in the database.
+    Creates a grid of images showing the progression of multiple runs side by side,
+    and renders them as a video file.
     """
     try:
         # Create database connection
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
 
-        # Get the run and export images
+        # Get the experiment and export video
         with get_session_from_connection_string(db_str) as session:
-            runs = []
+            from trajectory_tracer.utils import export_run_mosaic
 
-            if run_id.lower() == "all":
-                # Export images from all runs
-                runs = list_runs(session)
-                if not runs:
-                    logger.info("No runs found in the database")
-                    raise typer.Exit(code=0)
-                logger.info(f"Exporting images for all {len(runs)} runs")
-            else:
-                # Find the run by ID
-                try:
-                    run = session.get(Run, UUID(run_id))
-                    if not run:
-                        logger.error(f"Run with ID {run_id} not found")
-                        raise typer.Exit(code=1)
-                    runs = [run]
-                except ValueError as e:
-                    logger.error(f"Invalid run ID format: {e}")
+            # Find the experiment by ID
+            try:
+                experiment = session.get(ExperimentConfig, UUID(experiment_id))
+                if not experiment:
+                    logger.error(f"Experiment with ID {experiment_id} not found")
                     raise typer.Exit(code=1)
+            except ValueError as e:
+                logger.error(f"Invalid experiment ID format: {e}")
+                raise typer.Exit(code=1)
 
-            # Process all runs (either the single run or all runs)
-            for run in runs:
-                run_output_dir = f"{output_dir}/{run.id}"
-                logger.info(f"Exporting images for run {run.id} to {run_output_dir}")
-                export_run_images(run=run, session=session, output_dir=run_output_dir)
+            # Get all runs for this experiment
+            runs = experiment.runs
+            if not runs:
+                logger.error(f"No runs found for experiment {experiment_id}")
+                raise typer.Exit(code=1)
 
-        logger.info(f"Image export completed successfully to {run_output_dir}")
+            # Get run IDs as strings
+            run_ids = [str(run.id) for run in runs]
+
+            output_dir = f"output/mosaic/{experiment_id}"
+            output_video = "mosaic.mp4"
+
+            logger.info(f"Creating mosaic video for experiment {experiment_id} with {len(run_ids)} runs")
+
+            # Create the mosaic video
+            export_run_mosaic(
+                run_ids=run_ids,
+                session=session,
+                cols=cols,
+                cell_size=cell_size,
+                output_dir=output_dir,
+                fps=fps,
+                output_video=output_video
+            )
+
+            logger.info(f"Mosaic video created successfully at {output_dir}/{output_video}")
 
     except Exception as e:
-        logger.error(f"Error exporting images: {e}")
+        logger.error(f"Error creating mosaic video: {e}")
         raise typer.Exit(code=1)
-
 
 @app.command("script")
 def script():
