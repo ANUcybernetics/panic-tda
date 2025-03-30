@@ -411,14 +411,7 @@ def export_images(
 
 
 @app.command("script")
-def script(
-    db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
-        "--db-path",
-        "-d",
-        help="Path to the SQLite database file",
-    ),
-):
+def script():
     """
     Execute a Python script in the context of the application.
 
