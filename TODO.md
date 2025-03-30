@@ -1,23 +1,15 @@
 # TODO
 
-- check that PDs for other models aren't accidentally being calculated
-
 - calculate semantic dispersion (or drift)
 
-- fix bug in experiment print status (compare to completed_at, not now), and
-  perhaps factor that into a utility function
-
-- check that "PD in df" stuff works
+- write a test for the persistence diagram charting function (because it doesn't
+  work yet)
 
 - look at change-point detection with ruptures library, and visualise the run
   lengths
 
-- add faceted PD plot
-
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models
-
-- bisect to see why BLIP is failing
 
 - use the dummy embeddings in the final analysis as a control, perhaps with a
   slightly more sophisticated "random walk" scheme
@@ -29,9 +21,6 @@
 - batch the genai models as well (embedding ones already done)
 
 - store the loop_length in the invocation (maybe)
-
-- load dfs directly from the databases (because polars can do that, but the
-  calculated properties like loop_length become a PITA)
 
 - write an orphans (or some other validation that the run is all there)
   property/method for Run. Or maybe just a cleanup function
