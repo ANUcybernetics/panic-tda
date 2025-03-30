@@ -120,7 +120,7 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
             "loop_length": loop_length
         }
 
-        # If run has persistence diagrams, create a row for each
+        # Only include runs with persistence diagrams
         if run.persistence_diagrams:
             for pd in run.persistence_diagrams:
                 row = base_row.copy()
@@ -130,33 +130,32 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
                 row["persistence_diagram_completed_at"] = pd.completed_at
                 row["persistence_diagram_duration"] = pd.duration
 
-                # Handle diagram data if available
-                if pd.diagram_data:
-                    # Create a row for each dimension, copying the base information
-                    for dim in range(len(pd.diagram_data["dgms"])):
+                # Only include persistence diagrams with diagram_data
+                if pd.diagram_data and "dgms" in pd.diagram_data:
+                    # Always create rows for dimensions 0, 1, and 2
+                    for dim in range(3):  # Dimensions 0, 1, 2
                         homology_row = row.copy()
                         homology_row["homology_dimension"] = dim
 
-                        # Add entropy for this dimension
-                        if dim < len(pd.diagram_data["entropy"]):
+                        # Add entropy for this dimension if available
+                        if "entropy" in pd.diagram_data and dim < len(pd.diagram_data["entropy"]):
                             homology_row["entropy"] = float(pd.diagram_data["entropy"][dim])
+                        else:
+                            homology_row["entropy"] = 0.0  # Default value
 
                         # Add feature count for this dimension
-                        homology_row["feature_count"] = len(pd.diagram_data["dgms"][dim])
+                        if dim < len(pd.diagram_data["dgms"]):
+                            homology_row["feature_count"] = len(pd.diagram_data["dgms"][dim])
+                        else:
+                            homology_row["feature_count"] = 0  # Empty for this dimension
 
                         # Add generator count for this dimension
-                        if dim < len(pd.diagram_data["gens"]):
+                        if "gens" in pd.diagram_data and dim < len(pd.diagram_data["gens"]):
                             homology_row["generator_count"] = len(pd.diagram_data["gens"][dim])
+                        else:
+                            homology_row["generator_count"] = 0  # Empty for this dimension
 
                         data.append(homology_row)
-
-                    # We already added the row with dimension-specific data, so skip adding the base row
-                    continue
-
-                data.append(row)
-        else:
-            # If no persistence diagrams, still include the run
-            data.append(base_row)
 
     # Create a polars DataFrame with explicit schema for loop_length
     schema_overrides = {"loop_length": pl.Int64}
@@ -167,14 +166,19 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         schema_overrides[f"feature_count_dim_{i}"] = pl.Int64
         schema_overrides[f"generator_count_dim_{i}"] = pl.Int64
 
-    df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    # Only create DataFrame if we have data
+    if data:
+        df = pl.DataFrame(data, schema_overrides=schema_overrides)
 
-    # Save to cache
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    df.write_parquet(cache_path)
-    print(f"Saved runs to cache: {cache_path}")
+        # Save to cache
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        df.write_parquet(cache_path)
+        print(f"Saved runs to cache: {cache_path}")
 
-    return df
+        return df
+    else:
+        print("No valid persistence diagram data found")
+        return pl.DataFrame()
 
 
 ## visualisation
