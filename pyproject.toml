@@ -55,8 +55,6 @@ markers = [
     "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
 ]
 addopts = "-m 'not slow and not benchmark'"
-asyncio_mode = "strict"
-asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff.format]
 # Enable preview style formatting.
