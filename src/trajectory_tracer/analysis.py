@@ -132,18 +132,26 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
 
                 # Handle diagram data if available
                 if pd.diagram_data:
-                    # Store entropy values (always present)
-                    entropy = pd.diagram_data["entropy"]
-                    for i, e in enumerate(entropy):
-                        row[f"entropy_dim_{i}"] = float(e)
+                    # Create a row for each dimension, copying the base information
+                    for dim in range(len(pd.diagram_data["dgms"])):
+                        homology_row = row.copy()
+                        homology_row["homology_dimension"] = dim
 
-                    # Store basic counts of topological features by dimension (always present)
-                    for dim, dgm in enumerate(pd.diagram_data["dgms"]):
-                        row[f"feature_count_dim_{dim}"] = len(dgm)
+                        # Add entropy for this dimension
+                        if dim < len(pd.diagram_data["entropy"]):
+                            homology_row["entropy"] = float(pd.diagram_data["entropy"][dim])
 
-                    # Store generator counts (always present)
-                    for dim, gens in enumerate(pd.diagram_data["gens"]):
-                        row[f"generator_count_dim_{dim}"] = len(gens)
+                        # Add feature count for this dimension
+                        homology_row["feature_count"] = len(pd.diagram_data["dgms"][dim])
+
+                        # Add generator count for this dimension
+                        if dim < len(pd.diagram_data["gens"]):
+                            homology_row["generator_count"] = len(pd.diagram_data["gens"][dim])
+
+                        data.append(homology_row)
+
+                    # We already added the row with dimension-specific data, so skip adding the base row
+                    continue
 
                 data.append(row)
         else:

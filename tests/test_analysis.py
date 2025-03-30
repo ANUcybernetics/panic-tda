@@ -29,7 +29,7 @@ def test_load_embeddings_df(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Call function under test
-    df = load_embeddings_df(db_session)
+    df = load_embeddings_df(db_session, use_cache=False)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
@@ -53,29 +53,29 @@ def test_load_embeddings_df(db_session):
         "embedding_model",
     ]
     assert all(col in df.columns for col in expected_columns)
+    # Check there are no extraneous columns
+    assert set(df.columns) == set(expected_columns)
 
     # Check values
     assert df.filter(pl.col("embedding_model") == "Dummy").height == 2
     assert df.filter(pl.col("embedding_model") == "Dummy2").height == 2
 
-    # Verify field values
+    # Verify field values using named columns instead of indices
     text_rows = df.filter(pl.col("model") == "DummyT2I")
     assert text_rows.height > 0
-    text_row = text_rows.row(0)
-    assert text_row[df.columns.index("initial_prompt")] == "test embedding dataframe"
-    assert text_row[df.columns.index("model")] == "DummyT2I"
-    assert text_row[df.columns.index("sequence_number")] == 0
-    assert text_row[df.columns.index("seed")] == 42
+    text_row = text_rows.row(0, named=True)
+    assert text_row["initial_prompt"] == "test embedding dataframe"
+    assert text_row["model"] == "DummyT2I"
+    assert text_row["sequence_number"] == 0
+    assert text_row["seed"] == 42
 
     image_rows = df.filter(pl.col("model") == "DummyI2T")
     assert image_rows.height > 0
-    image_row = image_rows.row(0)
-    assert image_row[df.columns.index("initial_prompt")] == "test embedding dataframe"
-    assert image_row[df.columns.index("model")] == "DummyI2T"
-    assert image_row[df.columns.index("sequence_number")] == 1
-    assert (
-        image_row[df.columns.index("seed")] == 42
-    )  # Same seed used for all runs in the config
+    image_row = image_rows.row(0, named=True)
+    assert image_row["initial_prompt"] == "test embedding dataframe"
+    assert image_row["model"] == "DummyI2T"
+    assert image_row["sequence_number"] == 1
+    assert image_row["seed"] == 42  # Same seed used for all runs in the config
 
 
 def test_load_runs_df(db_session):

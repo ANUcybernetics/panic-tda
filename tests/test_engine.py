@@ -30,10 +30,12 @@ from trajectory_tracer.engine import (
     run_generator,
 )
 from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
+from trajectory_tracer.genai_models import get_output_type, list_models
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
+    InvocationType,
     PersistenceDiagram,
     Run,
 )
@@ -736,10 +738,11 @@ def test_perform_experiment_real_models(db_session: Session):
     pds = list_persistence_diagrams(db_session)
     assert len(pds) == 1
 
-    # Verify all persistence diagrams have generators
+    # Verify all persistence diagrams have diagram_data
     for pd in pds:
-        assert pd.generators is not None
-        assert len(pd.generators) > 0
+        assert pd.diagram_data is not None
+        assert "dgms" in pd.diagram_data
+        assert len(pd.diagram_data["dgms"]) > 0
 
 
 @pytest.mark.slow
@@ -796,10 +799,11 @@ def test_perform_experiment_real_models_2(db_session: Session):
     pds = list_persistence_diagrams(db_session)
     assert len(pds) == 4
 
-    # Verify all persistence diagrams have generators
+    # Verify all persistence diagrams have diagram_data
     for pd in pds:
-        assert pd.generators is not None
-        assert len(pd.generators) > 0
+        assert pd.diagram_data is not None
+        assert "dgms" in pd.diagram_data
+        assert len(pd.diagram_data["dgms"]) > 0
 
 
 @pytest.mark.slow
@@ -855,10 +859,11 @@ def test_perform_experiment_with_real_models_3(db_session: Session):
     pds = list_persistence_diagrams(db_session)
     assert len(pds) == 1
 
-    # Verify the persistence diagram has generators
+    # Verify the persistence diagram has diagram_data
     pd = pds[0]
-    assert pd.generators is not None
-    assert len(pd.generators) > 0
+    assert pd.diagram_data is not None
+    assert "dgms" in pd.diagram_data
+    assert len(pd.diagram_data["dgms"]) > 0
 
     # Verify the invocation models match our expected network
     assert invocations[0].model == "FluxSchnell"
@@ -931,7 +936,60 @@ def test_perform_experiment_with_file_db():
             pds = list_persistence_diagrams(session)
             assert len(pds) == 4
 
-            # Verify all persistence diagrams have generators
+            # Verify all persistence diagrams have diagram_data
             for pd in pds:
-                assert pd.generators is not None
-                assert len(pd.generators) > 0
+                assert pd.diagram_data is not None
+                assert "dgms" in pd.diagram_data
+                assert len(pd.diagram_data["dgms"]) > 0
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("t2i_model,i2t_model", [
+    (t2i, i2t) for t2i in [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE]
+    for i2t in [m for m in list_models() if get_output_type(m) == InvocationType.TEXT]
+])
+def test_model_combination(t2i_model, i2t_model, db_session: Session):
+    """Test that a specific combination of T2I and I2T models works correctly in a run."""
+
+    # Create a network with this T2I and I2T model
+    network = [t2i_model, i2t_model]
+
+    # Create a run with a short max_length
+    run = Run(
+        network=network,
+        initial_prompt=f"Testing network {t2i_model}->{i2t_model}",
+        seed=-1,  # Use random seed
+        max_length=4
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+    run_id = str(run.id)
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Perform the runs stage
+    invocation_ids = perform_runs_stage([run_id], db_url)
+
+    # Verify we got some invocations
+    assert len(invocation_ids) > 0
+
+    # Compute embeddings for all invocations using a simple embedding model
+    embedding_model = "Dummy"
+    embedding_ids = perform_embeddings_stage(invocation_ids, [embedding_model], db_url)
+
+    # Verify we got embeddings
+    assert len(embedding_ids) > 0
+
+    # Compute persistence diagrams
+    pd_ids = perform_pd_stage([run_id], [embedding_model], db_url)
+
+    # Verify we got persistence diagrams
+    assert len(pd_ids) > 0
+
+    # Verify the run was processed successfully
+    run = db_session.get(Run, UUID(run_id))
+    assert run is not None
+    assert len(run.invocations) > 0
+    assert len(run.persistence_diagrams) > 0
