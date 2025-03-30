@@ -239,13 +239,30 @@ class BLIP2(GenAIModel):
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA GPU is required but not available")
 
-        # Initialize the model with half-precision
-        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b", use_fast=True)
+        # Set default dtype to half precision
+        torch.set_default_dtype(torch.float16)
+
+        # Initialize the processor and model from transformers library
+        self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
         self.model = Blip2ForConditionalGeneration.from_pretrained(
             "Salesforce/blip2-opt-2.7b",
             torch_dtype=torch.float16,
             device_map="auto"
         )
+
+        # Ensure all model components use half precision consistently
+        def ensure_half_precision(module):
+            for param in module.parameters():
+                param.data = param.data.to(torch.float16)
+            for buf in module.buffers():
+                buf.data = buf.data.to(torch.float16)
+
+        # Apply half precision to all modules
+        self.model.apply(ensure_half_precision)
+
+        # Set num_query_tokens attribute on processor if not already set
+        if not hasattr(self.processor, "num_query_tokens"):
+            self.processor.num_query_tokens = self.model.config.num_query_tokens
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
@@ -256,12 +273,25 @@ class BLIP2(GenAIModel):
             torch.cuda.manual_seed_all(seed)
             random.seed(seed)
 
-        # Process the input image
-        inputs = self.processor(image, return_tensors="pt").to("cuda", torch.float16)
+        # Process the image using the processor
+        inputs = self.processor(images=image, return_tensors="pt").to("cuda", torch.float16)
 
-        # Generate the caption
-        generated_ids = self.model.generate(**inputs, max_length=50, do_sample=True)
-        caption = self.processor.decode(generated_ids[0], skip_special_tokens=True)
+        # Ensure all input tensors are in half precision
+        inputs = {k: v.to(torch.float16) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+
+        # Generate the caption using the model's generate method
+        # This follows the example from the documentation for image captioning
+        with torch.cuda.amp.autocast(dtype=torch.float16):
+            generated_ids = self.model.generate(
+                **inputs,
+                max_length=50,
+                do_sample=(seed != -1),  # Use sampling only when seed is provided
+                num_beams=5,
+                top_p=0.9,
+            )
+
+        # Decode the generated ids to text
+        caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
 
         return caption
 
