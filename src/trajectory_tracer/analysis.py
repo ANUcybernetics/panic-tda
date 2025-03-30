@@ -209,75 +209,42 @@ def plot_persistence_diagram(df: pl.DataFrame, output_dir: str = "output/vis/per
         embedding_model = diagram_row["embedding_model"]
         pd_id = diagram_row["persistence_diagram_id"]
 
-        # Get all dimension rows for this diagram
-        dimension_data = df.filter(
+        # Get all birth/death pairs for this diagram
+        diagram_data = df.filter(
             (pl.col("run_id") == run_id) &
             (pl.col("embedding_model") == embedding_model) &
-            (pl.col("persistence_diagram_id") == pd_id) &
-            (pl.col("homology_dimension").is_not_null())
+            (pl.col("persistence_diagram_id") == pd_id)
         )
 
-        if dimension_data.height == 0:
-            print(f"No dimension data for run {run_id}, embedding {embedding_model}")
+        if diagram_data.height == 0:
+            print(f"No data for run {run_id}, embedding {embedding_model}")
             continue
 
-        # Create a sample persistence diagram using the dimension and count data
-        # This is a simplified visualization since we don't have the actual birth/death values
-
-        # Get unique dimensions
-        dimensions = dimension_data["homology_dimension"].unique().sort()
-
-        # Create a synthetic persistence diagram using feature counts
-        records = []
-
-        for dim_row in dimension_data.iter_rows(named=True):
-            dim = dim_row["homology_dimension"]
-            feature_count = dim_row["feature_count"]
-
-            # We don't have the actual birth/death pairs, so create synthetic points
-            # distributed along a scale based on dimension and count
-            for i in range(feature_count):
-                # Create synthetic birth/death values that are visually meaningful
-                # Spread points out based on feature index
-                birth = 0.05 + (i / (feature_count + 1)) * 0.3
-                death = 0.5 + (i / (feature_count + 1)) * 0.5
-
-                records.append({
-                    "dimension": int(dim),
-                    "feature_id": i,
-                    "birth": birth,
-                    "death": death,
-                    "persistence": death - birth,
-                    "entropy": dim_row.get("entropy", 0.0)
-                })
-
-        if not records:
-            print(f"No features in persistence diagram for run {run_id}, embedding {embedding_model}")
-            continue
-
-        # Create DataFrame for visualization
-        feature_df = pl.DataFrame(records)
+        # Find maximum birth/death values for setting chart domain
+        max_value = max(
+            diagram_data["birth"].max(),
+            diagram_data["death"].max()
+        ) * 1.1  # Add 10% margin
 
         # Create diagonal reference line data
-        max_value = 1.1  # Fixed range for synthetic data
         diagonal_df = pl.DataFrame({
             "x": [0, max_value],
             "y": [0, max_value]
         })
 
         # Create the persistence diagram visualization
-        diagram = alt.Chart(feature_df).mark_point(filled=True, size=100, opacity=0.7).encode(
+        diagram = alt.Chart(diagram_data).mark_point(filled=True, opacity=0.7).encode(
             x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
             y=alt.Y("death:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
-            color=alt.Color("dimension:N", title="Dimension",
-                            scale=alt.Scale(scheme="category10")),
+            color=alt.Color("homology_dimension:N", title="Dimension",
+                           scale=alt.Scale(scheme="category10")),
             size=alt.Size("persistence:Q", title="Persistence",
-                        scale=alt.Scale(range=[20, 400])),
-            tooltip=["dimension:N", "birth:Q", "death:Q", "persistence:Q", "entropy:Q"]
+                         scale=alt.Scale(range=[20, 400])),
+            tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q", "entropy:Q"]
         ).properties(
             width=500,
             height=500,
-            title=f"Persistence Diagram - {embedding_model} (Synthetic Visualization)"
+            title=f"Persistence Diagram - {embedding_model}"
         )
 
         # Add diagonal line
@@ -288,20 +255,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_dir: str = "output/vis/per
             y="y:Q"
         )
 
-        # Add annotation about synthetic data
-        text = alt.Chart({"values": [{}]}).mark_text(
-            align="right",
-            baseline="bottom",
-            fontSize=10,
-            color="gray",
-            text=["Note: This is a synthetic visualization based on feature counts only."]
-        ).encode(
-            x=alt.value(480),
-            y=alt.value(20)
-        )
-
         # Combine chart elements
-        combined = diagram + diagonal + text
+        combined = diagram + diagonal
 
         # Save chart
         output_file = f"{output_dir}/persistence_diagram_{run_id}_{embedding_model}.html"
