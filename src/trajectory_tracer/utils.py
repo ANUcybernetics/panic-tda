@@ -88,7 +88,7 @@ def export_run_images(
 
 
 def export_run_mosaic(
-    run_ids: list[str], session: Session, cols: int, cell_size: int = 512, output_dir: str = "output/mosaic", fps: int = 30, output_video: str = "mosaic.mp4"
+    run_ids: list[str], session: Session, cols: int, cell_size: int = 512, output_dir: str = "output/mosaic", fps: int = 4, output_video: str = "mosaic.mp4"
 ) -> None:
     """
     Export a mosaic of images from multiple runs and create a video from the mosaic images.
@@ -99,7 +99,7 @@ def export_run_mosaic(
         cols: Number of columns in the mosaic grid
         cell_size: Size of each cell in pixels (default: 512)
         output_dir: Directory where mosaic images will be saved (default: "output/mosaic")
-        fps: Frames per second for the output video (default: 30)
+        fps: Frames per second for the output video (default: 4)
         output_video: Name of the output video file (default: "mosaic.mp4")
     """
     # Ensure output directory exists
