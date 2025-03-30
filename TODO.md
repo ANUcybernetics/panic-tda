@@ -11,6 +11,8 @@
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models
 
+- add the progress bar and initial prompt display for mosaic videos
+
 - use the dummy embeddings in the final analysis as a control, perhaps with a
   slightly more sophisticated "random walk" scheme
 
