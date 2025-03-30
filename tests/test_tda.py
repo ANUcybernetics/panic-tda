@@ -1,4 +1,4 @@
-import json
+
 import numpy as np
 import pytest
 from gtda.plotting import plot_diagram

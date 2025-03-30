@@ -1,12 +1,13 @@
-import os
 import json
-import numpy as np
-from typing import Dict, List, Any
+import os
+
 import altair as alt
+import numpy as np
 import polars as pl
 from sqlmodel import Session
-from trajectory_tracer.db import list_embeddings, list_runs, get_db_session
-from trajectory_tracer.schemas import PersistenceDiagram, Run
+
+from trajectory_tracer.db import list_embeddings, list_runs
+from trajectory_tracer.schemas import Run
 
 ## load the DB objects into dataframes
 
@@ -131,25 +132,18 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
 
                 # Handle diagram data if available
                 if pd.diagram_data:
-                    # Store entropy values
-                    if "entropy" in pd.diagram_data:
-                        entropy = pd.diagram_data["entropy"]
-                        if isinstance(entropy, list):
-                            for i, e in enumerate(entropy):
-                                row[f"entropy_dim_{i}"] = float(e)
-                        else:
-                            row["entropy"] = float(entropy)
+                    # Store entropy values (always present)
+                    entropy = pd.diagram_data["entropy"]
+                    for i, e in enumerate(entropy):
+                        row[f"entropy_dim_{i}"] = float(e)
 
-                    # Store basic counts of topological features by dimension
-                    if "dgms" in pd.diagram_data:
-                        for dim, dgm in enumerate(pd.diagram_data["dgms"]):
-                            row[f"feature_count_dim_{dim}"] = len(dgm)
+                    # Store basic counts of topological features by dimension (always present)
+                    for dim, dgm in enumerate(pd.diagram_data["dgms"]):
+                        row[f"feature_count_dim_{dim}"] = len(dgm)
 
-                    # Store generator counts
-                    if "gens" in pd.diagram_data:
-                        for dim, gens in enumerate(pd.diagram_data["gens"]):
-                            if isinstance(gens, list):
-                                row[f"generator_count_dim_{dim}"] = len(gens)
+                    # Store generator counts (always present)
+                    for dim, gens in enumerate(pd.diagram_data["gens"]):
+                        row[f"generator_count_dim_{dim}"] = len(gens)
 
                 data.append(row)
         else:
@@ -198,92 +192,83 @@ def plot_persistence_diagram(df: pl.DataFrame, output_dir: str = "output/vis/per
     for row in df.filter(pl.col("persistence_diagram_id").is_not_null()).iter_rows(named=True):
         run_id = row["run_id"]
         embedding_model = row["embedding_model"]
+        diagram_data = row.get("diagram_data")
 
-        # Load persistence diagram data from run_id and embedding_model
-        # In production, this should be part of the DataFrame or passed separately
+        if not diagram_data or "dgms" not in diagram_data:
+            print(f"No valid diagram data for run {run_id}, embedding {embedding_model}")
+            continue
 
-        # Get the persistence diagram data
-        with get_db_session() as session:
-            pd = session.query(PersistenceDiagram).filter(
-                PersistenceDiagram.run_id == run_id,
-                PersistenceDiagram.embedding_model == embedding_model
-            ).first()
+        # Convert persistence diagram data to DataFrame
+        records = []
 
-            if not pd or not pd.diagram_data or "dgms" not in pd.diagram_data:
-                print(f"No valid diagram data for run {run_id}, embedding {embedding_model}")
-                continue
+        for dim, diagram in enumerate(diagram_data["dgms"]):
+            for i, (birth, death) in enumerate(diagram):
+                # Skip infinite death values for visualization
+                if np.isinf(death):
+                    continue
 
-            # Convert persistence diagram data to DataFrame
-            records = []
+                # Add record for each feature
+                records.append({
+                    "dimension": dim,
+                    "feature_id": i,
+                    "birth": float(birth),
+                    "death": float(death),
+                    "persistence": float(death - birth)
+                })
 
-            for dim, diagram in enumerate(pd.diagram_data["dgms"]):
-                for i, (birth, death) in enumerate(diagram):
-                    # Skip infinite death values for visualization
-                    if np.isinf(death):
-                        continue
+                # Add generator information if available
+                if "gens" in diagram_data and dim < len(diagram_data["gens"]) and i < len(diagram_data["gens"][dim]):
+                    generator = diagram_data["gens"][dim][i]
+                    # Convert generator to a list if it's a numpy array
+                    if hasattr(generator, "tolist"):
+                        generator = generator.tolist()
+                    records[-1]["generator"] = str(generator)
+                    records[-1]["generator_size"] = len(generator) if isinstance(generator, list) else 1
 
-                    # Add record for each feature
-                    records.append({
-                        "dimension": dim,
-                        "feature_id": i,
-                        "birth": float(birth),
-                        "death": float(death),
-                        "persistence": float(death - birth)
-                    })
+        if not records:
+            print(f"No finite features in persistence diagram for run {run_id}, embedding {embedding_model}")
+            continue
 
-                    # Add generator information if available
-                    if "gens" in pd.diagram_data and dim < len(pd.diagram_data["gens"]) and i < len(pd.diagram_data["gens"][dim]):
-                        generator = pd.diagram_data["gens"][dim][i]
-                        # Convert generator to a list if it's a numpy array
-                        if hasattr(generator, "tolist"):
-                            generator = generator.tolist()
-                        records[-1]["generator"] = str(generator)
-                        records[-1]["generator_size"] = len(generator) if isinstance(generator, list) else 1
+        # Create DataFrame
+        feature_df = pl.DataFrame(records)
 
-            if not records:
-                print(f"No finite features in persistence diagram for run {run_id}, embedding {embedding_model}")
-                continue
+        # Create diagonal reference line data
+        max_value = max(feature_df["death"].max(), feature_df["birth"].max())
+        diagonal_df = pl.DataFrame({
+            "x": [0, max_value],
+            "y": [0, max_value]
+        })
 
-            # Create DataFrame
-            feature_df = pl.DataFrame(records)
+        # Create the persistence diagram visualization
+        diagram = alt.Chart(feature_df).mark_point(filled=True, size=100, opacity=0.7).encode(
+            x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
+            y=alt.Y("death:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
+            color=alt.Color("dimension:N", title="Dimension",
+                            scale=alt.Scale(scheme="category10")),
+            size=alt.Size("persistence:Q", title="Persistence",
+                        scale=alt.Scale(range=[20, 400])),
+            tooltip=["dimension:N", "birth:Q", "death:Q", "persistence:Q", "generator:N"]
+        ).properties(
+            width=500,
+            height=500,
+            title=f"Persistence Diagram - {embedding_model}"
+        )
 
-            # Create diagonal reference line data
-            max_value = max(feature_df["death"].max(), feature_df["birth"].max())
-            diagonal_df = pl.DataFrame({
-                "x": [0, max_value],
-                "y": [0, max_value]
-            })
+        # Add diagonal line
+        diagonal = alt.Chart(diagonal_df).mark_line(
+            color="gray", strokeDash=[5, 5]
+        ).encode(
+            x="x:Q",
+            y="y:Q"
+        )
 
-            # Create the persistence diagram visualization
-            diagram = alt.Chart(feature_df).mark_point(filled=True, size=100, opacity=0.7).encode(
-                x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
-                y=alt.Y("death:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
-                color=alt.Color("dimension:N", title="Dimension",
-                                scale=alt.Scale(scheme="category10")),
-                size=alt.Size("persistence:Q", title="Persistence",
-                            scale=alt.Scale(range=[20, 400])),
-                tooltip=["dimension:N", "birth:Q", "death:Q", "persistence:Q", "generator:N"]
-            ).properties(
-                width=500,
-                height=500,
-                title=f"Persistence Diagram - {embedding_model}"
-            )
+        # Combine chart with diagonal
+        combined = diagram + diagonal
 
-            # Add diagonal line
-            diagonal = alt.Chart(diagonal_df).mark_line(
-                color="gray", strokeDash=[5, 5]
-            ).encode(
-                x="x:Q",
-                y="y:Q"
-            )
-
-            # Combine chart with diagonal
-            combined = diagram + diagonal
-
-            # Save chart
-            output_file = f"{output_dir}/persistence_diagram_{run_id}_{embedding_model}.html"
-            combined.save(output_file)
-            print(f"Saved persistence diagram to {output_file}")
+        # Save chart
+        output_file = f"{output_dir}/persistence_diagram_{run_id}_{embedding_model}.html"
+        combined.save(output_file)
+        print(f"Saved persistence diagram to {output_file}")
 
 
 def plot_barcode(run_id: str, session: Session, output_dir: str = "output/vis/barcodes") -> None:

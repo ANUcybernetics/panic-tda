@@ -3,6 +3,7 @@ import time
 from uuid import UUID
 
 import numpy as np
+import pytest
 from PIL import Image
 from sqlalchemy import MetaData, inspect
 from sqlmodel import Session
@@ -640,3 +641,60 @@ def test_latest_experiment(db_session: Session):
     db_session.commit()
 
     assert latest_experiment(db_session) is None
+
+
+@pytest.mark.skip(reason="This test creates a file on disk, useful mostly for debugging")
+def test_dump_schema(db_session: Session):
+    """Test dumping the database schema to a file."""
+
+    # Get the engine from the session
+    engine = db_session.get_bind()
+
+    # Create a metadata object
+    metadata = MetaData()
+
+    # Reflect the existing tables
+    metadata.reflect(bind=engine)
+
+    # Prepare a dictionary to hold the schema information
+    schema_info = {}
+
+    # Get inspector to access table details
+    inspector = inspect(engine)
+
+    # Iterate through all tables
+    for table_name in inspector.get_table_names():
+        schema_info[table_name] = {
+            'columns': [],
+            'primary_key': inspector.get_pk_constraint(table_name),
+            'foreign_keys': inspector.get_foreign_keys(table_name),
+            'indexes': inspector.get_indexes(table_name)
+        }
+
+        # Get column details
+        for column in inspector.get_columns(table_name):
+            col_info = {
+                'name': column['name'],
+                'type': str(column['type']),
+                'nullable': column['nullable']
+            }
+            if 'default' in column and column['default'] is not None:
+                col_info['default'] = str(column['default'])
+
+            schema_info[table_name]['columns'].append(col_info)
+
+    # Write schema to file
+    with open('database_schema.json', 'w') as f:
+        json.dump(schema_info, f, indent=2)
+
+    # Verify the file was created and contains data
+    import os
+    assert os.path.exists('database_schema.json')
+
+    # Read back the file to verify content
+    with open('database_schema.json', 'r') as f:
+        loaded_schema = json.load(f)
+
+    assert loaded_schema
+    assert len(loaded_schema) > 0
+    assert 'run' in loaded_schema or 'Run' in loaded_schema
