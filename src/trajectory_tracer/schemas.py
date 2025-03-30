@@ -593,6 +593,25 @@ class Embedding(SQLModel, table=True):
         return delta.total_seconds()
 
 
+# Helper function to format time duration
+def format_time_duration(seconds):
+    return f"{int(seconds // 3600):02d}h {int((seconds % 3600) // 60):02d}m {int(seconds % 60):02d}s"
+
+
+# Helper function to calculate time strings for stages
+def get_time_string(percent_complete, start_time, end_time):
+    if percent_complete >= 100.0:
+        elapsed_seconds = (end_time - start_time).total_seconds()
+        return f" (completed in {format_time_duration(elapsed_seconds)})"
+    else:
+        # Estimate time to completion
+        elapsed_seconds = (datetime.now() - start_time).total_seconds()
+        if percent_complete > 0:
+            total_estimated_seconds = elapsed_seconds / (percent_complete / 100.0)
+            remaining_seconds = total_estimated_seconds - elapsed_seconds
+            return f" (est. {format_time_duration(remaining_seconds)} remaining)"
+    return ""
+
 class PersistenceDiagram(SQLModel, table=True):
     """
     Represents the topological features of a run's trajectory through embedding space.
@@ -746,6 +765,7 @@ class ExperimentConfig(SQLModel, table=True):
         Returns:
             A multi-line string with the formatted status report
         """
+
         # Initialize counters
         total_runs = len(self.runs)
         if total_runs == 0:
@@ -789,20 +809,41 @@ class ExperimentConfig(SQLModel, table=True):
         runs_with_diagrams = sum(1 for run in self.runs if len(run.persistence_diagrams) > 0)
         diagram_percent = (runs_with_diagrams / total_runs) * 100
 
-        # Format the status report
+        # Calculate invocation timing information
+        invocation_start_time = min([min([inv.started_at for inv in run.invocations if inv.started_at is not None], default=datetime.now())
+                                     for run in self.runs], default=datetime.now())
+        invocation_end_time = max([max([inv.completed_at for inv in run.invocations if inv.completed_at is not None], default=datetime.now())
+                                   for run in self.runs], default=datetime.now())
+        invocation_time_str = get_time_string(invocation_percent, invocation_start_time, invocation_end_time)
+
+        # Calculate embedding timing information
+        embedding_start_time = min([min([emb.started_at for model in self.embedding_models
+                                        for emb in run.embeddings.get(model, []) if emb.started_at is not None], default=datetime.now())
+                                   for run in self.runs], default=datetime.now())
+        embedding_end_time = max([max([emb.completed_at for model in self.embedding_models
+                                      for emb in run.embeddings.get(model, []) if emb.completed_at is not None], default=datetime.now())
+                                 for run in self.runs], default=datetime.now())
+        embedding_time_str = get_time_string(embedding_percent_total, embedding_start_time, embedding_end_time)
+
+        # Calculate persistence diagram timing information
+        diagram_start_time = min([min([pd.started_at for pd in run.persistence_diagrams if pd.started_at is not None], default=datetime.now())
+                                  for run in self.runs], default=datetime.now())
+        diagram_end_time = max([max([pd.completed_at for pd in run.persistence_diagrams if pd.completed_at is not None], default=datetime.now())
+                                for run in self.runs], default=datetime.now())
+        diagram_time_str = get_time_string(diagram_percent, diagram_start_time, diagram_end_time)
+
         status_report = (
             f"Experiment Status:\n"
-            f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence + 1}/{self.max_length})\n"
-            f"  Embedding Progress (Overall): {embedding_percent_total:.1f}% ({actual_embeddings_total}/{expected_embeddings_total})\n"
+            f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence + 1}/{self.max_length}){invocation_time_str}\n"
+            f"  Embedding Progress (Overall): {embedding_percent_total:.1f}% ({actual_embeddings_total}/{expected_embeddings_total}){embedding_time_str}\n"
         )
 
         # Add per-model embedding statistics
         for model, (actual, expected, percent) in model_stats.items():
             status_report += f"    - {model}: {percent:.1f}% ({actual}/{expected})\n"
-
-        status_report += (
-            f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs})"
-            f"\n  Elapsed Time: {int((datetime.now() - self.started_at).total_seconds() // 3600):02d}h {int(((datetime.now() - self.started_at).total_seconds() % 3600) // 60):02d}m {int((datetime.now() - self.started_at).total_seconds() % 60):02d}s"
-        )
+            status_report += (
+                f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs}){diagram_time_str}"
+                f"\n  Elapsed Time: {format_time_duration((self.completed_at - self.started_at).total_seconds() if self.completed_at else (datetime.now() - self.started_at).total_seconds())}"
+            )
 
         print(status_report)
