@@ -183,16 +183,11 @@ def export_run_mosaic(
         '-i', os.path.join(output_dir, '*.jpg'),
 
         # Video codec settings - using H.265/HEVC for 8K TV compatibility
-        '-c:v', 'libx264',  # Using H.264 instead of H.265 for better compatibility
+        '-c:v', 'libx265',
         '-preset', 'medium',  # Balance between quality and encoding speed
         '-crf', '22',         # Good quality-size balance (18-28 range)
 
-        # Add silent audio track
-        '-f', 'lavfi',
-        '-i', 'anullsrc=r=48000:cl=stereo',
-        '-c:a', 'aac',
-        '-b:a', '192k',
-        '-shortest',
+        '-tag:v', 'hvc1',
 
         # Color handling
         '-color_primaries', 'bt709',
