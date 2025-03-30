@@ -176,7 +176,7 @@ def export_run_mosaic(
         # Get full path to output video
         video_path = os.path.join(output_dir, output_video)
 
-        # Construct the ffmpeg command with modern settings
+        # Construct the ffmpeg command with settings optimized for 8K Samsung TV
         ffmpeg_cmd = [
             'ffmpeg',
             '-y',  # Overwrite output file if it exists
@@ -184,10 +184,20 @@ def export_run_mosaic(
             '-pattern_type', 'glob',
             '-i', os.path.join(output_dir, '*.jpg'),
 
-            # Video codec settings - using libx264 with high quality
-            '-c:v', 'libx264',
-            '-preset', 'slow',  # Better compression at the cost of encoding speed
-            '-crf', '18',       # High quality (lower is better, 18-23 is good range)
+            # Video codec settings - using H.265/HEVC for 8K TV compatibility
+            '-c:v', 'libx265',
+            '-preset', 'medium',  # Balance between quality and encoding speed
+            '-crf', '22',         # Good quality-size balance (18-28 range)
+
+            # Add HEVC tag for better compatibility with Samsung TVs
+            '-tag:v', 'hvc1',
+
+            # Add audio (silent if no audio is available)
+            '-f', 'lavfi',
+            '-i', 'anullsrc=r=48000:cl=stereo',
+            '-c:a', 'aac',
+            '-b:a', '192k',
+            '-shortest',
 
             # Color handling
             '-color_primaries', 'bt709',
