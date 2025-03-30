@@ -1,5 +1,12 @@
 # TODO
 
+- migrate the tables
+
+- calculate semantic dispersion (or drift)
+
+- fix bug in experiment print status (compare to completed_at, not now), and
+  perhaps factor that into a utility function
+
 - check that "PD in df" stuff works
 
 - look at change-point detection with ruptures library, and visualise the run
