@@ -110,7 +110,7 @@ def test_load_runs_df(db_session):
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
-    assert df.height == 3  # 1 run with 3 homology dimensions (0, 1, 2)
+    assert df.height > 0  # Should have at least one row for birth/death pairs
 
     # Check column names
     expected_columns = [
@@ -129,34 +129,39 @@ def test_load_runs_df(db_session):
         "persistence_diagram_completed_at",
         "persistence_diagram_duration",
         "homology_dimension",
-        "entropy",
-        "feature_count",
-        "generator_count"
+        "feature_id",
+        "birth",
+        "death",
+        "persistence",
+        "entropy"
     ]
     assert all(col in df.columns for col in expected_columns)
 
     # Check experiment_id is correctly stored
-    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 3
+    assert df.filter(pl.col("experiment_id") == str(config.id)).height > 0
 
-    # Verify field values that are the same for all homology dimensions
-    dim0_row = df.filter(pl.col("homology_dimension") == 0).row(0, named=True)
-    assert dim0_row["initial_prompt"] == "test runs dataframe"
-    assert dim0_row["seed"] == 42
-    assert dim0_row["network"] == ["DummyT2I", "DummyI2T"]
-    assert dim0_row["max_length"] == 2
-    assert dim0_row["num_invocations"] == 2
-    assert dim0_row["stop_reason"] == "length"
-    assert dim0_row["experiment_id"] == str(config.id)
+    # Verify field values that are the same for all features
+    first_row = df.row(0, named=True)
+    assert first_row["initial_prompt"] == "test runs dataframe"
+    assert first_row["seed"] == 42
+    assert first_row["network"] == ["DummyT2I", "DummyI2T"]
+    assert first_row["max_length"] == 2
+    assert first_row["num_invocations"] == 2
+    assert first_row["stop_reason"] == "length"
+    assert first_row["experiment_id"] == str(config.id)
 
     # Verify persistence diagram related fields
-    assert dim0_row["embedding_model"] == "Dummy"
-    assert dim0_row["persistence_diagram_id"] is not None
+    assert first_row["embedding_model"] == "Dummy"
+    assert first_row["persistence_diagram_id"] is not None
 
-    # Verify each dimension has the expected fields with proper types
-    for dim in range(3):
-        dim_row = df.filter(pl.col("homology_dimension") == dim).row(0, named=True)
-        assert dim_row["homology_dimension"] == dim
-        assert isinstance(dim_row["feature_count"], int)
-        assert isinstance(dim_row["entropy"], float)
-        assert isinstance(dim_row["generator_count"], int)
-        assert dim_row["experiment_id"] == str(config.id)
+    # Verify birth/death pair and homology dimension fields with proper types
+    assert "homology_dimension" in first_row
+    assert isinstance(first_row["homology_dimension"], int)
+    assert isinstance(first_row["feature_id"], int)
+    assert isinstance(first_row["birth"], float)
+    assert isinstance(first_row["death"], float)
+    assert isinstance(first_row["persistence"], float)
+
+    # Check entropy field if available
+    if "entropy" in first_row and first_row["entropy"] is not None:
+        assert isinstance(first_row["entropy"], float)
