@@ -199,6 +199,8 @@ def list_experiments_command(
                     typer.echo(f"  Embedding models: {experiment.embedding_models}")
                     typer.echo(f"  Max length: {experiment.max_length}")
                     typer.echo(f"  Runs: {run_count}")
+                    # Print experiment status
+                    experiment.print_status()
                 else:
                     # Simple output
                     elapsed = (experiment.completed_at - experiment.started_at).total_seconds()
