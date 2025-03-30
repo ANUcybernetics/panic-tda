@@ -38,6 +38,7 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
     data = []
     for embedding in embeddings:
         invocation = embedding.invocation
+        run = invocation.run
 
         row = {
             "id": str(embedding.id),
@@ -48,6 +49,7 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
             "invocation_completed_at": invocation.completed_at,
             "duration": embedding.duration,
             "run_id": str(invocation.run_id),
+            "experiment_id": str(run.experiment_id),
             "type": invocation.type,
             "initial_prompt": invocation.run.initial_prompt,
             "seed": invocation.run.seed,
@@ -111,6 +113,7 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         # Base run information
         base_row = {
             "run_id": str(run.id),
+            "experiment_id": str(run.experiment_id),
             "network": run.network,
             "initial_prompt": run.initial_prompt,
             "seed": run.seed,
@@ -182,7 +185,6 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
 
 
 ## visualisation
-
 
 def plot_persistence_diagram(df: pl.DataFrame, output_dir: str = "output/vis/persistence") -> None:
     """

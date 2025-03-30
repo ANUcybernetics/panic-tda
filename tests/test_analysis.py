@@ -45,6 +45,7 @@ def test_load_embeddings_df(db_session):
         "invocation_completed_at",
         "duration",
         "run_id",
+        "experiment_id",
         "type",
         "initial_prompt",
         "seed",
@@ -60,6 +61,9 @@ def test_load_embeddings_df(db_session):
     assert df.filter(pl.col("embedding_model") == "Dummy").height == 2
     assert df.filter(pl.col("embedding_model") == "Dummy2").height == 2
 
+    # Check experiment_id is correctly stored
+    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 4
+
     # Verify field values using named columns instead of indices
     text_rows = df.filter(pl.col("model") == "DummyT2I")
     assert text_rows.height > 0
@@ -68,6 +72,7 @@ def test_load_embeddings_df(db_session):
     assert text_row["model"] == "DummyT2I"
     assert text_row["sequence_number"] == 0
     assert text_row["seed"] == 42
+    assert text_row["experiment_id"] == str(config.id)
 
     image_rows = df.filter(pl.col("model") == "DummyI2T")
     assert image_rows.height > 0
@@ -76,6 +81,7 @@ def test_load_embeddings_df(db_session):
     assert image_row["model"] == "DummyI2T"
     assert image_row["sequence_number"] == 1
     assert image_row["seed"] == 42  # Same seed used for all runs in the config
+    assert image_row["experiment_id"] == str(config.id)
 
 
 def test_load_runs_df(db_session):
@@ -109,6 +115,7 @@ def test_load_runs_df(db_session):
     # Check column names
     expected_columns = [
         "run_id",
+        "experiment_id",
         "network",
         "initial_prompt",
         "seed",
@@ -128,6 +135,9 @@ def test_load_runs_df(db_session):
     ]
     assert all(col in df.columns for col in expected_columns)
 
+    # Check experiment_id is correctly stored
+    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 3
+
     # Verify field values that are the same for all homology dimensions
     dim0_row = df.filter(pl.col("homology_dimension") == 0).row(0, named=True)
     assert dim0_row["initial_prompt"] == "test runs dataframe"
@@ -136,6 +146,7 @@ def test_load_runs_df(db_session):
     assert dim0_row["max_length"] == 2
     assert dim0_row["num_invocations"] == 2
     assert dim0_row["stop_reason"] == "length"
+    assert dim0_row["experiment_id"] == str(config.id)
 
     # Verify persistence diagram related fields
     assert dim0_row["embedding_model"] == "Dummy"
@@ -148,3 +159,4 @@ def test_load_runs_df(db_session):
         assert isinstance(dim_row["feature_count"], int)
         assert isinstance(dim_row["entropy"], float)
         assert isinstance(dim_row["generator_count"], int)
+        assert dim_row["experiment_id"] == str(config.id)
