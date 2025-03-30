@@ -191,13 +191,6 @@ def export_run_mosaic(
             # Add HEVC tag for better compatibility with Samsung TVs
             '-tag:v', 'hvc1',
 
-            # Add audio (silent if no audio is available)
-            '-f', 'lavfi',
-            '-i', 'anullsrc=r=48000:cl=stereo',
-            '-c:a', 'aac',
-            '-b:a', '192k',
-            '-shortest',
-
             # Color handling
             '-color_primaries', 'bt709',
             '-color_trc', 'bt709',
