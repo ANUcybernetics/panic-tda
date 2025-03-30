@@ -1,6 +1,6 @@
 # TODO
 
-- migrate the tables
+- check that PDs for other models aren't accidentally being calculated
 
 - calculate semantic dispersion (or drift)
 
