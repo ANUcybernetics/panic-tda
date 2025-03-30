@@ -156,8 +156,12 @@ def test_export_run_mosaic(db_session: Session, tmp_path):
     # Create a temporary output directory
     output_dir = tmp_path / "test_mosaic"
 
-    # Call the export_run_mosaic function with 2 columns
-    export_run_mosaic(run_ids, db_session, cols=2, output_dir=str(output_dir))
+    # Call the export_run_mosaic function with 2 columns and cell size of IMAGE_SIZE
+    cell_size = IMAGE_SIZE
+    fps = 10
+    output_video = "test_video.mp4"
+    export_run_mosaic(run_ids, db_session, cols=2, cell_size=cell_size,
+                     output_dir=str(output_dir), fps=fps, output_video=output_video)
 
     # Check that the mosaic directory was created
     assert output_dir.exists()
@@ -170,5 +174,9 @@ def test_export_run_mosaic(db_session: Session, tmp_path):
     # Verify the mosaic is a valid image with expected dimensions
     mosaic_img = Image.open(mosaic_file)
     # Should be a 2x2 grid of IMAGE_SIZE images
-    assert mosaic_img.width == IMAGE_SIZE * 2
-    assert mosaic_img.height == IMAGE_SIZE * 2
+    assert mosaic_img.width == cell_size * 2
+    assert mosaic_img.height == cell_size * 2
+
+    # Check that the video file was created
+    video_file = output_dir / output_video
+    assert video_file.exists()
