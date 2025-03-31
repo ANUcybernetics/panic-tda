@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import polars as pl
 from numpy.linalg import norm
 from sqlmodel import Session
@@ -7,7 +8,6 @@ from sqlmodel import Session
 from trajectory_tracer.db import list_runs
 
 ## load the DB objects into dataframes
-
 
 
 def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
@@ -52,8 +52,9 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
             for embedding in embeddings_list:
                 invocation = embedding.invocation
 
-                # Calculate semantic_dispersion (distance from first embedding)
-                semantic_dispersion = None
+                # Calculate drift metrics (distance from first embedding)
+                drift_euclidean = None
+                drift_cosine = None
                 key = (run_id, embedding_model)
                 first_embedding = first_embeddings.get(key)
 
@@ -63,7 +64,20 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                     current_vector = embedding.vector
 
                     if len(first_vector) > 0 and len(current_vector) > 0 and len(first_vector) == len(current_vector):
-                        semantic_dispersion = float(norm(current_vector - first_vector))
+                        # Calculate Euclidean distance
+                        drift_euclidean = float(norm(current_vector - first_vector))
+
+                        # Calculate Cosine distance (1 - cosine similarity)
+                        # First normalize the vectors
+                        first_norm = norm(first_vector)
+                        current_norm = norm(current_vector)
+
+                        if first_norm > 0 and current_norm > 0:
+                            # Calculate cosine similarity
+                            dot_product = np.dot(first_vector, current_vector)
+                            cosine_similarity = dot_product / (first_norm * current_norm)
+                            # Convert to cosine distance (1 - similarity)
+                            drift_cosine = float(1.0 - cosine_similarity)
 
                 row = {
                     "id": str(embedding.id),
@@ -81,7 +95,8 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                     "model": invocation.model,
                     "sequence_number": invocation.sequence_number,
                     "embedding_model": embedding_model,
-                    "semantic_dispersion": semantic_dispersion,
+                    "drift_euclidean": drift_euclidean,
+                    "drift_cosine": drift_cosine,
                 }
                 data.append(row)
 

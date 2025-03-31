@@ -1,12 +1,12 @@
-import polars as pl
 import numpy as np
+import polars as pl
 
 from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
+from trajectory_tracer.db import list_runs
 from trajectory_tracer.engine import (
     perform_experiment,
 )
 from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.db import list_runs
 
 
 def test_load_embeddings_df(db_session):
@@ -54,6 +54,8 @@ def test_load_embeddings_df(db_session):
         "model",
         "sequence_number",
         "embedding_model",
+        "drift_euclidean",
+        "drift_cosine",
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns

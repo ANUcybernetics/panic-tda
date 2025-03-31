@@ -152,12 +152,12 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     chart.save(output_file)
 
 
-def plot_semantic_dispersion(df: pl.DataFrame, output_file: str = "output/vis/semantic_dispersion.html") -> None:
+def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html") -> None:
     """
-    Create a line plot showing semantic dispersion over sequence number.
+    Create a line plot showing semantic drift (both euclidean and cosine) over sequence number.
 
     Args:
-        df: DataFrame containing embedding data with semantic_dispersion and sequence_number
+        df: DataFrame containing embedding data with drift_euclidean, drift_cosine and sequence_number
         output_file: Path to save the visualization
     """
     # Ensure output directory exists
@@ -165,35 +165,63 @@ def plot_semantic_dispersion(df: pl.DataFrame, output_file: str = "output/vis/se
     os.makedirs(output_dir, exist_ok=True)
 
     # Check if we have the required columns
-    required_columns = {"semantic_dispersion", "sequence_number", "run_id"}
+    required_columns = {"drift_euclidean", "drift_cosine", "sequence_number", "run_id"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
         print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
-    # Filter to only include rows with semantic_dispersion
-    df_filtered = df.filter(pl.col("semantic_dispersion").is_not_null())
+    # Filter to only include rows with at least one drift measure
+    df_filtered = df.filter(
+        pl.col("drift_euclidean").is_not_null() | pl.col("drift_cosine").is_not_null()
+    )
 
-    # Create Altair line chart
-    chart = (
+    # Create two separate charts with different y-scales
+    euclidean_chart = (
         alt.Chart(df_filtered)
         .mark_line(point=True)
         .encode(
             x=alt.X("sequence_number:Q", title="Sequence Number"),
-            y=alt.Y("semantic_dispersion:Q", title="Semantic Dispersion"),
+            y=alt.Y("drift_euclidean:Q", title="Euclidean Distance"),
             color=alt.Color("run_id:N", title="Run ID"),
-            tooltip=["run_id", "sequence_number", "semantic_dispersion", "embedding_model"]
+            tooltip=["run_id", "sequence_number", "drift_euclidean", "embedding_model"]
         )
         .properties(
             width=800,
-            height=500,
-            title="Semantic Dispersion Over Sequence"
+            height=250,
+            title="Euclidean Distance Over Sequence"
         )
     )
 
+    cosine_chart = (
+        alt.Chart(df_filtered)
+        .mark_line(point=True, strokeDash=[3, 3])  # Make the cosine lines dashed
+        .encode(
+            x=alt.X("sequence_number:Q", title="Sequence Number"),
+            y=alt.Y("drift_cosine:Q", title="Cosine Distance", scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("run_id:N", title="Run ID"),
+            tooltip=["run_id", "sequence_number", "drift_cosine", "embedding_model"]
+        )
+        .properties(
+            width=800,
+            height=250,
+            title="Cosine Distance Over Sequence"
+        )
+    )
+
+    # Combine the charts vertically
+    combined_chart = alt.vconcat(
+        euclidean_chart,
+        cosine_chart
+    ).resolve_scale(
+        color='shared'  # Use the same color scheme for runs across both charts
+    ).properties(
+        title="Semantic Dispersion Measures"
+    )
+
     # Save the chart
-    chart.save(output_file)
-    print(f"Saved semantic dispersion plot to {output_file}")
+    combined_chart.save(output_file)
+    print(f"Saved semantic drift plot to {output_file}")
 
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:

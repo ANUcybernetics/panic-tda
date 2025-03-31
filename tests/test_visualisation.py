@@ -5,7 +5,7 @@ from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig
 from trajectory_tracer.visualisation import (
     plot_persistence_diagram,
-    plot_semantic_dispersion,
+    plot_semantic_drift,
 )
 
 
@@ -46,7 +46,7 @@ def test_plot_persistence_diagram(db_session):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_semantic_dispersion(db_session):
+def test_plot_semantic_drift(db_session):
     # Create a simple test configuration
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
@@ -65,19 +65,20 @@ def test_plot_semantic_dispersion(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load the embeddings data with semantic dispersion information
+    # Load the embeddings data with semantic drift information
     df = load_embeddings_df(db_session, use_cache=False)
 
     # Verify we have semantic dispersion data
     assert df.height > 0
-    assert "semantic_dispersion" in df.columns
+    assert "drift_euclidean" in df.columns
+    assert "drift_cosine" in df.columns
     assert "sequence_number" in df.columns
 
     # Define output file
-    output_file = "output/vis/semantic_dispersion.html"
+    output_file = "output/vis/semantic_drift.html"
 
     # Generate the plot
-    plot_semantic_dispersion(df, output_file)
+    plot_semantic_drift(df, output_file)
 
     # Verify the file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
