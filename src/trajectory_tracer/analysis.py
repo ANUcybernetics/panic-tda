@@ -4,7 +4,7 @@ import os
 import polars as pl
 from sqlmodel import Session
 
-from trajectory_tracer.db import list_embeddings, list_runs
+from trajectory_tracer.db import list_runs
 
 ## load the DB objects into dataframes
 
@@ -29,32 +29,62 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
         return pl.read_parquet(cache_path)
 
     print("Loading embeddings from database...")
-    embeddings = list_embeddings(session)
+    runs = list_runs(session)
 
-    # Convert the embeddings to a format suitable for a DataFrame
+    # Create a mapping of first embeddings by run_id and embedding_model
+    first_embeddings = {}
     data = []
-    for embedding in embeddings:
-        invocation = embedding.invocation
-        run = invocation.run
 
-        row = {
-            "id": str(embedding.id),
-            "invocation_id": str(invocation.id),
-            "embedding_started_at": embedding.started_at,
-            "embedding_completed_at": embedding.completed_at,
-            "invocation_started_at": invocation.started_at,
-            "invocation_completed_at": invocation.completed_at,
-            "duration": embedding.duration,
-            "run_id": str(invocation.run_id),
-            "experiment_id": str(run.experiment_id),
-            "type": invocation.type,
-            "initial_prompt": invocation.run.initial_prompt,
-            "seed": invocation.run.seed,
-            "model": invocation.model,
-            "sequence_number": invocation.sequence_number,
-            "embedding_model": embedding.embedding_model,
-        }
-        data.append(row)
+    # Process each run and its embeddings
+    for run in runs:
+        # Get all embeddings for the run - embeddings is a property that returns a dict
+        run_embeddings_dict = run.embeddings
+        run_id = str(run.id)
+
+        # Process embeddings for each model
+        for embedding_model, embeddings_list in run_embeddings_dict.items():
+            # Identify first embedding for each embedding model
+            if embeddings_list:
+                key = (run_id, embedding_model)
+                first_embeddings[key] = embeddings_list[0]
+
+            # Process all embeddings for this model
+            for embedding in embeddings_list:
+                invocation = embedding.invocation
+
+                # Calculate semantic_dispersion (distance from first embedding)
+                semantic_dispersion = None
+                key = (run_id, embedding_model)
+                first_embedding = first_embeddings.get(key)
+
+                if first_embedding and first_embedding.vector is not None and embedding.vector is not None:
+                    from numpy.linalg import norm
+
+                    first_vector = first_embedding.vector
+                    current_vector = embedding.vector
+
+                    if len(first_vector) > 0 and len(current_vector) > 0 and len(first_vector) == len(current_vector):
+                        semantic_dispersion = float(norm(current_vector - first_vector))
+
+                row = {
+                    "id": str(embedding.id),
+                    "invocation_id": str(invocation.id),
+                    "embedding_started_at": embedding.started_at,
+                    "embedding_completed_at": embedding.completed_at,
+                    "invocation_started_at": invocation.started_at,
+                    "invocation_completed_at": invocation.completed_at,
+                    "duration": embedding.duration,
+                    "run_id": run_id,
+                    "experiment_id": str(run.experiment_id) if run.experiment_id else None,
+                    "type": invocation.type,
+                    "initial_prompt": run.initial_prompt,
+                    "seed": run.seed,
+                    "model": invocation.model,
+                    "sequence_number": invocation.sequence_number,
+                    "embedding_model": embedding_model,
+                    "semantic_dispersion": semantic_dispersion,
+                }
+                data.append(row)
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)

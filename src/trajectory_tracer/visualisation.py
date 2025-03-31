@@ -20,8 +20,10 @@ def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str =
     os.makedirs(output_dir, exist_ok=True)
 
     # Check if we have persistence diagram data
-    if "homology_dimension" not in df.columns or "birth" not in df.columns or "death" not in df.columns or "run_id" not in df.columns:
-        print("Required columns not found in DataFrame")
+    required_columns = {"homology_dimension", "birth", "death", "run_id", "initial_prompt"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
     # Handle infinity values in death column
@@ -56,6 +58,9 @@ def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str =
         # Filter data for this run
         run_df = vis_df.filter(pl.col("run_id") == run_id)
 
+        # Get the initial prompt for this run (should be the same for all rows with the same run_id)
+        initial_prompt = run_df["initial_prompt"].unique()[0]
+
         # Create the main scatter plot for this run
         scatter = alt.Chart(run_df).mark_point(filled=True, opacity=0.7).encode(
             x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
@@ -84,7 +89,7 @@ def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str =
         combined = alt.layer(scatter, diagonal).properties(
             width=400,
             height=400,
-            title=f"Run ID: {run_id}"
+            title=f"Prompt: {initial_prompt}"
         )
 
         charts.append(combined)
@@ -145,6 +150,50 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
 
     # Save the chart
     chart.save(output_file)
+
+
+def plot_semantic_dispersion(df: pl.DataFrame, output_file: str = "output/vis/semantic_dispersion.html") -> None:
+    """
+    Create a line plot showing semantic dispersion over sequence number.
+
+    Args:
+        df: DataFrame containing embedding data with semantic_dispersion and sequence_number
+        output_file: Path to save the visualization
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Check if we have the required columns
+    required_columns = {"semantic_dispersion", "sequence_number", "run_id"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        return
+
+    # Filter to only include rows with semantic_dispersion
+    df_filtered = df.filter(pl.col("semantic_dispersion").is_not_null())
+
+    # Create Altair line chart
+    chart = (
+        alt.Chart(df_filtered)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("sequence_number:Q", title="Sequence Number"),
+            y=alt.Y("semantic_dispersion:Q", title="Semantic Dispersion"),
+            color=alt.Color("run_id:N", title="Run ID"),
+            tooltip=["run_id", "sequence_number", "semantic_dispersion", "embedding_model"]
+        )
+        .properties(
+            width=800,
+            height=500,
+            title="Semantic Dispersion Over Sequence"
+        )
+    )
+
+    # Save the chart
+    chart.save(output_file)
+    print(f"Saved semantic dispersion plot to {output_file}")
 
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
