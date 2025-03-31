@@ -6,12 +6,13 @@ import polars as pl
 
 ## visualisation
 
-def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
+def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str = "output/vis/persistence_diagram.html") -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame.
 
     Args:
         df: DataFrame containing run data with persistence homology information
+        cols: Number of columns for faceting the charts (default: 3)
         output_file: Path to save the visualization
     """
     # Ensure output directory exists
@@ -88,9 +89,19 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
 
         charts.append(combined)
 
-    # Concatenate the charts horizontally
+    # Concatenate the charts with the specified number of columns
     if len(charts) > 1:
-        final_chart = alt.hconcat(*charts).properties(
+        # Split the charts into rows with the specified number of columns
+        chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
+
+        # Create a row of charts for each group
+        rows = []
+        for row_charts in chart_rows:
+            row = alt.hconcat(*row_charts)
+            rows.append(row)
+
+        # Combine all rows vertically
+        final_chart = alt.vconcat(*rows).properties(
             title="Persistence Diagrams"
         ).resolve_scale(
             x='shared',
