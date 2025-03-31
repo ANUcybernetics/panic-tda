@@ -1,12 +1,10 @@
-import json
+
 import os
 
-import numpy as np
 import polars as pl
 from sqlmodel import Session
 
 from trajectory_tracer.db import list_embeddings, list_runs
-from trajectory_tracer.schemas import Run
 
 ## load the DB objects into dataframes
 
