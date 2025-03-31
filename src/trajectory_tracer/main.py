@@ -351,16 +351,10 @@ def export_video(
         help="ID of the experiment to create a mosaic video from",
     ),
     cols: int = typer.Option(
-        3,
+        4,
         "--cols",
         "-c",
-        help="Number of columns in the mosaic grid",
-    ),
-    cell_size: int = typer.Option(
-        512,
-        "--cell-size",
-        "-s",
-        help="Size of each cell in pixels",
+        help="Number of columns in the mosaic grid (default: 4)",
     ),
     fps: int = typer.Option(
         4,
@@ -419,7 +413,6 @@ def export_video(
                 run_ids=run_ids,
                 session=session,
                 cols=cols,
-                cell_size=cell_size,
                 output_dir=output_dir,
                 fps=fps,
                 output_video=output_video

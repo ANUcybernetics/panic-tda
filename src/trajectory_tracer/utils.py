@@ -10,6 +10,8 @@ from sqlmodel import Session
 
 from trajectory_tracer.db import read_run
 from trajectory_tracer.schemas import InvocationType, Run
+from trajectory_tracer.genai_models import IMAGE_SIZE
+
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +90,7 @@ def export_run_images(
 
 
 def export_run_mosaic(
-    run_ids: list[str], session: Session, cols: int, cell_size: int, output_dir: str, fps: int, output_video: str) -> None:
+    run_ids: list[str], session: Session, cols: int, output_dir: str, fps: int, output_video: str) -> None:
     """
     Export a mosaic of images from multiple runs and create a video from the mosaic images.
 
@@ -96,7 +98,6 @@ def export_run_mosaic(
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
         cols: Number of columns in the mosaic grid
-        cell_size: Size of each cell in pixels
         output_dir: Directory where mosaic images will be saved
         fps: Frames per second for the output video
         output_video: Name of the output video file
@@ -104,71 +105,124 @@ def export_run_mosaic(
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load all specified runs using the db helper, maintaining the order from run_ids
+    # Load all specified runs in the given order
     runs = []
-    run_map = {}  # Dictionary to map run_id to run object
-
     for run_id in run_ids:
         run = read_run(UUID(run_id), session)
         if run:
-            run_map[run_id] = run
+            runs.append(run)
 
-    # Maintain original order from run_ids
-    for run_id in run_ids:
-        if run_id in run_map:
-            runs.append(run_map[run_id])
+    if not runs:
+        logger.error("No valid runs found for the provided IDs")
+        return
+
+    # Get initial prompt from the first run for display on the progress bar
+    initial_prompt = runs[0].initial_prompt if runs[0].initial_prompt else "No prompt available"
+
+    # Filter and organize invocations
+    run_invocations = []
+
+    for run in runs:
+        # Filter to include only image invocations and sort by sequence number
+        invocations = [inv for inv in run.invocations if inv.type == InvocationType.IMAGE]
+        invocations.sort(key=lambda inv: inv.sequence_number)
+
+        # Make sure all sequence numbers start from zero and are consecutive
+        if not invocations or invocations[0].sequence_number != 0:
+            logger.warning(f"Run {run.id} doesn't start with sequence number 0")
+
+        run_invocations.append(invocations)
+
+    # Verify all runs have the same number of invocations
+    invocation_counts = [len(invs) for invs in run_invocations]
+    if len(set(invocation_counts)) > 1:
+        logger.warning(f"Runs have different numbers of invocations: {invocation_counts}")
 
     # Find max sequence number across all runs
-    max_seq = 0
-    for run in runs:
-        for invocation in run.invocations:
-            if invocation.type == InvocationType.IMAGE and invocation.sequence_number > max_seq:
-                max_seq = invocation.sequence_number
+    max_seq = max([invs[-1].sequence_number if invs else 0 for invs in run_invocations])
 
     # Calculate rows based on number of runs
     rows = (len(runs) + cols - 1) // cols  # Ceiling division
 
-    # Process each sequence number
+    # Calculate mosaic dimensions with extra space for progress bar and text
+    progress_bar_offset = 100  # 100px from bottom for progress bar and text
+    canvas_height = rows * IMAGE_SIZE + progress_bar_offset
+    canvas_width = cols * IMAGE_SIZE
+
+    # Prepare a reusable font for text rendering
+    try:
+        from PIL import ImageDraw, ImageFont
+        # Try to use a default system font
+        try:
+            font = ImageFont.truetype("Helvetica", 72)
+        except OSError:
+            # Fallback to default
+            font = ImageFont.load_default()
+    except ImportError:
+        logger.warning("PIL ImageDraw or ImageFont not available; text rendering disabled")
+        font = None
+
+    # Create a blank canvas for the mosaic (reuse for each sequence)
+    mosaic = Image.new('RGB', (canvas_width, canvas_height), (0, 0, 0))
+    draw = ImageDraw.Draw(mosaic) if font else None
+
+    # Process each sequence number (by groups of 2 to match original)
     for seq_num in range(0, max_seq + 1, 2):
-        # Create a blank canvas for the mosaic
-        mosaic = Image.new('RGB', (cols * cell_size, rows * cell_size), (0, 0, 0))
+        # Clear the canvas by filling with black
+        draw = ImageDraw.Draw(mosaic)
+        draw.rectangle((0, 0, canvas_width, canvas_height), fill=(0, 0, 0))
 
         # Place each run's image at this sequence number into the mosaic
-        # The order is preserved from the original run_ids list
-        for idx, run in enumerate(runs):
+        for idx, invocations in enumerate(run_invocations):
             row = idx // cols
             col = idx % cols
 
             # Find the invocation with this sequence number in this run
-            for invocation in run.invocations:
-                if (invocation.type == InvocationType.IMAGE and
-                    invocation.sequence_number == seq_num and
-                    invocation.output_image_data):
+            matching_inv = next((inv for inv in invocations
+                                if inv.sequence_number == seq_num and inv.output_image_data),
+                                None)
 
-                    # Load the image
-                    image_data = BytesIO(invocation.output_image_data)
-                    image_data.seek(0)
-                    img = Image.open(image_data).convert("RGB")
+            if matching_inv:
+                # Load and paste the image
+                image_data = BytesIO(matching_inv.output_image_data)
+                image_data.seek(0)
+                img = Image.open(image_data).convert("RGB")
 
-                    # If this is our first image, use its dimensions
-                    if cell_size == 512 and idx == 0:
-                        cell_size = img.width
-                        # Recreate the mosaic with the correct dimensions
-                        mosaic = Image.new('RGB', (cols * cell_size, rows * cell_size), (0, 0, 0))
+                # Calculate position and paste
+                x_offset = col * IMAGE_SIZE
+                y_offset = row * IMAGE_SIZE
+                mosaic.paste(img, (x_offset, y_offset))
 
-                    # Calculate position and paste
-                    x_offset = col * cell_size
-                    y_offset = row * cell_size
-                    mosaic.paste(img, (x_offset, y_offset))
+        # Draw progress bar (10px wide, 100px from bottom)
+        if draw:
+            progress_percent = seq_num / max_seq if max_seq > 0 else 0
+            progress_width = int(canvas_width * progress_percent)
 
-                    # Only use the first matching invocation
-                    break
+            # Progress bar background
+            draw.rectangle(
+                (0, canvas_height - progress_bar_offset, canvas_width, canvas_height - progress_bar_offset + 10),
+                fill=(50, 50, 50)
+            )
+
+            # Progress bar fill - white
+            draw.rectangle(
+                (0, canvas_height - progress_bar_offset, progress_width, canvas_height - progress_bar_offset + 10),
+                fill=(255, 255, 255)
+            )
+
+            # Draw the full prompt text without truncating
+            draw.text(
+                (10, canvas_height - progress_bar_offset + 20),
+                initial_prompt,  # Don't limit the text width - show full prompt
+                fill=(255, 255, 255),
+                font=font
+            )
 
         # Save the mosaic
         output_path = os.path.join(output_dir, f"{seq_num:05d}.jpg")
         mosaic.save(output_path, format="JPEG", quality=95)
 
-        logger.info(f"Saved mosaic for sequence {seq_num}")
+        logger.info(f"Saved mosaic for sequence {seq_num} ({int(progress_percent*100)}%)")
 
     # Create video from the mosaic images using ffmpeg
     # Get full path to output video
