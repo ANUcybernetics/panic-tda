@@ -19,7 +19,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     os.makedirs(output_dir, exist_ok=True)
 
     # Check if we have persistence diagram data
-    if "homology_dimension" not in df.columns or "birth" not in df.columns or "death" not in df.columns:
+    if "homology_dimension" not in df.columns or "birth" not in df.columns or "death" not in df.columns or "run_id" not in df.columns:
         print("Required columns not found in DataFrame")
         return
 
@@ -45,40 +45,64 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
         .alias("death_vis")
     )
 
-    # Create diagonal reference line data
-    diagonal_df = pl.DataFrame({
-        "x": [0.0, float(max_value)],
-        "y": [0.0, float(max_value)]
-    }, schema={"x": pl.Float64, "y": pl.Float64})
+    # Get unique run IDs for faceting
+    run_ids = vis_df["run_id"].unique().to_list()
 
-    # Create the persistence diagram visualization
-    diagram = alt.Chart(vis_df).mark_point(filled=True, opacity=0.7).encode(
-        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
-        y=alt.Y("death_vis:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
-        color=alt.Color("homology_dimension:N", title="Dimension",
-                       scale=alt.Scale(scheme="category10")),
-        size=alt.Size("persistence:Q", title="Persistence",
-                     scale=alt.Scale(range=[20, 400])),
-        tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
-    ).properties(
-        width=500,
-        height=500,
-        title="Persistence Diagram"
-    )
+    # Create a separate chart for each run ID
+    charts = []
 
-    # Add diagonal line
-    diagonal = alt.Chart(diagonal_df).mark_line(
-        color="gray", strokeDash=[5, 5]
-    ).encode(
-        x="x:Q",
-        y="y:Q"
-    )
+    for run_id in run_ids:
+        # Filter data for this run
+        run_df = vis_df.filter(pl.col("run_id") == run_id)
 
-    # Combine chart elements
-    combined = diagram + diagonal
+        # Create the main scatter plot for this run
+        scatter = alt.Chart(run_df).mark_point(filled=True, opacity=0.7).encode(
+            x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
+            y=alt.Y("death_vis:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
+            color=alt.Color("homology_dimension:N", title="Dimension",
+                          scale=alt.Scale(scheme="category10")),
+            tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
+        )
+
+        # Create diagonal reference line data
+        diagonal_data = {
+            "x": [0.0, float(max_value)],
+            "y": [0.0, float(max_value)]
+        }
+        diagonal_df = pl.DataFrame(diagonal_data, schema={"x": pl.Float64, "y": pl.Float64})
+
+        # Create diagonal line
+        diagonal = alt.Chart(diagonal_df).mark_line(
+            color="gray", strokeDash=[5, 5]
+        ).encode(
+            x="x:Q",
+            y="y:Q"
+        )
+
+        # Layer the charts
+        combined = alt.layer(scatter, diagonal).properties(
+            width=400,
+            height=400,
+            title=f"Run ID: {run_id}"
+        )
+
+        charts.append(combined)
+
+    # Concatenate the charts horizontally
+    if len(charts) > 1:
+        final_chart = alt.hconcat(*charts).properties(
+            title="Persistence Diagrams"
+        ).resolve_scale(
+            x='shared',
+            y='shared'
+        )
+    else:
+        final_chart = charts[0].properties(
+            title="Persistence Diagram"
+        )
 
     # Save chart
-    combined.save(output_file)
+    final_chart.save(output_file)
     print(f"Saved persistence diagram to {output_file}")
 
 
