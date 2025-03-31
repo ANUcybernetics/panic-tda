@@ -154,7 +154,8 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
 
 def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html") -> None:
     """
-    Create a line plot showing semantic drift (both euclidean and cosine) over sequence number.
+    Create a line plot showing semantic drift (both euclidean and cosine) over sequence number,
+    faceted by run_id with dual axes for different drift metrics.
 
     Args:
         df: DataFrame containing embedding data with drift_euclidean, drift_cosine and sequence_number
@@ -165,7 +166,7 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
     os.makedirs(output_dir, exist_ok=True)
 
     # Check if we have the required columns
-    required_columns = {"drift_euclidean", "drift_cosine", "sequence_number", "run_id"}
+    required_columns = {"drift_euclidean", "drift_cosine", "sequence_number", "run_id", "initial_prompt"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
         print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
@@ -176,51 +177,92 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
         pl.col("drift_euclidean").is_not_null() | pl.col("drift_cosine").is_not_null()
     )
 
-    # Create two separate charts with different y-scales
-    euclidean_chart = (
-        alt.Chart(df_filtered)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("sequence_number:Q", title="Sequence Number"),
-            y=alt.Y("drift_euclidean:Q", title="Euclidean Distance"),
-            color=alt.Color("run_id:N", title="Run ID"),
-            tooltip=["run_id", "sequence_number", "drift_euclidean", "embedding_model"]
-        )
-        .properties(
-            width=800,
-            height=250,
-            title="Euclidean Distance Over Sequence"
-        )
-    )
+    # Get unique run IDs for faceting
+    run_ids = df_filtered["run_id"].unique().to_list()
 
-    cosine_chart = (
-        alt.Chart(df_filtered)
-        .mark_line(point=True, strokeDash=[3, 3])  # Make the cosine lines dashed
-        .encode(
-            x=alt.X("sequence_number:Q", title="Sequence Number"),
-            y=alt.Y("drift_cosine:Q", title="Cosine Distance", scale=alt.Scale(domain=[0, 1])),
-            color=alt.Color("run_id:N", title="Run ID"),
-            tooltip=["run_id", "sequence_number", "drift_cosine", "embedding_model"]
-        )
-        .properties(
-            width=800,
-            height=250,
-            title="Cosine Distance Over Sequence"
-        )
-    )
+    # Create a separate chart for each run ID
+    charts = []
 
-    # Combine the charts vertically
-    combined_chart = alt.vconcat(
-        euclidean_chart,
-        cosine_chart
-    ).resolve_scale(
-        color='shared'  # Use the same color scheme for runs across both charts
-    ).properties(
-        title="Semantic Dispersion Measures"
-    )
+    for run_id in run_ids:
+        # Filter data for this run
+        run_df = df_filtered.filter(pl.col("run_id") == run_id)
+
+        # Get the initial prompt for this run (should be the same for all rows with the same run_id)
+        initial_prompt = run_df["initial_prompt"].unique()[0]
+
+        # Create base chart
+        base = alt.Chart(run_df).encode(
+            x=alt.X("sequence_number:Q", title="Sequence Number")
+        )
+
+        # Create euclidean distance line
+        euclidean_line = base.mark_line(color="#57A44C", opacity=0.7).encode(
+            alt.Y("drift_euclidean:Q").axis(
+                title="Euclidean Distance",
+                titleColor="#57A44C"
+            ),
+            tooltip=["sequence_number", "drift_euclidean", "embedding_model"]
+        )
+
+        # Add points to the euclidean line
+        euclidean_points = base.mark_point(color="#57A44C").encode(
+            alt.Y("drift_euclidean:Q"),
+            tooltip=["sequence_number", "drift_euclidean", "embedding_model"]
+        )
+
+        # Create cosine distance line
+        cosine_line = base.mark_line(color="#5276A7", strokeDash=[3, 3], opacity=0.7).encode(
+            alt.Y("drift_cosine:Q").axis(
+                title="Cosine Distance",
+                titleColor="#5276A7"
+            ),
+            tooltip=["sequence_number", "drift_cosine", "embedding_model"]
+        )
+
+        # Add points to the cosine line
+        cosine_points = base.mark_point(color="#5276A7").encode(
+            alt.Y("drift_cosine:Q"),
+            tooltip=["sequence_number", "drift_cosine", "embedding_model"]
+        )
+
+        # Combine the charts with dual axis
+        combined = alt.layer(
+            euclidean_line + euclidean_points,
+            cosine_line + cosine_points
+        ).resolve_scale(
+            y="independent"
+        ).properties(
+            width=400,
+            height=300,
+            title=f"Prompt: {initial_prompt}"
+        )
+
+        charts.append(combined)
+
+    # Arrange charts in a grid
+    if len(charts) > 1:
+        # Determine the number of columns (default to 2)
+        cols = 2
+        # Split the charts into rows with the specified number of columns
+        chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
+
+        # Create a row of charts for each group
+        rows = []
+        for row_charts in chart_rows:
+            row = alt.hconcat(*row_charts)
+            rows.append(row)
+
+        # Combine all rows vertically
+        final_chart = alt.vconcat(*rows).properties(
+            title="Semantic Dispersion Measures by Run"
+        )
+    else:
+        final_chart = charts[0].properties(
+            title="Semantic Dispersion Measures"
+        )
 
     # Save the chart
-    combined_chart.save(output_file)
+    final_chart.save(output_file)
     print(f"Saved semantic drift plot to {output_file}")
 
 
