@@ -99,7 +99,7 @@ def test_plot_diagram():
     fig.update_layout(title="Persistence Diagram for a Circle")
 
     # Save the figure as HTML and/or image file
-    fig.write_html("pd.html")
+    fig.write_html("output/vis/giotto-pd.html")
     # fig.write_image("circle_persistence_diagram.png")
 
 
