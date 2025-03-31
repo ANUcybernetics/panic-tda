@@ -1,7 +1,7 @@
-
 import os
 
 import polars as pl
+from numpy.linalg import norm
 from sqlmodel import Session
 
 from trajectory_tracer.db import list_runs
@@ -58,7 +58,6 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                 first_embedding = first_embeddings.get(key)
 
                 if first_embedding and first_embedding.vector is not None and embedding.vector is not None:
-                    from numpy.linalg import norm
 
                     first_vector = first_embedding.vector
                     current_vector = embedding.vector
