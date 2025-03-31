@@ -90,7 +90,7 @@ def export_run_images(
 
 
 def export_run_mosaic(
-    run_ids: list[str], session: Session, cols: int, output_dir: str, fps: int, output_video: str) -> None:
+    run_ids: list[str], session: Session, cols: int, fps: int, output_video: str) -> None:
     """
     Export a mosaic of images from multiple runs and create a video from the mosaic images.
 
@@ -98,12 +98,19 @@ def export_run_mosaic(
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
         cols: Number of columns in the mosaic grid
-        output_dir: Directory where mosaic images will be saved
         fps: Frames per second for the output video
-        output_video: Name of the output video file
+        output_video: Name of the output video file (can include subfolders)
     """
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
+    # Extract directory from output_video path
+    output_dir = os.path.dirname(output_video)
+
+    # If output_dir is not empty, ensure it exists
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+    else:
+        # Use current directory if no directory specified
+        output_dir = "."
+        output_video = os.path.join(output_dir, output_video)
 
     # Load all specified runs in the given order
     runs = []
@@ -166,6 +173,10 @@ def export_run_mosaic(
     mosaic = Image.new('RGB', (canvas_width, canvas_height), (0, 0, 0))
     draw = ImageDraw.Draw(mosaic) if font else None
 
+    # Create temp directory for frames
+    temp_dir = os.path.join(output_dir, "temp_frames")
+    os.makedirs(temp_dir, exist_ok=True)
+
     # Process each sequence number (by groups of 2 to match original)
     for seq_num in range(0, max_seq + 1, 2):
         # Clear the canvas by filling with black
@@ -219,14 +230,10 @@ def export_run_mosaic(
             )
 
         # Save the mosaic
-        output_path = os.path.join(output_dir, f"{seq_num:05d}.jpg")
+        output_path = os.path.join(temp_dir, f"{seq_num:05d}.jpg")
         mosaic.save(output_path, format="JPEG", quality=95)
 
         logger.info(f"Saved mosaic for sequence {seq_num} ({int(progress_percent*100)}%)")
-
-    # Create video from the mosaic images using ffmpeg
-    # Get full path to output video
-    video_path = os.path.join(output_dir, output_video)
 
     # Construct the ffmpeg command with settings optimized for 8K Samsung TV
     ffmpeg_cmd = [
@@ -234,7 +241,7 @@ def export_run_mosaic(
         '-y',  # Overwrite output file if it exists
         '-framerate', str(fps),
         '-pattern_type', 'glob',
-        '-i', os.path.join(output_dir, '*.jpg'),
+        '-i', os.path.join(temp_dir, '*.jpg'),
 
         # Video codec settings - using H.265/HEVC for 8K TV compatibility
         '-c:v', 'libx265',
@@ -254,11 +261,16 @@ def export_run_mosaic(
         # Use movflags to enable streaming
         '-movflags', '+faststart',
 
-        video_path
+        output_video
     ]
 
     # Execute the command
     logger.info(f"Creating video with command: {' '.join(ffmpeg_cmd)}")
     subprocess.run(ffmpeg_cmd, check=True)
 
-    logger.info(f"Mosaic video created successfully at {video_path}")
+    # Clean up temporary files
+    for file in os.listdir(temp_dir):
+        os.remove(os.path.join(temp_dir, file))
+    os.rmdir(temp_dir)
+
+    logger.info(f"Mosaic video created successfully at {output_video}")
