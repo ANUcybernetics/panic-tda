@@ -6,13 +6,13 @@ import polars as pl
 
 ## visualisation
 
-def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str = "output/vis/persistence_diagram.html") -> None:
+def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
     """
-    Create and save a visualization of persistence diagrams for runs in the DataFrame.
+    Create and save a visualization of persistence diagrams for runs in the DataFrame,
+    faceted by homology dimension (columns) and run_id (rows).
 
     Args:
         df: DataFrame containing run data with persistence homology information
-        cols: Number of columns for faceting the charts (default: 3)
         output_file: Path to save the visualization
     """
     # Ensure output directory exists
@@ -26,99 +26,57 @@ def plot_persistence_diagram(df: pl.DataFrame, cols: int = 3, output_file: str =
         print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
-    # Handle infinity values in death column
-    # For visualization, replace inf with a large finite value
-    # Create a copy of the dataframe to avoid modifying the original
-    vis_df = df.clone()
+    # If the DataFrame is empty, return early
+    if df.is_empty():
+        print("ERROR: DataFrame is empty - no persistence diagram data to plot")
+        return
 
-    # Get the maximum finite value in both birth and death columns
-    max_birth = vis_df["birth"].max()
-
-    # For death column, get max of finite values only
-    max_finite_death = vis_df.filter(pl.col("death").is_finite())["death"].max()
-
-    # Use the larger of max_birth and max_finite_death as the max value
-    max_value = max(max_birth, max_finite_death) * 1.2  # Add 20% margin
-
-    # Replace infinity with a value slightly above max_value for visualization
-    vis_df = vis_df.with_columns(
-        pl.when(pl.col("death").is_infinite())
-        .then(max_value * 0.95)  # Place just below max_value
-        .otherwise(pl.col("death"))
-        .alias("death_vis")
+    # Create the faceted chart with data specified at the top level
+    chart = alt.Chart(df).mark_point(
+        filled=True, opacity=0.4
+    ).encode(
+        x=alt.X("birth:Q", title="Birth"),
+        y=alt.Y("death:Q", title="Death"),
+        color=alt.Color("homology_dimension:N", title="Dimension",
+                      scale=alt.Scale(scheme="category10")),
+        tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
+    ).properties(
+        width=120,
+        height=120
     )
 
-    # Get unique run IDs for faceting
-    run_ids = vis_df["run_id"].unique().to_list()
+    # Add a diagonal reference line (x=y) that extends across the full data range
+    # Find the maximum value in either birth or death columns that's not infinite
+    birth_max = df.filter(pl.col("birth") != float('inf')).select(pl.max("birth")).item()
+    death_max = df.filter(pl.col("death") != float('inf')).select(pl.max("death")).item()
+    max_value = max(birth_max, death_max)
 
-    # Create a separate chart for each run ID
-    charts = []
+    # Use 0 as the minimum and max_value as the maximum
+    overall_min = 0.0
+    overall_max = max_value
 
-    for run_id in run_ids:
-        # Filter data for this run
-        run_df = vis_df.filter(pl.col("run_id") == run_id)
+    diagonal_data = pl.DataFrame({'x': [overall_min, overall_max], 'y': [overall_min, overall_max]})
+    diagonal = alt.Chart(diagonal_data).mark_line(
+        strokeDash=[4, 4],
+        color='grey',
+        opacity=0.7
+    ).encode(
+        x='x',
+        y='y'
+    )
 
-        # Get the initial prompt for this run (should be the same for all rows with the same run_id)
-        initial_prompt = run_df["initial_prompt"].unique()[0]
-
-        # Create the main scatter plot for this run
-        scatter = alt.Chart(run_df).mark_point(filled=True, opacity=0.7).encode(
-            x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domain=[0, max_value])),
-            y=alt.Y("death_vis:Q", title="Death", scale=alt.Scale(domain=[0, max_value])),
-            color=alt.Color("homology_dimension:N", title="Dimension",
-                          scale=alt.Scale(scheme="category10")),
-            tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
-        )
-
-        # Create diagonal reference line data
-        diagonal_data = {
-            "x": [0.0, float(max_value)],
-            "y": [0.0, float(max_value)]
-        }
-        diagonal_df = pl.DataFrame(diagonal_data, schema={"x": pl.Float64, "y": pl.Float64})
-
-        # Create diagonal line
-        diagonal = alt.Chart(diagonal_df).mark_line(
-            color="gray", strokeDash=[5, 5]
-        ).encode(
-            x="x:Q",
-            y="y:Q"
-        )
-
-        # Layer the charts
-        combined = alt.layer(scatter, diagonal).properties(
-            width=400,
-            height=400,
-            title=f"Prompt: {initial_prompt}"
-        )
-
-        charts.append(combined)
-
-    # Concatenate the charts with the specified number of columns
-    if len(charts) > 1:
-        # Split the charts into rows with the specified number of columns
-        chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
-
-        # Create a row of charts for each group
-        rows = []
-        for row_charts in chart_rows:
-            row = alt.hconcat(*row_charts)
-            rows.append(row)
-
-        # Combine all rows vertically
-        final_chart = alt.vconcat(*rows).properties(
-            title="Persistence Diagrams"
-        ).resolve_scale(
-            x='shared',
-            y='shared'
-        )
-    else:
-        final_chart = charts[0].properties(
-            title="Persistence Diagram"
-        )
+    # Apply faceting directly with data
+    faceted_chart = alt.layer(chart, diagonal, data=df).facet(
+        row=alt.Row("run_id:N", title=None, header=alt.Header(labels=False)),
+        column=alt.Column("homology_dimension:N", title="Homology Dimension")
+    ).resolve_scale(
+        x='shared',
+        y='shared'
+    )
 
     # Save chart
-    final_chart.save(output_file)
+    faceted_chart.save(output_file)
+
     print(f"Saved persistence diagram to {output_file}")
 
 
