@@ -1,3 +1,12 @@
 [tools]
 sqlite = "latest"
 uv = "latest"
+
+[tasks.status]
+run = "uv run trajectory-tracer experiment-status"
+
+[tasks.script]
+run = "uv run trajectory-tracer script"
+
+[tasks.test]
+run = "uv run pytest"
