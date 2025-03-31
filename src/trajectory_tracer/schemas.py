@@ -64,133 +64,96 @@ class PersistenceDiagramResultType(TypeDecorator):
     """
     SQLAlchemy type for storing persistence diagram results from TDA computations.
 
-    This type is specifically designed to store the structure returned by persistence
-    diagram calculations, which consists of:
-
+    Uses binary serialization with NumPy's save/load functionality to preserve:
     - Lists of numpy int64 arrays with various shapes (including empty arrays)
     - Dictionaries with metadata like 'entropy' as float32 arrays
+    - Special values like infinities and NaNs
+    - Array shapes and nested structures
 
     This specialized type preserves both data types and array shapes during serialization.
     """
 
-    impl = JSON
+    impl = LargeBinary
     cache_ok = True
 
     # Type to represent the complex structure returned by persistence diagram calculations
-    # Typically includes arrays, lists of arrays, and dictionaries with arrays
-    DiagramResultType = Dict[str, Union[List[np.ndarray], np.ndarray]]
+    DiagramResultType = Dict[str, Union[List[np.ndarray], np.ndarray, tuple]]
 
     def process_bind_param(
         self, value: Optional[DiagramResultType], dialect
-    ) -> Optional[Dict]:
+    ) -> Optional[bytes]:
         """
-        Convert a persistence diagram result structure to JSON-serializable format.
+        Convert a persistence diagram result to binary format.
 
         Args:
             value: The persistence diagram data structure to convert, or None
             dialect: SQLAlchemy dialect (unused)
 
         Returns:
-            JSON-serializable dictionary, or None if input is None
+            Binary representation of the persistence diagram, or None if input is None
         """
         if value is None:
             return None
 
-        result = {}
+        # Use BytesIO as a file-like object for numpy.savez_compressed
+        buffer = io.BytesIO()
 
-        # Process diagrams (dgms key) - list of arrays
-        if "dgms" in value:
-            result["dgms"] = []
-            for arr in value["dgms"]:
-                if isinstance(arr, np.ndarray):
-                    result["dgms"].append({
-                        "_type": "ndarray",
-                        "shape": arr.shape,
-                        "dtype": str(arr.dtype),
-                        "data": arr.tolist()
-                    })
-                else:
-                    result["dgms"].append(arr)
+        # Handle each key in the diagram data separately
+        serializable_dict = {}
 
-        # Process generators (gens key) - complex nested structure
-        if "gens" in value:
-            gens_serializable = []
-            for gen_list in value["gens"]:
-                if isinstance(gen_list, list):
-                    # Each generator is a list of arrays
-                    gen_list_serializable = []
-                    for g in gen_list:
-                        if isinstance(g, np.ndarray):
-                            gen_list_serializable.append({
-                                "_type": "ndarray",
-                                "shape": g.shape,
-                                "dtype": str(g.dtype),
-                                "data": g.tolist()
-                            })
-                        else:
-                            gen_list_serializable.append(g)
-                    gens_serializable.append(gen_list_serializable)
-                elif isinstance(gen_list, np.ndarray):
-                    # Or sometimes a single array
-                    gens_serializable.append({
-                        "_type": "ndarray",
-                        "shape": gen_list.shape,
-                        "dtype": str(gen_list.dtype),
-                        "data": gen_list.tolist()
-                    })
-                else:
-                    gens_serializable.append(gen_list)
-            result["gens"] = gens_serializable
-
-        # Process entropy - usually a numpy array
-        if "entropy" in value:
-            if isinstance(value["entropy"], np.ndarray):
-                result["entropy"] = {
-                    "_type": "ndarray",
-                    "shape": value["entropy"].shape,
-                    "dtype": str(value["entropy"].dtype),
-                    "data": value["entropy"].tolist()
-                }
-            else:
-                result["entropy"] = value["entropy"]
-
-        # Handle any other keys that might be present
         for key, val in value.items():
-            if key not in result:
-                if isinstance(val, np.ndarray):
-                    result[key] = {
-                        "_type": "ndarray",
-                        "shape": val.shape,
-                        "dtype": str(val.dtype),
-                        "data": val.tolist()
-                    }
-                elif isinstance(val, list):
-                    # Handle lists of arrays
-                    serialized_list = []
-                    for item in val:
-                        if isinstance(item, np.ndarray):
-                            serialized_list.append({
-                                "_type": "ndarray",
-                                "shape": item.shape,
-                                "dtype": str(item.dtype),
-                                "data": item.tolist()
-                            })
-                        else:
-                            serialized_list.append(item)
-                    result[key] = serialized_list
-                else:
-                    result[key] = val
+            if key == 'dgms':
+                # For diagrams array - list of arrays
+                for i, arr in enumerate(val):
+                    serializable_dict[f'dgms_{i}'] = arr
+                serializable_dict['dgms_count'] = np.array([len(val)])
 
-        return result
+            elif key == 'gens' and isinstance(val, tuple):
+                # Handle the generators tuple (special structure from ripser_parallel)
+                # The tuple has 4 components as described in the docs
+
+                # First component: dim0_finite pairs (int ndarray with 3 columns)
+                serializable_dict['gens_0'] = val[0]
+
+                # Second component: list of arrays for dims 1+ finite
+                for i, arr in enumerate(val[1]):
+                    serializable_dict[f'gens_1_{i}'] = arr
+                serializable_dict['gens_1_count'] = np.array([len(val[1])])
+
+                # Third component: dim0_infinite (1D int array)
+                serializable_dict['gens_2'] = val[2]
+
+                # Fourth component: list of arrays for dims 1+ infinite
+                for i, arr in enumerate(val[3]):
+                    serializable_dict[f'gens_3_{i}'] = arr
+                serializable_dict['gens_3_count'] = np.array([len(val[3])])
+
+            elif isinstance(val, np.ndarray):
+                # Direct numpy arrays (e.g., entropy)
+                serializable_dict[key] = val
+
+            elif isinstance(val, list) and all(isinstance(item, np.ndarray) for item in val):
+                # Lists of arrays
+                for i, arr in enumerate(val):
+                    serializable_dict[f'{key}_{i}'] = arr
+                serializable_dict[f'{key}_count'] = np.array([len(val)])
+
+            else:
+                # Store metadata about types that aren't arrays
+                serializable_dict[f'{key}_meta'] = np.array([str(val)])
+
+        # Save all arrays into a single compressed file
+        np.savez_compressed(buffer, **serializable_dict)
+        return buffer.getvalue()
 
     def process_result_value(
-        self, value: Optional[Dict], dialect
+        self, value: Optional[bytes], dialect
     ) -> Optional[DiagramResultType]:
         """
-        Convert stored JSON data back to a persistence diagram result structure.
+        Convert stored binary data back to a persistence diagram structure.
 
         Args:
-            value: JSON dictionary to convert, or None
+            value: Binary data to convert, or None
             dialect: SQLAlchemy dialect (unused)
 
         Returns:
@@ -199,61 +162,71 @@ class PersistenceDiagramResultType(TypeDecorator):
         if value is None:
             return None
 
+        # Load from the binary data
+        buffer = io.BytesIO(value)
+        loaded = np.load(buffer, allow_pickle=True)
+
+        # Reconstruct the original dictionary structure
         result = {}
 
-        def restore_array(arr_dict):
-            """Helper to restore a numpy array from its serialized form"""
-            if isinstance(arr_dict, dict) and arr_dict.get("_type") == "ndarray":
-                # Get the shape and dtype
-                shape = tuple(arr_dict["shape"])
-                dtype_str = arr_dict["dtype"]
+        # Process dgms (diagrams)
+        if 'dgms_count' in loaded:
+            dgms_count = int(loaded['dgms_count'][0])
+            result['dgms'] = [loaded[f'dgms_{i}'] for i in range(dgms_count)]
 
-                # Determine the right NumPy dtype
-                if 'int' in dtype_str:
-                    dtype = np.int64
-                elif 'float' in dtype_str:
-                    dtype = np.float32
+        # Process generators (gens)
+        if 'gens_0' in loaded and 'gens_1_count' in loaded and 'gens_2' in loaded and 'gens_3_count' in loaded:
+            # First component
+            dim0_finite = loaded['gens_0']
+
+            # Second component
+            dims_finite_count = int(loaded['gens_1_count'][0])
+            dims_finite = [loaded[f'gens_1_{i}'] for i in range(dims_finite_count)]
+
+            # Third component
+            dim0_infinite = loaded['gens_2']
+
+            # Fourth component
+            dims_infinite_count = int(loaded['gens_3_count'][0])
+            dims_infinite = [loaded[f'gens_3_{i}'] for i in range(dims_infinite_count)]
+
+            # Reconstruct the tuple
+            result['gens'] = (dim0_finite, dims_finite, dim0_infinite, dims_infinite)
+
+        # Process other standard arrays and array lists
+        for key in loaded:
+            # Skip the keys we've already processed and count markers
+            if key.startswith('dgms_') or key.startswith('gens_') or key.endswith('_count'):
+                continue
+
+            # Handle metadata fields
+            if key.endswith('_meta'):
+                base_key = key[:-5]  # Remove _meta suffix
+                value_str = str(loaded[key][0])
+
+                # Try to convert simple values back to their original type
+                if value_str.lower() == 'none':
+                    result[base_key] = None
+                elif value_str.lower() in ('true', 'false'):
+                    result[base_key] = value_str.lower() == 'true'
+                elif value_str.isdigit():
+                    result[base_key] = int(value_str)
+                elif value_str.replace('.', '', 1).isdigit():
+                    result[base_key] = float(value_str)
                 else:
-                    dtype = np.dtype(dtype_str)
+                    result[base_key] = value_str
+                continue
 
-                # Handle empty arrays correctly
-                if shape == (0,) or 0 in shape:
-                    # Create empty array with the right shape
-                    return np.zeros(shape, dtype=dtype)[:0].reshape(shape)
-                else:
-                    return np.array(arr_dict["data"], dtype=dtype)
-            return arr_dict
+            # Process array lists
+            if key.split('_')[0] + '_count' in loaded:
+                base_key = key.split('_')[0]
+                if base_key not in result:
+                    count = int(loaded[f'{base_key}_count'][0])
+                    result[base_key] = [loaded[f'{base_key}_{i}'] for i in range(count)]
+                continue
 
-        # Restore diagrams (dgms key) - convert lists back to numpy arrays
-        if "dgms" in value:
-            result["dgms"] = [restore_array(arr) for arr in value["dgms"]]
-
-        # Restore generators (gens key)
-        if "gens" in value:
-            gens_arrays = []
-            for gen_list in value["gens"]:
-                if isinstance(gen_list, list):
-                    # Each generator is a list of arrays
-                    gen_arrays = [restore_array(g) for g in gen_list]
-                    gens_arrays.append(gen_arrays)
-                else:
-                    # Or sometimes a single value
-                    gens_arrays.append(restore_array(gen_list))
-            result["gens"] = gens_arrays
-
-        # Restore entropy
-        if "entropy" in value:
-            result["entropy"] = restore_array(value["entropy"])
-
-        # Handle any other keys
-        for key, val in value.items():
-            if key not in result:
-                if isinstance(val, dict) and val.get("_type") == "ndarray":
-                    result[key] = restore_array(val)
-                elif isinstance(val, list):
-                    result[key] = [restore_array(item) for item in val]
-                else:
-                    result[key] = val
+            # Regular arrays
+            result[key] = loaded[key]
 
         return result
 
