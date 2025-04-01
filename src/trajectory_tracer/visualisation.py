@@ -175,10 +175,35 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
     logging.info(f"Saved persistence diagrams to {output_file}")
 
 
+def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
+    """
+    Create a base strip plot with jitter showing the distribution of entropy values
+    across different homology dimensions.
+
+    Args:
+        df: DataFrame containing runs data with homology_dimension and entropy
+
+    Returns:
+        An Altair chart object for the entropy distribution
+    """
+    # Create a strip plot with tick marks
+    chart = alt.Chart(df).mark_tick().encode(
+        y=alt.Y("homology_dimension:N", title="Homology Dimension"),
+        x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
+        color=alt.Color("homology_dimension:N", title="Dimension"),
+        tooltip=["homology_dimension:N", "entropy:Q", "initial_prompt:N", "run_id:N"]
+    ).properties(
+        width=800,
+        height=400,
+        title="Persistence Entropy"
+    ).interactive()
+
+    return chart
+
+
 def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.html") -> None:
     """
-    Create a strip plot with jitter showing the distribution of entropy values
-    across different homology dimensions.
+    Create and save a visualization of entropy distribution across different homology dimensions.
 
     Args:
         df: DataFrame containing runs data with homology_dimension and entropy
@@ -195,33 +220,53 @@ def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/pe
         logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
-    # Filter to only include rows with entropy values
-    df_filtered = df.filter(pl.col("entropy").is_not_null())
-
     # If the DataFrame is empty, return early
-    if df_filtered.is_empty():
+    if df.is_empty():
         logging.info("ERROR: DataFrame is empty - no entropy data to plot")
         return
 
-    # Create a strip plot with jitter
-    chart = alt.Chart(df_filtered).mark_circle(size=8, opacity=0.1).encode(
-        y=alt.Y("homology_dimension:N", title="Homology Dimension"),
-        x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
-        yOffset=alt.YOffset("jitter:Q"),
-        color=alt.Color("homology_dimension:N", title="Dimension"),
-        tooltip=["homology_dimension:N", "entropy:Q", "initial_prompt:N", "run_id:N"]
-    ).transform_calculate(
-        # Generate Gaussian jitter with a Box-Muller transform
-        jitter="sqrt(-2*log(random()))*cos(2*PI*random())*0.2"
-    ).properties(
-        width=800,
-        height=400,
-        title="Entropy Distribution by Homology Dimension"
-    ).interactive()
+    # Create the chart
+    chart = create_persistence_entropy_chart(df)
+
     # Save chart with high resolution
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
     logging.info(f"Saved persistence entropy plot to {output_file}")
+
+
+def plot_persistence_entropy_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_faceted.html", num_cols: int = 2) -> None:
+    """
+    Create and save a visualization of entropy distributions for runs in the DataFrame,
+    creating a grid of charts faceted by initial_prompt and network.
+
+    Args:
+        df: DataFrame containing runs data with homology_dimension and entropy
+        output_file: Path to save the visualization
+        num_cols: Number of columns in the grid layout
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Check if we have the required columns
+    required_columns = {"homology_dimension", "entropy", "initial_prompt", "network"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        return
+
+    # If the DataFrame is empty, return early
+    if df.is_empty():
+        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
+        return
+
+    chart = create_persistence_entropy_chart(df).encode(
+        alt.Row("initial_prompt:N").title("Prompt"),
+        alt.Column("network:N").title("Network"),
+    ).resolve_scale(x="shared")
+
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    logging.info(f"Saved faceted persistence entropy plots to {output_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
