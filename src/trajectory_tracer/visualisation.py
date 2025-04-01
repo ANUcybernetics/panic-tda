@@ -7,12 +7,13 @@ import polars as pl
 
 ## visualisation
 
-def create_persistence_diagram(df: pl.DataFrame) -> alt.Chart:
+def create_persistence_diagram_chart(df: pl.DataFrame, include_entropy: bool = True) -> alt.Chart:
     """
     Create a single persistence diagram chart (unfaceted) from a DataFrame.
 
     Args:
         df: DataFrame containing run data with persistence homology information
+        include_entropy: Whether to include entropy text on the chart
 
     Returns:
         An Altair chart object for the persistence diagram
@@ -40,21 +41,27 @@ def create_persistence_diagram(df: pl.DataFrame) -> alt.Chart:
         y=alt.value(50)   # Fixed position from top
     )
 
-    # Add text labels for entropy in fixed position
-    entropy_text = alt.Chart(df).mark_text(
-        align='left',
-        baseline='middle',
-        fontSize=16,
-        dx=5,
-        dy=5
-    ).encode(
-        text=alt.Text('entropy:Q', format='.3f'),  # Round to 3 decimal places
-        x=alt.value(10),  # Fixed position from left
-        y=alt.value(80)   # Fixed position from top
-    )
+    # Create the chart with prompt text
+    combined_chart = (points_chart + prompt_text)
 
-    # Combine all chart elements
-    combined_chart = (points_chart + prompt_text + entropy_text).properties(
+    # Add entropy text only if requested
+    if include_entropy:
+        # Add text labels for entropy in fixed position
+        entropy_text = alt.Chart(df).mark_text(
+            align='left',
+            baseline='middle',
+            fontSize=16,
+            dx=5,
+            dy=5
+        ).encode(
+            text=alt.Text('entropy:Q', format='.3f'),  # Round to 3 decimal places
+            x=alt.value(10),  # Fixed position from left
+            y=alt.value(80)   # Fixed position from top
+        )
+        combined_chart = combined_chart + entropy_text
+
+    # Set properties and make interactive
+    combined_chart = combined_chart.properties(
         width=400,
         height=400
     ).interactive()
@@ -62,7 +69,44 @@ def create_persistence_diagram(df: pl.DataFrame) -> alt.Chart:
     return combined_chart
 
 
-def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
+def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram_single.html") -> None:
+    """
+    Create and save a visualization of a single persistence diagram for the given DataFrame.
+
+    Args:
+        df: DataFrame containing run data with persistence homology information
+        output_file: Path to save the visualization
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Check if we have persistence diagram data
+    required_columns = {"homology_dimension", "birth", "death", "initial_prompt"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        return
+
+    # If the DataFrame is empty, return early
+    if df.is_empty():
+        logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
+        return
+
+    # Create the unfaceted chart without entropy
+    chart = create_persistence_diagram_chart(df, include_entropy=False).properties(
+        title="Persistence Diagram",
+        width=600,
+        height=600
+    )
+
+    # Save chart with high resolution
+    chart.save(output_file, scale_factor=2.0)
+
+    logging.info(f"Saved single persistence diagram to {output_file}")
+
+
+def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
     faceted by homology dimension (columns) and run_id (rows).
@@ -87,8 +131,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
         logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
-    # Create the unfaceted chart
-    unfaceted_chart = create_persistence_diagram(df)
+    # Create the unfaceted chart with entropy
+    unfaceted_chart = create_persistence_diagram_chart(df, include_entropy=True)
 
     # Apply faceting
     faceted_chart = unfaceted_chart.facet(
