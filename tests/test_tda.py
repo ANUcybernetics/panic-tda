@@ -18,7 +18,7 @@ def test_giotto_phd():
     result = giotto_phd(point_cloud, max_dim=2)
 
     # Print each key and full values from the result to a file
-    with open('persistence_diagram_keys.txt', 'w') as f:
+    with open("output/vis/persistence_diagram_keys.txt", "w") as f:
         for key, value in result.items():
             f.write(f"Key: {key}\n")
             f.write(f"Type: {type(value)}\n")
