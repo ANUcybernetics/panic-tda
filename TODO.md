@@ -1,12 +1,20 @@
 # TODO
 
+- fix (modified/improved) PD plotting, including faceting both by run and by
+  prompt/network
+
+- prompt ideas: cat/dog/bunny/bird, man/woman/boy/girl, car/train/boat/bicycle
+
+- check no incomplete runs made it into the db
+
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
 
+- use tqdm for the video export progress (and other long-running but
+  non-distributed things)
+
 - make the default db paths all point to db/ (because conceptually output/
   should be cleanable without much loss)
-
-- faceted persistence entropy plot
 
 - look at change-point detection with ruptures library, and visualise the run
   lengths
