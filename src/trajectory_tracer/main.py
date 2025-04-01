@@ -14,6 +14,7 @@ from trajectory_tracer.db import (
     list_experiments,
     list_runs,
 )
+from trajectory_tracer.db import delete_experiment as db_delete_experiment
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
@@ -256,6 +257,72 @@ def experiment_status(
                 raise typer.Exit(code=1)
 
         experiment.print_status()
+
+
+@app.command("delete-experiment")
+def delete_experiment(
+    experiment_id: str = typer.Argument(
+        ...,
+        help="ID of the experiment to delete",
+    ),
+    db_path: Path = typer.Option(
+        "output/db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Skip confirmation prompt"
+    ),
+):
+    """
+    Delete an experiment and all associated data from the database.
+
+    This will permanently remove the experiment and all its runs, invocations,
+    embeddings, and persistence diagrams.
+    """
+    try:
+        # Create database connection
+        db_str = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+
+        # Get the experiment and confirm deletion
+        with get_session_from_connection_string(db_str) as session:
+            try:
+                experiment = session.get(ExperimentConfig, UUID(experiment_id))
+                if not experiment:
+                    logger.error(f"Experiment with ID {experiment_id} not found")
+                    raise typer.Exit(code=1)
+            except ValueError as e:
+                logger.error(f"Invalid experiment ID format: {e}")
+                raise typer.Exit(code=1)
+
+            # Show experiment details and confirm deletion
+            run_count = len(experiment.runs)
+            typer.echo(f"Experiment ID: {experiment.id}")
+            typer.echo(f"Started: {experiment.started_at}")
+            typer.echo(f"Runs: {run_count}")
+
+            if not force:
+                confirm = typer.confirm(
+                    f"Are you sure you want to delete this experiment and all its {run_count} runs?",
+                    default=False
+                )
+                if not confirm:
+                    typer.echo("Deletion cancelled.")
+                    return
+
+            # Delete the experiment
+            result = db_delete_experiment(experiment.id, session)
+
+            if result:
+                typer.echo(f"Experiment {experiment_id} successfully deleted.")
+            else:
+                typer.echo(f"Failed to delete experiment {experiment_id}.")
+
+    except Exception as e:
+        logger.error(f"Error deleting experiment: {e}")
+        raise typer.Exit(code=1)
 
 
 @app.command("list-runs")
