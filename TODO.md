@@ -28,7 +28,7 @@
 
 - run the tests in GitHub actions
 
-- batch the genai models as well (embedding ones already done)
+- try batching the genai models (in a test in the first case)
 
 - store the loop_length in the invocation (maybe)
 
