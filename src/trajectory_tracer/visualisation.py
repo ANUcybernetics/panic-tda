@@ -37,8 +37,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     ).encode(
         x=alt.X("birth:Q", title="Birth"),
         y=alt.Y("death:Q", title="Death"),
-        color=alt.Color("homology_dimension:N", title="Dimension",
-                      scale=alt.Scale(scheme="category10")),
+        color=alt.Color("homology_dimension:N", title="Dimension"),
         tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
     ).properties(
         width=400,
