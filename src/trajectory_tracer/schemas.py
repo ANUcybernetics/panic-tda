@@ -805,7 +805,17 @@ class ExperimentConfig(SQLModel, table=True):
                                 for run in self.runs], default=datetime.now())
         diagram_time_str = get_time_string(diagram_percent, diagram_start_time, diagram_end_time)
 
+        # Summarize configuration information
+        network_summary = f"{len(self.networks)} networks"
+        seed_summary = f"{len(self.seeds)} seeds"
+        prompt_summary = f"{len(self.prompts)} prompts"
+
         status_report = (
+            f"Experiment Configuration:\n"
+            f"  Networks: {network_summary} {self.networks}\n"
+            f"  Seeds: {seed_summary} {self.seeds}\n"
+            f"  Prompts: {prompt_summary} {[p[:50] + '...' if len(p) > 50 else p for p in self.prompts]}\n"
+            f"  Max Length: {self.max_length}\n\n"
             f"Experiment Status:\n"
             f"  Invocation Progress: {invocation_percent:.1f}% ({min_sequence + 1}/{self.max_length}){invocation_time_str}\n"
             f"  Embedding Progress (Overall): {embedding_percent_total:.1f}% ({actual_embeddings_total}/{expected_embeddings_total}){embedding_time_str}\n"
