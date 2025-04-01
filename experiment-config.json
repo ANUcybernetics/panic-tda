@@ -1,23 +1,10 @@
 {
     "networks": [
-        ["FluxDev", "Moondream"],
-        ["FluxDev", "BLIP2"]
+        ["SDXLTurbo", "BLIP2"],
+        ["SDXLTurbo", "Moondream"]
     ],
-    "seeds": [-1, -1, -1, -1, -1, -1],
-    "prompts": [
-        "rat",
-        "ox",
-        "tiger",
-        "rabbit",
-        "dragon",
-        "snake",
-        "horse",
-        "goat",
-        "monkey",
-        "rooster",
-        "dog",
-        "pig"
-    ],
-    "embedding_models": ["Nomic", "JinaClip"],
+    "seed_count": 8,
+    "prompts": ["one pear", "one banana", "one apple", "one orange"],
+    "embedding_models": ["Nomic"],
     "max_length": 1000
 }
