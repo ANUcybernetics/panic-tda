@@ -405,8 +405,6 @@ def export_video(
 
             output_video = f"output/mosaic/{experiment_id}/mosaic.mp4"
 
-            logger.info(f"Creating mosaic video for experiment {experiment_id} with {len(run_ids)} runs")
-
             # Create the mosaic video
             export_run_mosaic(
                 run_ids=run_ids,
@@ -415,8 +413,6 @@ def export_video(
                 fps=fps,
                 output_video=output_video
             )
-
-            logger.info(f"Mosaic video created successfully at {output_video}")
 
     except Exception as e:
         logger.error(f"Error creating mosaic video: {e}")
