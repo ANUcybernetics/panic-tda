@@ -89,6 +89,35 @@ def export_run_images(
             logger.error(f"Error exporting image for invocation {invocation.id}: {e}")
 
 
+def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
+    """
+    Orders run IDs for mosaic creation based on their prompts and networks.
+
+    Args:
+        run_ids: List of run IDs to be ordered
+        session: SQLModel Session for database operations
+
+    Returns:
+        List of run IDs ordered first by prompt, then by network structure
+    """
+    # Load all runs
+    runs = []
+    for run_id in run_ids:
+        run = read_run(UUID(run_id), session)
+        if run:
+            runs.append(run)
+
+    if not runs:
+        logger.warning("No valid runs found for ordering")
+        return run_ids
+
+    # Sort runs first by prompt, then by network
+    sorted_runs = sorted(runs, key=lambda r: (r.initial_prompt, *r.network))
+
+    # Return the ordered run IDs
+    return [str(run.id) for run in sorted_runs]
+
+
 def export_run_mosaic(
     run_ids: list[str], session: Session, cols: int, fps: int, output_video: str) -> None:
     """
