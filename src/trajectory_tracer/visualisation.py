@@ -108,7 +108,7 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
     logging.info(f"Saved persistence diagrams to {output_file}")
 
 
-def plot_persistence_diagram_by_run(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
+def plot_persistence_diagram_by_run(df: pl.DataFrame, cols: int, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
     creating a grid of charts (one per run).
@@ -124,7 +124,7 @@ def plot_persistence_diagram_by_run(df: pl.DataFrame, output_file: str = "output
 
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
-        alt.Column("run_id:N", title="Run ID")
+        alt.Facet("run_id:N", columns=cols, title="Run ID")
     )
 
     # Save chart with high resolution
