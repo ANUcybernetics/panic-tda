@@ -321,3 +321,108 @@ def test_get_all_models_memory_usage():
 
     # Simply assert that we got results for at least some models
     assert len(genai_results) > 0 or len(embed_results) > 0
+
+
+@pytest.mark.slow
+def test_fluxschnell_batching_without_ray():
+    """Test FluxSchnell model batching capabilities without using Ray."""
+
+    # Skip test if no CUDA is available
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA GPU is required but not available")
+
+    # Initialize the model directly (without Ray)
+    model = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-schnell",
+        torch_dtype=torch.bfloat16,
+        use_fast=True
+    ).to("cuda")
+
+    # Define multiple prompts for batching
+    prompts = [
+        "A beautiful mountain landscape at sunset",
+        "A futuristic city with flying cars",
+        "A serene beach with palm trees and clear blue water",
+        "A magical forest with glowing mushrooms"
+    ]
+
+    # Fixed seed for determinism
+    seed = 42
+
+    # Generate with batched prompts
+    print("Running batched generation...")
+    batch_start_time = time.time()
+
+    generator = torch.Generator("cuda").manual_seed(seed)
+
+    # Process all prompts in a single batch
+    batch_results = model(
+        prompts,
+        height=IMAGE_SIZE,
+        width=IMAGE_SIZE,
+        guidance_scale=3.5,
+        num_inference_steps=20,
+        generator=generator,
+    ).images
+
+    batch_time = time.time() - batch_start_time
+    print(f"Batched generation took {batch_time:.2f} seconds for {len(prompts)} images")
+
+    # Now process the same prompts one by one
+    print("Running sequential generation...")
+    sequential_start_time = time.time()
+    sequential_results = []
+
+    for prompt in prompts:
+        # Reset generator for each prompt (same seed)
+        generator = torch.Generator("cuda").manual_seed(seed)
+
+        result = model(
+            prompt,
+            height=IMAGE_SIZE,
+            width=IMAGE_SIZE,
+            guidance_scale=3.5,
+            num_inference_steps=20,
+            generator=generator,
+        ).images[0]
+
+        sequential_results.append(result)
+
+    sequential_time = time.time() - sequential_start_time
+    print(f"Sequential generation took {sequential_time:.2f} seconds for {len(prompts)} images")
+
+    # Verify results
+    assert len(batch_results) == len(prompts), "Batch should return same number of images as prompts"
+
+    # Check that each image is the expected size
+    for img in batch_results:
+        assert isinstance(img, Image.Image)
+        assert img.width == IMAGE_SIZE
+        assert img.height == IMAGE_SIZE
+
+    # Compare the speedup (should be significant)
+    speedup = sequential_time / batch_time
+    print(f"Speedup factor: {speedup:.2f}x")
+
+    # The batched version should be at least somewhat faster (allowing flexibility in test)
+    assert speedup > 1.1, "Batched processing should be faster than sequential"
+
+    # Test with odd batch sizes
+    odd_batch_size = 3
+    odd_prompts = prompts[:odd_batch_size]
+
+    generator = torch.Generator("cuda").manual_seed(seed)
+    odd_batch_results = model(
+        odd_prompts,
+        height=IMAGE_SIZE,
+        width=IMAGE_SIZE,
+        guidance_scale=3.5,
+        num_inference_steps=20,
+        generator=generator,
+    ).images
+
+    assert len(odd_batch_results) == odd_batch_size, "Should handle odd-sized batches correctly"
+
+    # Clean up GPU memory
+    del model
+    torch.cuda.empty_cache()
