@@ -369,7 +369,7 @@ def perform_runs_stage(run_ids, db_str):
     return all_invocation_ids
 
 
-def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=4, batch_size=32):
+def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=8, batch_size=32):
     """
     Process embeddings for multiple invocations using ActorPool for load balancing.
 
