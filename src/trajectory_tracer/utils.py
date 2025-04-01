@@ -9,9 +9,8 @@ from PIL import Image, ImageDraw, ImageFont
 from sqlmodel import Session
 
 from trajectory_tracer.db import read_run
-from trajectory_tracer.schemas import InvocationType, Run
 from trajectory_tracer.genai_models import IMAGE_SIZE
-
+from trajectory_tracer.schemas import InvocationType, Run
 
 logger = logging.getLogger(__name__)
 
@@ -118,8 +117,7 @@ def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
     return [str(run.id) for run in sorted_runs]
 
 
-def export_run_mosaic(
-    run_ids: list[str], session: Session, cols: int, fps: int, output_video: str) -> None:
+def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int, resolution: str, output_video: str) -> None:
     """
     Export a mosaic of images from multiple runs and create a video from the mosaic images.
 
@@ -129,6 +127,7 @@ def export_run_mosaic(
         cols: Number of columns in the mosaic grid
         fps: Frames per second for the output video
         output_video: Name of the output video file (can include subfolders)
+        resolution: Target resolution for the output video ("HD", "4K", or "8K")
     """
     # Extract directory from output_video path
     output_dir = os.path.dirname(output_video)
@@ -143,6 +142,8 @@ def export_run_mosaic(
 
     # Load all specified runs in the given order
     runs = []
+    run_ids = order_runs_for_mosaic(run_ids, session)
+
     for run_id in run_ids:
         run = read_run(UUID(run_id), session)
         if run:
@@ -269,7 +270,23 @@ def export_run_mosaic(
 
         logger.info(f"Saved mosaic for sequence {seq_num} ({int(progress_percent*100)}%)")
 
-    # Construct the ffmpeg command with settings optimized for 8K Samsung TV
+    # Define the output resolution based on the resolution parameter
+    # Resolution standards: HD (1920x1080), 4K (3840x2160), 8K (7680x4320)
+    resolution_settings = {
+        "HD": {"width": 1920, "height": 1080},
+        "4K": {"width": 3840, "height": 2160},
+        "8K": {"width": 7680, "height": 4320}
+    }
+
+    # Use default HD resolution if specified resolution is not recognized
+    if resolution not in resolution_settings:
+        logger.warning(f"Unknown resolution '{resolution}'. Using HD (1920x1080) as default.")
+        resolution = "HD"
+
+    target_width = resolution_settings[resolution]["width"]
+    target_height = resolution_settings[resolution]["height"]
+
+    # Construct the ffmpeg command with settings for the target resolution
     ffmpeg_cmd = [
         'ffmpeg',
         '-y',  # Overwrite output file if it exists
@@ -277,10 +294,13 @@ def export_run_mosaic(
         '-pattern_type', 'glob',
         '-i', os.path.join(temp_dir, '*.jpg'),
 
-        # Video codec settings - using H.265/HEVC for 8K TV compatibility
+        # Video codec settings - using H.265/HEVC for better compression at high resolutions
         '-c:v', 'libx265',
         '-preset', 'medium',  # Balance between quality and encoding speed
         '-crf', '22',         # Good quality-size balance (18-28 range)
+
+        # Set specific resolution
+        '-vf', f'scale={target_width}:{target_height}',
 
         '-tag:v', 'hvc1',
 
@@ -299,6 +319,7 @@ def export_run_mosaic(
     ]
 
     # Execute the command
+    logger.info(f"Creating {resolution} video with resolution {target_width}x{target_height}")
     logger.info(f"Creating video with command: {' '.join(ffmpeg_cmd)}")
     subprocess.run(ffmpeg_cmd, check=True)
 
@@ -307,4 +328,4 @@ def export_run_mosaic(
         os.remove(os.path.join(temp_dir, file))
     os.rmdir(temp_dir)
 
-    logger.info(f"Mosaic video created successfully at {output_video}")
+    logger.info(f"Mosaic video created successfully at {output_video} with {resolution} resolution")

@@ -362,6 +362,12 @@ def export_video(
         "-f",
         help="Frames per second for the output video (default: 2)",
     ),
+    resolution: str = typer.Option(
+        "HD",
+        "--resolution",
+        "-r",
+        help="Target resolution for the output video: HD, 4K, or 8K (default: HD)",
+    ),
     db_path: Path = typer.Option(
         "output/db/trajectory_data.sqlite",
         "--db-path",
@@ -413,6 +419,7 @@ def export_video(
                 session=session,
                 cols=cols,
                 fps=fps,
+                resolution=resolution,
                 output_video=output_video
             )
 
