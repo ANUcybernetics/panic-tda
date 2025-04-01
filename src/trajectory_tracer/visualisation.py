@@ -5,6 +5,8 @@ import os
 import altair as alt
 import polars as pl
 
+CHART_SCALE_FACTOR = 4.0
+
 ## visualisation
 
 def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
@@ -107,7 +109,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     )
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=2.0)
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
     logging.info(f"Saved single persistence diagram to {output_file}")
 
@@ -168,9 +170,58 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
         final_chart = charts[0]
 
     # Save chart with high resolution
-    final_chart.save(output_file, scale_factor=4.0)
+    final_chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
     logging.info(f"Saved persistence diagrams to {output_file}")
+
+
+def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.html") -> None:
+    """
+    Create a strip plot with jitter showing the distribution of entropy values
+    across different homology dimensions.
+
+    Args:
+        df: DataFrame containing runs data with homology_dimension and entropy
+        output_file: Path to save the visualization
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Check if we have the required columns
+    required_columns = {"homology_dimension", "entropy"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        return
+
+    # Filter to only include rows with entropy values
+    df_filtered = df.filter(pl.col("entropy").is_not_null())
+
+    # If the DataFrame is empty, return early
+    if df_filtered.is_empty():
+        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
+        return
+
+    # Create a strip plot with jitter
+    chart = alt.Chart(df_filtered).mark_circle(size=8).encode(
+        y=alt.Y("homology_dimension:N", title="Homology Dimension"),
+        x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
+        yOffset=alt.YOffset("jitter:Q"),
+        color=alt.Color("homology_dimension:N", title="Dimension"),
+        tooltip=["homology_dimension:N", "entropy:Q", "initial_prompt:N", "run_id:N"]
+    ).transform_calculate(
+        # Generate Gaussian jitter with a Box-Muller transform
+        jitter="sqrt(-2*log(random()))*cos(2*PI*random())*0.2"
+    ).properties(
+        width=800,
+        height=400,
+        title="Entropy Distribution by Homology Dimension"
+    ).interactive()
+    # Save chart with high resolution
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+
+    logging.info(f"Saved persistence entropy plot to {output_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -200,7 +251,7 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     )
 
     # Save the chart
-    chart.save(output_file)
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
 
 def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html") -> None:
@@ -306,7 +357,7 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
     final_chart = alt.vconcat(*rows)
 
     # Save the chart
-    final_chart.save(output_file)
+    final_chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
     logging.info(f"Saved semantic drift plot to {output_file}")
 
 
@@ -365,4 +416,4 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
     )
 
     # Save the chart to a file
-    combined_chart.save("output/vis/giotto_benchmark.html")
+    combined_chart.save("output/vis/giotto_benchmark.html", scale_factor=CHART_SCALE_FACTOR)
