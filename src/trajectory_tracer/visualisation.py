@@ -204,7 +204,7 @@ def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/pe
         return
 
     # Create a strip plot with jitter
-    chart = alt.Chart(df_filtered).mark_circle(size=8).encode(
+    chart = alt.Chart(df_filtered).mark_circle(size=8, opacity=0.5).encode(
         y=alt.Y("homology_dimension:N", title="Homology Dimension"),
         x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
         yOffset=alt.YOffset("jitter:Q"),
