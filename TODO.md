@@ -19,6 +19,18 @@
 - look at change-point detection with ruptures library, and visualise the run
   lengths
 
+- chart ideas:
+
+  - [this one](https://altair-viz.github.io/gallery/select_detail.html) with PE
+    on left, and PD on the right
+  - add [strips](https://altair-viz.github.io/gallery/dot_dash_plot.html) to the
+    new PD plots
+  - maybe use a
+    [minimap](https://altair-viz.github.io/gallery/scatter_with_minimap.html)
+  - [wrapped facets](https://altair-viz.github.io/gallery/us_population_over_time_facet.html)
+  - plot the
+    [images in a tooltip](https://altair-viz.github.io/case_studies/numpy-tooltip-images.html)
+
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models
 
