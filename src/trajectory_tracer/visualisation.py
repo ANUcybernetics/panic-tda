@@ -6,6 +6,8 @@ import altair as alt
 import polars as pl
 from sqlmodel import Session
 
+from trajectory_tracer.analysis import load_runs_df
+
 CHART_SCALE_FACTOR = 4.0
 
 ## visualisation
@@ -427,8 +429,6 @@ def paper_charts(session: Session) -> None:
     Args:
         session: SQLModel database session
     """
-    # Placeholder for future implementation
-    from trajectory_tracer.analysis import load_runs_df
-    from trajectory_tracer.visualisation import plot_persistence_diagram
-    df = load_runs_df(session, use_cache=False)
-    plot_persistence_diagram(df)
+    df = load_runs_df(session, use_cache=True)
+    plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
+    plot_persistence_diagram_by_run(df, "output/vis/persistence_diagram_by_run.html")
