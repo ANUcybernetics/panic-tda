@@ -5,7 +5,7 @@ import subprocess
 from io import BytesIO
 from uuid import UUID
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from sqlmodel import Session
 
 from trajectory_tracer.db import read_run
@@ -181,22 +181,10 @@ def export_run_mosaic(
     rows = (len(runs) + cols - 1) // cols  # Ceiling division
 
     # Calculate mosaic dimensions with extra space for progress bar and text
-    progress_bar_offset = 100  # 100px from bottom for progress bar and text
+    progress_bar_offset = 144  # 100px from bottom for progress bar and text
     canvas_height = rows * IMAGE_SIZE + progress_bar_offset
     canvas_width = cols * IMAGE_SIZE
-
-    # Prepare a reusable font for text rendering
-    try:
-        from PIL import ImageDraw, ImageFont
-        # Try to use a default system font
-        try:
-            font = ImageFont.truetype("Helvetica", 72)
-        except OSError:
-            # Fallback to default
-            font = ImageFont.load_default()
-    except ImportError:
-        logger.warning("PIL ImageDraw or ImageFont not available; text rendering disabled")
-        font = None
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 72)
 
     # Create a blank canvas for the mosaic (reuse for each sequence)
     mosaic = Image.new('RGB', (canvas_width, canvas_height), (0, 0, 0))
@@ -252,7 +240,7 @@ def export_run_mosaic(
 
             # Draw the full prompt text without truncating
             draw.text(
-                (10, canvas_height - progress_bar_offset + 20),
+                (20, canvas_height - progress_bar_offset + 20),
                 initial_prompt,  # Don't limit the text width - show full prompt
                 fill=(255, 255, 255),
                 font=font
