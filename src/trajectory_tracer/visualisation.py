@@ -68,7 +68,6 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     # Apply faceting directly with data
     faceted_chart = alt.layer(chart, diagonal, data=df).facet(
         row=alt.Row("run_id:N", title=None, header=alt.Header(labels=False)),
-        column=alt.Column("homology_dimension:N", title="Homology Dimension")
     ).resolve_scale(
         x='shared',
         y='shared'
