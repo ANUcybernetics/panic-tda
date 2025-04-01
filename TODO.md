@@ -1,16 +1,9 @@
 # TODO
 
-- for PH diagrams, split the different dimensions, and add zoom
-
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
 
-- jitter plots for persistence entropy
-
-- calculate semantic dispersion (or drift)
-
-- write a test for the persistence diagram charting function (because it doesn't
-  work yet)
+- faceted persistence entropy plot
 
 - look at change-point detection with ruptures library, and visualise the run
   lengths
@@ -18,7 +11,12 @@
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models
 
-- add GPU memory usage tracking for models
+- experiment with actor pools for the run stage (because e.g. SDXLTurbo can
+  certainly fit a few copies at once)
+
+- (related to previous) change engine run generation phase to only load the
+  models necessary for a particular run (since a single run pegs the GPU anyway)
+  to allow for multiple runs to be queued up without fear of OOM
 
 - use the dummy embeddings in the final analysis as a control, perhaps with a
   slightly more sophisticated "random walk" scheme
