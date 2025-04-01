@@ -214,7 +214,7 @@ class FluxSchnell(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.7)
+@ray.remote(num_gpus=0.2)
 class SDXLTurbo(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -283,7 +283,7 @@ class Moondream(GenAIModel):
         return result["caption"]
 
 
-@ray.remote(num_gpus=0.1)
+@ray.remote(num_gpus=0.15)
 class BLIP2(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
