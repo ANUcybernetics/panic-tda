@@ -4,6 +4,7 @@ import os
 
 import altair as alt
 import polars as pl
+from sqlmodel import Session
 
 CHART_SCALE_FACTOR = 4.0
 
@@ -22,36 +23,21 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     # Extract initial prompt, or indicate if there are multiple prompts
     unique_prompts = df["initial_prompt"].unique()
     if len(unique_prompts) > 1:
-        initial_prompt = "multiple prompts"
+        _initial_prompt = "multiple prompts"
     else:
-        initial_prompt = unique_prompts[0]
+        _initial_prompt = unique_prompts[0]
 
     # Create a scatterplot for the persistence diagram
     points_chart = alt.Chart(df).mark_point(
         filled=True, opacity=0.1
     ).encode(
-        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.1)),
-        y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.1)),
+        x=alt.X("birth:Q", title="Feature Appearance", scale=alt.Scale(domainMin=-0.1)),
+        y=alt.Y("persistence:Q", title="Feature Persistence", scale=alt.Scale(domainMin=-0.1)),
         color=alt.Color("homology_dimension:N", title="Dimension"),
-        tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
-    )
-
-    # Create a diagonal line (x = y)
-    diagonal_line = alt.Chart(
-        pl.DataFrame({
-            'x': [-0.1, maxval + 0.1],
-            'y': [-0.1, maxval + 0.1]
-        })
-    ).mark_line(
-        strokeDash=[4, 4],
-        color='grey'
-    ).encode(
-        x='x:Q',
-        y='y:Q'
+        tooltip=["homology_dimension:N", "birth:Q", "persistence:Q"]
     )
 
     # Get entropy values per dimension if they exist
-    subtitle = ""
     # Get unique homology dimensions and their entropy values
     dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(subset=["homology_dimension", "entropy"])
 
@@ -61,13 +47,13 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
         entropy_values.append(f"{row['homology_dimension']}: {row['entropy']:.3f}")
 
     # Join entropy values into subtitle
-    if entropy_values:
-        subtitle = "Entropy " + ", ".join(entropy_values)
-    # Combine charts and set title/subtitle
-    combined_chart = (points_chart + diagonal_line).properties(
+    _subtitle = "Entropy " + ", ".join(entropy_values)
+
+    # Set title/subtitle
+    combined_chart = points_chart.properties(
         width=400,
-        height=400,
-        title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
+        height=400
+        # title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
     ).interactive()
 
     return combined_chart
@@ -85,23 +71,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Check if we have persistence diagram data
-    required_columns = {"homology_dimension", "birth", "death", "initial_prompt"}
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
-        return
-
     # Create the chart
-    chart = create_persistence_diagram_chart(df).properties(
-        width=600,
-        height=600
-    )
+    chart = create_persistence_diagram_chart(df)
 
     # Save chart with high resolution
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
@@ -123,49 +94,39 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
     output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Check if we have persistence diagram data
-    required_columns = {"homology_dimension", "birth", "death", "run_id", "initial_prompt"}
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
-        return
-
-    # Get unique run IDs
-    run_ids = df["run_id"].unique().to_list()
-
-    # Create a chart for each run
-    charts = []
-    for run_id in run_ids:
-        # Filter data for this run
-        run_df = df.filter(pl.col("run_id") == run_id)
-
-        # Create chart for this run
-        chart = create_persistence_diagram_chart(run_df)
-        charts.append(chart)
-
-    # Arrange charts in a grid layout
-    if len(charts) > 1:
-        # Split charts into rows based on num_cols
-        chart_rows = [charts[i:i+num_cols] for i in range(0, len(charts), num_cols)]
-
-        # Create a row of charts for each group
-        rows = []
-        for row_charts in chart_rows:
-            row = alt.hconcat(*row_charts)
-            rows.append(row)
-
-        # Combine all rows vertically
-        final_chart = alt.vconcat(*rows)
-    else:
-        final_chart = charts[0]
+    # Create the base chart then facet by run_id
+    chart = create_persistence_diagram_chart(df).encode(
+        alt.Row("network:N").title("Network"),
+        alt.Column("initial_prompt:N").title("Prompt")
+    )
 
     # Save chart with high resolution
-    final_chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+
+    logging.info(f"Saved persistence diagrams to {output_file}")
+
+
+def plot_persistence_diagram_by_run(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
+    """
+    Create and save a visualization of persistence diagrams for runs in the DataFrame,
+    creating a grid of charts (one per run).
+
+    Args:
+        df: DataFrame containing run data with persistence homology information
+        output_file: Path to save the visualization
+        num_cols: Number of columns in the grid layout
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create the base chart then facet by run_id
+    chart = create_persistence_diagram_chart(df).encode(
+        alt.Column("run_id:N", title="Run ID")
+    )
+
+    # Save chart with high resolution
+    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
     logging.info(f"Saved persistence diagrams to {output_file}")
 
@@ -457,3 +418,17 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
 
     # Save the chart to a file
     combined_chart.save("output/vis/giotto_benchmark.html", scale_factor=CHART_SCALE_FACTOR)
+
+
+def paper_charts(session: Session) -> None:
+    """
+    Generate charts for paper publications.
+
+    Args:
+        session: SQLModel database session
+    """
+    # Placeholder for future implementation
+    from trajectory_tracer.analysis import load_runs_df
+    from trajectory_tracer.visualisation import plot_persistence_diagram
+    df = load_runs_df(session, use_cache=False)
+    plot_persistence_diagram(df)

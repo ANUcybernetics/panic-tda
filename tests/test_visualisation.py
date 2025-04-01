@@ -4,6 +4,7 @@ from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
 from trajectory_tracer.engine import perform_experiment
 from trajectory_tracer.schemas import ExperimentConfig
 from trajectory_tracer.visualisation import (
+    plot_persistence_diagram,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy_faceted,
     plot_semantic_drift,
@@ -39,7 +40,6 @@ def test_plot_persistence_diagram(db_session):
     assert "death" in df.columns
 
     # Import the function we want to test
-    from trajectory_tracer.visualisation import plot_persistence_diagram
 
     # Define output file
     output_file = "output/vis/persistence_diagram_test.html"
