@@ -1,3 +1,4 @@
+import json
 import time
 
 import numpy as np
@@ -8,11 +9,19 @@ import torch
 from diffusers import FluxPipeline
 from PIL import Image
 
+from trajectory_tracer.embeddings import (
+    get_all_models_memory_usage as embeddings_memory_usage,
+)
 from trajectory_tracer.genai_models import (
     IMAGE_SIZE,
     get_actor_class,
     get_output_type,
     list_models,
+)
+
+# Import the function from both modules
+from trajectory_tracer.genai_models import (
+    get_all_models_memory_usage as genai_memory_usage,
 )
 from trajectory_tracer.schemas import InvocationType
 
@@ -275,3 +284,40 @@ def test_fluxdev_without_ray():
     # Clean up GPU memory
     del model
     torch.cuda.empty_cache()
+
+
+@pytest.mark.slow
+def test_get_all_models_memory_usage():
+    """Test that we can get memory usage for all models and display the results."""
+
+    # Get memory usage (with minimal output during test)
+    print("\n\nGenAI Models Memory Usage:")
+    genai_results = genai_memory_usage(verbose=False)
+
+    # Pretty print the results
+    for model, usage in genai_results.items():
+        if usage > 0:
+            print(f"  {model}: {usage:.3f} GB")
+        else:
+            print(f"  {model}: Error measuring")
+
+    print("\nEmbedding Models Memory Usage:")
+    embed_results = embeddings_memory_usage(verbose=False)
+
+    # Pretty print the results
+    for model, usage in embed_results.items():
+        if usage > 0:
+            print(f"  {model}: {usage:.3f} GB")
+        else:
+            print(f"  {model}: Error measuring")
+
+    # Export results to JSON for potential analysis
+    all_results = {
+        "genai_models": genai_results,
+        "embedding_models": embed_results
+    }
+
+    print(f"\nComplete results: {json.dumps(all_results, indent=2)}")
+
+    # Simply assert that we got results for at least some models
+    assert len(genai_results) > 0 or len(embed_results) > 0

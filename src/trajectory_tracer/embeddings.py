@@ -1,3 +1,4 @@
+import gc
 import logging
 import sys
 import warnings
@@ -38,6 +39,56 @@ class EmbeddingModel:
     def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
         """Process a batch of content items and return embeddings."""
         raise NotImplementedError
+
+    @classmethod
+    def get_memory_usage(cls, verbose=False):
+        """
+        Estimate GPU memory usage in GB for this model.
+
+        Args:
+            verbose: If True, print detailed memory information
+
+        Returns:
+            float: Estimated GPU memory usage in GB
+        """
+
+        # Free up existing memory
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        # Measure memory before loading
+        torch.cuda.synchronize()
+        start_mem = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)
+
+        if verbose:
+            print(f"Starting memory usage: {start_mem:.2f} GB")
+
+        # Initialize the model
+        try:
+            model_instance = cls()
+
+            # Force CUDA synchronization to ensure all memory operations are complete
+            torch.cuda.synchronize()
+
+            # Measure after loading
+            end_mem = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)
+
+            if verbose:
+                print(f"Peak memory usage: {torch.cuda.max_memory_allocated() / (1024 * 1024 * 1024):.2f} GB")
+                print(f"Final memory usage: {end_mem:.2f} GB")
+
+            # Clean up
+            del model_instance
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            # Return the difference
+            return end_mem - start_mem
+
+        except Exception as e:
+            if verbose:
+                print(f"Error measuring memory: {e}")
+            return -1  # Indicate error
 
 
 @ray.remote(num_gpus=0.2)
@@ -273,3 +324,30 @@ def get_actor_class(model_name: str) -> ray.actor.ActorClass:
         raise ValueError(f"Model '{model_name}' not found or is not a Ray actor class")
 
     return model_class
+
+
+def get_all_models_memory_usage(verbose=False):
+    """
+    Returns a dictionary with the memory usage of all models.
+
+    Args:
+        verbose: If True, print detailed memory information
+
+    Returns:
+        dict: Mapping of model names to their memory usage in GB
+    """
+    memory_usage = {}
+
+    for model_name in list_models():
+        print(f"Measuring memory usage for {model_name}...")
+
+        # Extract the actual class from the ActorClass wrapper
+        actual_class = getattr(sys.modules[__name__], model_name)
+
+        if hasattr(actual_class, 'get_memory_usage'):
+            usage = actual_class.get_memory_usage(verbose=verbose)
+            memory_usage[model_name] = usage
+        else:
+            memory_usage[model_name] = -1  # No method available
+
+    return memory_usage
