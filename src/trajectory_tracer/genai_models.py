@@ -332,7 +332,7 @@ class BLIP2(GenAIModel):
 
         # Generate the caption using the model's generate method
         # This follows the example from the documentation for image captioning
-        with torch.cuda.amp.autocast(dtype=torch.float16):
+        with torch.amp.autocast("cuda", dtype=torch.float16):
             generated_ids = self.model.generate(
                 **inputs,
                 max_length=50,
