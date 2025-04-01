@@ -75,7 +75,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     )
 
     # Save chart
-    faceted_chart.save(output_file)
+    faceted_chart.save(output_file, scale_factor=4.0)
 
     print(f"Saved persistence diagram to {output_file}")
 
