@@ -42,7 +42,7 @@ def test_plot_persistence_diagram(db_session):
     from trajectory_tracer.visualisation import plot_persistence_diagram
 
     # Define output file
-    output_file = "output/vis/persistence_diagram_single_test.html"
+    output_file = "output/vis/persistence_diagram_test.html"
 
     # Generate the plot
     plot_persistence_diagram(df, output_file)
