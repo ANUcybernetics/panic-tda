@@ -3,6 +3,9 @@
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
 
+- make the default db paths all point to db/ (because conceptually output/
+  should be cleanable without much loss)
+
 - faceted persistence entropy plot
 
 - look at change-point detection with ruptures library, and visualise the run
