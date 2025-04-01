@@ -1,4 +1,5 @@
 import json
+import os
 
 from PIL import Image
 from sqlmodel import Session
@@ -149,33 +150,20 @@ def test_export_run_mosaic(db_session: Session, tmp_path):
         colors = ["red", "blue", "green", "yellow"]
         img = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=colors[i])
         text_to_image.output = img
-
         db_session.add(text_to_image)
         db_session.commit()
 
     # Create a temporary output directory
     output_dir = tmp_path / "test_mosaic"
+    os.makedirs(str(output_dir), exist_ok=True)
+
+    # Create output file path
+    output_video = output_dir / "test-mosaic.mp4"
 
     # Call the export_run_mosaic function with 2 columns
     fps = 10
-    output_video = "test_video.mp4"
-    export_run_mosaic(run_ids, db_session, cols=2,
-                     output_dir=str(output_dir), fps=fps, output_video=output_video)
-
+    export_run_mosaic(run_ids, db_session, cols=4, output_video=str(output_video), fps=fps)
     # Check that the mosaic directory was created
     assert output_dir.exists()
     assert output_dir.is_dir()
-
-    # Check that the mosaic file for sequence 0 was created
-    mosaic_file = output_dir / "00000.jpg"
-    assert mosaic_file.exists()
-
-    # Verify the mosaic is a valid image with expected dimensions
-    mosaic_img = Image.open(mosaic_file)
-    # Should be a 2x2 grid of IMAGE_SIZE images
-    assert mosaic_img.width == IMAGE_SIZE * 2
-    assert mosaic_img.height == IMAGE_SIZE * 2 + 100  # 100px offset for progress bar
-
-    # Check that the video file was created
-    video_file = output_dir / output_video
-    assert video_file.exists()
+    assert output_video.exists()
