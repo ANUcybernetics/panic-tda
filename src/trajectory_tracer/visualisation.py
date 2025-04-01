@@ -19,11 +19,6 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     Returns:
         An Altair chart object for the persistence diagram
     """
-    # Find the maximum value for the diagonal line
-    max_birth = df.select(pl.col("birth").filter(pl.col("birth") != float('inf'))).max().item()
-    max_death = df.select(pl.col("death").filter(pl.col("death") != float('inf'))).max().item()
-    maxval = max(max_birth, max_death)
-
     # Extract initial prompt, or indicate if there are multiple prompts
     unique_prompts = df["initial_prompt"].unique()
     if len(unique_prompts) > 1:

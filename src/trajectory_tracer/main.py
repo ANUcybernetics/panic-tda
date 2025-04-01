@@ -17,8 +17,8 @@ from trajectory_tracer.db import (
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
-from trajectory_tracer.schemas import ExperimentConfig, Run
-from trajectory_tracer.utils import export_run_images
+from trajectory_tracer.schemas import ExperimentConfig
+from trajectory_tracer.utils import export_run_mosaic, order_runs_for_mosaic
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -382,7 +382,6 @@ def export_video(
 
         # Get the experiment and export video
         with get_session_from_connection_string(db_str) as session:
-            from trajectory_tracer.utils import export_run_mosaic
 
             # Find the experiment by ID
             try:
@@ -402,6 +401,9 @@ def export_video(
 
             # Get run IDs as strings
             run_ids = [str(run.id) for run in runs]
+
+            # sort them so they're in nice orders
+            run_ids = order_runs_for_mosaic(run_ids, session)
 
             output_video = f"output/mosaic/{experiment_id}/mosaic.mp4"
 
