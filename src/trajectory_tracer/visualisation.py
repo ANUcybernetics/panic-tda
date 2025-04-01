@@ -7,6 +7,61 @@ import polars as pl
 
 ## visualisation
 
+def create_persistence_diagram(df: pl.DataFrame) -> alt.Chart:
+    """
+    Create a single persistence diagram chart (unfaceted) from a DataFrame.
+
+    Args:
+        df: DataFrame containing run data with persistence homology information
+
+    Returns:
+        An Altair chart object for the persistence diagram
+    """
+    # Create a scatterplot for the persistence diagram
+    points_chart = alt.Chart(df).mark_point(
+        filled=True, opacity=0.4
+    ).encode(
+        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.1)),
+        y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.1)),
+        color=alt.Color("homology_dimension:N", title="Dimension"),
+        tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
+    )
+
+    # Add text labels for initial prompts in fixed position
+    prompt_text = alt.Chart(df).mark_text(
+        align='left',
+        baseline='top',
+        fontSize=16,
+        dx=5,
+        dy=5
+    ).encode(
+        text=alt.Text('initial_prompt:N'),
+        x=alt.value(10),  # Fixed position from left
+        y=alt.value(50)   # Fixed position from top
+    )
+
+    # Add text labels for entropy in fixed position
+    entropy_text = alt.Chart(df).mark_text(
+        align='left',
+        baseline='middle',
+        fontSize=16,
+        dx=5,
+        dy=5
+    ).encode(
+        text=alt.Text('entropy:Q', format='.3f'),  # Round to 3 decimal places
+        x=alt.value(10),  # Fixed position from left
+        y=alt.value(80)   # Fixed position from top
+    )
+
+    # Combine all chart elements
+    combined_chart = (points_chart + prompt_text + entropy_text).properties(
+        width=400,
+        height=400
+    ).interactive()
+
+    return combined_chart
+
+
 def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
@@ -32,58 +87,17 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
         logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
-    # Create a scatterplot faceted by homology dimension
-    points_chart = alt.Chart(df).mark_point(
-        filled=True, opacity=0.4
-    ).encode(
-        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.1)),
-        y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.1)),
-        color=alt.Color("homology_dimension:N", title="Dimension"),
-        tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
-    )
+    # Create the unfaceted chart
+    unfaceted_chart = create_persistence_diagram(df)
 
-    # Add text labels for initial prompts in fixed position
-    # Create two separate text layers, one for initial_prompt and one for entropy
-    prompt_text = alt.Chart(df).mark_text(
-        align='left',
-        baseline='top',
-        fontSize=16,
-        dx=5,
-        dy=5
-    ).encode(
-        text=alt.Text('initial_prompt:N'),
-        x=alt.value(10),  # Fixed position from left
-        y=alt.value(50)   # Fixed position from top
-    )
-
-    entropy_text = alt.Chart(df).mark_text(
-        align='left',
-        baseline='middle',
-        fontSize=16,
-        dx=5,
-        dy=5
-    ).encode(
-        text=alt.Text('entropy:Q', format='.3f'),  # Round to 3 decimal places
-        x=alt.value(10),  # Fixed position from left
-        y=alt.value(80)   # Fixed position from top
-    )
-
-    # Combine both text layers
-    text_chart = prompt_text + entropy_text
-
-    # Combine the points and text charts
-    combined_chart = (points_chart + text_chart).properties(
-        width=400,
-        height=400
-    ).facet(
+    # Apply faceting
+    faceted_chart = unfaceted_chart.facet(
         column=alt.Column("homology_dimension:N", title="Homology Dimension"),
         row=alt.Row("run_id:N", title="Run ID")
-    ).interactive()
-
-    chart = combined_chart
+    )
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=4.0)
+    faceted_chart.save(output_file, scale_factor=4.0)
 
     logging.info(f"Saved persistence diagram to {output_file}")
 
