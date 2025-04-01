@@ -45,7 +45,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     ).facet(
         column=alt.Column("homology_dimension:N", title="Homology Dimension"),
         row=alt.Row("run_id:N", title="Run ID")
-    )
+    ).interactive()
 
     # Save chart with high resolution
     chart.save(output_file, scale_factor=4.0)
