@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import altair as alt
@@ -23,12 +24,12 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     required_columns = {"homology_dimension", "birth", "death", "run_id", "initial_prompt"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
     # If the DataFrame is empty, return early
     if df.is_empty():
-        print("ERROR: DataFrame is empty - no persistence diagram data to plot")
+        logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
     # Create a scatterplot faceted by homology dimension
@@ -84,7 +85,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     # Save chart with high resolution
     chart.save(output_file, scale_factor=4.0)
 
-    print(f"Saved persistence diagram to {output_file}")
+    logging.info(f"Saved persistence diagram to {output_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -134,7 +135,7 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
     required_columns = {"drift_euclidean", "drift_cosine", "sequence_number", "run_id", "initial_prompt"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        print(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
         return
 
     # Filter to only include rows with at least one drift measure
@@ -228,7 +229,7 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
 
     # Save the chart
     final_chart.save(output_file)
-    print(f"Saved semantic drift plot to {output_file}")
+    logging.info(f"Saved semantic drift plot to {output_file}")
 
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
