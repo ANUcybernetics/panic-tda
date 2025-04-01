@@ -108,6 +108,27 @@ def delete_invocation(invocation_id: UUID, session: Session):
     return True
 
 
+def delete_experiment(experiment_id: UUID, session: Session):
+    """
+    Deletes an experiment configuration and all its related runs, invocations, and embeddings.
+
+    Args:
+        experiment_id: UUID of the experiment to delete
+        session: The database session
+
+    Returns:
+        True if the experiment was deleted, False if not found
+    """
+    experiment = session.get(ExperimentConfig, experiment_id)
+    if not experiment:
+        return False
+
+    # This will cascade delete all related entities due to cascade configuration
+    session.delete(experiment)
+    session.commit()
+    return True
+
+
 def read_experiment_config(experiment_id: UUID, session: Session):
     """
     Fetches a single experiment configuration by its UUID.
