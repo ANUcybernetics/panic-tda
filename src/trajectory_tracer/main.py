@@ -357,10 +357,10 @@ def export_video(
         help="Number of columns in the mosaic grid (default: 4)",
     ),
     fps: int = typer.Option(
-        4,
+        2,
         "--fps",
         "-f",
-        help="Frames per second for the output video",
+        help="Frames per second for the output video (default: 2)",
     ),
     db_path: Path = typer.Option(
         "output/db/trajectory_data.sqlite",
