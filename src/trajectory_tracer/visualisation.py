@@ -193,8 +193,8 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
         color=alt.Color("homology_dimension:N", title="Dimension"),
         tooltip=["homology_dimension:N", "entropy:Q", "initial_prompt:N", "run_id:N"]
     ).properties(
-        width=800,
-        height=400,
+        width=600,
+        height=200,
         title="Persistence Entropy"
     ).interactive()
 
@@ -261,9 +261,9 @@ def plot_persistence_entropy_faceted(df: pl.DataFrame, output_file: str = "outpu
         return
 
     chart = create_persistence_entropy_chart(df).encode(
-        alt.Row("initial_prompt:N").title("Prompt"),
-        alt.Column("network:N").title("Network"),
-    ).resolve_scale(x="shared")
+        alt.Row("network:N").title("Network"),
+        alt.Column("initial_prompt:N").title("Prompt"),
+    )
 
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
     logging.info(f"Saved faceted persistence entropy plots to {output_file}")
