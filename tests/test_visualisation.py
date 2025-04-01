@@ -80,10 +80,13 @@ def test_plot_persistence_diagram_faceted(db_session):
     assert "birth" in df.columns
     assert "death" in df.columns
 
-    plot_persistence_diagram_faceted(df)
+    # Define output file
+    output_file = "output/vis/persistence_diagram_faceted_test.html"
 
-    # Verify the file was created in the default output directory
-    output_file = "output/vis/persistence_diagram.html"
+    # Generate the plot
+    plot_persistence_diagram_faceted(df, output_file)
+
+    # Verify the file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 

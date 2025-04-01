@@ -7,20 +7,31 @@ import polars as pl
 
 ## visualisation
 
-def create_persistence_diagram_chart(df: pl.DataFrame, include_entropy: bool = True) -> alt.Chart:
+def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     """
-    Create a single persistence diagram chart (unfaceted) from a DataFrame.
+    Create a base persistence diagram chart for a single run.
 
     Args:
         df: DataFrame containing run data with persistence homology information
-        include_entropy: Whether to include entropy text on the chart
 
     Returns:
         An Altair chart object for the persistence diagram
     """
+    # Find the maximum value for the diagonal line
+    max_birth = df.select(pl.col("birth").filter(pl.col("birth") != float('inf'))).max().item()
+    max_death = df.select(pl.col("death").filter(pl.col("death") != float('inf'))).max().item()
+    maxval = max(max_birth, max_death)
+
+    # Extract initial prompt, or indicate if there are multiple prompts
+    unique_prompts = df["initial_prompt"].unique()
+    if len(unique_prompts) > 1:
+        initial_prompt = "multiple prompts"
+    else:
+        initial_prompt = unique_prompts[0]
+
     # Create a scatterplot for the persistence diagram
     points_chart = alt.Chart(df).mark_point(
-        filled=True, opacity=0.4
+        filled=True, opacity=0.1
     ).encode(
         x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.1)),
         y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.1)),
@@ -28,48 +39,44 @@ def create_persistence_diagram_chart(df: pl.DataFrame, include_entropy: bool = T
         tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
     )
 
-    # Add text labels for initial prompts in fixed position
-    prompt_text = alt.Chart(df).mark_text(
-        align='left',
-        baseline='top',
-        fontSize=16,
-        dx=5,
-        dy=5
+    # Create a diagonal line (x = y)
+    diagonal_line = alt.Chart(
+        pl.DataFrame({
+            'x': [-0.1, maxval + 0.1],
+            'y': [-0.1, maxval + 0.1]
+        })
+    ).mark_line(
+        strokeDash=[4, 4],
+        color='grey'
     ).encode(
-        text=alt.Text('initial_prompt:N'),
-        x=alt.value(10),  # Fixed position from left
-        y=alt.value(50)   # Fixed position from top
+        x='x:Q',
+        y='y:Q'
     )
 
-    # Create the chart with prompt text
-    combined_chart = (points_chart + prompt_text)
+    # Get entropy values per dimension if they exist
+    subtitle = ""
+    # Get unique homology dimensions and their entropy values
+    dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(subset=["homology_dimension", "entropy"])
 
-    # Add entropy text only if requested
-    if include_entropy:
-        # Add text labels for entropy in fixed position
-        entropy_text = alt.Chart(df).mark_text(
-            align='left',
-            baseline='middle',
-            fontSize=16,
-            dx=5,
-            dy=5
-        ).encode(
-            text=alt.Text('entropy:Q', format='.3f'),  # Round to 3 decimal places
-            x=alt.value(10),  # Fixed position from left
-            y=alt.value(80)   # Fixed position from top
-        )
-        combined_chart = combined_chart + entropy_text
+    # Sort by homology dimension and format entropy values
+    entropy_values = []
+    for row in dim_entropy_pairs.sort("homology_dimension").iter_rows(named=True):
+        entropy_values.append(f"{row['homology_dimension']}: {row['entropy']:.3f}")
 
-    # Set properties and make interactive
-    combined_chart = combined_chart.properties(
+    # Join entropy values into subtitle
+    if entropy_values:
+        subtitle = "Entropy " + ", ".join(entropy_values)
+    # Combine charts and set title/subtitle
+    combined_chart = (points_chart + diagonal_line).properties(
         width=400,
-        height=400
+        height=400,
+        title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
     ).interactive()
 
     return combined_chart
 
 
-def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram_single.html") -> None:
+def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
     """
     Create and save a visualization of a single persistence diagram for the given DataFrame.
 
@@ -93,9 +100,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
         logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
-    # Create the unfaceted chart without entropy
-    chart = create_persistence_diagram_chart(df, include_entropy=False).properties(
-        title="Persistence Diagram",
+    # Create the chart
+    chart = create_persistence_diagram_chart(df).properties(
         width=600,
         height=600
     )
@@ -106,14 +112,15 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     logging.info(f"Saved single persistence diagram to {output_file}")
 
 
-def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
+def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
-    faceted by homology dimension (columns) and run_id (rows).
+    creating a grid of charts (one per run).
 
     Args:
         df: DataFrame containing run data with persistence homology information
         output_file: Path to save the visualization
+        num_cols: Number of columns in the grid layout
     """
     # Ensure output directory exists
     output_dir = os.path.dirname(output_file)
@@ -131,19 +138,39 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
         logging.info("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
-    # Create the unfaceted chart with entropy
-    unfaceted_chart = create_persistence_diagram_chart(df, include_entropy=True)
+    # Get unique run IDs
+    run_ids = df["run_id"].unique().to_list()
 
-    # Apply faceting
-    faceted_chart = unfaceted_chart.facet(
-        column=alt.Column("homology_dimension:N", title="Homology Dimension"),
-        row=alt.Row("run_id:N", title="Run ID")
-    )
+    # Create a chart for each run
+    charts = []
+    for run_id in run_ids:
+        # Filter data for this run
+        run_df = df.filter(pl.col("run_id") == run_id)
+
+        # Create chart for this run
+        chart = create_persistence_diagram_chart(run_df)
+        charts.append(chart)
+
+    # Arrange charts in a grid layout
+    if len(charts) > 1:
+        # Split charts into rows based on num_cols
+        chart_rows = [charts[i:i+num_cols] for i in range(0, len(charts), num_cols)]
+
+        # Create a row of charts for each group
+        rows = []
+        for row_charts in chart_rows:
+            row = alt.hconcat(*row_charts)
+            rows.append(row)
+
+        # Combine all rows vertically
+        final_chart = alt.vconcat(*rows)
+    else:
+        final_chart = charts[0]
 
     # Save chart with high resolution
-    faceted_chart.save(output_file, scale_factor=4.0)
+    final_chart.save(output_file, scale_factor=4.0)
 
-    logging.info(f"Saved persistence diagram to {output_file}")
+    logging.info(f"Saved persistence diagrams to {output_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -264,26 +291,19 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
         charts.append(combined)
 
     # Arrange charts in a grid
-    if len(charts) > 1:
-        # Determine the number of columns (default to 2)
-        cols = 2
-        # Split the charts into rows with the specified number of columns
-        chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
+    # Determine the number of columns (default to 2)
+    cols = 2
+    # Split the charts into rows with the specified number of columns
+    chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
 
-        # Create a row of charts for each group
-        rows = []
-        for row_charts in chart_rows:
-            row = alt.hconcat(*row_charts)
-            rows.append(row)
+    # Create a row of charts for each group
+    rows = []
+    for row_charts in chart_rows:
+        row = alt.hconcat(*row_charts)
+        rows.append(row)
 
-        # Combine all rows vertically
-        final_chart = alt.vconcat(*rows).properties(
-            title="Semantic Dispersion Measures by Run"
-        )
-    else:
-        final_chart = charts[0].properties(
-            title="Semantic Dispersion Measures"
-        )
+    # Combine all rows vertically
+    final_chart = alt.vconcat(*rows)
 
     # Save the chart
     final_chart.save(output_file)
