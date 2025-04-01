@@ -191,17 +191,9 @@ def list_experiments_command(
 
                 if verbose:
                     # Detailed output
-                    typer.echo(f"\nExperiment ID: {experiment.id}")
-                    typer.echo(f"  Started: {experiment.started_at}")
-                    typer.echo(f"  Completed: {experiment.completed_at}")
-                    typer.echo(f"  Networks: {len(experiment.networks)}")
-                    typer.echo(f"  Seeds: {len(experiment.seeds)}")
-                    typer.echo(f"  Prompts: {len(experiment.prompts)}")
-                    typer.echo(f"  Embedding models: {experiment.embedding_models}")
-                    typer.echo(f"  Max length: {experiment.max_length}")
-                    typer.echo(f"  Runs: {run_count}")
                     # Print experiment status
                     experiment.print_status()
+                    typer.echo("\n---\n")
                 else:
                     # Simple output
                     elapsed = (experiment.completed_at - experiment.started_at).total_seconds()
