@@ -180,10 +180,27 @@ def export_run_mosaic(
     # Calculate rows based on number of runs
     rows = (len(runs) + cols - 1) // cols  # Ceiling division
 
-    # Calculate mosaic dimensions with extra space for progress bar and text
-    progress_bar_offset = 144  # 100px from bottom for progress bar and text
-    canvas_height = rows * IMAGE_SIZE + progress_bar_offset
-    canvas_width = cols * IMAGE_SIZE
+    # Calculate basic mosaic dimensions without progress bar
+    base_height = rows * IMAGE_SIZE
+    base_width = cols * IMAGE_SIZE
+
+    # Adjust progress_bar_offset to achieve 16:9 aspect ratio
+    target_aspect_ratio = 16/9
+    current_aspect_ratio = base_width / base_height
+
+    if current_aspect_ratio >= target_aspect_ratio:
+        # Width is already proportionally wider than or equal to 16:9
+        # Add progress bar space to maintain width but increase height
+        progress_bar_offset = int(base_width / target_aspect_ratio) - base_height
+        progress_bar_offset = max(144, progress_bar_offset)  # Ensure minimum space for text
+    else:
+        # Height is proportionally taller than 16:9 aspect ratio allows
+        # We require a 16:9 aspect ratio for compatibility
+        raise ValueError(f"Cannot achieve 16:9 aspect ratio with current dimensions. Current ratio: {current_aspect_ratio:.2f}. Consider reducing the number of rows or increasing the number of columns.")
+
+    # Apply the calculated offset
+    canvas_height = base_height + progress_bar_offset
+    canvas_width = base_width
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 72)
 
     # Create a blank canvas for the mosaic (reuse for each sequence)
