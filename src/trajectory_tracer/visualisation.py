@@ -31,7 +31,7 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
         print("ERROR: DataFrame is empty - no persistence diagram data to plot")
         return
 
-    # Create the faceted chart with data specified at the top level
+    # Create a scatterplot faceted by homology dimension
     chart = alt.Chart(df).mark_point(
         filled=True, opacity=0.4
     ).encode(
@@ -43,38 +43,13 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     ).properties(
         width=400,
         height=400
+    ).facet(
+        column=alt.Column("homology_dimension:N", title="Homology Dimension"),
+        row=alt.Row("run_id:N", title="Run ID")
     )
 
-    # Add a diagonal reference line (x=y) that extends across the full data range
-    # Find the maximum value in either birth or death columns that's not infinite
-    birth_max = df.filter(pl.col("birth") != float('inf')).select(pl.max("birth")).item()
-    death_max = df.filter(pl.col("death") != float('inf')).select(pl.max("death")).item()
-    max_value = max(birth_max, death_max)
-
-    # Use 0 as the minimum and max_value as the maximum
-    overall_min = 0.0
-    overall_max = max_value
-
-    diagonal_data = pl.DataFrame({'x': [overall_min, overall_max], 'y': [overall_min, overall_max]})
-    diagonal = alt.Chart(diagonal_data).mark_line(
-        strokeDash=[4, 4],
-        color='grey',
-        opacity=0.7
-    ).encode(
-        x='x',
-        y='y'
-    )
-
-    # Apply faceting directly with data
-    faceted_chart = alt.layer(chart, diagonal, data=df).facet(
-        row=alt.Row("run_id:N", title=None, header=alt.Header(labels=False)),
-    ).resolve_scale(
-        x='shared',
-        y='shared'
-    )
-
-    # Save chart
-    faceted_chart.save(output_file, scale_factor=4.0)
+    # Save chart with high resolution
+    chart.save(output_file, scale_factor=4.0)
 
     print(f"Saved persistence diagram to {output_file}")
 
