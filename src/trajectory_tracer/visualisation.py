@@ -41,8 +41,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
                       scale=alt.Scale(scheme="category10")),
         tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
     ).properties(
-        width=120,
-        height=120
+        width=400,
+        height=400
     )
 
     # Add a diagonal reference line (x=y) that extends across the full data range
