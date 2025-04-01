@@ -36,8 +36,8 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     points_chart = alt.Chart(df).mark_point(
         filled=True, opacity=0.4
     ).encode(
-        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.5)),
-        y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.5)),
+        x=alt.X("birth:Q", title="Birth", scale=alt.Scale(domainMin=-0.1)),
+        y=alt.Y("death:Q", title="Death", scale=alt.Scale(domainMin=-0.1)),
         color=alt.Color("homology_dimension:N", title="Dimension"),
         tooltip=["homology_dimension:N", "birth:Q", "death:Q", "persistence:Q"]
     )
