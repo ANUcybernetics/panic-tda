@@ -1,9 +1,12 @@
 import json
 import logging
+import math
 import os
+import shutil
 import subprocess
 import textwrap
 from io import BytesIO
+from typing import Union
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
@@ -194,7 +197,7 @@ def create_prompt_title_card(
 def export_run_mosaic(
     run_ids: list[str],
     session: Session,
-    cols: int,
+    cols: Union[int, str],
     fps: int,
     resolution: str,
     output_video: str,
@@ -206,7 +209,8 @@ def export_run_mosaic(
     Args:
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
-        cols: Number of columns in the mosaic grid
+        cols: Number of columns in the mosaic grid or "auto" to calculate the optimal
+              number of columns for a 16:9 aspect ratio
         fps: Frames per second for the output video
         output_video: Name of the output video file
         resolution: Target resolution ("HD", "4K", or "8K")
@@ -277,8 +281,23 @@ def export_run_mosaic(
         ]
         run_image_lists.append(image_list)
 
-    # Create dimensions for the canvas
+    # Determine the number of columns
     total_positions = len(run_positions) + len(title_cards)
+
+    if cols == "auto":
+        # Calculate optimal columns for 16:9 aspect ratio
+        # The formula is sqrt((16/9) * total_positions)
+        target_aspect_ratio = 16 / 9
+        ideal_cols = math.sqrt(target_aspect_ratio * total_positions)
+        cols = max(1, round(ideal_cols))
+        logger.info(
+            f"Auto-calculated {cols} columns for optimal 16:9 aspect ratio with {total_positions} positions"
+        )
+    elif not isinstance(cols, int) or cols < 1:
+        logger.warning(f"Invalid columns value: {cols}. Using 1 column.")
+        cols = 1
+
+    # Create dimensions for the canvas
     rows = (total_positions + cols - 1) // cols
     base_width = cols * IMAGE_SIZE
     base_height = rows * IMAGE_SIZE
@@ -436,8 +455,6 @@ def export_run_mosaic(
         raise e
     finally:
         if os.path.exists(temp_dir):
-            import shutil
-
             try:
                 shutil.rmtree(temp_dir)
             except Exception as e:

@@ -410,11 +410,11 @@ def export_video(
         ...,
         help="One or more Experiment IDs to include in the mosaic video",
     ),
-    cols: int = typer.Option(
-        ..., # Ellipsis indicates a required option
+    cols: str = typer.Option(
+        "auto",
         "--cols",
         "-c",
-        help="Number of columns in the mosaic grid",
+        help="Number of columns in the mosaic grid, or 'auto' to calculate optimal layout (default: auto)",
     ),
     fps: int = typer.Option(
         2,
@@ -463,28 +463,38 @@ def export_video(
                 try:
                     experiment_uuid = UUID(experiment_id_str)
                 except ValueError:
-                    logger.error(f"Invalid experiment ID format: '{experiment_id_str}'. Please provide a valid UUID.")
+                    logger.error(
+                        f"Invalid experiment ID format: '{experiment_id_str}'. Please provide a valid UUID."
+                    )
                     raise typer.Exit(code=1)
 
                 # Fetch experiment
                 experiment = session.get(ExperimentConfig, experiment_uuid)
                 if not experiment:
-                    logger.warning(f"Experiment with ID {experiment_id_str} not found. Skipping.")
-                    continue # Skip to the next experiment ID
+                    logger.warning(
+                        f"Experiment with ID {experiment_id_str} not found. Skipping."
+                    )
+                    continue  # Skip to the next experiment ID
 
                 # Check for runs
                 if not experiment.runs:
-                    logger.warning(f"No runs found for experiment {experiment_id_str}. Skipping.")
-                    continue # Skip to the next experiment ID
+                    logger.warning(
+                        f"No runs found for experiment {experiment_id_str}. Skipping."
+                    )
+                    continue  # Skip to the next experiment ID
 
                 # Collect runs and valid ID
                 all_runs.extend(experiment.runs)
                 valid_experiment_ids.append(experiment_id_str)
-                logger.info(f"Added {len(experiment.runs)} runs from experiment {experiment_id_str}")
+                logger.info(
+                    f"Added {len(experiment.runs)} runs from experiment {experiment_id_str}"
+                )
 
             # Check if any runs were collected at all
             if not all_runs:
-                logger.error("No valid runs found for any of the specified experiment IDs.")
+                logger.error(
+                    "No valid runs found for any of the specified experiment IDs."
+                )
                 raise typer.Exit(code=1)
 
             # Get run IDs as strings
@@ -502,6 +512,10 @@ def export_video(
 
             logger.info(f"Preparing to export mosaic video to {output_video_path}")
 
+            # Convert cols to int if it's a numeric string
+            if cols != "auto" and cols.isdigit():
+                cols = int(cols)
+
             # Create the mosaic video
             export_run_mosaic(
                 run_ids=run_ids,
@@ -516,7 +530,9 @@ def export_video(
 
     except Exception as e:
         # Catch any other unexpected errors during the process
-        logger.error(f"An error occurred during mosaic video creation: {e}", exc_info=True)
+        logger.error(
+            f"An error occurred during mosaic video creation: {e}", exc_info=True
+        )
         raise typer.Exit(code=1)
 
 
