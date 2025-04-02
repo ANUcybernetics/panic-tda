@@ -24,6 +24,7 @@ dependencies = [
     "pyvips>=2.2.3",
     "ray>=2.44.0",
     "rich>=13.9.4",
+    "ruptures>=1.1.9",
     "sentencepiece>=0.2.0",
     "sqlmodel>=0.0.23",
     "timm>=1.0.15",
