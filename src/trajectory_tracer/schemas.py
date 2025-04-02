@@ -879,6 +879,7 @@ class ExperimentConfig(SQLModel, table=True):
         status_report = (
             f"Experiment Configuration:\n"
             f"  ID: {self.id}\n"
+            f"  Total Runs: {total_runs}\n"
             f"  Networks: {network_summary} {self.networks}\n"
             f"  Seeds: {seed_summary} {self.seeds}\n"
             f"  Prompts: {prompt_summary} {[p[:50] + '...' if len(p) > 50 else p for p in self.prompts]}\n"
