@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import subprocess
+import textwrap
 from io import BytesIO
 from uuid import UUID
 
@@ -119,6 +120,77 @@ def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
     return [str(run.id) for run in sorted_runs]
 
 
+# Helper function for text wrapping on image
+def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255)):
+    """Draws text on an image, wrapped to a max width."""
+    # Estimate characters per line based on font size (adjust multiplier as needed)
+    chars_per_line = int(max_width / (font.size * 0.6)) if font.size > 0 else 20
+    lines = textwrap.wrap(
+        text, width=max(10, chars_per_line)
+    )  # Ensure width is at least 10
+
+    x, y = position
+    line_height = (
+        font.getbbox("A")[3] if hasattr(font, "getbbox") else font.size * 1.2
+    )  # Approximate line height
+
+    total_text_height = len(lines) * (line_height + 2)
+    # Recalculate start_y to vertically center based on actual lines
+    start_y = (
+        y + (max_width - total_text_height) / 2
+    )  # Center vertically within the available space (using max_width assuming square)
+
+    current_y = start_y
+    for line in lines:
+        # Center each line horizontally
+        try:  # Use textbbox for more accurate centering if available
+            bbox = draw.textbbox((0, 0), line, font=font)
+            line_width = bbox[2] - bbox[0]
+            text_x = x + (max_width - line_width) / 2
+        except AttributeError:  # Fallback for older PIL/Pillow or basic fonts
+            line_width = draw.textlength(line, font=font)  # Deprecated but fallback
+            text_x = x + (max_width - line_width) / 2
+
+        draw.text((text_x, current_y), line, font=font, fill=fill)
+        current_y += line_height + 2  # Add some spacing between lines
+
+
+# Helper function to create a title card image
+def create_prompt_title_card(
+    prompt_text: str, size: int, font_path: str, base_font_size: int
+) -> Image.Image:
+    """Creates a square image with wrapped text, centered vertically and horizontally."""
+    img = Image.new("RGB", (size, size), color="black")
+    draw = ImageDraw.Draw(img)
+
+    title_font_size = max(12, int(base_font_size * 0.8))
+    try:
+        font = ImageFont.truetype(font_path, title_font_size)
+    except IOError:
+        logger.warning(f"Font not found at {font_path}. Using default PIL font.")
+        try:
+            font = ImageFont.load_default(size=title_font_size)
+        except Exception:
+            logger.error("Could not load any default font.")
+            # Draw simple error text on the blank image
+            try:  # Use a known basic font if possible
+                error_font = ImageFont.load_default()
+                draw.text((10, 10), "FONT ERR", font=error_font, fill="red")
+            except Exception:
+                pass  # If even default fails, return blank
+            return img
+
+    # Calculate max width allowing for padding
+    padding = size * 0.1
+    max_text_width = size - (2 * padding)
+
+    # Use the wrapping helper, passing the top-left corner for positioning (padding, padding)
+    # The helper function will handle the vertical centering within the drawing area
+    draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font)
+
+    return img
+
+
 def export_run_mosaic(
     run_ids: list[str],
     session: Session,
@@ -128,265 +200,245 @@ def export_run_mosaic(
     output_video: str,
 ) -> None:
     """
-    Export a mosaic of images from multiple runs and create a video from the mosaic images.
+    Export a mosaic of images from multiple runs and create a video.
+    Title cards are added for each new prompt.
 
     Args:
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
         cols: Number of columns in the mosaic grid
         fps: Frames per second for the output video
-        output_video: Name of the output video file (can include subfolders)
-        resolution: Target resolution for the output video ("HD", "4K", or "8K")
+        output_video: Name of the output video file
+        resolution: Target resolution ("HD", "4K", or "8K")
     """
-    # Extract directory from output_video path
+    # Setup output directory
     output_dir = os.path.dirname(output_video)
+    os.makedirs(output_dir, exist_ok=True)
 
-    # If output_dir is not empty, ensure it exists
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-    else:
-        # Use current directory if no directory specified
-        output_dir = "."
-        output_video = os.path.join(output_dir, output_video)
-
-    # Load all specified runs in the given order
+    # Load runs
     runs = []
-    run_ids = order_runs_for_mosaic(run_ids, session)
-
-    for run_id in run_ids:
+    ordered_run_ids = order_runs_for_mosaic(run_ids, session)
+    for run_id in ordered_run_ids:
         run = read_run(UUID(run_id), session)
         if run:
+            session.refresh(run)
             runs.append(run)
 
     if not runs:
         logger.error("No valid runs found for the provided IDs")
         return
 
-    # Get initial prompt from the first run for display on the progress bar
-    initial_prompt = (
-        runs[0].initial_prompt if runs[0].initial_prompt else "No prompt available"
-    )
+    # Step 1: Find prompt changes and create title cards
+    title_cards = []
+    title_card_positions = []
+    run_positions = []
 
-    # Filter and organize invocations
-    run_invocations = []
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    base_title_font_size = int(IMAGE_SIZE * 0.15)
+
+    # First, collect all runs and identify where prompt changes occur
+    prompt_changes = []
+
+    # Always include the first prompt at position 0
+    if runs:
+        prompt_changes.append((runs[0].initial_prompt, 0))
+
+    # Add runs to run_positions and find prompt changes
+    for idx, run in enumerate(runs):
+        run_positions.append(run)
+
+        # Check if next run has a different prompt
+        if idx < len(runs) - 1:
+            current_prompt = run.initial_prompt or "No prompt"
+            next_prompt = runs[idx + 1].initial_prompt or "No prompt"
+
+            if next_prompt != current_prompt:
+                # Record the position where the next run will be placed
+                prompt_changes.append((next_prompt, idx + 1))
+
+    # Now create title cards and record their positions
+    for prompt, position in prompt_changes:
+        # Create a new title card for this prompt
+        title_card = create_prompt_title_card(
+            prompt, IMAGE_SIZE, font_path, base_title_font_size
+        )
+
+        title_cards.append(title_card)
+        title_card_positions.append(position)
+        logger.debug(f"Added title card for prompt: '{prompt}'")
+
+    # Step 2: Create list-of-lists of images for each run
+    run_image_lists = []
 
     for run in runs:
-        # Filter to include only image invocations and sort by sequence number
-        invocations = [
-            inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+        # Get and sort invocations by sequence number
+        image_list = [
+            inv.output for inv in run.invocations if inv.type == InvocationType.IMAGE
         ]
-        invocations.sort(key=lambda inv: inv.sequence_number)
+        run_image_lists.append(image_list)
 
-        # Make sure all sequence numbers start from zero and are consecutive
-        if not invocations or invocations[0].sequence_number != 0:
-            logger.warning(f"Run {run.id} doesn't start with sequence number 0")
-
-        run_invocations.append(invocations)
-
-    # Verify all runs have the same number of invocations
-    invocation_counts = [len(invs) for invs in run_invocations]
-    if len(set(invocation_counts)) > 1:
-        logger.warning(
-            f"Runs have different numbers of invocations: {invocation_counts}"
-        )
-
-    # Find max sequence number across all runs
-    max_seq = max([invs[-1].sequence_number if invs else 0 for invs in run_invocations])
-
-    # Calculate rows based on number of runs
-    rows = (len(runs) + cols - 1) // cols  # Ceiling division
-
-    # Calculate basic mosaic dimensions
+    # Create dimensions for the canvas
+    total_positions = len(run_positions) + len(title_cards)
+    rows = (total_positions + cols - 1) // cols
     base_width = cols * IMAGE_SIZE
     base_height = rows * IMAGE_SIZE
-
-    # Directly calculate canvas dimensions to achieve 16:9 aspect ratio
-    target_aspect_ratio = 16 / 9
-
-    # Calculate width based on height to maintain 16:9
+    progress_bar_area_height = 30
     canvas_width = base_width
-    canvas_height = int(canvas_width / target_aspect_ratio)
+    canvas_height = base_height + progress_bar_area_height
 
-    # If canvas_height is less than base_height, we need to adjust width instead
-    if canvas_height < base_height:
-        raise ValueError(
-            "Cannot achieve 16:9 aspect ratio with current dimensions. Try reducing the number of rows or increasing the number of columns."
-        )
-
-    # Calculate progress bar space
-    progress_bar_offset = canvas_height - base_height
-
-    # Ensure minimum space for text in progress bar
-    if progress_bar_offset < 144:
-        progress_bar_offset = 144
-        canvas_height = base_height + progress_bar_offset
-        # Recalculate width to maintain 16:9
-        canvas_width = int(canvas_height * target_aspect_ratio)
-
-    # Set font size relative to canvas_height
-    font_size = int(canvas_height * 0.05)  # 40% of progress bar area height
-    font = ImageFont.truetype(
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size
-    )
-
-    # Create a blank canvas for the mosaic (reuse for each sequence)
+    # Create the black canvas
     mosaic = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
-    draw = ImageDraw.Draw(mosaic) if font else None
 
-    # Create temp directory for frames
+    # Create temporary directory for frame storage
     temp_dir = os.path.join(output_dir, "temp_frames")
     os.makedirs(temp_dir, exist_ok=True)
 
-    # Process each sequence number (by groups of 2 to match original)
-    for seq_num in range(0, max_seq + 1, 2):
-        # Clear the canvas by filling with black
+    # Step 3 & 4: Create each frame by directly iterating through images
+    # Find the maximum length of any image list
+    max_images = max([len(img_list) for img_list in run_image_lists], default=0)
+
+    # Now iterate through each image position instead of by sequence number
+    for frame_idx in range(0, max_images):
+        # Clear canvas for new frame
         draw = ImageDraw.Draw(mosaic)
         draw.rectangle((0, 0, canvas_width, canvas_height), fill=(0, 0, 0))
 
-        # Place each run's image at this sequence number into the mosaic
-        for idx, invocations in enumerate(run_invocations):
-            row = idx // cols
-            col = idx % cols
+        # Get frame images for this position from each run
+        frame_images = []
+        for run_idx, image_list in enumerate(run_image_lists):
+            # Get image for this position if it exists
+            # If position exceeds available images, use the last image
+            image = None
+            if frame_idx < len(image_list):
+                image = image_list[frame_idx]
+            elif image_list:  # Use last available image if we've run out
+                image = image_list[-1]
+            frame_images.append(image)
 
-            # Find the invocation with this sequence number in this run
-            matching_inv = next(
-                (
-                    inv
-                    for inv in invocations
-                    if inv.sequence_number == seq_num and inv.output_image_data
-                ),
-                None,
-            )
+        # Insert title cards at appropriate positions
+        for card_pos, card_idx in sorted(
+            zip(title_card_positions, range(len(title_cards))), reverse=True
+        ):
+            # Insert a copy of the title card at the appropriate position
+            frame_images.insert(card_pos, title_cards[card_idx])
 
-            if matching_inv:
-                # Load and paste the image
-                image_data = BytesIO(matching_inv.output_image_data)
-                image_data.seek(0)
-                img = Image.open(image_data).convert("RGB")
-
-                # Calculate position and paste
+        # Paste each image to the canvas at its grid position
+        for idx, img in enumerate(frame_images):
+            if img is not None:
+                row = idx // cols
+                col = idx % cols
                 x_offset = col * IMAGE_SIZE
                 y_offset = row * IMAGE_SIZE
                 mosaic.paste(img, (x_offset, y_offset))
 
-        # Draw progress bar (10px wide, 100px from bottom)
-        if draw:
-            progress_percent = seq_num / max_seq if max_seq > 0 else 0
-            progress_width = int(canvas_width * progress_percent)
+        # Step 5: Draw progress bar
+        progress_percent = (
+            frame_idx / (max_images - 1)
+            if max_images > 1
+            else (1.0 if frame_idx == 0 else 0.0)
+        )
+        progress_bar_pixel_width = int(canvas_width * progress_percent)
+        progress_bar_y_top = int(base_height + (progress_bar_area_height - 10) / 2)
+        progress_bar_y_bottom = progress_bar_y_top + 10
 
-            # Progress bar background
+        draw.rectangle(
+            (0, progress_bar_y_top, canvas_width, progress_bar_y_bottom),
+            fill=(50, 50, 50),
+        )
+        if progress_bar_pixel_width > 0:
             draw.rectangle(
                 (
                     0,
-                    canvas_height - progress_bar_offset,
-                    canvas_width,
-                    canvas_height - progress_bar_offset + 10,
-                ),
-                fill=(50, 50, 50),
-            )
-
-            # Progress bar fill - white
-            draw.rectangle(
-                (
-                    0,
-                    canvas_height - progress_bar_offset,
-                    progress_width,
-                    canvas_height - progress_bar_offset + 10,
+                    progress_bar_y_top,
+                    progress_bar_pixel_width,
+                    progress_bar_y_bottom,
                 ),
                 fill=(255, 255, 255),
             )
 
-            # Position the text 20px from left edge and vertically centered in progress area
-            # Calculate vertical center of the progress area
-            progress_area_center = canvas_height - (progress_bar_offset / 2)
-
-            draw.text(
-                (
-                    canvas_width * 0.02,
-                    progress_area_center,
-                ),  # 20px from left, vertically centered
-                f"prompt: {initial_prompt}",  # Don't limit the text width - show full prompt
-                fill=(255, 255, 255),
-                font=font,
-                anchor="lm",  # Left-middle anchor for vertical centering
-            )
-
-        # Save the mosaic
-        output_path = os.path.join(temp_dir, f"{seq_num:05d}.jpg")
+        # Step 6: Save frame (save all frames without checking for uniqueness)
+        output_path = os.path.join(temp_dir, f"{frame_idx:05d}.jpg")
         mosaic.save(output_path, format="JPEG", quality=95)
 
-        logger.info(
-            f"Saved mosaic for sequence {seq_num} ({int(progress_percent * 100)}%)"
-        )
+        if frame_idx % (max(1, max_images // 20)) == 0 or frame_idx == max_images - 1:
+            if frame_idx == 0:
+                logger.info("Started saving mosaic frames...")
+            logger.info(
+                f"Saved frame {frame_idx + 1}/{max_images} ({int(progress_percent * 100)}%)"
+            )
 
-    # Define the output resolution based on the resolution parameter
-    # Resolution standards: HD (1920x1080), 4K (3840x2160), 8K (7680x4320)
+    # Step 7: Video creation with ffmpeg
     resolution_settings = {
         "HD": {"width": 1920, "height": 1080},
         "4K": {"width": 3840, "height": 2160},
         "8K": {"width": 7680, "height": 4320},
     }
 
-    # Use default HD resolution if specified resolution is not recognized
     if resolution not in resolution_settings:
-        logger.warning(
-            f"Unknown resolution '{resolution}'. Using HD (1920x1080) as default."
-        )
+        logger.warning(f"Unknown resolution '{resolution}'. Using HD.")
         resolution = "HD"
 
     target_width = resolution_settings[resolution]["width"]
     target_height = resolution_settings[resolution]["height"]
 
-    # Construct the ffmpeg command with settings for the target resolution
+    filtergraph = (
+        f"scale=w={target_width}:h={target_height}:force_original_aspect_ratio=decrease,"
+        f"pad=w={target_width}:h={target_height}:x=(ow-iw)/2:y=(oh-ih)/2:color=black"
+    )
+
     ffmpeg_cmd = [
         "ffmpeg",
-        "-y",  # Overwrite output file if it exists
+        "-y",
         "-framerate",
         str(fps),
         "-pattern_type",
         "glob",
         "-i",
         os.path.join(temp_dir, "*.jpg"),
-        # Video codec settings - using H.265/HEVC for better compression at high resolutions
         "-c:v",
         "libx265",
         "-preset",
-        "medium",  # Balance between quality and encoding speed
+        "medium",
         "-crf",
-        "22",  # Good quality-size balance (18-28 range)
-        # Set specific resolution
+        "22",
         "-vf",
-        f"scale={target_width}:{target_height}",
+        filtergraph,
         "-tag:v",
         "hvc1",
-        # Color handling
         "-color_primaries",
         "bt709",
         "-color_trc",
         "bt709",
         "-colorspace",
         "bt709",
-        # Properly handle pixel format
         "-pix_fmt",
         "yuv420p",
-        # Use movflags to enable streaming
         "-movflags",
         "+faststart",
         output_video,
     ]
 
-    # Execute the command
-    logger.info(
-        f"Creating {resolution} video with resolution {target_width}x{target_height}"
-    )
-    logger.info(f"Creating video with command: {' '.join(ffmpeg_cmd)}")
-    subprocess.run(ffmpeg_cmd, check=True)
+    logger.info(f"Creating {resolution} video with ffmpeg")
+    try:
+        subprocess.run(
+            ffmpeg_cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        logger.info(f"Video created successfully: {output_video}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"FFmpeg failed: {e.returncode}")
+        stderr_str = e.stderr if hasattr(e, "stderr") else "N/A"
+        logger.error(f"stderr: {stderr_str}")
+        raise e
+    finally:
+        if os.path.exists(temp_dir):
+            import shutil
 
-    # Clean up temporary files
-    for file in os.listdir(temp_dir):
-        os.remove(os.path.join(temp_dir, file))
-    os.rmdir(temp_dir)
-
-    logger.info(
-        f"Mosaic video created successfully at {output_video} with {resolution} resolution"
-    )
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception as e:
+                logger.error(f"Error cleaning up temp dir: {e}")
