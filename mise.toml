@@ -10,3 +10,6 @@ run = "uv run trajectory-tracer script"
 
 [tasks.test]
 run = "uv run pytest"
+
+[tasks.delete]
+run = "uv run trajectory-tracer delete-experiment ${@}"
