@@ -1,5 +1,6 @@
 import hashlib
 import io
+import itertools
 import os
 import tempfile
 from datetime import datetime
@@ -23,6 +24,7 @@ from trajectory_tracer.engine import (
     compute_embeddings,
     compute_persistence_diagram,
     get_output_hash,
+    init_runs,
     perform_embeddings_stage,
     perform_experiment,
     perform_pd_stage,
@@ -189,6 +191,68 @@ def test_run_generator_duplicate_detection(db_session: Session):
     # Clean up the actor references from the model_actors dictionary
     for actor in model_actors.values():
         ray.kill(actor)
+
+
+def test_init_runs(db_session: Session):
+    """Test that init_runs correctly creates and groups runs by network."""
+    # Create a test experiment config with multiple networks, seeds, and prompts
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"], ["SDXLTurbo", "Moondream"]],
+        seeds=[42, 43],
+        prompts=["Test prompt A", "Test prompt B"],
+        embedding_models=["Dummy"],
+        max_length=3,
+    )
+
+    # Save to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    experiment_id = config.id
+
+    # Generate combinations
+    combinations = list(
+        itertools.product(
+            config.networks,
+            config.seeds,
+            config.prompts,
+        )
+    )
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call init_runs
+    run_groups = init_runs(experiment_id, combinations, config, db_url)
+
+    # Verify we have the correct number of groups (should be 2, one per network)
+    assert len(run_groups) == 2
+
+    # Calculate expected total runs (2 networks * 2 seeds * 2 prompts = 8)
+    total_expected_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
+
+    # Verify we have the correct number of runs in total
+    all_run_ids = [run_id for group in run_groups for run_id in group]
+    assert len(all_run_ids) == total_expected_runs
+
+    # Verify each group contains runs with the same network
+    for group in run_groups:
+        # Get the first run to compare its network
+        sample_run_id = group[0]
+        sample_run = db_session.get(Run, UUID(sample_run_id))
+        reference_network = sample_run.network
+
+        # Verify all runs in this group have the same network
+        for run_id in group:
+            run = db_session.get(Run, UUID(run_id))
+            assert run.network == reference_network
+
+    # Verify all runs have the correct experiment_id
+    for run_id in all_run_ids:
+        run = db_session.get(Run, UUID(run_id))
+        assert run.experiment_id == experiment_id
+        assert run.max_length == config.max_length
 
 
 def test_perform_runs_stage(db_session: Session):
@@ -684,6 +748,8 @@ def test_perform_experiment(db_session: Session):
         assert pd.diagram_data is not None
         assert "dgms" in pd.diagram_data
         assert len(pd.diagram_data["dgms"]) > 0
+
+
 @pytest.mark.slow
 def test_perform_experiment_real_models(db_session: Session):
     """Test that perform_experiment correctly executes an experiment with real models."""

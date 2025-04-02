@@ -315,29 +315,98 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         return pd_id
 
 
+def init_runs(experiment_id, db_str):
+    """
+    Initialize runs for an experiment and group them by network.
+
+    Args:
+        experiment_id: UUID of the experiment
+        db_str: Database connection string
+
+    Returns:
+        List of lists of run IDs, where each inner list contains runs with the same network
+    """
+    # Dictionary to group run_ids by network
+    network_to_runs = {}
+
+    with get_session_from_connection_string(db_str) as session:
+        # Get the experiment config
+        config = session.get(ExperimentConfig, experiment_id)
+        if not config:
+            raise ValueError(f"Experiment config {experiment_id} not found")
+
+        # Generate cartesian product of all parameters
+        combinations = list(
+            itertools.product(
+                config.networks,
+                config.seeds,
+                config.prompts,
+            )
+        )
+
+        total_combinations = len(combinations)
+        logger.debug(f"Creating {total_combinations} runs for experiment {experiment_id}")
+
+        for i, (network, seed, prompt) in enumerate(combinations):
+            try:
+                # Create the run
+                logger.debug(
+                    f"Creating run {i + 1}/{total_combinations}: {network} with seed {seed}"
+                )
+                run = Run(
+                    network=network,
+                    initial_prompt=prompt,
+                    seed=seed,
+                    max_length=config.max_length,
+                    experiment_id=experiment_id
+                )
+
+                # Save to database
+                session.add(run)
+                session.commit()
+                session.refresh(run)
+
+                # Add run ID to the appropriate network group
+                network_key = tuple(network)  # Convert list to tuple for dict key
+                if network_key not in network_to_runs:
+                    network_to_runs[network_key] = []
+                network_to_runs[network_key].append(str(run.id))
+
+                logger.debug(f"Created run with ID: {run.id}")
+
+            except Exception as e:
+                logger.error(f"Error creating run {i + 1}/{total_combinations}: {e}")
+
+    # Convert dictionary to list of lists, preserving network grouping
+    return list(network_to_runs.values())
+
+
 def perform_runs_stage(run_ids, db_str):
     """
     Process multiple run generators in parallel, respecting dependencies within each run.
     Creates model actors and dispatches tasks appropriately.
 
     Args:
-        run_ids: List of run UUIDs as strings
+        run_ids: List of run UUIDs as strings (all sharing the same network)
         db_str: Database connection string
 
     Returns:
         List of all invocation IDs from all generators
     """
+    if not run_ids:
+        return []
+
     # Create a dictionary to hold actors for each required model
     model_actors = {}
     used_models = set()
 
     # First collect all models needed for these runs
+    # Since all runs share the same network, we only need to check one run
     with get_session_from_connection_string(db_str) as session:
-        for run_id in run_ids:
-            run = session.get(Run, UUID(run_id))
-            if run:
-                for model_name in run.network:
-                    used_models.add(model_name)
+        sample_run = session.get(Run, UUID(run_ids[0]))
+        if sample_run:
+            for model_name in sample_run.network:
+                used_models.add(model_name)
 
     # Create actors for each unique model
     for model_name in used_models:
@@ -363,7 +432,7 @@ def perform_runs_stage(run_ids, db_str):
     for model_name, actor in model_actors.items():
         ray.kill(actor)
         logger.debug(f"Terminated actor for model {model_name}")
-    # free up GPU respources
+    # free up GPU resources
     torch.cuda.empty_cache()
 
     return all_invocation_ids
@@ -493,54 +562,26 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             logger.info(f"Started experiment with ID: {experiment_id}")
             logger.info(f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`")
 
-            # Generate cartesian product of all parameters
-            combinations = list(
-                itertools.product(
-                    config.networks,
-                    config.seeds,
-                    config.prompts,
-                )
-            )
+        # Initialize runs and group them by network (combinations are calculated inside init_runs)
+        run_groups = init_runs(experiment_id, db_str)
 
-            total_combinations = len(combinations)
-            logger.debug(
-                f"Starting experiment with {total_combinations} total run configurations"
-            )
+        # Process each group of runs (sharing the same network) separately
+        all_run_ids = []
+        all_invocation_ids = []
 
-        # Create runs for all combinations
-        run_ids = []
-        with get_session_from_connection_string(db_str) as session:
-            # Get the experiment again to link runs
-            config = session.get(ExperimentConfig, experiment_id)
+        for i, run_group in enumerate(run_groups):
+            logger.info(f"Processing run group {i+1}/{len(run_groups)} with {len(run_group)} runs")
 
-            for i, (network, seed, prompt) in enumerate(combinations):
-                try:
-                    # Create the run
-                    logger.debug(
-                        f"Creating run {i + 1}/{total_combinations}: {network} with seed {seed}"
-                    )
-                    run = Run(
-                        network=network,
-                        initial_prompt=prompt,
-                        seed=seed,
-                        max_length=config.max_length,
-                        experiment_id=experiment_id
-                    )
+            # Add to the master list of all run IDs
+            all_run_ids.extend(run_group)
 
-                    # Save to database
-                    session.add(run)
-                    session.commit()
-                    session.refresh(run)
+            # Process this group of runs and collect invocation IDs
+            group_invocation_ids = perform_runs_stage(run_group, db_str)
+            all_invocation_ids.extend(group_invocation_ids)
 
-                    run_ids.append(str(run.id))
-                    logger.debug(f"Created run with ID: {run.id}")
+            logger.info(f"Completed {len(group_invocation_ids)} invocations for run group {i+1}")
 
-                except Exception as e:
-                    logger.error(f"Error creating run {i + 1}/{total_combinations}: {e}")
-
-        # Process all runs and generate invocations
-        invocation_ids = perform_runs_stage(run_ids, db_str)
-        logger.info(f"Generated {len(invocation_ids)} invocations across {len(run_ids)} runs")
+        logger.info(f"Generated {len(all_invocation_ids)} invocations across {len(all_run_ids)} runs")
 
         # Reload config to get embedding models
         with get_session_from_connection_string(db_str) as session:
@@ -548,12 +589,12 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             embedding_models = config.embedding_models
 
         # Compute embeddings for all invocations
-        embedding_ids = perform_embeddings_stage(invocation_ids, embedding_models, db_str)
+        embedding_ids = perform_embeddings_stage(all_invocation_ids, embedding_models, db_str)
         logger.info(f"Computed {len(embedding_ids)} embeddings")
 
         # Compute persistence diagrams for all runs
-        perform_pd_stage(run_ids, embedding_models, db_str)
-        logger.info(f"Experiment completed with {len(run_ids)} successful runs")
+        perform_pd_stage(all_run_ids, embedding_models, db_str)
+        logger.info(f"Experiment completed with {len(all_run_ids)} successful runs")
 
         # Set completed_at timestamp for experiment
         with get_session_from_connection_string(db_str) as session:
