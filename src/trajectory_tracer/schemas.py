@@ -690,8 +690,8 @@ class ExperimentConfig(SQLModel, table=True):
         default=None, sa_type=JSON, description="List of embedding model class names"
     )
     max_length: int = Field(..., description="Number of invocations in each run")
-    started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: datetime = Field(default_factory=datetime.now)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
     runs: List[Run] = Relationship(
         back_populates="experiment",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
