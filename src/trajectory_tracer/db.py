@@ -15,13 +15,14 @@ from trajectory_tracer.schemas import (
 
 # helper functions for working with db_str: str values
 
+
 def get_engine_from_connection_string(db_str):
     engine = create_engine(
         db_str,
         poolclass=QueuePool,
         pool_size=5,
         max_overflow=10,
-        connect_args={"timeout": 30}
+        connect_args={"timeout": 30},
     )
 
     # Configure SQLite for better concurrency
@@ -72,6 +73,7 @@ def create_db_and_tables(db_str):
 
 
 ## some helper functions
+
 
 def read_invocation(invocation_id: UUID, session: Session):
     """
@@ -198,7 +200,9 @@ def latest_experiment(session: Session):
     Returns:
         The most recent ExperimentConfig object or None if no experiments exist
     """
-    statement = select(ExperimentConfig).order_by(ExperimentConfig.started_at.desc()).limit(1)
+    statement = (
+        select(ExperimentConfig).order_by(ExperimentConfig.started_at.desc()).limit(1)
+    )
     return session.exec(statement).first()
 
 

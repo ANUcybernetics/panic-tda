@@ -329,7 +329,9 @@ def test_compute_embeddings(db_session: Session):
     invocation_ids = [str(inv.id) for inv in invocations]
 
     # Call the compute_embeddings function with the batch of invocation IDs
-    embedding_ids_ref = compute_embeddings.remote(actor, invocation_ids, embedding_model, db_url)
+    embedding_ids_ref = compute_embeddings.remote(
+        actor, invocation_ids, embedding_model, db_url
+    )
     embedding_ids = ray.get(embedding_ids_ref)
 
     # Verify we got the right number of embeddings back
@@ -419,7 +421,9 @@ def test_compute_embeddings_skips_existing(db_session: Session):
     invocation_ids = [str(inv.id) for inv in invocations]
 
     # Call the compute_embeddings function with the batch of invocation IDs
-    embedding_ids_ref = compute_embeddings.remote(actor, invocation_ids, embedding_model, db_url)
+    embedding_ids_ref = compute_embeddings.remote(
+        actor, invocation_ids, embedding_model, db_url
+    )
     embedding_ids = ray.get(embedding_ids_ref)
 
     # Verify we got the right number of embeddings back (3 total)
@@ -430,7 +434,9 @@ def test_compute_embeddings_skips_existing(db_session: Session):
 
     # Verify only 2 new embeddings were actually computed
     # (by checking embeddings for invocations 1 and 2 are different from the existing one)
-    new_embedding_ids = [eid for eid in embedding_ids if eid != str(existing_embedding.id)]
+    new_embedding_ids = [
+        eid for eid in embedding_ids if eid != str(existing_embedding.id)
+    ]
     assert len(new_embedding_ids) == 2
 
     # Verify each embedding in the database
@@ -475,7 +481,9 @@ def test_perform_embeddings_stage(db_session: Session):
 
         # Generate output
         if i % 2 == 0:
-            output = Image.new("RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})")
+            output = Image.new(
+                "RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})"
+            )
         else:
             output = f"Test output for invocation {i}"
 
@@ -490,7 +498,9 @@ def test_perform_embeddings_stage(db_session: Session):
 
     # Call the perform_embeddings_stage function with two embedding models
     embedding_models = ["Dummy", "Dummy2"]
-    embedding_ids = perform_embeddings_stage(invocation_ids, embedding_models, db_url, num_actors=2)
+    embedding_ids = perform_embeddings_stage(
+        invocation_ids, embedding_models, db_url, num_actors=2
+    )
 
     # We expect 3 invocations * 2 embedding models = 6 embeddings
     assert len(embedding_ids) == 6
@@ -627,7 +637,9 @@ def test_perform_pd_stage(db_session: Session):
 
             # Generate output
             if i % 2 == 0:
-                output = Image.new("RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})")
+                output = Image.new(
+                    "RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})"
+                )
             else:
                 output = f"Test output for invocation {i} in run {run.id}"
 
@@ -640,7 +652,9 @@ def test_perform_pd_stage(db_session: Session):
                 embedding = Embedding(
                     invocation_id=invocation.id,
                     embedding_model=model,
-                    vector=np.array([float(i), float(i + 1), float(i + 2)], dtype=np.float32),
+                    vector=np.array(
+                        [float(i), float(i + 1), float(i + 2)], dtype=np.float32
+                    ),
                     started_at=datetime.now(),
                     completed_at=datetime.now(),
                 )
@@ -1000,10 +1014,18 @@ def test_perform_experiment_with_file_db():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("t2i_model,i2t_model", [
-    (t2i, i2t) for t2i in [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE]
-    for i2t in [m for m in list_models() if get_output_type(m) == InvocationType.TEXT]
-])
+@pytest.mark.parametrize(
+    "t2i_model,i2t_model",
+    [
+        (t2i, i2t)
+        for t2i in [
+            m for m in list_models() if get_output_type(m) == InvocationType.IMAGE
+        ]
+        for i2t in [
+            m for m in list_models() if get_output_type(m) == InvocationType.TEXT
+        ]
+    ],
+)
 def test_model_combination(t2i_model, i2t_model, db_session: Session):
     """Test that a specific combination of T2I and I2T models works correctly in a run."""
 
@@ -1015,7 +1037,7 @@ def test_model_combination(t2i_model, i2t_model, db_session: Session):
         network=network,
         initial_prompt=f"Testing network {t2i_model}->{i2t_model}",
         seed=-1,  # Use random seed
-        max_length=4
+        max_length=4,
     )
     db_session.add(run)
     db_session.commit()

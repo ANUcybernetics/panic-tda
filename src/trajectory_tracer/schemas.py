@@ -13,6 +13,7 @@ from uuid_v7.base import uuid7
 
 ## numpy storage helper classes
 
+
 class NumpyArrayType(TypeDecorator):
     """
     SQLAlchemy type for storing numpy arrays as binary data.
@@ -102,45 +103,47 @@ class PersistenceDiagramResultType(TypeDecorator):
         serializable_dict = {}
 
         for key, val in value.items():
-            if key == 'dgms':
+            if key == "dgms":
                 # For diagrams array - list of arrays
                 for i, arr in enumerate(val):
-                    serializable_dict[f'dgms_{i}'] = arr
-                serializable_dict['dgms_count'] = np.array([len(val)])
+                    serializable_dict[f"dgms_{i}"] = arr
+                serializable_dict["dgms_count"] = np.array([len(val)])
 
-            elif key == 'gens' and isinstance(val, tuple):
+            elif key == "gens" and isinstance(val, tuple):
                 # Handle the generators tuple (special structure from ripser_parallel)
                 # The tuple has 4 components as described in the docs
 
                 # First component: dim0_finite pairs (int ndarray with 3 columns)
-                serializable_dict['gens_0'] = val[0]
+                serializable_dict["gens_0"] = val[0]
 
                 # Second component: list of arrays for dims 1+ finite
                 for i, arr in enumerate(val[1]):
-                    serializable_dict[f'gens_1_{i}'] = arr
-                serializable_dict['gens_1_count'] = np.array([len(val[1])])
+                    serializable_dict[f"gens_1_{i}"] = arr
+                serializable_dict["gens_1_count"] = np.array([len(val[1])])
 
                 # Third component: dim0_infinite (1D int array)
-                serializable_dict['gens_2'] = val[2]
+                serializable_dict["gens_2"] = val[2]
 
                 # Fourth component: list of arrays for dims 1+ infinite
                 for i, arr in enumerate(val[3]):
-                    serializable_dict[f'gens_3_{i}'] = arr
-                serializable_dict['gens_3_count'] = np.array([len(val[3])])
+                    serializable_dict[f"gens_3_{i}"] = arr
+                serializable_dict["gens_3_count"] = np.array([len(val[3])])
 
             elif isinstance(val, np.ndarray):
                 # Direct numpy arrays (e.g., entropy)
                 serializable_dict[key] = val
 
-            elif isinstance(val, list) and all(isinstance(item, np.ndarray) for item in val):
+            elif isinstance(val, list) and all(
+                isinstance(item, np.ndarray) for item in val
+            ):
                 # Lists of arrays
                 for i, arr in enumerate(val):
-                    serializable_dict[f'{key}_{i}'] = arr
-                serializable_dict[f'{key}_count'] = np.array([len(val)])
+                    serializable_dict[f"{key}_{i}"] = arr
+                serializable_dict[f"{key}_count"] = np.array([len(val)])
 
             else:
                 # Store metadata about types that aren't arrays
-                serializable_dict[f'{key}_meta'] = np.array([str(val)])
+                serializable_dict[f"{key}_meta"] = np.array([str(val)])
 
         # Save all arrays into a single compressed file
         np.savez_compressed(buffer, **serializable_dict)
@@ -170,59 +173,68 @@ class PersistenceDiagramResultType(TypeDecorator):
         result = {}
 
         # Process dgms (diagrams)
-        if 'dgms_count' in loaded:
-            dgms_count = int(loaded['dgms_count'][0])
-            result['dgms'] = [loaded[f'dgms_{i}'] for i in range(dgms_count)]
+        if "dgms_count" in loaded:
+            dgms_count = int(loaded["dgms_count"][0])
+            result["dgms"] = [loaded[f"dgms_{i}"] for i in range(dgms_count)]
 
         # Process generators (gens)
-        if 'gens_0' in loaded and 'gens_1_count' in loaded and 'gens_2' in loaded and 'gens_3_count' in loaded:
+        if (
+            "gens_0" in loaded
+            and "gens_1_count" in loaded
+            and "gens_2" in loaded
+            and "gens_3_count" in loaded
+        ):
             # First component
-            dim0_finite = loaded['gens_0']
+            dim0_finite = loaded["gens_0"]
 
             # Second component
-            dims_finite_count = int(loaded['gens_1_count'][0])
-            dims_finite = [loaded[f'gens_1_{i}'] for i in range(dims_finite_count)]
+            dims_finite_count = int(loaded["gens_1_count"][0])
+            dims_finite = [loaded[f"gens_1_{i}"] for i in range(dims_finite_count)]
 
             # Third component
-            dim0_infinite = loaded['gens_2']
+            dim0_infinite = loaded["gens_2"]
 
             # Fourth component
-            dims_infinite_count = int(loaded['gens_3_count'][0])
-            dims_infinite = [loaded[f'gens_3_{i}'] for i in range(dims_infinite_count)]
+            dims_infinite_count = int(loaded["gens_3_count"][0])
+            dims_infinite = [loaded[f"gens_3_{i}"] for i in range(dims_infinite_count)]
 
             # Reconstruct the tuple
-            result['gens'] = (dim0_finite, dims_finite, dim0_infinite, dims_infinite)
+            result["gens"] = (dim0_finite, dims_finite, dim0_infinite, dims_infinite)
 
         # Process other standard arrays and array lists
         for key in loaded:
             # Skip the keys we've already processed and count markers
-            if key.startswith('dgms_') or key.startswith('gens_') or key.endswith('_count'):
+            if (
+                key.startswith("dgms_")
+                or key.startswith("gens_")
+                or key.endswith("_count")
+            ):
                 continue
 
             # Handle metadata fields
-            if key.endswith('_meta'):
+            if key.endswith("_meta"):
                 base_key = key[:-5]  # Remove _meta suffix
                 value_str = str(loaded[key][0])
 
                 # Try to convert simple values back to their original type
-                if value_str.lower() == 'none':
+                if value_str.lower() == "none":
                     result[base_key] = None
-                elif value_str.lower() in ('true', 'false'):
-                    result[base_key] = value_str.lower() == 'true'
+                elif value_str.lower() in ("true", "false"):
+                    result[base_key] = value_str.lower() == "true"
                 elif value_str.isdigit():
                     result[base_key] = int(value_str)
-                elif value_str.replace('.', '', 1).isdigit():
+                elif value_str.replace(".", "", 1).isdigit():
                     result[base_key] = float(value_str)
                 else:
                     result[base_key] = value_str
                 continue
 
             # Process array lists
-            if key.split('_')[0] + '_count' in loaded:
-                base_key = key.split('_')[0]
+            if key.split("_")[0] + "_count" in loaded:
+                base_key = key.split("_")[0]
                 if base_key not in result:
-                    count = int(loaded[f'{base_key}_count'][0])
-                    result[base_key] = [loaded[f'{base_key}_{i}'] for i in range(count)]
+                    count = int(loaded[f"{base_key}_count"][0])
+                    result[base_key] = [loaded[f"{base_key}_{i}"] for i in range(count)]
                 continue
 
             # Regular arrays
@@ -391,7 +403,9 @@ class Run(SQLModel, table=True):
     seed: int
     max_length: int
     initial_prompt: str
-    experiment_id: Optional[UUID] = Field(default=None, foreign_key="experimentconfig.id", index=True)
+    experiment_id: Optional[UUID] = Field(
+        default=None, foreign_key="experimentconfig.id", index=True
+    )
     invocations: List[Invocation] = Relationship(
         back_populates="run",
         sa_relationship_kwargs={
@@ -585,6 +599,7 @@ def get_time_string(percent_complete, start_time, end_time):
             return f" (est. {format_time_duration(remaining_seconds)} remaining)"
     return ""
 
+
 class PersistenceDiagram(SQLModel, table=True):
     """
     Represents the topological features of a run's trajectory through embedding space.
@@ -633,11 +648,11 @@ class PersistenceDiagram(SQLModel, table=True):
         Returns:
             List of numpy arrays containing the generators
         """
-        if not self.diagram_data or 'gens' not in self.diagram_data:
+        if not self.diagram_data or "gens" not in self.diagram_data:
             return []
 
         result = []
-        for gens in self.diagram_data['gens']:
+        for gens in self.diagram_data["gens"]:
             if isinstance(gens, list) and gens:
                 for g in gens:
                     if isinstance(g, np.ndarray) and g.size > 0:
@@ -661,10 +676,16 @@ class ExperimentConfig(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     networks: List[List[str]] = Field(
-        default=None, sa_type=JSON, description="List of networks (each network is a list of model names)"
+        default=None,
+        sa_type=JSON,
+        description="List of networks (each network is a list of model names)",
     )
-    seeds: List[int] = Field(default=None, sa_type=JSON, description="List of random seeds to use")
-    prompts: List[str] = Field(default=None, sa_type=JSON, description="List of initial text prompts")
+    seeds: List[int] = Field(
+        default=None, sa_type=JSON, description="List of random seeds to use"
+    )
+    prompts: List[str] = Field(
+        default=None, sa_type=JSON, description="List of initial text prompts"
+    )
     embedding_models: List[str] = Field(
         default=None, sa_type=JSON, description="List of embedding model class names"
     )
@@ -673,7 +694,7 @@ class ExperimentConfig(SQLModel, table=True):
     completed_at: datetime = Field(default_factory=datetime.now)
     runs: List[Run] = Relationship(
         back_populates="experiment",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 
     @model_validator(mode="after")
@@ -716,13 +737,17 @@ class ExperimentConfig(SQLModel, table=True):
         for network in self.networks:
             for model in network:
                 if model not in valid_genai_models:
-                    raise ValueError(f"Invalid generative model: {model}. Available models: {valid_genai_models}")
+                    raise ValueError(
+                        f"Invalid generative model: {model}. Available models: {valid_genai_models}"
+                    )
 
         # Validate embedding models
         valid_embedding_models = list_embedding_models()
         for model in self.embedding_models:
             if model not in valid_embedding_models:
-                raise ValueError(f"Invalid embedding model: {model}. Available models: {valid_embedding_models}")
+                raise ValueError(
+                    f"Invalid embedding model: {model}. Available models: {valid_embedding_models}"
+                )
 
         return self
 

@@ -107,12 +107,14 @@ def test_run_embeddings_by_model(db_session):
 
         # Verify embeddings have valid vectors
         assert all(e.vector is not None and len(e.vector) > 0 for e in dummy_embeddings)
-        assert all(e.vector is not None and len(e.vector) > 0 for e in dummy2_embeddings)
+        assert all(
+            e.vector is not None and len(e.vector) > 0 for e in dummy2_embeddings
+        )
     finally:
         # Terminate the actors to clean up resources
-        if 'dummy_model' in locals():
+        if "dummy_model" in locals():
             ray.kill(dummy_model)
-        if 'dummy2_model' in locals():
+        if "dummy2_model" in locals():
             ray.kill(dummy2_model)
 
 
@@ -193,9 +195,9 @@ def test_invocation_embedding_property(db_session):
         assert nonexistent_embedding is None
     finally:
         # Terminate the actors to clean up resources
-        if 'dummy_model' in locals():
+        if "dummy_model" in locals():
             ray.kill(dummy_model)
-        if 'dummy2_model' in locals():
+        if "dummy2_model" in locals():
             ray.kill(dummy2_model)
 
 
@@ -360,12 +362,16 @@ def test_run_missing_embeddings(db_session):
 
         # Should return all three invocations
         assert len(missing_nonexistent) == 3
-        assert {inv.id for inv in missing_nonexistent} == {invocation1.id, invocation2.id, invocation3.id}
+        assert {inv.id for inv in missing_nonexistent} == {
+            invocation1.id,
+            invocation2.id,
+            invocation3.id,
+        }
     finally:
         # Terminate the actors to clean up resources
-        if 'dummy_model' in locals():
+        if "dummy_model" in locals():
             ray.kill(dummy_model)
-        if 'dummy2_model' in locals():
+        if "dummy2_model" in locals():
             ray.kill(dummy2_model)
 
 
@@ -410,7 +416,7 @@ def test_nomic_embedding_specific_text():
 
     finally:
         # Terminate the actor to clean up resources
-        if 'model' in locals():
+        if "model" in locals():
             ray.kill(model)
 
 
@@ -476,7 +482,7 @@ def test_embedding_model(model_name):
 
     finally:
         # Terminate the actor to clean up resources
-        if 'model' in locals():
+        if "model" in locals():
             ray.kill(model)
 
 
@@ -513,12 +519,18 @@ def test_embedding_batch_performance(model_name, batch_size):
             assert not np.all(embedding == 0)  # Should not be all zeros
 
         # Log performance metrics
-        print(f"{model_name} - Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
-              f"{elapsed_time/batch_size:.3f}s per item")
+        print(
+            f"{model_name} - Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+            f"{elapsed_time / batch_size:.3f}s per item"
+        )
 
         # Create dummy images for the batch
-        sample_images = [Image.new("RGB", (100, 100), color=(i % 255, (i + 50) % 255, (i + 100) % 255))
-                         for i in range(batch_size)]
+        sample_images = [
+            Image.new(
+                "RGB", (100, 100), color=(i % 255, (i + 50) % 255, (i + 100) % 255)
+            )
+            for i in range(batch_size)
+        ]
 
         # Measure time to process the image batch
         start_time = time.time()
@@ -540,12 +552,14 @@ def test_embedding_batch_performance(model_name, batch_size):
             assert not np.all(embedding == 0)  # Should not be all zeros
 
         # Log performance metrics
-        print(f"{model_name} - Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
-              f"{elapsed_time/batch_size:.3f}s per item")
+        print(
+            f"{model_name} - Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
+            f"{elapsed_time / batch_size:.3f}s per item"
+        )
 
     finally:
         # Terminate the actor to clean up resources
-        if 'model' in locals():
+        if "model" in locals():
             ray.kill(model)
 
 
@@ -559,7 +573,10 @@ def test_nomic_embedding_actor_pool():
         total_samples = batch_size * num_batches
 
         text_samples = [f"Sample text {i}" for i in range(total_samples)]
-        batches = [text_samples[i:i+batch_size] for i in range(0, total_samples, batch_size)]
+        batches = [
+            text_samples[i : i + batch_size]
+            for i in range(0, total_samples, batch_size)
+        ]
 
         # Create multiple actors (similar to engine.py implementation)
         model_name = "Nomic"
@@ -572,10 +589,9 @@ def test_nomic_embedding_actor_pool():
 
         # Process batches in parallel using map_unordered
         # This returns an iterator that yields results directly
-        batch_results = list(pool.map_unordered(
-            lambda actor, batch: actor.embed.remote(batch),
-            batches
-        ))
+        batch_results = list(
+            pool.map_unordered(lambda actor, batch: actor.embed.remote(batch), batches)
+        )
 
         # Get results - batch_results already contains the actual results
         all_embeddings = []
@@ -607,7 +623,7 @@ def test_nomic_embedding_actor_pool():
 
     finally:
         # Clean up actors
-        if 'actors' in locals():
+        if "actors" in locals():
             for actor in actors:
                 ray.kill(actor)
 
@@ -625,8 +641,11 @@ def test_jinaclip_image_embedding(batch_size, size):
 
         # Create square images with varied content
         sample_images = [
-            Image.new("RGB", (size, size),
-                     color=((i*37) % 255, (i*73) % 255, (i*113) % 255))
+            Image.new(
+                "RGB",
+                (size, size),
+                color=((i * 37) % 255, (i * 73) % 255, (i * 113) % 255),
+            )
             for i in range(batch_size)
         ]
 
@@ -661,10 +680,12 @@ def test_jinaclip_image_embedding(batch_size, size):
             assert np.array_equal(image_embeddings[i], image_embeddings2[i])
 
         # Log performance metrics
-        print(f"JinaClip - Image size {size}x{size}, batch size {batch_size}: "
-              f"processed in {elapsed_time:.3f}s, {elapsed_time/batch_size:.3f}s per item")
+        print(
+            f"JinaClip - Image size {size}x{size}, batch size {batch_size}: "
+            f"processed in {elapsed_time:.3f}s, {elapsed_time / batch_size:.3f}s per item"
+        )
 
     finally:
         # Terminate the actor to clean up resources
-        if 'model' in locals():
+        if "model" in locals():
             ray.kill(model)

@@ -51,15 +51,18 @@ def test_model_output_types(model_name):
     )
 
 
-@pytest.mark.parametrize("model_name,expected_type", [
-    ("FluxDev", InvocationType.IMAGE),
-    ("FluxSchnell", InvocationType.IMAGE),
-    ("SDXLTurbo", InvocationType.IMAGE),
-    ("BLIP2", InvocationType.TEXT),
-    ("Moondream", InvocationType.TEXT),
-    ("DummyI2T", InvocationType.TEXT),
-    ("DummyT2I", InvocationType.IMAGE),
-])
+@pytest.mark.parametrize(
+    "model_name,expected_type",
+    [
+        ("FluxDev", InvocationType.IMAGE),
+        ("FluxSchnell", InvocationType.IMAGE),
+        ("SDXLTurbo", InvocationType.IMAGE),
+        ("BLIP2", InvocationType.TEXT),
+        ("Moondream", InvocationType.TEXT),
+        ("DummyI2T", InvocationType.TEXT),
+        ("DummyT2I", InvocationType.IMAGE),
+    ],
+)
 def test_get_output_type(model_name, expected_type):
     """Test that get_output_type returns the correct type for each model."""
     output_type = get_output_type(model_name)
@@ -93,7 +96,9 @@ def test_list_models_function():
     ]
 
     for model_name in expected_models:
-        assert model_name in models, f"Expected model {model_name} not found in list_models() result"
+        assert model_name in models, (
+            f"Expected model {model_name} not found in list_models() result"
+        )
 
 
 def test_get_actor_class():
@@ -115,7 +120,10 @@ def test_get_actor_class():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE])
+@pytest.mark.parametrize(
+    "model_name",
+    [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE],
+)
 def test_text_to_image_models(model_name):
     """Test that text-to-image models return expected output and are deterministic with fixed seed."""
     try:
@@ -176,7 +184,10 @@ def test_text_to_image_models(model_name):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", [m for m in list_models() if get_output_type(m) == InvocationType.TEXT])
+@pytest.mark.parametrize(
+    "model_name",
+    [m for m in list_models() if get_output_type(m) == InvocationType.TEXT],
+)
 def test_image_to_text_models(model_name):
     """Test that image-to-text models return expected output and are deterministic with fixed seed."""
     try:
@@ -241,9 +252,7 @@ def test_fluxdev_without_ray():
 
     # Initialize the model directly (without Ray)
     model = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-dev",
-        torch_dtype=torch.bfloat16,
-        use_fast=True
+        "black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16, use_fast=True
     ).to("cuda")
 
     # Generate image with same parameters as in FluxDev class
@@ -279,7 +288,9 @@ def test_fluxdev_without_ray():
     # Check that results are identical with same seed
     np_image1 = np.array(image)
     np_image2 = np.array(image2)
-    assert np.array_equal(np_image1, np_image2), "Images should be identical when using the same seed"
+    assert np.array_equal(np_image1, np_image2), (
+        "Images should be identical when using the same seed"
+    )
 
     # Clean up GPU memory
     del model
@@ -312,10 +323,7 @@ def test_get_all_models_memory_usage():
             print(f"  {model}: Error measuring")
 
     # Export results to JSON for potential analysis
-    all_results = {
-        "genai_models": genai_results,
-        "embedding_models": embed_results
-    }
+    all_results = {"genai_models": genai_results, "embedding_models": embed_results}
 
     print(f"\nComplete results: {json.dumps(all_results, indent=2)}")
 
@@ -333,9 +341,7 @@ def test_fluxschnell_batching_without_ray():
 
     # Initialize the model directly (without Ray)
     model = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-schnell",
-        torch_dtype=torch.bfloat16,
-        use_fast=True
+        "black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16, use_fast=True
     ).to("cuda")
 
     # Define multiple prompts for batching
@@ -343,7 +349,7 @@ def test_fluxschnell_batching_without_ray():
         "A beautiful mountain landscape at sunset",
         "A futuristic city with flying cars",
         "A serene beach with palm trees and clear blue water",
-        "A magical forest with glowing mushrooms"
+        "A magical forest with glowing mushrooms",
     ]
 
     # Fixed seed for determinism
@@ -389,10 +395,14 @@ def test_fluxschnell_batching_without_ray():
         sequential_results.append(result)
 
     sequential_time = time.time() - sequential_start_time
-    print(f"Sequential generation took {sequential_time:.2f} seconds for {len(prompts)} images")
+    print(
+        f"Sequential generation took {sequential_time:.2f} seconds for {len(prompts)} images"
+    )
 
     # Verify results
-    assert len(batch_results) == len(prompts), "Batch should return same number of images as prompts"
+    assert len(batch_results) == len(prompts), (
+        "Batch should return same number of images as prompts"
+    )
 
     # Check that each image is the expected size
     for img in batch_results:
@@ -421,7 +431,9 @@ def test_fluxschnell_batching_without_ray():
         generator=generator,
     ).images
 
-    assert len(odd_batch_results) == odd_batch_size, "Should handle odd-sized batches correctly"
+    assert len(odd_batch_results) == odd_batch_size, (
+        "Should handle odd-sized batches correctly"
+    )
 
     # Clean up GPU memory
     del model

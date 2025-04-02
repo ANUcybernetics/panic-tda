@@ -12,6 +12,7 @@ CHART_SCALE_FACTOR = 4.0
 
 ## visualisation
 
+
 def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     """
     Create a base persistence diagram chart for a single run.
@@ -30,18 +31,28 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
         _initial_prompt = unique_prompts[0]
 
     # Create a scatterplot for the persistence diagram
-    points_chart = alt.Chart(df).mark_point(
-        filled=True, opacity=0.1
-    ).encode(
-        x=alt.X("birth:Q", title="Feature Appearance", scale=alt.Scale(domainMin=-0.1)),
-        y=alt.Y("persistence:Q", title="Feature Persistence", scale=alt.Scale(domainMin=-0.1)),
-        color=alt.Color("homology_dimension:N", title="Dimension"),
-        tooltip=["homology_dimension:N", "birth:Q", "persistence:Q"]
+    points_chart = (
+        alt.Chart(df)
+        .mark_point(filled=True, opacity=0.1)
+        .encode(
+            x=alt.X(
+                "birth:Q", title="Feature Appearance", scale=alt.Scale(domainMin=-0.1)
+            ),
+            y=alt.Y(
+                "persistence:Q",
+                title="Feature Persistence",
+                scale=alt.Scale(domainMin=-0.1),
+            ),
+            color=alt.Color("homology_dimension:N", title="Dimension"),
+            tooltip=["homology_dimension:N", "birth:Q", "persistence:Q"],
+        )
     )
 
     # Get entropy values per dimension if they exist
     # Get unique homology dimensions and their entropy values
-    dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(subset=["homology_dimension", "entropy"])
+    dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(
+        subset=["homology_dimension", "entropy"]
+    )
 
     # Sort by homology dimension and format entropy values
     entropy_values = []
@@ -54,14 +65,16 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     # Set title/subtitle
     combined_chart = points_chart.properties(
         width=400,
-        height=400
+        height=400,
         # title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
     ).interactive()
 
     return combined_chart
 
 
-def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html") -> None:
+def plot_persistence_diagram(
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html"
+) -> None:
     """
     Create and save a visualization of a single persistence diagram for the given DataFrame.
 
@@ -82,7 +95,11 @@ def plot_persistence_diagram(df: pl.DataFrame, output_file: str = "output/vis/pe
     logging.info(f"Saved single persistence diagram to {output_file}")
 
 
-def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
+def plot_persistence_diagram_faceted(
+    df: pl.DataFrame,
+    output_file: str = "output/vis/persistence_diagram.html",
+    num_cols: int = 2,
+) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
     creating a grid of charts (one per run).
@@ -99,7 +116,7 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
         alt.Row("network:N").title("Network"),
-        alt.Column("initial_prompt:N").title("Prompt")
+        alt.Column("initial_prompt:N").title("Prompt"),
     )
 
     # Save chart with high resolution
@@ -108,7 +125,12 @@ def plot_persistence_diagram_faceted(df: pl.DataFrame, output_file: str = "outpu
     logging.info(f"Saved persistence diagrams to {output_file}")
 
 
-def plot_persistence_diagram_by_run(df: pl.DataFrame, cols: int, output_file: str = "output/vis/persistence_diagram.html", num_cols: int = 2) -> None:
+def plot_persistence_diagram_by_run(
+    df: pl.DataFrame,
+    cols: int,
+    output_file: str = "output/vis/persistence_diagram.html",
+    num_cols: int = 2,
+) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
     creating a grid of charts (one per run).
@@ -145,21 +167,30 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
         An Altair chart object for the entropy distribution
     """
     # Create a strip plot with tick marks
-    chart = alt.Chart(df).mark_tick().encode(
-        y=alt.Y("homology_dimension:N", title="Homology Dimension"),
-        x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
-        color=alt.Color("homology_dimension:N", title="Dimension"),
-        tooltip=["homology_dimension:N", "entropy:Q", "initial_prompt:N", "run_id:N"]
-    ).properties(
-        width=600,
-        height=200,
-        title="Persistence Entropy"
-    ).interactive()
+    chart = (
+        alt.Chart(df)
+        .mark_tick()
+        .encode(
+            y=alt.Y("homology_dimension:N", title="Homology Dimension"),
+            x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
+            color=alt.Color("homology_dimension:N", title="Dimension"),
+            tooltip=[
+                "homology_dimension:N",
+                "entropy:Q",
+                "initial_prompt:N",
+                "run_id:N",
+            ],
+        )
+        .properties(width=600, height=200, title="Persistence Entropy")
+        .interactive()
+    )
 
     return chart
 
 
-def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.html") -> None:
+def plot_persistence_entropy(
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.html"
+) -> None:
     """
     Create and save a visualization of entropy distribution across different homology dimensions.
 
@@ -175,7 +206,9 @@ def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/pe
     required_columns = {"homology_dimension", "entropy"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        logging.info(
+            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
+        )
         return
 
     # If the DataFrame is empty, return early
@@ -192,7 +225,11 @@ def plot_persistence_entropy(df: pl.DataFrame, output_file: str = "output/vis/pe
     logging.info(f"Saved persistence entropy plot to {output_file}")
 
 
-def plot_persistence_entropy_faceted(df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_faceted.html", num_cols: int = 2) -> None:
+def plot_persistence_entropy_faceted(
+    df: pl.DataFrame,
+    output_file: str = "output/vis/persistence_entropy_faceted.html",
+    num_cols: int = 2,
+) -> None:
     """
     Create and save a visualization of entropy distributions for runs in the DataFrame,
     creating a grid of charts faceted by initial_prompt and network.
@@ -210,7 +247,9 @@ def plot_persistence_entropy_faceted(df: pl.DataFrame, output_file: str = "outpu
     required_columns = {"homology_dimension", "entropy", "initial_prompt", "network"}
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        logging.info(
+            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
+        )
         return
 
     # If the DataFrame is empty, return early
@@ -245,11 +284,11 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
         .encode(
             x=alt.X("loop_length:Q", title="Loop Length", axis=alt.Axis(tickMinStep=1)),
             y=alt.Y("count()", title=None),
-            row=alt.Row("initial_prompt:N", title=None)
+            row=alt.Row("initial_prompt:N", title=None),
         )
         .properties(
             width=500,
-            height=300  # 3x as wide as tall
+            height=300,  # 3x as wide as tall
         )
     )
 
@@ -257,7 +296,9 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
 
 
-def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html") -> None:
+def plot_semantic_drift(
+    df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html"
+) -> None:
     """
     Create a line plot showing semantic drift (both euclidean and cosine) over sequence number,
     faceted by run_id with dual axes for different drift metrics.
@@ -271,10 +312,18 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
     os.makedirs(output_dir, exist_ok=True)
 
     # Check if we have the required columns
-    required_columns = {"drift_euclidean", "drift_cosine", "sequence_number", "run_id", "initial_prompt"}
+    required_columns = {
+        "drift_euclidean",
+        "drift_cosine",
+        "sequence_number",
+        "run_id",
+        "initial_prompt",
+    }
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
-        logging.info(f"Required columns not found in DataFrame: {', '.join(missing_columns)}")
+        logging.info(
+            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
+        )
         return
 
     # Filter to only include rows with at least one drift measure
@@ -303,43 +352,36 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
         # Create euclidean distance line
         euclidean_line = base.mark_line(color="#57A44C", opacity=0.7).encode(
             alt.Y("drift_euclidean:Q").axis(
-                title="Euclidean Distance",
-                titleColor="#57A44C"
+                title="Euclidean Distance", titleColor="#57A44C"
             ),
-            tooltip=["sequence_number", "drift_euclidean", "embedding_model"]
+            tooltip=["sequence_number", "drift_euclidean", "embedding_model"],
         )
 
         # Add points to the euclidean line
         euclidean_points = base.mark_point(color="#57A44C").encode(
             alt.Y("drift_euclidean:Q"),
-            tooltip=["sequence_number", "drift_euclidean", "embedding_model"]
+            tooltip=["sequence_number", "drift_euclidean", "embedding_model"],
         )
 
         # Create cosine distance line
-        cosine_line = base.mark_line(color="#5276A7", strokeDash=[3, 3], opacity=0.7).encode(
-            alt.Y("drift_cosine:Q").axis(
-                title="Cosine Distance",
-                titleColor="#5276A7"
-            ),
-            tooltip=["sequence_number", "drift_cosine", "embedding_model"]
+        cosine_line = base.mark_line(
+            color="#5276A7", strokeDash=[3, 3], opacity=0.7
+        ).encode(
+            alt.Y("drift_cosine:Q").axis(title="Cosine Distance", titleColor="#5276A7"),
+            tooltip=["sequence_number", "drift_cosine", "embedding_model"],
         )
 
         # Add points to the cosine line
         cosine_points = base.mark_point(color="#5276A7").encode(
             alt.Y("drift_cosine:Q"),
-            tooltip=["sequence_number", "drift_cosine", "embedding_model"]
+            tooltip=["sequence_number", "drift_cosine", "embedding_model"],
         )
 
         # Combine the charts with dual axis
-        combined = alt.layer(
-            euclidean_line + euclidean_points,
-            cosine_line + cosine_points
-        ).resolve_scale(
-            y="independent"
-        ).properties(
-            width=400,
-            height=300,
-            title=f"Prompt: {initial_prompt}"
+        combined = (
+            alt.layer(euclidean_line + euclidean_points, cosine_line + cosine_points)
+            .resolve_scale(y="independent")
+            .properties(width=400, height=300, title=f"Prompt: {initial_prompt}")
         )
 
         charts.append(combined)
@@ -348,7 +390,7 @@ def plot_semantic_drift(df: pl.DataFrame, output_file: str = "output/vis/semanti
     # Determine the number of columns (default to 2)
     cols = 2
     # Split the charts into rows with the specified number of columns
-    chart_rows = [charts[i:i+cols] for i in range(0, len(charts), cols)]
+    chart_rows = [charts[i : i + cols] for i in range(0, len(charts), cols)]
 
     # Create a row of charts for each group
     rows = []
@@ -419,7 +461,9 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
     )
 
     # Save the chart to a file
-    combined_chart.save("output/vis/giotto_benchmark.html", scale_factor=CHART_SCALE_FACTOR)
+    combined_chart.save(
+        "output/vis/giotto_benchmark.html", scale_factor=CHART_SCALE_FACTOR
+    )
 
 
 def paper_charts(session: Session) -> None:

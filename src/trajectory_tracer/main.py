@@ -106,7 +106,6 @@ def perform_experiment(
     # Load configuration
     logger.info(f"Loading configuration from {config_file}")
 
-
     try:
         with open(config_file, "r") as f:
             config_data = json.load(f)
@@ -115,7 +114,9 @@ def perform_experiment(
         if "seed_count" in config_data:
             seed_count = config_data.pop("seed_count")
             config_data["seeds"] = [-1] * seed_count
-            logger.info(f"Using seed_count={seed_count}, generated {seed_count} seeds with value -1")
+            logger.info(
+                f"Using seed_count={seed_count}, generated {seed_count} seeds with value -1"
+            )
 
         # Create database engine and tables
         db_str = f"sqlite:///{db_path}"
@@ -196,7 +197,9 @@ def list_experiments_command(
                     typer.echo("\n---\n")
                 else:
                     # Simple output
-                    elapsed = (experiment.completed_at - experiment.started_at).total_seconds()
+                    elapsed = (
+                        experiment.completed_at - experiment.started_at
+                    ).total_seconds()
                     typer.echo(
                         f"{experiment.id} - runs: {run_count}, "
                         f"max_length: {experiment.max_length}, "
@@ -263,9 +266,7 @@ def delete_experiment(
         "-d",
         help="Path to the SQLite database file",
     ),
-    force: bool = typer.Option(
-        False, "--force", "-f", help="Skip confirmation prompt"
-    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation prompt"),
 ):
     """
     Delete an experiment and all associated data from the database.
@@ -298,7 +299,7 @@ def delete_experiment(
             if not force:
                 confirm = typer.confirm(
                     f"Are you sure you want to delete this experiment and all its {run_count} runs?",
-                    default=False
+                    default=False,
                 )
                 if not confirm:
                     typer.echo("Deletion cancelled.")
@@ -447,7 +448,6 @@ def export_video(
 
         # Get the experiment and export video
         with get_session_from_connection_string(db_str) as session:
-
             # Find the experiment by ID
             try:
                 experiment = session.get(ExperimentConfig, UUID(experiment_id))
@@ -479,7 +479,7 @@ def export_video(
                 cols=cols,
                 fps=fps,
                 resolution=resolution,
-                output_video=output_video
+                output_video=output_video,
             )
 
     except Exception as e:
@@ -502,6 +502,7 @@ def script():
 
     with get_session_from_connection_string(db_str) as session:
         from trajectory_tracer.visualisation import paper_charts
+
         paper_charts(session)
 
     logger.info("Script execution completed")

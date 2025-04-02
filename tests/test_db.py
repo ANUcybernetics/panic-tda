@@ -426,7 +426,7 @@ def test_delete_invocation(db_session: Session):
         initial_prompt="test delete_invocation",
         network=["model1"],
         seed=42,
-        max_length=3
+        max_length=3,
     )
 
     # Create a sample invocation
@@ -441,14 +441,12 @@ def test_delete_invocation(db_session: Session):
 
     # Create embeddings associated with the invocation
     embedding1 = Embedding(
-        invocation_id=sample_invocation.id,
-        embedding_model="embedding_model-1"
+        invocation_id=sample_invocation.id, embedding_model="embedding_model-1"
     )
     embedding1.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
     embedding2 = Embedding(
-        invocation_id=sample_invocation.id,
-        embedding_model="embedding_model-2"
+        invocation_id=sample_invocation.id, embedding_model="embedding_model-2"
     )
     embedding2.vector = np.array([0.4, 0.5, 0.6], dtype=np.float32)
 
@@ -511,7 +509,7 @@ def test_experiment_config_storage(db_session: Session):
         network=["model1", "model2"],
         seed=42,
         max_length=5,
-        experiment_id=experiment_config.id
+        experiment_id=experiment_config.id,
     )
 
     db_session.add(sample_run)
@@ -542,7 +540,7 @@ def test_experiment_config_cascading_delete(db_session: Session):
         network=["model1"],
         seed=42,
         max_length=3,
-        experiment_id=experiment_config.id
+        experiment_id=experiment_config.id,
     )
 
     # Create an invocation linked to the run
@@ -557,8 +555,7 @@ def test_experiment_config_cascading_delete(db_session: Session):
 
     # Create an embedding linked to the invocation
     embedding = Embedding(
-        invocation_id=invocation.id,
-        embedding_model="embedding_model"
+        invocation_id=invocation.id, embedding_model="embedding_model"
     )
     embedding.vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
 
@@ -566,7 +563,7 @@ def test_experiment_config_cascading_delete(db_session: Session):
     diagram = PersistenceDiagram(
         run_id=run.id,
         embedding_model="embedding_model",
-        generators=[np.array([[0.1, 0.5], [0.2, 0.7]])]
+        generators=[np.array([[0.1, 0.5], [0.2, 0.7]])],
     )
 
     # Add everything to the session
@@ -643,7 +640,9 @@ def test_latest_experiment(db_session: Session):
     assert latest_experiment(db_session) is None
 
 
-@pytest.mark.skip(reason="This test creates a file on disk, useful mostly for debugging")
+@pytest.mark.skip(
+    reason="This test creates a file on disk, useful mostly for debugging"
+)
 def test_dump_schema(db_session: Session):
     """Test dumping the database schema to a file."""
 
@@ -665,36 +664,37 @@ def test_dump_schema(db_session: Session):
     # Iterate through all tables
     for table_name in inspector.get_table_names():
         schema_info[table_name] = {
-            'columns': [],
-            'primary_key': inspector.get_pk_constraint(table_name),
-            'foreign_keys': inspector.get_foreign_keys(table_name),
-            'indexes': inspector.get_indexes(table_name)
+            "columns": [],
+            "primary_key": inspector.get_pk_constraint(table_name),
+            "foreign_keys": inspector.get_foreign_keys(table_name),
+            "indexes": inspector.get_indexes(table_name),
         }
 
         # Get column details
         for column in inspector.get_columns(table_name):
             col_info = {
-                'name': column['name'],
-                'type': str(column['type']),
-                'nullable': column['nullable']
+                "name": column["name"],
+                "type": str(column["type"]),
+                "nullable": column["nullable"],
             }
-            if 'default' in column and column['default'] is not None:
-                col_info['default'] = str(column['default'])
+            if "default" in column and column["default"] is not None:
+                col_info["default"] = str(column["default"])
 
-            schema_info[table_name]['columns'].append(col_info)
+            schema_info[table_name]["columns"].append(col_info)
 
     # Write schema to file
-    with open('database_schema.json', 'w') as f:
+    with open("database_schema.json", "w") as f:
         json.dump(schema_info, f, indent=2)
 
     # Verify the file was created and contains data
     import os
-    assert os.path.exists('database_schema.json')
+
+    assert os.path.exists("database_schema.json")
 
     # Read back the file to verify content
-    with open('database_schema.json', 'r') as f:
+    with open("database_schema.json", "r") as f:
         loaded_schema = json.load(f)
 
     assert loaded_schema
     assert len(loaded_schema) > 0
-    assert 'run' in loaded_schema or 'Run' in loaded_schema
+    assert "run" in loaded_schema or "Run" in loaded_schema

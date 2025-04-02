@@ -162,7 +162,14 @@ def test_export_run_mosaic(db_session: Session, tmp_path):
 
     # Call the export_run_mosaic function with 2 columns
     fps = 10
-    export_run_mosaic(run_ids, db_session, cols=4, resolution="HD", output_video=str(output_video), fps=fps)
+    export_run_mosaic(
+        run_ids,
+        db_session,
+        cols=4,
+        resolution="HD",
+        output_video=str(output_video),
+        fps=fps,
+    )
     # Check that the mosaic directory was created
     assert output_dir.exists()
     assert output_dir.is_dir()

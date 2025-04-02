@@ -5,7 +5,10 @@ from sklearn.cluster import HDBSCAN
 
 from trajectory_tracer.schemas import Embedding
 
-def hdbscan(embeddings: List[Embedding], min_cluster_size: int = 5, min_samples: int = None) -> List[int]:
+
+def hdbscan(
+    embeddings: List[Embedding], min_cluster_size: int = 5, min_samples: int = None
+) -> List[int]:
     """
     Perform HDBSCAN clustering on a list of embeddings.
 

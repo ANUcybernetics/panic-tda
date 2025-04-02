@@ -8,8 +8,6 @@ from trajectory_tracer.schemas import Embedding
 
 
 def test_hdbscan_clustering():
-
-
     # Create well-defined clusters using numpy
     embeddings = []
 
@@ -22,7 +20,7 @@ def test_hdbscan_clustering():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector.astype(np.float32)
+            vector=vector.astype(np.float32),
         )
         embeddings.append(e)
 
@@ -34,7 +32,7 @@ def test_hdbscan_clustering():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector.astype(np.float32)
+            vector=vector.astype(np.float32),
         )
         embeddings.append(e)
 
@@ -46,7 +44,7 @@ def test_hdbscan_clustering():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector.astype(np.float32)
+            vector=vector.astype(np.float32),
         )
         embeddings.append(e)
 
@@ -58,7 +56,7 @@ def test_hdbscan_clustering():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector
+            vector=vector,
         )
         embeddings.append(e)
 
@@ -85,7 +83,9 @@ def test_hdbscan_clustering():
     # Verify that the next 7 points are in the same cluster
     second_cluster_label = labels[6]
     assert second_cluster_label != -1  # Should not be noise
-    assert second_cluster_label != first_cluster_label  # Should be different from first cluster
+    assert (
+        second_cluster_label != first_cluster_label
+    )  # Should be different from first cluster
     assert all(label == second_cluster_label for label in labels[7:13])
 
     # Check with custom parameters
@@ -110,16 +110,16 @@ def test_hdbscan_outlier_detection():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector.astype(np.float32)
+            vector=vector.astype(np.float32),
         )
         embeddings.append(e)
 
     # Add several clear outliers at very distant points
     outliers = []
     outlier_positions = [
-        np.ones(EMBEDDING_DIM) * 0.9,      # Far away
-        np.zeros(EMBEDDING_DIM),           # At origin
-        np.ones(EMBEDDING_DIM) * (-0.9)    # Very negative space
+        np.ones(EMBEDDING_DIM) * 0.9,  # Far away
+        np.zeros(EMBEDDING_DIM),  # At origin
+        np.ones(EMBEDDING_DIM) * (-0.9),  # Very negative space
     ]
 
     for pos in outlier_positions:
@@ -128,13 +128,15 @@ def test_hdbscan_outlier_detection():
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector.astype(np.float32)
+            vector=vector.astype(np.float32),
         )
         embeddings.append(e)
         outliers.append(e)
 
     # Run clustering with parameters better suited for test data
-    labels = hdbscan(embeddings, min_cluster_size=3, min_samples=2)  # More relaxed parameters
+    labels = hdbscan(
+        embeddings, min_cluster_size=3, min_samples=2
+    )  # More relaxed parameters
 
     # Get indices of outliers in the full embedding list
     outlier_indices = [embeddings.index(o) for o in outliers]
@@ -146,10 +148,16 @@ def test_hdbscan_outlier_detection():
     # Verify that the cluster is properly identified
     cluster_labels = [labels[i] for i in range(10)]
     # All cluster points should have the same non-noise label
-    assert len(set(cluster_labels)) == 1, f"Found multiple cluster labels: {set(cluster_labels)}"
-    assert set(cluster_labels).pop() != -1, "Cluster points were incorrectly labeled as noise"
+    assert len(set(cluster_labels)) == 1, (
+        f"Found multiple cluster labels: {set(cluster_labels)}"
+    )
+    assert set(cluster_labels).pop() != -1, (
+        "Cluster points were incorrectly labeled as noise"
+    )
 
     # Test with more lenient parameters - should still identify outliers
     lenient_labels = hdbscan(embeddings, min_cluster_size=2, min_samples=1)
     for idx in outlier_indices:
-        assert lenient_labels[idx] == -1, "Outlier should be noise even with lenient parameters"
+        assert lenient_labels[idx] == -1, (
+            "Outlier should be noise even with lenient parameters"
+        )

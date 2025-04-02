@@ -137,7 +137,7 @@ def test_load_runs_df(db_session):
         "birth",
         "death",
         "persistence",
-        "entropy"
+        "entropy",
     ]
     assert all(col in df.columns for col in expected_columns)
 
@@ -169,10 +169,12 @@ def test_load_runs_df(db_session):
         "feature_id",
         "birth",
         "death",
-        "persistence"
+        "persistence",
     ]
     for column in persistence_diagram_columns:
-        assert df.filter(pl.col(column).is_null()).height == 0, f"Found null values in {column} column"
+        assert df.filter(pl.col(column).is_null()).height == 0, (
+            f"Found null values in {column} column"
+        )
 
     # Verify birth/death pair and homology dimension fields with proper types
     assert "homology_dimension" in first_row
@@ -232,10 +234,14 @@ def test_load_runs_df_persistence_data(db_session):
             dgms = pd.diagram_data.get("dgms", [])
 
             # Count the total number of birth-death pairs across all dimensions
-            total_bd_pairs = sum(len(dim_dgm) for dim_dgm in dgms if isinstance(dim_dgm, np.ndarray))
+            total_bd_pairs = sum(
+                len(dim_dgm) for dim_dgm in dgms if isinstance(dim_dgm, np.ndarray)
+            )
 
             # There should be one row in the DataFrame for each birth-death pair
-            assert pd_rows.height == total_bd_pairs, f"Expected {total_bd_pairs} rows for PD {pd.id}, got {pd_rows.height}"
+            assert pd_rows.height == total_bd_pairs, (
+                f"Expected {total_bd_pairs} rows for PD {pd.id}, got {pd_rows.height}"
+            )
 
             # Check each homology dimension
             for dim, dim_dgm in enumerate(dgms):
@@ -244,7 +250,9 @@ def test_load_runs_df_persistence_data(db_session):
 
                 # Filter rows for this dimension
                 dim_rows = pd_rows.filter(pl.col("homology_dimension") == dim)
-                assert dim_rows.height == len(dim_dgm), f"Expected {len(dim_dgm)} rows for dim {dim}, got {dim_rows.height}"
+                assert dim_rows.height == len(dim_dgm), (
+                    f"Expected {len(dim_dgm)} rows for dim {dim}, got {dim_rows.height}"
+                )
 
                 # Convert pd_rows to dict for easier comparison
                 rows_dict = {}
@@ -263,15 +271,22 @@ def test_load_runs_df_persistence_data(db_session):
                         # Compare birth-death values with some tolerance for floating point
                         # Debug print to help diagnose comparison issues
                         # print(f"Comparing row: birth={row['birth']}, death={row['death']}, hom_dim={row['homology_dimension']} with pair: {bd_pair}, dim={dim}")
-                        if (abs(row["birth"] - bd_pair[0]) < 1e-6 and
-                            abs(row["death"] - bd_pair[1]) < 1e-6 and
-                            row["homology_dimension"] == dim):
+                        if (
+                            abs(row["birth"] - bd_pair[0]) < 1e-6
+                            and abs(row["death"] - bd_pair[1]) < 1e-6
+                            and row["homology_dimension"] == dim
+                        ):
                             found = True
                             # Check persistence value
-                            assert abs(row["persistence"] - (bd_pair[1] - bd_pair[0])) < 1e-6
+                            assert (
+                                abs(row["persistence"] - (bd_pair[1] - bd_pair[0]))
+                                < 1e-6
+                            )
                             break
 
-                    assert found, f"Birth-death pair {bd_pair} for dim {dim} not found in DataFrame"
+                    assert found, (
+                        f"Birth-death pair {bd_pair} for dim {dim} not found in DataFrame"
+                    )
 
             # Check entropy if available
             if "entropy" in pd.diagram_data and pd.diagram_data["entropy"] is not None:
@@ -283,9 +298,18 @@ def test_load_runs_df_persistence_data(db_session):
                             # Check each row individually to avoid scalar indexing issues
                             for row in dim_rows.rows(named=True):
                                 if "entropy" in row and row["entropy"] is not None:
-                                    assert abs(float(row["entropy"]) - float(ent_val)) < 1e-6
+                                    assert (
+                                        abs(float(row["entropy"]) - float(ent_val))
+                                        < 1e-6
+                                    )
                 elif isinstance(pd.diagram_data["entropy"], (float, int)):
                     # If entropy is a single value for the entire diagram
                     for row in pd_rows.rows(named=True):
                         if "entropy" in row and row["entropy"] is not None:
-                            assert abs(float(row["entropy"]) - float(pd.diagram_data["entropy"])) < 1e-6
+                            assert (
+                                abs(
+                                    float(row["entropy"])
+                                    - float(pd.diagram_data["entropy"])
+                                )
+                                < 1e-6
+                            )

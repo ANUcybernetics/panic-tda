@@ -202,7 +202,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
                     invocation_id=UUID(invocation_id),
                     embedding_model=embedding_model,
                     vector=None,
-                    started_at=datetime.now()
+                    started_at=datetime.now(),
                 )
                 embeddings.append(embedding)
                 embedding_mapping[invocation_id] = embedding
@@ -211,7 +211,9 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
 
         # If all invocations already have embeddings, return their IDs
         if not embeddings:
-            logger.debug(f"All {len(existing_embedding_ids)} embeddings already exist, skipping computation")
+            logger.debug(
+                f"All {len(existing_embedding_ids)} embeddings already exist, skipping computation"
+            )
             return existing_embedding_ids
 
         # Save empty embeddings
@@ -237,7 +239,9 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         # Return list of embedding IDs (both new and existing)
         new_embedding_ids = [str(embedding.id) for embedding in embeddings]
         all_embedding_ids = existing_embedding_ids + new_embedding_ids
-        logger.debug(f"Successfully computed {len(new_embedding_ids)} vectors in batch (plus {len(existing_embedding_ids)} existing)")
+        logger.debug(
+            f"Successfully computed {len(new_embedding_ids)} vectors in batch (plus {len(existing_embedding_ids)} existing)"
+        )
         return all_embedding_ids
 
 
@@ -345,7 +349,9 @@ def init_runs(experiment_id, db_str):
         )
 
         total_combinations = len(combinations)
-        logger.debug(f"Creating {total_combinations} runs for experiment {experiment_id}")
+        logger.debug(
+            f"Creating {total_combinations} runs for experiment {experiment_id}"
+        )
 
         for i, (network, seed, prompt) in enumerate(combinations):
             try:
@@ -358,7 +364,7 @@ def init_runs(experiment_id, db_str):
                     initial_prompt=prompt,
                     seed=seed,
                     max_length=config.max_length,
-                    experiment_id=experiment_id
+                    experiment_id=experiment_id,
                 )
 
                 # Save to database
@@ -415,7 +421,9 @@ def perform_runs_stage(run_ids, db_str):
         logger.debug(f"Created actor for model {model_name}")
 
     # Create refs for all run generators
-    generator_refs = [run_generator.remote(run_id, db_str, model_actors) for run_id in run_ids]
+    generator_refs = [
+        run_generator.remote(run_id, db_str, model_actors) for run_id in run_ids
+    ]
 
     all_invocation_ids = []
 
@@ -438,7 +446,9 @@ def perform_runs_stage(run_ids, db_str):
     return all_invocation_ids
 
 
-def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actors=8, batch_size=32):
+def perform_embeddings_stage(
+    invocation_ids, embedding_models, db_str, num_actors=8, batch_size=32
+):
     """
     Process embeddings for multiple invocations using ActorPool for load balancing.
 
@@ -455,7 +465,9 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
     all_embedding_ids = []
 
     for embedding_model in embedding_models:
-        logger.info(f"Processing {len(invocation_ids)} embeddings with model {embedding_model}")
+        logger.info(
+            f"Processing {len(invocation_ids)} embeddings with model {embedding_model}"
+        )
 
         # Get the actor class for this embedding model
         embedding_actor_class = get_embedding_actor_class(embedding_model)
@@ -470,7 +482,9 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
         # Create an ActorPool
         pool = ActorPool(actors)
 
-        logger.info(f"Created actor pool with {actor_count} actors for model {embedding_model}")
+        logger.info(
+            f"Created actor pool with {actor_count} actors for model {embedding_model}"
+        )
 
         # Create batches of invocation_ids
         # Group invocations by type (text or image)
@@ -485,8 +499,14 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
                     image_invocations.append(invocation_id)
 
         # Create batches by type
-        text_batches = [text_invocations[i:i+batch_size] for i in range(0, len(text_invocations), batch_size)]
-        image_batches = [image_invocations[i:i+batch_size] for i in range(0, len(image_invocations), batch_size)]
+        text_batches = [
+            text_invocations[i : i + batch_size]
+            for i in range(0, len(text_invocations), batch_size)
+        ]
+        image_batches = [
+            image_invocations[i : i + batch_size]
+            for i in range(0, len(image_invocations), batch_size)
+        ]
 
         # Combine all batches
         batches = text_batches + image_batches
@@ -494,16 +514,22 @@ def perform_embeddings_stage(invocation_ids, embedding_models, db_str, num_actor
 
         # Process embedding batches in parallel using the actor pool
         # The map_unordered function returns an iterator of actual results, not object references
-        batch_embedding_ids = list(pool.map_unordered(
-            lambda actor, batch: compute_embeddings.remote(actor, batch, embedding_model, db_str),
-            batches
-        ))
+        batch_embedding_ids = list(
+            pool.map_unordered(
+                lambda actor, batch: compute_embeddings.remote(
+                    actor, batch, embedding_model, db_str
+                ),
+                batches,
+            )
+        )
 
         # Flatten the list of lists of embedding IDs
         for batch_ids in batch_embedding_ids:
             all_embedding_ids.extend(batch_ids)
 
-        logger.info(f"Computed {len(all_embedding_ids)} embeddings with model {embedding_model}")
+        logger.info(
+            f"Computed {len(all_embedding_ids)} embeddings with model {embedding_model}"
+        )
 
         # Clean up actors
         for actor in actors:
@@ -530,7 +556,9 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     pd_tasks = []
     for run_id in run_ids:
         for embedding_model in embedding_models:
-            pd_tasks.append(compute_persistence_diagram.remote(run_id, embedding_model, db_str))
+            pd_tasks.append(
+                compute_persistence_diagram.remote(run_id, embedding_model, db_str)
+            )
 
     # Wait for all persistence diagram computations to complete
     pd_ids = ray.get(pd_tasks)
@@ -560,7 +588,9 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             session.add(config)
             session.commit()
             logger.info(f"Started experiment with ID: {experiment_id}")
-            logger.info(f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`")
+            logger.info(
+                f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`"
+            )
 
         # Initialize runs and group them by network (combinations are calculated inside init_runs)
         run_groups = init_runs(experiment_id, db_str)
@@ -570,7 +600,9 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
         all_invocation_ids = []
 
         for i, run_group in enumerate(run_groups):
-            logger.info(f"Processing run group {i+1}/{len(run_groups)} with {len(run_group)} runs")
+            logger.info(
+                f"Processing run group {i + 1}/{len(run_groups)} with {len(run_group)} runs"
+            )
 
             # Add to the master list of all run IDs
             all_run_ids.extend(run_group)
@@ -579,9 +611,13 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             group_invocation_ids = perform_runs_stage(run_group, db_str)
             all_invocation_ids.extend(group_invocation_ids)
 
-            logger.info(f"Completed {len(group_invocation_ids)} invocations for run group {i+1}")
+            logger.info(
+                f"Completed {len(group_invocation_ids)} invocations for run group {i + 1}"
+            )
 
-        logger.info(f"Generated {len(all_invocation_ids)} invocations across {len(all_run_ids)} runs")
+        logger.info(
+            f"Generated {len(all_invocation_ids)} invocations across {len(all_run_ids)} runs"
+        )
 
         # Reload config to get embedding models
         with get_session_from_connection_string(db_str) as session:
@@ -589,7 +625,9 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             embedding_models = config.embedding_models
 
         # Compute embeddings for all invocations
-        embedding_ids = perform_embeddings_stage(all_invocation_ids, embedding_models, db_str)
+        embedding_ids = perform_embeddings_stage(
+            all_invocation_ids, embedding_models, db_str
+        )
         logger.info(f"Computed {len(embedding_ids)} embeddings")
 
         # Compute persistence diagrams for all runs

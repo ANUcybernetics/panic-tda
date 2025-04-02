@@ -55,7 +55,10 @@ def test_invocation_duration():
 def test_invocation_input_property():
     # Test case for sequence_number=0
     run = Run(
-        network=["ModelA", "ModelB"], seed=12345, max_length=5, initial_prompt="test prompt"
+        network=["ModelA", "ModelB"],
+        seed=12345,
+        max_length=5,
+        initial_prompt="test prompt",
     )
 
     initial_invocation = Invocation(
@@ -94,7 +97,10 @@ def test_invocation_input_property():
 def test_invocation_input_property_with_images():
     # Create a Run
     run = Run(
-        network=["ModelA", "ModelB"], seed=12345, max_length=5, initial_prompt="test prompt"
+        network=["ModelA", "ModelB"],
+        seed=12345,
+        max_length=5,
+        initial_prompt="test prompt",
     )
 
     # Create an image input invocation

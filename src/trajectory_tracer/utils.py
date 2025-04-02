@@ -62,7 +62,9 @@ def export_run_images(
 
             # Prepare file path for image
             # Use JPEG format instead of WebP for better EXIF support
-            file_path = os.path.join(run_dir, f"{invocation.sequence_number:05d}--{invocation.id}.jpg")
+            file_path = os.path.join(
+                run_dir, f"{invocation.sequence_number:05d}--{invocation.id}.jpg"
+            )
 
             # Create metadata
             metadata = {
@@ -117,7 +119,14 @@ def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
     return [str(run.id) for run in sorted_runs]
 
 
-def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int, resolution: str, output_video: str) -> None:
+def export_run_mosaic(
+    run_ids: list[str],
+    session: Session,
+    cols: int,
+    fps: int,
+    resolution: str,
+    output_video: str,
+) -> None:
     """
     Export a mosaic of images from multiple runs and create a video from the mosaic images.
 
@@ -154,14 +163,18 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
         return
 
     # Get initial prompt from the first run for display on the progress bar
-    initial_prompt = runs[0].initial_prompt if runs[0].initial_prompt else "No prompt available"
+    initial_prompt = (
+        runs[0].initial_prompt if runs[0].initial_prompt else "No prompt available"
+    )
 
     # Filter and organize invocations
     run_invocations = []
 
     for run in runs:
         # Filter to include only image invocations and sort by sequence number
-        invocations = [inv for inv in run.invocations if inv.type == InvocationType.IMAGE]
+        invocations = [
+            inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+        ]
         invocations.sort(key=lambda inv: inv.sequence_number)
 
         # Make sure all sequence numbers start from zero and are consecutive
@@ -173,7 +186,9 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
     # Verify all runs have the same number of invocations
     invocation_counts = [len(invs) for invs in run_invocations]
     if len(set(invocation_counts)) > 1:
-        logger.warning(f"Runs have different numbers of invocations: {invocation_counts}")
+        logger.warning(
+            f"Runs have different numbers of invocations: {invocation_counts}"
+        )
 
     # Find max sequence number across all runs
     max_seq = max([invs[-1].sequence_number if invs else 0 for invs in run_invocations])
@@ -186,18 +201,22 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
     base_width = cols * IMAGE_SIZE
 
     # Adjust progress_bar_offset to achieve 16:9 aspect ratio
-    target_aspect_ratio = 16/9
+    target_aspect_ratio = 16 / 9
     current_aspect_ratio = base_width / base_height
 
     if current_aspect_ratio >= target_aspect_ratio:
         # Width is already proportionally wider than or equal to 16:9
         # Add progress bar space to maintain width but increase height
         progress_bar_offset = int(base_width / target_aspect_ratio) - base_height
-        progress_bar_offset = max(144, progress_bar_offset)  # Ensure minimum space for text
+        progress_bar_offset = max(
+            144, progress_bar_offset
+        )  # Ensure minimum space for text
     else:
         # Height is proportionally taller than 16:9 aspect ratio allows
         # We require a 16:9 aspect ratio for compatibility
-        raise ValueError(f"Cannot achieve 16:9 aspect ratio with current dimensions. Current ratio: {current_aspect_ratio:.2f}. Consider reducing the number of rows or increasing the number of columns.")
+        raise ValueError(
+            f"Cannot achieve 16:9 aspect ratio with current dimensions. Current ratio: {current_aspect_ratio:.2f}. Consider reducing the number of rows or increasing the number of columns."
+        )
 
     # Apply the calculated offset
     canvas_height = base_height + progress_bar_offset
@@ -205,7 +224,7 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 72)
 
     # Create a blank canvas for the mosaic (reuse for each sequence)
-    mosaic = Image.new('RGB', (canvas_width, canvas_height), (0, 0, 0))
+    mosaic = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
     draw = ImageDraw.Draw(mosaic) if font else None
 
     # Create temp directory for frames
@@ -224,9 +243,14 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
             col = idx % cols
 
             # Find the invocation with this sequence number in this run
-            matching_inv = next((inv for inv in invocations
-                                if inv.sequence_number == seq_num and inv.output_image_data),
-                                None)
+            matching_inv = next(
+                (
+                    inv
+                    for inv in invocations
+                    if inv.sequence_number == seq_num and inv.output_image_data
+                ),
+                None,
+            )
 
             if matching_inv:
                 # Load and paste the image
@@ -246,14 +270,24 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
 
             # Progress bar background
             draw.rectangle(
-                (0, canvas_height - progress_bar_offset, canvas_width, canvas_height - progress_bar_offset + 10),
-                fill=(50, 50, 50)
+                (
+                    0,
+                    canvas_height - progress_bar_offset,
+                    canvas_width,
+                    canvas_height - progress_bar_offset + 10,
+                ),
+                fill=(50, 50, 50),
             )
 
             # Progress bar fill - white
             draw.rectangle(
-                (0, canvas_height - progress_bar_offset, progress_width, canvas_height - progress_bar_offset + 10),
-                fill=(255, 255, 255)
+                (
+                    0,
+                    canvas_height - progress_bar_offset,
+                    progress_width,
+                    canvas_height - progress_bar_offset + 10,
+                ),
+                fill=(255, 255, 255),
             )
 
             # Draw the full prompt text without truncating
@@ -261,26 +295,30 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
                 (20, canvas_height - progress_bar_offset + 20),
                 initial_prompt,  # Don't limit the text width - show full prompt
                 fill=(255, 255, 255),
-                font=font
+                font=font,
             )
 
         # Save the mosaic
         output_path = os.path.join(temp_dir, f"{seq_num:05d}.jpg")
         mosaic.save(output_path, format="JPEG", quality=95)
 
-        logger.info(f"Saved mosaic for sequence {seq_num} ({int(progress_percent*100)}%)")
+        logger.info(
+            f"Saved mosaic for sequence {seq_num} ({int(progress_percent * 100)}%)"
+        )
 
     # Define the output resolution based on the resolution parameter
     # Resolution standards: HD (1920x1080), 4K (3840x2160), 8K (7680x4320)
     resolution_settings = {
         "HD": {"width": 1920, "height": 1080},
         "4K": {"width": 3840, "height": 2160},
-        "8K": {"width": 7680, "height": 4320}
+        "8K": {"width": 7680, "height": 4320},
     }
 
     # Use default HD resolution if specified resolution is not recognized
     if resolution not in resolution_settings:
-        logger.warning(f"Unknown resolution '{resolution}'. Using HD (1920x1080) as default.")
+        logger.warning(
+            f"Unknown resolution '{resolution}'. Using HD (1920x1080) as default."
+        )
         resolution = "HD"
 
     target_width = resolution_settings[resolution]["width"]
@@ -288,38 +326,46 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
 
     # Construct the ffmpeg command with settings for the target resolution
     ffmpeg_cmd = [
-        'ffmpeg',
-        '-y',  # Overwrite output file if it exists
-        '-framerate', str(fps),
-        '-pattern_type', 'glob',
-        '-i', os.path.join(temp_dir, '*.jpg'),
-
+        "ffmpeg",
+        "-y",  # Overwrite output file if it exists
+        "-framerate",
+        str(fps),
+        "-pattern_type",
+        "glob",
+        "-i",
+        os.path.join(temp_dir, "*.jpg"),
         # Video codec settings - using H.265/HEVC for better compression at high resolutions
-        '-c:v', 'libx265',
-        '-preset', 'medium',  # Balance between quality and encoding speed
-        '-crf', '22',         # Good quality-size balance (18-28 range)
-
+        "-c:v",
+        "libx265",
+        "-preset",
+        "medium",  # Balance between quality and encoding speed
+        "-crf",
+        "22",  # Good quality-size balance (18-28 range)
         # Set specific resolution
-        '-vf', f'scale={target_width}:{target_height}',
-
-        '-tag:v', 'hvc1',
-
+        "-vf",
+        f"scale={target_width}:{target_height}",
+        "-tag:v",
+        "hvc1",
         # Color handling
-        '-color_primaries', 'bt709',
-        '-color_trc', 'bt709',
-        '-colorspace', 'bt709',
-
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-colorspace",
+        "bt709",
         # Properly handle pixel format
-        '-pix_fmt', 'yuv420p',
-
+        "-pix_fmt",
+        "yuv420p",
         # Use movflags to enable streaming
-        '-movflags', '+faststart',
-
-        output_video
+        "-movflags",
+        "+faststart",
+        output_video,
     ]
 
     # Execute the command
-    logger.info(f"Creating {resolution} video with resolution {target_width}x{target_height}")
+    logger.info(
+        f"Creating {resolution} video with resolution {target_width}x{target_height}"
+    )
     logger.info(f"Creating video with command: {' '.join(ffmpeg_cmd)}")
     subprocess.run(ffmpeg_cmd, check=True)
 
@@ -328,4 +374,6 @@ def export_run_mosaic( run_ids: list[str], session: Session, cols: int, fps: int
         os.remove(os.path.join(temp_dir, file))
     os.rmdir(temp_dir)
 
-    logger.info(f"Mosaic video created successfully at {output_video} with {resolution} resolution")
+    logger.info(
+        f"Mosaic video created successfully at {output_video} with {resolution} resolution"
+    )

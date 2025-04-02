@@ -1,4 +1,3 @@
-
 import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
@@ -22,7 +21,9 @@ def test_giotto_phd():
         for key, value in result.items():
             f.write(f"Key: {key}\n")
             f.write(f"Type: {type(value)}\n")
-            f.write(f"Shape/Length: {len(value) if hasattr(value, '__len__') else 'N/A'}\n")
+            f.write(
+                f"Shape/Length: {len(value) if hasattr(value, '__len__') else 'N/A'}\n"
+            )
 
             # Print full values for each key
             if key == "dgms":
@@ -42,7 +43,7 @@ def test_giotto_phd():
                 # For any other keys
                 f.write(f"Value:\n{value}\n")
 
-            f.write("\n" + "-"*50 + "\n\n")
+            f.write("\n" + "-" * 50 + "\n\n")
 
     # Check that the output is a dictionary
     assert isinstance(result, dict)
@@ -149,14 +150,14 @@ def test_persistence_diagram_type_decorator(db_session):
         initial_prompt="test persistence diagram storage",
         network=["model1"],
         seed=42,
-        max_length=3
+        max_length=3,
     )
 
     # Create a persistence diagram
     diagram = PersistenceDiagram(
         run_id=sample_run.id,
         embedding_model="test-embedding-model",
-        diagram_data=result
+        diagram_data=result,
     )
 
     # Add to the database

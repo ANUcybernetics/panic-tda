@@ -58,12 +58,19 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                 key = (run_id, embedding_model)
                 first_embedding = first_embeddings.get(key)
 
-                if first_embedding and first_embedding.vector is not None and embedding.vector is not None:
-
+                if (
+                    first_embedding
+                    and first_embedding.vector is not None
+                    and embedding.vector is not None
+                ):
                     first_vector = first_embedding.vector
                     current_vector = embedding.vector
 
-                    if len(first_vector) > 0 and len(current_vector) > 0 and len(first_vector) == len(current_vector):
+                    if (
+                        len(first_vector) > 0
+                        and len(current_vector) > 0
+                        and len(first_vector) == len(current_vector)
+                    ):
                         # Calculate Euclidean distance
                         drift_euclidean = float(norm(current_vector - first_vector))
 
@@ -75,7 +82,9 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                         if first_norm > 0 and current_norm > 0:
                             # Calculate cosine similarity
                             dot_product = np.dot(first_vector, current_vector)
-                            cosine_similarity = dot_product / (first_norm * current_norm)
+                            cosine_similarity = dot_product / (
+                                first_norm * current_norm
+                            )
                             # Convert to cosine distance (1 - similarity)
                             drift_cosine = float(1.0 - cosine_similarity)
 
@@ -88,7 +97,9 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
                     "invocation_completed_at": invocation.completed_at,
                     "duration": embedding.duration,
                     "run_id": run_id,
-                    "experiment_id": str(run.experiment_id) if run.experiment_id else None,
+                    "experiment_id": str(run.experiment_id)
+                    if run.experiment_id
+                    else None,
                     "type": invocation.type,
                     "initial_prompt": run.initial_prompt,
                     "seed": run.seed,
@@ -161,7 +172,7 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
             "max_length": run.max_length,
             "num_invocations": len(run.invocations),
             "stop_reason": stop_reason,
-            "loop_length": loop_length
+            "loop_length": loop_length,
         }
 
         # Only include runs with persistence diagrams
@@ -180,7 +191,9 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
                     for dim, dgm in enumerate(pd.diagram_data["dgms"]):
                         # Add entropy for this dimension if available
                         entropy_value = None
-                        if "entropy" in pd.diagram_data and dim < len(pd.diagram_data["entropy"]):
+                        if "entropy" in pd.diagram_data and dim < len(
+                            pd.diagram_data["entropy"]
+                        ):
                             entropy_value = float(pd.diagram_data["entropy"][dim])
 
                         # Create a row for each birth/death pair in this dimension
@@ -206,7 +219,7 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         "birth": pl.Float64,
         "death": pl.Float64,
         "persistence": pl.Float64,
-        "entropy": pl.Float64
+        "entropy": pl.Float64,
     }
 
     # Only create DataFrame if we have data

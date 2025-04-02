@@ -338,7 +338,6 @@ def test_embedding_duration_property():
     assert embedding.duration == 1.5
 
 
-
 def test_persistence_diagram_duration_property():
     """Test the duration property of PersistenceDiagram."""
     run_id = uuid7()
