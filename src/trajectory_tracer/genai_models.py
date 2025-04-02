@@ -208,7 +208,7 @@ class FluxSchnell(GenAIModel):
             height=IMAGE_SIZE,
             width=IMAGE_SIZE,
             guidance_scale=3.5,
-            num_inference_steps=20,
+            num_inference_steps=6,
             generator=generator,
         ).images[0]
 
