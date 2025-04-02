@@ -223,7 +223,11 @@ def export_run_mosaic(
         # Recalculate width to maintain 16:9
         canvas_width = int(canvas_height * target_aspect_ratio)
 
-    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 72)
+    # Set font size relative to canvas_height
+    font_size = int(canvas_height * 0.05)  # 40% of progress bar area height
+    font = ImageFont.truetype(
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", font_size
+    )
 
     # Create a blank canvas for the mosaic (reuse for each sequence)
     mosaic = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
@@ -292,12 +296,19 @@ def export_run_mosaic(
                 fill=(255, 255, 255),
             )
 
-            # Draw the full prompt text without truncating
+            # Position the text 20px from left edge and vertically centered in progress area
+            # Calculate vertical center of the progress area
+            progress_area_center = canvas_height - (progress_bar_offset / 2)
+
             draw.text(
-                (20, canvas_height - progress_bar_offset + 20),
-                initial_prompt,  # Don't limit the text width - show full prompt
+                (
+                    canvas_width * 0.02,
+                    progress_area_center,
+                ),  # 20px from left, vertically centered
+                f"prompt: {initial_prompt}",  # Don't limit the text width - show full prompt
                 fill=(255, 255, 255),
                 font=font,
+                anchor="lm",  # Left-middle anchor for vertical centering
             )
 
         # Save the mosaic
