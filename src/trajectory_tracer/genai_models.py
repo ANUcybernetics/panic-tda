@@ -48,7 +48,7 @@ diffusers.utils.logging.set_verbosity_error()
 diffusers.utils.logging.disable_progress_bar()
 
 # Image size for all image operations
-IMAGE_SIZE = 512
+IMAGE_SIZE = 256
 
 
 class GenAIModel:
