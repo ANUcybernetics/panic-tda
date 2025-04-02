@@ -162,11 +162,20 @@ def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
         else:
             stop_reason = stop_reason_value
 
+        # Extract image_model and text_model from network
+        image_model = None
+        text_model = None
+        if isinstance(run.network, list) and len(run.network) > 0:
+            image_model = run.network[0] if len(run.network) > 0 else None
+            text_model = run.network[1] if len(run.network) > 1 else None
+
         # Base run information
         base_row = {
             "run_id": str(run.id),
             "experiment_id": str(run.experiment_id),
             "network": run.network,
+            "image_model": image_model,
+            "text_model": text_model,
             "initial_prompt": run.initial_prompt,
             "seed": run.seed,
             "max_length": run.max_length,

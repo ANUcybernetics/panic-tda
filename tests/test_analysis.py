@@ -121,6 +121,8 @@ def test_load_runs_df(db_session):
         "run_id",
         "experiment_id",
         "network",
+        "image_model",
+        "text_model",
         "initial_prompt",
         "seed",
         "max_length",
@@ -153,6 +155,10 @@ def test_load_runs_df(db_session):
     assert first_row["num_invocations"] == 2
     assert first_row["stop_reason"] == "length"
     assert first_row["experiment_id"] == str(config.id)
+
+    # Verify image_model and text_model fields
+    assert first_row["image_model"] == "DummyT2I"
+    assert first_row["text_model"] == "DummyI2T"
 
     # Verify persistence diagram related fields
     assert first_row["embedding_model"] == "Dummy"
