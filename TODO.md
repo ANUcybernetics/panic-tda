@@ -1,19 +1,19 @@
 # TODO
 
-- add a test which uses different inference steps for flux and creates a mosaic
-  (to see what the differences are)
+- prompt ideas: apple/pear/banana, man/woman/person, car/train/boat, rainbow
+  colours
 
-- prompt ideas: cat/dog/bunny/bird, man/woman/boy/girl, car/train/boat/bicycle,
-  rainbow colours
+- statistical tests on PE across different networks, prompts, seeds, and
+  embedding models
+
+- tSNE chart would be cool/helpful (to see whether the different runs get
+  clustered together)
 
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
 
 - use tqdm for the video export progress (and other long-running but
   non-distributed things)
-
-- look at change-point detection with ruptures library, and visualise the run
-  lengths
 
 - chart ideas:
 
@@ -27,8 +27,7 @@
   - plot the
     [images in a tooltip](https://altair-viz.github.io/case_studies/numpy-tooltip-images.html)
 
-- statistical tests on PE across different networks, prompts, seeds, and
-  embedding models
+- add florence2 or blip3 or some other (more modern) captioning model
 
 - experiment with actor pools for the run stage (because e.g. SDXLTurbo can
   certainly fit a few copies at once)
