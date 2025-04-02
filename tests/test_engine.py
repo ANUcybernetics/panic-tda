@@ -1,6 +1,5 @@
 import hashlib
 import io
-import itertools
 import os
 import tempfile
 from datetime import datetime
@@ -211,20 +210,11 @@ def test_init_runs(db_session: Session):
 
     experiment_id = config.id
 
-    # Generate combinations
-    combinations = list(
-        itertools.product(
-            config.networks,
-            config.seeds,
-            config.prompts,
-        )
-    )
-
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
     # Call init_runs
-    run_groups = init_runs(experiment_id, combinations, config, db_url)
+    run_groups = init_runs(experiment_id, db_url)
 
     # Verify we have the correct number of groups (should be 2, one per network)
     assert len(run_groups) == 2
