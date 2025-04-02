@@ -406,15 +406,15 @@ def list_models():
 
 @app.command("export-video")
 def export_video(
-    experiment_id: str = typer.Argument(
+    experiment_ids: list[str] = typer.Argument(
         ...,
-        help="ID of the experiment to create a mosaic video from",
+        help="One or more Experiment IDs to include in the mosaic video",
     ),
     cols: int = typer.Option(
-        4,
+        ..., # Ellipsis indicates a required option
         "--cols",
         "-c",
-        help="Number of columns in the mosaic grid (default: 4)",
+        help="Number of columns in the mosaic grid",
     ),
     fps: int = typer.Option(
         2,
@@ -434,43 +434,73 @@ def export_video(
         "-d",
         help="Path to the SQLite database file",
     ),
+    output_dir: Path = typer.Option(
+        "output/mosaic",
+        "--output-dir",
+        "-o",
+        help="Directory to save the mosaic video",
+    ),
 ):
     """
-    Generate a mosaic video from all runs in an experiment.
+    Generate a mosaic video from all runs in one or more specified experiments.
 
     Creates a grid of images showing the progression of multiple runs side by side,
-    and renders them as a video file.
+    and renders them as a video file named 'mosaic.mp4' in a subdirectory named
+    after the first experiment ID within the specified output directory.
     """
     try:
         # Create database connection
         db_str = f"sqlite:///{db_path}"
         logger.info(f"Connecting to database at {db_path}")
 
-        # Get the experiment and export video
-        with get_session_from_connection_string(db_str) as session:
-            # Find the experiment by ID
-            try:
-                experiment = session.get(ExperimentConfig, UUID(experiment_id))
-                if not experiment:
-                    logger.error(f"Experiment with ID {experiment_id} not found")
-                    raise typer.Exit(code=1)
-            except ValueError as e:
-                logger.error(f"Invalid experiment ID format: {e}")
-                raise typer.Exit(code=1)
+        all_runs = []
+        valid_experiment_ids = []
 
-            # Get all runs for this experiment
-            runs = experiment.runs
-            if not runs:
-                logger.error(f"No runs found for experiment {experiment_id}")
+        # Get the experiments and collect runs
+        with get_session_from_connection_string(db_str) as session:
+            for experiment_id_str in experiment_ids:
+                # Validate UUID format
+                try:
+                    experiment_uuid = UUID(experiment_id_str)
+                except ValueError:
+                    logger.error(f"Invalid experiment ID format: '{experiment_id_str}'. Please provide a valid UUID.")
+                    raise typer.Exit(code=1)
+
+                # Fetch experiment
+                experiment = session.get(ExperimentConfig, experiment_uuid)
+                if not experiment:
+                    logger.warning(f"Experiment with ID {experiment_id_str} not found. Skipping.")
+                    continue # Skip to the next experiment ID
+
+                # Check for runs
+                if not experiment.runs:
+                    logger.warning(f"No runs found for experiment {experiment_id_str}. Skipping.")
+                    continue # Skip to the next experiment ID
+
+                # Collect runs and valid ID
+                all_runs.extend(experiment.runs)
+                valid_experiment_ids.append(experiment_id_str)
+                logger.info(f"Added {len(experiment.runs)} runs from experiment {experiment_id_str}")
+
+            # Check if any runs were collected at all
+            if not all_runs:
+                logger.error("No valid runs found for any of the specified experiment IDs.")
                 raise typer.Exit(code=1)
 
             # Get run IDs as strings
-            run_ids = [str(run.id) for run in runs]
+            run_ids = [str(run.id) for run in all_runs]
+            logger.info(f"Total runs collected for mosaic: {len(run_ids)}")
 
-            # sort them so they're in nice orders
+            # Sort them so they're in nice orders
             run_ids = order_runs_for_mosaic(run_ids, session)
 
-            output_video = f"output/mosaic/{experiment_id}/mosaic.mp4"
+            # Define output path using the first valid experiment ID for the subdirectory name
+            first_experiment_id = valid_experiment_ids[0]
+            output_subdir = output_dir / first_experiment_id
+            output_subdir.mkdir(parents=True, exist_ok=True)
+            output_video_path = output_subdir / "mosaic.mp4"
+
+            logger.info(f"Preparing to export mosaic video to {output_video_path}")
 
             # Create the mosaic video
             export_run_mosaic(
@@ -479,11 +509,14 @@ def export_video(
                 cols=cols,
                 fps=fps,
                 resolution=resolution,
-                output_video=output_video,
+                output_video=str(output_video_path),
             )
 
+            logger.info(f"Mosaic video successfully created at {output_video_path}")
+
     except Exception as e:
-        logger.error(f"Error creating mosaic video: {e}")
+        # Catch any other unexpected errors during the process
+        logger.error(f"An error occurred during mosaic video creation: {e}", exc_info=True)
         raise typer.Exit(code=1)
 
 
