@@ -84,7 +84,7 @@ def perform_experiment(
         dir_okay=False,
     ),
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -156,7 +156,7 @@ def perform_experiment(
 @app.command("list-experiments")
 def list_experiments_command(
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -216,7 +216,7 @@ def experiment_status(
         help="ID of the experiment to check status for (defaults to the most recent experiment)",
     ),
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -258,7 +258,7 @@ def delete_experiment(
         help="ID of the experiment to delete",
     ),
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -320,7 +320,7 @@ def delete_experiment(
 @app.command("list-runs")
 def list_runs_command(
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -428,7 +428,7 @@ def export_video(
         help="Target resolution for the output video: HD, 4K, or 8K (default: HD)",
     ),
     db_path: Path = typer.Option(
-        "output/db/trajectory_data.sqlite",
+        "db/trajectory_data.sqlite",
         "--db-path",
         "-d",
         help="Path to the SQLite database file",
@@ -486,6 +486,7 @@ def export_video(
         logger.error(f"Error creating mosaic video: {e}")
         raise typer.Exit(code=1)
 
+
 @app.command("script")
 def script():
     """
@@ -495,42 +496,15 @@ def script():
     allowing for quick development and testing of scripts without needing to set up
     the environment manually.
     """
-    try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        # Iterate over all runs, printing only those with stop reason ("duplicate", loop_length)
-        with get_session_from_connection_string(db_str) as session:
-            # Get the requested runs by ID
-            run_ids = ['067e39a7-91ce-766b-bf5e-0a79502d904c', '067e39a7-91e3-7c8f-83f9-83c287302678']
-            for run_id in run_ids:
-                try:
-                    run = session.get(Run, UUID(run_id))
-                    if not run:
-                        logger.info(f"Run with ID {run_id} not found")
-                        continue
+    # Create database connection
+    db_str = "sqlite:///db/trajectory_data.sqlite"
+    logger.info("Connecting to database...")
 
-                    # Count embeddings
-                    embedding_count = len(run.embeddings)
-                    logger.info(f"Run {run_id}: {embedding_count} embeddings")
+    with get_session_from_connection_string(db_str) as session:
+        from trajectory_tracer.visualisation import paper_charts
+        paper_charts(session)
 
-                    # Count and describe persistence diagrams
-                    pd_count = len(run.persistence_diagrams)
-
-                    if pd_count > 0:
-                        logger.info(f"Run {run_id}: {pd_count} persistence diagrams:")
-                        for i, pd in enumerate(run.persistence_diagrams):
-                            generators = pd.get_generators_as_arrays()
-                            logger.info(f"  - PD #{i+1}: using {pd.embedding_model} model, {len(generators)} generators")
-                    else:
-                        logger.info(f"Run {run_id}: No persistence diagrams")
-
-                except ValueError as e:
-                    logger.error(f"Invalid run ID format: {e}")
-        logger.info("Script execution completed")
-
-    except Exception as e:
-        logger.error(f"Error executing script: {e}")
-        raise typer.Exit(code=1)
+    logger.info("Script execution completed")
 
 
 if __name__ == "__main__":
