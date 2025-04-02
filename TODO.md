@@ -1,20 +1,16 @@
 # TODO
 
-- fix (modified/improved) PD plotting, including faceting both by run and by
-  prompt/network
+- add a test which uses different inference steps for flux and creates a mosaic
+  (to see what the differences are)
 
-- prompt ideas: cat/dog/bunny/bird, man/woman/boy/girl, car/train/boat/bicycle
-
-- check no incomplete runs made it into the db
+- prompt ideas: cat/dog/bunny/bird, man/woman/boy/girl, car/train/boat/bicycle,
+  rainbow colours
 
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
 
 - use tqdm for the video export progress (and other long-running but
   non-distributed things)
-
-- make the default db paths all point to db/ (because conceptually output/
-  should be cleanable without much loss)
 
 - look at change-point detection with ruptures library, and visualise the run
   lengths
@@ -37,9 +33,7 @@
 - experiment with actor pools for the run stage (because e.g. SDXLTurbo can
   certainly fit a few copies at once)
 
-- (related to previous) change engine run generation phase to only load the
-  models necessary for a particular run (since a single run pegs the GPU anyway)
-  to allow for multiple runs to be queued up without fear of OOM
+- switch to onnx for the inference workflows
 
 - use the dummy embeddings in the final analysis as a control, perhaps with a
   slightly more sophisticated "random walk" scheme
