@@ -11,6 +11,9 @@ wheels/
 output/
 logs/
 
+# databases are important - obviously - but don't belong in the repo
+db/
+
 mise.local.toml
 
 .benchmarks/
