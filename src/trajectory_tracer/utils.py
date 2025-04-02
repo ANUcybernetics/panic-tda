@@ -234,7 +234,7 @@ def export_run_mosaic(
     run_positions = []
 
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    base_title_font_size = int(IMAGE_SIZE * 0.15)
+    base_title_font_size = int(IMAGE_SIZE * 0.1)
 
     # First, collect all runs and identify where prompt changes occur
     prompt_changes = []
