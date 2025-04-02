@@ -105,7 +105,9 @@ class GenAIModel:
             end_mem = torch.cuda.memory_allocated() / (1024 * 1024 * 1024)
 
             if verbose:
-                print(f"Peak memory usage: {torch.cuda.max_memory_allocated() / (1024 * 1024 * 1024):.3f} GB")
+                print(
+                    f"Peak memory usage: {torch.cuda.max_memory_allocated() / (1024 * 1024 * 1024):.3f} GB"
+                )
                 print(f"Final memory usage: {end_mem:.3f} GB")
 
             # Clean up
@@ -124,7 +126,8 @@ class GenAIModel:
 
 # Text2Image models
 
-@ray.remote(num_gpus=0.7)
+
+@ray.remote(num_gpus=0.6)
 class FluxDev(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -133,9 +136,7 @@ class FluxDev(GenAIModel):
 
         # Initialize the model with appropriate settings for GPU
         self._model = FluxPipeline.from_pretrained(
-            "black-forest-labs/FLUX.1-dev",
-            torch_dtype=torch.bfloat16,
-            use_fast=True
+            "black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16, use_fast=True
         ).to("cuda")
 
         # Try to compile the UNet's forward method
@@ -169,7 +170,7 @@ class FluxDev(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.7)
+@ray.remote(num_gpus=0.6)
 class FluxSchnell(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -180,7 +181,7 @@ class FluxSchnell(GenAIModel):
         self._model = FluxPipeline.from_pretrained(
             "black-forest-labs/FLUX.1-schnell",
             torch_dtype=torch.bfloat16,
-            use_fast=True
+            use_fast=True,
         ).to("cuda")
 
         # Try to compile the UNet's forward method
@@ -226,7 +227,7 @@ class SDXLTurbo(GenAIModel):
             "stabilityai/sdxl-turbo",
             torch_dtype=torch.float16,
             variant="fp16",
-            use_fast=True
+            use_fast=True,
         ).to("cuda")
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
@@ -249,6 +250,7 @@ class SDXLTurbo(GenAIModel):
 
 # Image2Text models
 
+
 @ray.remote(num_gpus=0.1)
 class Moondream(GenAIModel):
     def __init__(self):
@@ -258,9 +260,7 @@ class Moondream(GenAIModel):
 
         # Initialize the model and move to GPU
         self._model = AutoModelForCausalLM.from_pretrained(
-            "vikhyatk/moondream2",
-            revision="2025-01-09",
-            trust_remote_code=True
+            "vikhyatk/moondream2", revision="2025-01-09", trust_remote_code=True
         ).to("cuda")
 
         # Try to compile the model
@@ -296,9 +296,7 @@ class BLIP2(GenAIModel):
         # Initialize the processor and model from transformers library
         self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
         self.model = Blip2ForConditionalGeneration.from_pretrained(
-            "Salesforce/blip2-opt-2.7b",
-            torch_dtype=torch.float16,
-            device_map="auto"
+            "Salesforce/blip2-opt-2.7b", torch_dtype=torch.float16, device_map="auto"
         )
 
         # Ensure all model components use half precision consistently
@@ -325,10 +323,15 @@ class BLIP2(GenAIModel):
             random.seed(seed)
 
         # Process the image using the processor
-        inputs = self.processor(images=image, return_tensors="pt").to("cuda", torch.float16)
+        inputs = self.processor(images=image, return_tensors="pt").to(
+            "cuda", torch.float16
+        )
 
         # Ensure all input tensors are in half precision
-        inputs = {k: v.to(torch.float16) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+        inputs = {
+            k: v.to(torch.float16) if isinstance(v, torch.Tensor) else v
+            for k, v in inputs.items()
+        }
 
         # Generate the caption using the model's generate method
         # This follows the example from the documentation for image captioning
@@ -342,7 +345,9 @@ class BLIP2(GenAIModel):
             )
 
         # Decode the generated ids to text
-        caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+        caption = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ].strip()
 
         return caption
 
@@ -407,7 +412,7 @@ def get_output_type(model_name: str) -> InvocationType:
         "Moondream": InvocationType.TEXT,
         "BLIP2": InvocationType.TEXT,
         "DummyI2T": InvocationType.TEXT,
-        "DummyT2I": InvocationType.IMAGE
+        "DummyT2I": InvocationType.IMAGE,
     }
 
     if model_name not in output_types:
@@ -476,9 +481,12 @@ def get_all_models_memory_usage(verbose=False):
         print(f"Measuring memory usage for {model_name}...")
 
         # Extract the actual class from the ActorClass wrapper
-        actual_class = getattr(sys.modules[__name__], model_name.split(".")[-1] if "." in model_name else model_name)
+        actual_class = getattr(
+            sys.modules[__name__],
+            model_name.split(".")[-1] if "." in model_name else model_name,
+        )
 
-        if hasattr(actual_class, 'get_memory_usage'):
+        if hasattr(actual_class, "get_memory_usage"):
             usage = actual_class.get_memory_usage(verbose=verbose)
             memory_usage[model_name] = usage
         else:
