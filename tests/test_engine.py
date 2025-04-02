@@ -745,7 +745,7 @@ def test_perform_experiment_real_models(db_session: Session):
     """Test that perform_experiment correctly executes an experiment with real models."""
     # Create a test experiment config with multiple embedding models and a -1 seed
     config = ExperimentConfig(
-        networks=[["FluxDev", "Moondream"]],
+        networks=[["FluxSchnell", "BLIP2"]],
         seeds=[-1],
         prompts=["A real prompt, for real models"],
         embedding_models=["Nomic"],
