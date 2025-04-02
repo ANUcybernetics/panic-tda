@@ -1,5 +1,5 @@
 import json
-import time
+from datetime import datetime
 from uuid import UUID
 
 import numpy as np
@@ -602,6 +602,7 @@ def test_latest_experiment(db_session: Session):
         prompts=["test prompt 1"],
         embedding_models=["embedding_model_1"],
         max_length=3,
+        started_at=datetime.now(),
     )
 
     experiment_config2 = ExperimentConfig(
@@ -610,13 +611,12 @@ def test_latest_experiment(db_session: Session):
         prompts=["test prompt 2"],
         embedding_models=["embedding_model_2"],
         max_length=4,
+        started_at=datetime.now(),
     )
 
     # Add to the session with a delay to ensure different timestamps
     db_session.add(experiment_config1)
     db_session.commit()
-
-    time.sleep(0.1)  # Small delay to ensure different timestamps
 
     db_session.add(experiment_config2)
     db_session.commit()
