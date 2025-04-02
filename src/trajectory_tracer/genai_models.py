@@ -145,8 +145,8 @@ class FluxDev(GenAIModel):
                 self._model.unet.forward = torch.compile(
                     original_forward,
                     mode="reduce-overhead",
-                    fullgraph=False,
-                    dynamic=True,
+                    fullgraph=True,
+                    dynamic=False,
                 )
         except Exception as e:
             logger.warning(f"Could not compile FluxDev UNet forward method: {e}")
