@@ -1,5 +1,7 @@
 # TODO
 
+- nicer alignment of the prompts in the factored charts
+
 - figure out whether art-c is the best test for the job
 
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
