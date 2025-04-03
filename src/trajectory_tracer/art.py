@@ -11,7 +11,7 @@ with open("src/R/art.r", "r") as f:
 # Create the R package
 tda_package = SignatureTranslatedAnonymousPackage(r_code, "tda_package")
 
-def analyze_with_r(pl_df):
+def analyze_with_r(pl_df, homology_dimension):
     """
     Convert a Polars DataFrame to Pandas, then analyze it using the R function
 
@@ -31,7 +31,7 @@ def analyze_with_r(pl_df):
     r_df = pandas2ri.py2rpy(pd_df)
 
     # Call the R function
-    results = tda_package.analyze_tda_data(r_df)
+    results = tda_package.analyze_tda_data(r_df, homology_dimension)
 
     # Deactivate the pandas converter
     pandas2ri.deactivate()
