@@ -35,15 +35,9 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
         alt.Chart(df)
         .mark_point(filled=True, opacity=0.1)
         .encode(
-            x=alt.X(
-                "birth:Q", title="Feature Appearance", scale=alt.Scale(domainMin=-0.1)
-            ),
-            y=alt.Y(
-                "persistence:Q",
-                title="Feature Persistence",
-                scale=alt.Scale(domainMin=-0.1),
-            ),
-            color=alt.Color("homology_dimension:N", title="Dimension"),
+            x=alt.X("birth:Q").title("Feature Appearance").scale(domainMin=-0.1),
+            y=alt.Y("persistence:Q").title("Feature Persistence").scale(domainMin=-0.1),
+            color=alt.Color("homology_dimension:N").title("Dimension"),
             tooltip=["homology_dimension:N", "birth:Q", "persistence:Q"],
         )
     )
@@ -171,9 +165,9 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
         alt.Chart(df)
         .mark_tick()
         .encode(
-            y=alt.Y("homology_dimension:N", title="Homology Dimension"),
-            x=alt.X("entropy:Q", title="Entropy", scale=alt.Scale(zero=False)),
-            color=alt.Color("homology_dimension:N", title="Dimension"),
+            y=alt.Y("homology_dimension:N").title(None),
+            x=alt.X("entropy:Q").title("Entropy").scale(zero=False),
+            color=alt.Color("homology_dimension:N").title("Homology Dimension"),
             tooltip=[
                 "homology_dimension:N",
                 "entropy:Q",
