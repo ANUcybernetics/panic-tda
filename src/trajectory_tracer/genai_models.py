@@ -392,6 +392,46 @@ class DummyT2I(GenAIModel):
         return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
 
 
+@ray.remote(num_gpus=0)
+class DummyI2T2(GenAIModel):
+    def __init__(self):
+        """Initialize the second dummy I2T model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def invoke(self, image: Image.Image, seed: int) -> str:
+        """Return a dummy text caption (version 2)"""
+        base_text = "dummy text caption v2"
+
+        if seed == -1:
+            # Use system randomness for unpredictable result
+            random_suffix = f" (random {random.randint(1000, 9999)})"
+            return base_text + random_suffix
+        else:
+            # Deterministic output based on seed
+            return f"{base_text} (seed {seed})"
+
+
+@ray.remote(num_gpus=0)
+class DummyT2I2(GenAIModel):
+    def __init__(self):
+        """Initialize the second dummy T2I model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def invoke(self, prompt: str, seed: int) -> Image.Image:
+        """Return a dummy colored image (mostly purple-tinted)"""
+        # Set the random seed if specified
+        if seed != -1:
+            random.seed(seed)
+
+        # Generate random color (with purple bias)
+        r = random.randint(100, 255)
+        g = random.randint(0, 100)  # Lower green for purple tint
+        b = random.randint(100, 255)
+
+        # Create an image with the random color
+        return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
+
+
 def get_output_type(model_name: str) -> InvocationType:
     """
     Gets the output type of the specified model.
@@ -413,6 +453,8 @@ def get_output_type(model_name: str) -> InvocationType:
         "BLIP2": InvocationType.TEXT,
         "DummyI2T": InvocationType.TEXT,
         "DummyT2I": InvocationType.IMAGE,
+        "DummyI2T2": InvocationType.TEXT,
+        "DummyT2I2": InvocationType.IMAGE
     }
 
     if model_name not in output_types:
