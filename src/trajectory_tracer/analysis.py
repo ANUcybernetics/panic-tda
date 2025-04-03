@@ -10,7 +10,7 @@ from trajectory_tracer.db import list_runs
 ## load the DB objects into dataframes
 
 
-def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
+def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     """
     Load all embeddings from the database and flatten them into a polars DataFrame.
 
@@ -122,7 +122,7 @@ def load_embeddings_df(session: Session, use_cache: bool = True) -> pl.DataFrame
     return df
 
 
-def load_runs_df(session: Session, use_cache: bool = True) -> pl.DataFrame:
+def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     """
     Load all runs from the database and flatten them into a polars DataFrame.
     Includes persistence diagrams with birth/death pairs for each run.

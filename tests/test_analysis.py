@@ -31,7 +31,7 @@ def test_load_embeddings_df(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Call function under test
-    df = load_embeddings_df(db_session, use_cache=False)
+    df = load_embeddings_df(db_session)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
@@ -110,7 +110,7 @@ def test_load_runs_df(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Call function under test
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
@@ -217,7 +217,7 @@ def test_load_runs_df_persistence_data(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Get the runs DataFrame
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Filter for just this experiment
     exp_df = df.filter(pl.col("experiment_id") == str(config.id))

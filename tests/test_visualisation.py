@@ -33,7 +33,7 @@ def test_plot_persistence_diagram(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Verify we have persistence diagram data
     assert df.height > 0
@@ -71,7 +71,7 @@ def test_plot_persistence_diagram_faceted(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Verify we have persistence diagram data
     assert df.height > 0
@@ -109,7 +109,7 @@ def test_plot_persistence_diagram_by_run(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Verify we have persistence diagram data
     assert df.height > 0
@@ -148,7 +148,7 @@ def test_plot_persistence_entropy(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Verify we have persistence diagram data with entropy values
     assert df.height > 0
@@ -185,7 +185,7 @@ def test_plot_semantic_drift(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the embeddings data with semantic drift information
-    df = load_embeddings_df(db_session, use_cache=False)
+    df = load_embeddings_df(db_session)
 
     # Verify we have semantic dispersion data
     assert df.height > 0
@@ -223,7 +223,7 @@ def test_plot_persistence_entropy_faceted(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session, use_cache=False)
+    df = load_runs_df(db_session)
 
     # Verify we have persistence diagram data with entropy values
     assert df.height > 0

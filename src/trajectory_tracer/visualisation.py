@@ -466,7 +466,7 @@ def paper_charts(session: Session) -> None:
     Args:
         session: SQLModel database session
     """
-    df = load_runs_df(session, use_cache=False)
+    df = load_runs_df(session, use_cache=True)
     plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
     plot_persistence_diagram_by_run(df, 16, "output/vis/persistence_diagram_by_run.html")
     plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")

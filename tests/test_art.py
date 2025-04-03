@@ -26,7 +26,7 @@ def test_analyze_with_r(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Load runs dataframe
-    runs_df = load_runs_df(db_session, use_cache=False)
+    runs_df = load_runs_df(db_session)
 
     # Filter for just this experiment
     exp_df = runs_df.filter(pl.col("experiment_id") == str(config.id))
