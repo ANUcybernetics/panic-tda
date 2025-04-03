@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
@@ -8,6 +9,9 @@ from trajectory_tracer.tda import giotto_phd
 
 def test_giotto_phd():
     """Test the giotto_phd function for computing persistent homology diagrams."""
+    # Ensure output directory exists
+    os.makedirs("output/vis", exist_ok=True)
+
     # Create a simple point cloud (a circle-like shape)
     n_points = 100
     theta = np.linspace(0, 2 * np.pi, n_points)
@@ -73,6 +77,9 @@ def test_giotto_phd():
 
 def test_plot_diagram():
     """Test plotting a persistence diagram."""
+    # Ensure output directory exists
+    os.makedirs("output/vis", exist_ok=True)
+
     # Create a simple point cloud (a circle-like shape)
     n_points = 1000
     theta = np.linspace(0, 2 * np.pi, n_points)
