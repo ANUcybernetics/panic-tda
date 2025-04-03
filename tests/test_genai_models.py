@@ -7,7 +7,7 @@ import pytest
 import ray
 import ray.actor
 import torch
-from diffusers import FluxPipeline
+from diffusers import AutoPipelineForText2Image, FluxPipeline
 from PIL import Image, ImageDraw
 
 from trajectory_tracer.embeddings import (
@@ -505,6 +505,87 @@ def test_fluxschnell_inference_steps_grid():
 
     # Save the grid image
     output_file = "output/vis/fluxschnell_inference_steps_grid.png"
+    grid_image.save(output_file)
+    print(f"Saved grid image to {output_file}")
+
+    # Verify the file was created
+    assert os.path.exists(output_file), (
+        f"Failed to create grid image file {output_file}"
+    )
+
+    # Clean up GPU memory
+    del model
+    torch.cuda.empty_cache()
+
+
+@pytest.mark.slow
+def test_sdxlturbo_inference_steps_grid():
+    """Test SDXLTurbo with different inference steps and create a grid visualization."""
+
+    # Skip test if no CUDA is available
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA GPU is required but not available")
+
+    # Initialize the model directly (without Ray)
+    model = AutoPipelineForText2Image.from_pretrained(
+        "stabilityai/sdxl-turbo",
+        torch_dtype=torch.float16,
+        variant="fp16",
+        use_fast=True
+    ).to("cuda")
+
+    # Multiple prompts
+    prompts = ["apple", "pear", "banana", "a photorealistic portrait of a man"]
+
+    # Fixed seed for determinism
+    seed = 42
+
+    # Generate images with different numbers of inference steps
+    # SDXLTurbo is designed for fewer steps, so using a smaller range
+    images = []
+    step_values = list(range(2, 21, 2))  # [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+
+    print(
+        f"Generating {len(prompts)} prompts × {len(step_values)} inference steps = {len(prompts) * len(step_values)} images..."
+    )
+
+    for prompt in prompts:
+        for steps in step_values:
+            generator = torch.Generator("cuda").manual_seed(seed)
+
+            print(f"Generating '{prompt}' with {steps} inference steps...")
+            image = model(
+                prompt=prompt,
+                height=IMAGE_SIZE,
+                width=IMAGE_SIZE,
+                num_inference_steps=steps,
+                guidance_scale=0.0,
+                generator=generator,
+            ).images[0]
+
+            # Add step count as text on the image
+            draw = ImageDraw.Draw(image)
+            draw.text((10, 10), f"{steps}", fill="white")
+
+            images.append(image)
+
+    # Calculate grid dimensions
+    cols = len(step_values)  # Use step count as column count
+    rows = len(prompts)  # Use prompt count as row count
+
+    # Create a grid image
+    grid_width = cols * IMAGE_SIZE
+    grid_height = rows * IMAGE_SIZE
+    grid_image = Image.new("RGB", (grid_width, grid_height))
+
+    # Paste images into the grid
+    for idx, img in enumerate(images):
+        prompt_idx = idx // len(step_values)
+        step_idx = idx % len(step_values)
+        grid_image.paste(img, (step_idx * IMAGE_SIZE, prompt_idx * IMAGE_SIZE))
+
+    # Save the grid image
+    output_file = "output/vis/sdxlturbo_inference_steps_grid.png"
     grid_image.save(output_file)
     print(f"Saved grid image to {output_file}")
 
