@@ -13,6 +13,8 @@
 - statistical tests on PE across different networks, prompts, seeds, and
   embedding models (look into contrast tests)
 
+- look into indexes for the db
+
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
 
