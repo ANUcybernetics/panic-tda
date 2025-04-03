@@ -1,19 +1,21 @@
 # TODO
 
-- prompt ideas: apple/pear/banana, man/woman/person, car/train/boat, rainbow
-  colours
+- figure out whether art-c is the best test for the job
+
+- check that ExperimentConfig deletion cascades to all runs (and therefore all
+  invocations & embeddings)
+
+- run a script to find orphaned runs and invocations in the db (not attached to
+  an experiment config)
 
 - statistical tests on PE across different networks, prompts, seeds, and
-  embedding models
+  embedding models (look into contrast tests)
 
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
 
 - ensure persistence diagrams and mosaic videos use the same layout algo (for
   ease of comparison between the two)
-
-- use tqdm for the video export progress (and other long-running but
-  non-distributed things)
 
 - chart ideas:
 
