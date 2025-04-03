@@ -64,8 +64,8 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
 
     # Set title/subtitle
     combined_chart = points_chart.properties(
-        width=400,
-        height=400,
+        width=300,
+        height=300,
         # title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
     ).interactive()
 
@@ -115,8 +115,8 @@ def plot_persistence_diagram_faceted(
 
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
-        alt.Row("network:N").title("Network"),
-        alt.Column("initial_prompt:N").title("Prompt"),
+        alt.Row("initial_prompt:N").title("Prompt").header(labelAngle=0),
+        alt.Column("network:N").title("Network"),
     )
 
     # Save chart with high resolution
@@ -181,7 +181,7 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
                 "run_id:N",
             ],
         )
-        .properties(width=600, height=200, title="Persistence Entropy")
+        .properties(width=300, height=100, title="Persistence Entropy")
         .interactive()
     )
 
@@ -227,8 +227,7 @@ def plot_persistence_entropy(
 
 def plot_persistence_entropy_faceted(
     df: pl.DataFrame,
-    output_file: str = "output/vis/persistence_entropy_faceted.html",
-    num_cols: int = 2,
+    output_file: str = "output/vis/persistence_entropy_faceted.html"
 ) -> None:
     """
     Create and save a visualization of entropy distributions for runs in the DataFrame,
@@ -258,8 +257,8 @@ def plot_persistence_entropy_faceted(
         return
 
     chart = create_persistence_entropy_chart(df).encode(
-        alt.Row("network:N").title("Network"),
-        alt.Column("initial_prompt:N").title("Prompt"),
+        alt.Row("initial_prompt:N").title("Prompt").header(labelAngle=0),
+        alt.Column("network:N").title("Network"),
     )
 
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
@@ -473,6 +472,7 @@ def paper_charts(session: Session) -> None:
     Args:
         session: SQLModel database session
     """
-    df = load_runs_df(session, use_cache=True)
+    df = load_runs_df(session, use_cache=False)
     plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
-    plot_persistence_diagram_by_run(df, "output/vis/persistence_diagram_by_run.html")
+    plot_persistence_diagram_by_run(df, 16, "output/vis/persistence_diagram_by_run.html")
+    plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")
