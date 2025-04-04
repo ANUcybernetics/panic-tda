@@ -119,20 +119,17 @@ class Nomic(EmbeddingModel):
         if not all(isinstance(item, str) for item in contents):
             raise ValueError("All items must be strings for embedding")
 
-        # Get embeddings using SentenceTransformer with the appropriate prompt prefix
+        # Get embeddings using NoSortingSentenceTransformer with the appropriate prompt prefix
         with torch.no_grad():
             embeddings = self.model.encode(
                 contents,
-                convert_to_tensor=True,
+                convert_to_numpy=True,
                 normalize_embeddings=True,
                 prompt_name="passage"  # This adds the "search_document:" prefix automatically
             )
 
-            # Convert to list of numpy arrays
-            if torch.is_tensor(embeddings):
-                embeddings = embeddings.cpu().numpy()
-                return [emb for emb in embeddings]
-            return embeddings
+            # Return list of numpy arrays
+            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
 @ray.remote(num_gpus=0.04)
@@ -188,14 +185,11 @@ class STSBMpnet(EmbeddingModel):
         # Get embeddings
         with torch.no_grad():
             embeddings = self.model.encode(
-                contents, convert_to_tensor=True, normalize_embeddings=True
+                contents, convert_to_numpy=True, normalize_embeddings=True
             )
 
-            # Convert to list of numpy arrays
-            if torch.is_tensor(embeddings):
-                embeddings = embeddings.cpu().numpy()
-                return [emb for emb in embeddings]
-            return embeddings
+            # Return list of numpy arrays
+            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
 @ray.remote(num_gpus=0.03)
@@ -222,14 +216,11 @@ class STSBRoberta(EmbeddingModel):
         # Get embeddings
         with torch.no_grad():
             embeddings = self.model.encode(
-                contents, convert_to_tensor=True, normalize_embeddings=True
+                contents, convert_to_numpy=True, normalize_embeddings=True
             )
 
-            # Convert to list of numpy arrays
-            if torch.is_tensor(embeddings):
-                embeddings = embeddings.cpu().numpy()
-                return [emb for emb in embeddings]
-            return embeddings
+            # Return list of numpy arrays
+            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
 @ray.remote(num_gpus=0.02)
@@ -258,14 +249,11 @@ class STSBDistilRoberta(EmbeddingModel):
         # Get embeddings
         with torch.no_grad():
             embeddings = self.model.encode(
-                contents, convert_to_tensor=True, normalize_embeddings=True
+                contents, convert_to_numpy=True, normalize_embeddings=True
             )
 
-            # Convert to list of numpy arrays
-            if torch.is_tensor(embeddings):
-                embeddings = embeddings.cpu().numpy()
-                return [emb for emb in embeddings]
-            return embeddings
+            # Return list of numpy arrays
+            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
 @ray.remote
