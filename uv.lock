@@ -1668,6 +1668,25 @@ wheels = [
 ]
 
 [[package]]
+name = "sentence-transformers"
+version = "4.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "pillow" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "torch" },
+    { name = "tqdm" },
+    { name = "transformers" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/74/606783c6b2e80a609af25d2c487bbe32eb8f0970b0f7519fbb1a099f3ab8/sentence_transformers-4.0.2.tar.gz", hash = "sha256:d33d0c5a69ae0d682115c90e74fc1dc24c4786aeea78e26f5889b037e5921880", size = 267724 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/58/770e1e762893abbfe3cd048f1ed1ea6e00122a195651ea98fb27f55ad17a/sentence_transformers-4.0.2-py3-none-any.whl", hash = "sha256:25f5086d0746c22177f9fb7d431f3eebe6375f3afe1dc7c341c4ca9061e98771", size = 340618 },
+]
+
+[[package]]
 name = "sentencepiece"
 version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1943,6 +1962,7 @@ dependencies = [
     { name = "ray" },
     { name = "rich" },
     { name = "ruptures" },
+    { name = "sentence-transformers" },
     { name = "sentencepiece" },
     { name = "sqlmodel" },
     { name = "timm" },
@@ -1983,6 +2003,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.9.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.0" },
     { name = "ruptures", specifier = ">=1.1.9" },
+    { name = "sentence-transformers", specifier = ">=4.0.2" },
     { name = "sentencepiece", specifier = ">=0.2.0" },
     { name = "sqlmodel", specifier = ">=0.0.23" },
     { name = "timm", specifier = ">=1.0.15" },

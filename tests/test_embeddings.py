@@ -3,7 +3,6 @@ import time
 import numpy as np
 import pytest
 import ray
-from PIL import Image
 
 from trajectory_tracer.embeddings import (
     Dummy,
@@ -231,7 +230,7 @@ def test_get_actor_class():
     """Test that the get_model_class function returns the correct Ray actor class for a given model name."""
 
     # Test for a few models
-    for model_name in ["Nomic", "JinaClip"]:
+    for model_name in list_models():
         model_class = get_actor_class(model_name)
 
         # Verify it's a Ray actor class
@@ -376,58 +375,12 @@ def test_run_missing_embeddings(db_session):
 
 
 @pytest.mark.slow
-def test_nomic_embedding_specific_text():
-    """Test that the Nomic embedding model handles a specific text case correctly."""
-    try:
-        # The specific text to test
-        specific_text = ["the adventures of person, one"]
-
-        # Get the model actor
-        model_class = get_actor_class("Nomic")
-        model = model_class.remote()
-
-        # Test with the specific text
-        embedding_ref = model.embed.remote(specific_text)
-        embeddings = ray.get(embedding_ref)
-        embedding = embeddings[0]  # Get the first embedding
-
-        # Check that the embedding has the correct properties
-        assert embedding is not None
-        assert len(embedding) == 768  # Expected dimension
-        assert embedding.dtype == np.float32
-        assert not np.all(embedding == 0)  # Should not be all zeros
-
-        # Run it again to verify determinism
-        embedding2_ref = model.embed.remote(specific_text)
-        embeddings2 = ray.get(embedding2_ref)
-        embedding2 = embeddings2[0]  # Get the first embedding
-
-        # Verify determinism
-        assert np.array_equal(embedding, embedding2)
-
-        # Test with a slightly different text to ensure embeddings are different
-        different_text = ["a different text"]
-        different_embedding_ref = model.embed.remote(different_text)
-        different_embeddings = ray.get(different_embedding_ref)
-        different_embedding = different_embeddings[0]  # Get the first embedding
-
-        # Verify embeddings are different for different texts
-        assert not np.array_equal(embedding, different_embedding)
-
-    finally:
-        # Terminate the actor to clean up resources
-        if "model" in locals():
-            ray.kill(model)
-
-
-@pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
 def test_embedding_model(model_name):
-    """Test that the embedding model returns valid vectors for both text and images and is deterministic."""
+    """Test that the embedding model returns valid vectors for text and is deterministic."""
     try:
-        # Create a sample text string and image
+        # Create a sample text string
         sample_text = ["Sample output text"]
-        sample_image = [Image.new("RGB", (100, 100), color="blue")]
 
         # Get the model actor
         model_class = get_actor_class(model_name)
@@ -455,31 +408,6 @@ def test_embedding_model(model_name):
         # Verify determinism
         assert np.array_equal(text_embedding, text_embedding2)
 
-        # Test with image
-        image_embedding_ref = model.embed.remote(sample_image)
-        image_embeddings = ray.get(image_embedding_ref)
-        image_embedding = image_embeddings[0]  # Get the first embedding
-
-        # Run it again to verify determinism
-        image_embedding2_ref = model.embed.remote(sample_image)
-        image_embeddings2 = ray.get(image_embedding2_ref)
-        image_embedding2 = image_embeddings2[0]  # Get the first embedding
-
-        # Check that the embedding has the correct properties
-        assert image_embedding is not None
-        assert len(image_embedding) == 768  # Expected dimension
-
-        # Verify it's a proper embedding vector (except for dummy models which may not use float32)
-        if not model_name.startswith("Dummy"):
-            assert image_embedding.dtype == np.float32
-            assert not np.all(image_embedding == 0)  # Should not be all zeros
-
-        # Verify determinism
-        assert np.array_equal(image_embedding, image_embedding2)
-
-        # Verify text and image embeddings are different
-        assert not np.array_equal(text_embedding, image_embedding)
-
     finally:
         # Terminate the actor to clean up resources
         if "model" in locals():
@@ -487,7 +415,7 @@ def test_embedding_model(model_name):
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("model_name", ["Nomic", "JinaClip"])
+@pytest.mark.parametrize("model_name", list_models())
 @pytest.mark.parametrize("batch_size", [1, 8, 32, 64, 256])
 def test_embedding_batch_performance(model_name, batch_size):
     """Test the embedding models with increasingly larger batch sizes."""
@@ -521,39 +449,6 @@ def test_embedding_batch_performance(model_name, batch_size):
         # Log performance metrics
         print(
             f"{model_name} - Batch size {batch_size}: processed in {elapsed_time:.3f}s, "
-            f"{elapsed_time / batch_size:.3f}s per item"
-        )
-
-        # Create dummy images for the batch
-        sample_images = [
-            Image.new(
-                "RGB", (100, 100), color=(i % 255, (i + 50) % 255, (i + 100) % 255)
-            )
-            for i in range(batch_size)
-        ]
-
-        # Measure time to process the image batch
-        start_time = time.time()
-
-        # Get embeddings for the batch
-        image_embedding_ref = model.embed.remote(sample_images)
-        image_embeddings = ray.get(image_embedding_ref)
-
-        elapsed_time = time.time() - start_time
-
-        # Verify we got the correct number of embeddings
-        assert len(image_embeddings) == batch_size
-
-        # Check that all embeddings have the expected properties
-        for embedding in image_embeddings:
-            assert embedding is not None
-            assert len(embedding) == 768  # Expected dimension
-            assert embedding.dtype == np.float32
-            assert not np.all(embedding == 0)  # Should not be all zeros
-
-        # Log performance metrics
-        print(
-            f"{model_name} - Image batch size {batch_size}: processed in {elapsed_time:.3f}s, "
             f"{elapsed_time / batch_size:.3f}s per item"
         )
 
@@ -626,66 +521,3 @@ def test_nomic_embedding_actor_pool():
         if "actors" in locals():
             for actor in actors:
                 ray.kill(actor)
-
-
-@pytest.mark.slow
-@pytest.mark.parametrize("batch_size", [1, 8, 32, 64])
-@pytest.mark.parametrize("size", [100, 512, 1024])
-def test_jinaclip_image_embedding(batch_size, size):
-    """Test the JinaClip embedding model with various image sizes and batch sizes."""
-    try:
-        # Create the model actor
-        model_name = "JinaClip"
-        model_class = get_actor_class(model_name)
-        model = model_class.remote()
-
-        # Create square images with varied content
-        sample_images = [
-            Image.new(
-                "RGB",
-                (size, size),
-                color=((i * 37) % 255, (i * 73) % 255, (i * 113) % 255),
-            )
-            for i in range(batch_size)
-        ]
-
-        # Measure time to process the image batch
-        start_time = time.time()
-
-        # Get embeddings for the batch
-        image_embedding_ref = model.embed.remote(sample_images)
-        image_embeddings = ray.get(image_embedding_ref)
-
-        elapsed_time = time.time() - start_time
-
-        # Verify we got the correct number of embeddings
-        assert len(image_embeddings) == batch_size
-
-        # Check that all embeddings have the expected properties
-        for embedding in image_embeddings:
-            assert embedding is not None
-            assert len(embedding) == 768  # Expected dimension
-            assert embedding.dtype == np.float32
-            assert not np.all(embedding == 0)  # Should not be all zeros
-            # Check for valid range of values
-            assert -10 < np.min(embedding) < 10
-            assert -10 < np.max(embedding) < 10
-
-        # Run again with same inputs to test determinism
-        image_embedding_ref2 = model.embed.remote(sample_images)
-        image_embeddings2 = ray.get(image_embedding_ref2)
-
-        # Verify determinism
-        for i in range(batch_size):
-            assert np.array_equal(image_embeddings[i], image_embeddings2[i])
-
-        # Log performance metrics
-        print(
-            f"JinaClip - Image size {size}x{size}, batch size {batch_size}: "
-            f"processed in {elapsed_time:.3f}s, {elapsed_time / batch_size:.3f}s per item"
-        )
-
-    finally:
-        # Terminate the actor to clean up resources
-        if "model" in locals():
-            ray.kill(model)

@@ -2,15 +2,15 @@ import gc
 import logging
 import sys
 import warnings
-from typing import List, Union
+from typing import List
 
 import numpy as np
 import ray
 import torch
 import torch.nn.functional as F
 import transformers
-from PIL import Image
-from transformers import AutoImageProcessor, AutoModel, AutoTokenizer
+from sentence_transformers import SentenceTransformer
+from transformers import AutoModel, AutoTokenizer
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -37,8 +37,8 @@ class EmbeddingModel:
         """Initialize the model and load to device."""
         raise NotImplementedError
 
-    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
-        """Process a batch of content items and return embeddings."""
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of text items and return embeddings."""
         raise NotImplementedError
 
     @classmethod
@@ -110,18 +110,6 @@ class Nomic(EmbeddingModel):
             .eval()
         )
 
-        # Load vision model components
-        self.processor = AutoImageProcessor.from_pretrained(
-            "nomic-ai/nomic-embed-vision-v1.5", use_fast=True
-        )
-        self.vision_model = (
-            AutoModel.from_pretrained(
-                "nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True
-            )
-            .to("cuda")
-            .eval()
-        )
-
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def mean_pooling(self, model_output, attention_mask):
@@ -134,63 +122,33 @@ class Nomic(EmbeddingModel):
             input_mask_expanded.sum(1), min=1e-9
         )
 
-    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
-        """Process a batch of content items and return embeddings."""
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of text items and return embeddings."""
         if not contents:
             return []
 
-        # Check content types in batch
-        content_type = type(contents[0])
-        if not all(isinstance(item, content_type) for item in contents):
-            raise ValueError(
-                "All items in batch must be of the same type (either all strings or all images)"
-            )
+        # Text embedding using transformers directly
+        sentences = [f"clustering: {content.strip()}" for content in contents]
 
-        if all(isinstance(item, str) for item in contents):
-            # Text embedding using transformers directly
-            sentences = [f"clustering: {content.strip()}" for content in contents]
+        # Tokenize input
+        encoded_input = self.tokenizer(
+            sentences, padding=True, truncation=True, return_tensors="pt"
+        )
 
-            # Tokenize input
-            encoded_input = self.tokenizer(
-                sentences, padding=True, truncation=True, return_tensors="pt"
-            )
+        # Move to GPU
+        encoded_input = {k: v.to("cuda") for k, v in encoded_input.items()}
 
-            # Move to GPU
-            encoded_input = {k: v.to("cuda") for k, v in encoded_input.items()}
+        # Get embeddings
+        with torch.no_grad():
+            model_output = self.text_model(**encoded_input)
 
-            # Get embeddings
-            with torch.no_grad():
-                model_output = self.text_model(**encoded_input)
+        # Process embeddings
+        embeddings = self.mean_pooling(model_output, encoded_input["attention_mask"])
+        embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
+        embeddings = F.normalize(embeddings, p=2, dim=1)
 
-            # Process embeddings
-            embeddings = self.mean_pooling(
-                model_output, encoded_input["attention_mask"]
-            )
-            embeddings = F.layer_norm(
-                embeddings, normalized_shape=(embeddings.shape[1],)
-            )
-            embeddings = F.normalize(embeddings, p=2, dim=1)
-
-            # Return numpy arrays
-            return [emb.cpu().numpy() for emb in embeddings]
-
-        elif all(isinstance(item, Image.Image) for item in contents):
-            # Process the batch of images
-            inputs = self.processor(images=contents, return_tensors="pt")
-            if torch.cuda.is_available():
-                inputs = {k: v.to("cuda") for k, v in inputs.items()}
-
-            # Calculate embeddings
-            with torch.no_grad():
-                img_emb = self.vision_model(**inputs).last_hidden_state
-                img_embeddings = F.normalize(img_emb[:, 0], p=2, dim=1)
-
-            # Convert to list of numpy arrays
-            return [emb.cpu().numpy() for emb in img_embeddings]
-        else:
-            raise ValueError(
-                f"Unsupported content type: {content_type}. Expected str or PIL.Image."
-            )
+        # Return numpy arrays
+        return [emb.cpu().numpy() for emb in embeddings]
 
 
 @ray.remote(num_gpus=0.04)
@@ -209,33 +167,121 @@ class JinaClip(EmbeddingModel):
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of text items and return embeddings."""
+        if not contents:
+            return []
+
+        with torch.no_grad():
+            # Text embedding
+            text_embeddings = self.model.encode_text(
+                contents, truncate_dim=EMBEDDING_DIM, task="retrieval.query"
+            )
+            return [emb for emb in text_embeddings]
+
+
+@ray.remote(num_gpus=0.03)
+class STSBMpnet(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
+        self.model = SentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
+        if torch.cuda.is_available():
+            self.model = self.model.to("cuda")
+        self.model.eval()
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
         """Process a batch of content items and return embeddings."""
         if not contents:
             return []
 
-        # Check that all items are of same type
-        if not all(isinstance(item, type(contents[0])) for item in contents):
-            raise ValueError("All items in batch must be of the same type")
-
-        if not isinstance(contents[0], (str, Image.Image)):
+        # Check that all items are text (this model only supports text)
+        if not all(isinstance(item, str) for item in contents):
             raise ValueError(
-                f"Expected string or PIL.Image input, got {type(contents[0])}"
+                "This model only supports text inputs. All items must be strings."
             )
 
+        # Get embeddings
         with torch.no_grad():
-            if isinstance(contents[0], str):
-                # Text embedding
-                text_embeddings = self.model.encode_text(
-                    contents, truncate_dim=EMBEDDING_DIM, task="retrieval.query"
-                )
-                return [emb for emb in text_embeddings]
-            else:
-                # Image embedding
-                image_embeddings = self.model.encode_image(
-                    contents, truncate_dim=EMBEDDING_DIM
-                )
-                return [emb for emb in image_embeddings]
+            embeddings = self.model.encode(
+                contents, convert_to_tensor=True, normalize_embeddings=True
+            )
+
+            # Convert to list of numpy arrays
+            if torch.is_tensor(embeddings):
+                embeddings = embeddings.cpu().numpy()
+                return [emb for emb in embeddings]
+            return embeddings
+
+
+@ray.remote(num_gpus=0.03)
+class STSBRoberta(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
+        self.model = SentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
+        if torch.cuda.is_available():
+            self.model = self.model.to("cuda")
+        self.model.eval()
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        if not contents:
+            return []
+
+        # Check that all items are text (this model only supports text)
+        if not all(isinstance(item, str) for item in contents):
+            raise ValueError(
+                "This model only supports text inputs. All items must be strings."
+            )
+
+        # Get embeddings
+        with torch.no_grad():
+            embeddings = self.model.encode(
+                contents, convert_to_tensor=True, normalize_embeddings=True
+            )
+
+            # Convert to list of numpy arrays
+            if torch.is_tensor(embeddings):
+                embeddings = embeddings.cpu().numpy()
+                return [emb for emb in embeddings]
+            return embeddings
+
+
+@ray.remote(num_gpus=0.02)
+class STSBDistilRoberta(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
+        self.model = SentenceTransformer(
+            "sentence-transformers/stsb-distilroberta-base-v2"
+        )
+        if torch.cuda.is_available():
+            self.model = self.model.to("cuda")
+        self.model.eval()
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of content items and return embeddings."""
+        if not contents:
+            return []
+
+        # Check that all items are text (this model only supports text)
+        if not all(isinstance(item, str) for item in contents):
+            raise ValueError(
+                "This model only supports text inputs. All items must be strings."
+            )
+
+        # Get embeddings
+        with torch.no_grad():
+            embeddings = self.model.encode(
+                contents, convert_to_tensor=True, normalize_embeddings=True
+            )
+
+            # Convert to list of numpy arrays
+            if torch.is_tensor(embeddings):
+                embeddings = embeddings.cpu().numpy()
+                return [emb for emb in embeddings]
+            return embeddings
 
 
 @ray.remote
@@ -244,24 +290,18 @@ class Dummy(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
-        """Process a batch of content items and return embeddings."""
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of text items and return embeddings."""
         embeddings = []
 
+        # Check that all items are strings
+        if not all(isinstance(item, str) for item in contents):
+            raise ValueError("All items must be strings for embedding")
+
         for content in contents:
-            if isinstance(content, str):
-                # For text, use the hash of the string to seed a deterministic vector
-                seed = sum(ord(c) for c in content)
-                np.random.seed(seed)
-            elif isinstance(content, Image.Image):
-                # For images, use basic image properties to create a deterministic seed
-                img_array = np.array(content)
-                # Use the sum of pixel values as a seed
-                seed = int(np.sum(img_array) % 10000)
-                np.random.seed(seed)
-            else:
-                # Fall back to a fixed seed for unknown types
-                np.random.seed(42)
+            # For text, use the hash of the string to seed a deterministic vector
+            seed = sum(ord(c) for c in content)
+            np.random.seed(seed)
 
             # Generate a deterministic vector using the seeded random number generator
             vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
@@ -278,36 +318,21 @@ class Dummy2(EmbeddingModel):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
-    def embed(self, contents: List[Union[str, Image.Image]]) -> List[np.ndarray]:
-        """Process a batch of content items and return embeddings."""
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of text items and return embeddings."""
         embeddings = []
 
-        for content in contents:
-            if isinstance(content, str):
-                # For text, create deterministic values based on character positions
-                chars = [
-                    ord(c) for c in (content[:100] if len(content) > 100 else content)
-                ]
-                # Pad or truncate to ensure we have enough values
-                chars = (chars + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
-                # Normalize to 0-1 range
-                vector = np.array(chars) / 255.0
-            elif isinstance(content, Image.Image):
-                # Resize image to a small fixed size and use pixel values
-                small_img = content.resize((16, 16)).convert(
-                    "L"
-                )  # Convert to grayscale
-                pixels = np.array(small_img).flatten()
-                # Repeat or truncate to match embedding dimension
-                pixels = np.tile(pixels, EMBEDDING_DIM // len(pixels) + 1)[
-                    :EMBEDDING_DIM
-                ]
-                # Normalize to 0-1 range
-                vector = pixels / 255.0
-            else:
-                # Create a fixed pattern for unknown types
-                vector = np.linspace(0, 1, EMBEDDING_DIM)
+        # Check that all items are strings
+        if not all(isinstance(item, str) for item in contents):
+            raise ValueError("All items must be strings for embedding")
 
+        for content in contents:
+            # For text, create deterministic values based on character positions
+            chars = [ord(c) for c in (content[:100] if len(content) > 100 else content)]
+            # Pad or truncate to ensure we have enough values
+            chars = (chars + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+            # Normalize to 0-1 range
+            vector = np.array(chars) / 255.0
             embeddings.append(vector.astype(np.float32))
 
         return embeddings
