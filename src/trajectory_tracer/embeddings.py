@@ -10,6 +10,7 @@ import torch
 import torch.nn.functional as F
 import transformers
 from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import batch_to_device
 from transformers import AutoModel, AutoTokenizer
 
 # Configure logging
@@ -28,6 +29,60 @@ transformers.logging.set_verbosity_error()
 
 # Fixed embedding dimension
 EMBEDDING_DIM = 768
+
+# Create a custom SentenceTransformer that doesn't sort by length to avoid index issues
+class NoSortingSentenceTransformer(SentenceTransformer):
+    """SentenceTransformer that doesn't sort by length to avoid index issues."""
+
+    def encode(self, sentences, batch_size=32, show_progress_bar=None, output_value="sentence_embedding",
+               convert_to_numpy=True, convert_to_tensor=False, device=None, normalize_embeddings=False,
+               precision="float32", **kwargs):
+        """Remove sorting to avoid index issues."""
+        self.eval()
+
+        # Handle single item inputs
+        input_was_string = False
+        if isinstance(sentences, str) or not hasattr(sentences, "__len__"):
+            sentences = [sentences]
+            input_was_string = True
+
+        if device is None:
+            device = self.device
+
+        all_embeddings = []
+
+        # Process items one by one (to avoid any sorting issues)
+        for sentence in sentences:
+            with torch.no_grad():
+                features = self.tokenize([sentence])
+                features = batch_to_device(features, device)
+
+                out_features = self.forward(features)
+                embedding = out_features['sentence_embedding']
+
+                if normalize_embeddings:
+                    embedding = F.normalize(embedding, p=2, dim=1)
+
+                # Handle conversion options
+                if convert_to_numpy:
+                    embedding = embedding.cpu().numpy()[0]  # Get the first (only) item
+                elif convert_to_tensor:
+                    # Keep as tensor
+                    embedding = embedding[0]  # Get the first (only) item
+                else:
+                    embedding = embedding[0]  # Get the first (only) item
+
+                all_embeddings.append(embedding)
+
+        # Handle return format
+        if convert_to_tensor and not convert_to_numpy and len(all_embeddings) > 0:
+            all_embeddings = torch.stack(all_embeddings)
+
+        # If input was a single string, return just the embedding (not in a list)
+        if input_was_string:
+            return all_embeddings[0]
+
+        return all_embeddings
 
 
 class EmbeddingModel:
@@ -98,8 +153,8 @@ class EmbeddingModel:
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Load model using SentenceTransformer
-        self.model = SentenceTransformer(
+        # Load model using NoSortingSentenceTransformer instead
+        self.model = NoSortingSentenceTransformer(
             "nomic-ai/nomic-embed-text-v2-moe",
             trust_remote_code=True
         )
@@ -161,11 +216,12 @@ class JinaClip(EmbeddingModel):
             return [emb for emb in text_embeddings]
 
 
-@ray.remote(num_gpus=0.03)
+@ray.remote(num_gpus=1)
 class STSBMpnet(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        self.model = SentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
+        # Use the custom NoSortingSentenceTransformer
+        self.model = NoSortingSentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -196,7 +252,8 @@ class STSBMpnet(EmbeddingModel):
 class STSBRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        self.model = SentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
+        # Use the custom NoSortingSentenceTransformer
+        self.model = NoSortingSentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -227,7 +284,8 @@ class STSBRoberta(EmbeddingModel):
 class STSBDistilRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        self.model = SentenceTransformer(
+        # Use the custom NoSortingSentenceTransformer
+        self.model = NoSortingSentenceTransformer(
             "sentence-transformers/stsb-distilroberta-base-v2"
         )
         if torch.cuda.is_available():
