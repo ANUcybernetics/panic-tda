@@ -302,6 +302,8 @@ def test_fluxdev_without_ray():
 def test_get_all_models_memory_usage():
     """Test that we can get memory usage for all models and display the results."""
 
+    gpu_vram_gb = 48
+
     # Get memory usage (with minimal output during test)
     print("\n\nGenAI Models Memory Usage:")
     genai_results = genai_memory_usage(verbose=False)
@@ -309,7 +311,8 @@ def test_get_all_models_memory_usage():
     # Pretty print the results
     for model, usage in genai_results.items():
         if usage > 0:
-            print(f"  {model}: {usage:.3f} GB")
+            fraction = round(usage / gpu_vram_gb, 2)
+            print(f"  {model}: {usage:.3f} GB ({fraction} of GPU VRAM)")
         else:
             print(f"  {model}: Error measuring")
 
@@ -319,7 +322,8 @@ def test_get_all_models_memory_usage():
     # Pretty print the results
     for model, usage in embed_results.items():
         if usage > 0:
-            print(f"  {model}: {usage:.3f} GB")
+            fraction = round(usage / gpu_vram_gb, 2)
+            print(f"  {model}: {usage:.3f} GB ({fraction} of GPU VRAM)")
         else:
             print(f"  {model}: Error measuring")
 
