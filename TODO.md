@@ -2,9 +2,15 @@
 
 - nicer alignment of the prompts in the factored charts
 
-- build out mixed modelling testing
+- delete that short test experiment
 
-- make list.embeddings a dict, keyed by embedding model
+- save charts to png as well
+
+- update existing experiment config embedding models
+
+- figure out how to facet by embedding model as well
+
+- build out mixed modelling testing
 
 - maybe unplug the screen for weddle? probably not necessary (cybersonic, otoh)
 
@@ -52,13 +58,7 @@
 
 - run the tests in GitHub actions
 
-- try batching the genai models (in a test in the first case)
-
-- store the loop_length in the invocation (maybe)
-
 - write an orphans (or some other validation that the run is all there)
   property/method for Run. Or maybe just a cleanup function
-
-- embeddings: are they normalised? should they be?
 
 - create similarity matrices for runs
