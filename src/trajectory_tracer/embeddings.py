@@ -98,57 +98,41 @@ class EmbeddingModel:
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Load text model components using transformers directly
-        self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-        self.text_model = (
-            AutoModel.from_pretrained(
-                "nomic-ai/nomic-embed-text-v1.5",
-                trust_remote_code=True,
-                safe_serialization=True,
-            )
-            .to("cuda")
-            .eval()
+        # Load model using SentenceTransformer
+        self.model = SentenceTransformer(
+            "nomic-ai/nomic-embed-text-v2-moe",
+            trust_remote_code=True
         )
+
+        if torch.cuda.is_available():
+            self.model = self.model.to("cuda")
+        self.model.eval()
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
-
-    def mean_pooling(self, model_output, attention_mask):
-        """Perform mean pooling on token embeddings."""
-        token_embeddings = model_output[0]
-        input_mask_expanded = (
-            attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-        )
-        return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
-            input_mask_expanded.sum(1), min=1e-9
-        )
 
     def embed(self, contents: List[str]) -> List[np.ndarray]:
         """Process a batch of text items and return embeddings."""
         if not contents:
             return []
 
-        # Text embedding using transformers directly
-        sentences = [f"clustering: {content.strip()}" for content in contents]
+        # Check that all items are text
+        if not all(isinstance(item, str) for item in contents):
+            raise ValueError("All items must be strings for embedding")
 
-        # Tokenize input
-        encoded_input = self.tokenizer(
-            sentences, padding=True, truncation=True, return_tensors="pt"
-        )
-
-        # Move to GPU
-        encoded_input = {k: v.to("cuda") for k, v in encoded_input.items()}
-
-        # Get embeddings
+        # Get embeddings using SentenceTransformer with the appropriate prompt prefix
         with torch.no_grad():
-            model_output = self.text_model(**encoded_input)
+            embeddings = self.model.encode(
+                contents,
+                convert_to_tensor=True,
+                normalize_embeddings=True,
+                prompt_name="passage"  # This adds the "search_document:" prefix automatically
+            )
 
-        # Process embeddings
-        embeddings = self.mean_pooling(model_output, encoded_input["attention_mask"])
-        embeddings = F.layer_norm(embeddings, normalized_shape=(embeddings.shape[1],))
-        embeddings = F.normalize(embeddings, p=2, dim=1)
-
-        # Return numpy arrays
-        return [emb.cpu().numpy() for emb in embeddings]
+            # Convert to list of numpy arrays
+            if torch.is_tensor(embeddings):
+                embeddings = embeddings.cpu().numpy()
+                return [emb for emb in embeddings]
+            return embeddings
 
 
 @ray.remote(num_gpus=0.04)
