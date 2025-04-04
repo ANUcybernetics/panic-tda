@@ -187,7 +187,7 @@ class Nomic(EmbeddingModel):
             return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
-@ray.remote(num_gpus=0.04)
+@ray.remote(num_gpus=0.03)
 class JinaClip(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -216,7 +216,7 @@ class JinaClip(EmbeddingModel):
             return [emb for emb in text_embeddings]
 
 
-@ray.remote(num_gpus=1)
+@ray.remote(num_gpus=0.01)
 class STSBMpnet(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -248,7 +248,7 @@ class STSBMpnet(EmbeddingModel):
             return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
-@ray.remote(num_gpus=0.03)
+@ray.remote(num_gpus=0.01)
 class STSBRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -280,7 +280,7 @@ class STSBRoberta(EmbeddingModel):
             return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
 
 
-@ray.remote(num_gpus=0.02)
+@ray.remote(num_gpus=0.01)
 class STSBDistilRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""

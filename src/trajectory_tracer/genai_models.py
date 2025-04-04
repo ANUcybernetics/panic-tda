@@ -127,7 +127,7 @@ class GenAIModel:
 # Text2Image models
 
 
-@ray.remote(num_gpus=0.6)
+@ray.remote(num_gpus=0.7)
 class FluxDev(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -170,7 +170,7 @@ class FluxDev(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.6)
+@ray.remote(num_gpus=0.7)
 class FluxSchnell(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
@@ -215,7 +215,7 @@ class FluxSchnell(GenAIModel):
         return image
 
 
-@ray.remote(num_gpus=0.2)
+@ray.remote(num_gpus=0.15)
 class SDXLTurbo(GenAIModel):
     def __init__(self):
         """Initialize the model and load to device."""
