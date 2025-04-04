@@ -2,7 +2,11 @@
 
 - nicer alignment of the prompts in the factored charts
 
-- figure out whether art-c is the best test for the job
+- build out mixed modelling testing
+
+- make list.embeddings a dict, keyed by embedding model
+
+- maybe unplug the screen for weddle? probably not necessary (cybersonic, otoh)
 
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
   invocations & embeddings)
@@ -35,10 +39,11 @@
 
 - add florence2 or blip3 or some other (more modern) captioning model
 
+- [try this approach](https://gist.github.com/sayakpaul/e1f28e86d0756d587c0b898c73822c47)
+  to getting flux running on cybersonic, or perhaps onnx
+
 - experiment with actor pools for the run stage (because e.g. SDXLTurbo can
   certainly fit a few copies at once)
-
-- switch to onnx for the inference workflows
 
 - use the dummy embeddings in the final analysis as a control, perhaps with a
   slightly more sophisticated "random walk" scheme
