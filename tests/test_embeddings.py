@@ -400,6 +400,12 @@ def test_embedding_model(model_name):
         assert text_embedding is not None
         assert len(text_embedding) == 768  # Expected dimension
 
+        # Verify embedding is normalized (L2 norm close to 1.0)
+        vector_norm = np.linalg.norm(text_embedding)
+        assert 0.999 <= vector_norm <= 1.001, (
+            f"Vector not normalized: norm = {vector_norm}"
+        )
+
         # Verify it's a proper embedding vector (except for dummy models which may not use float32)
         if not model_name.startswith("Dummy"):
             assert text_embedding.dtype == np.float32
