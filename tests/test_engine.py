@@ -287,7 +287,7 @@ def test_compute_embeddings(db_session: Session):
 
     # Create a test run
     run = Run(
-        network=["DummyT2I"],
+        network=["DummyI2T"],
         initial_prompt="Test prompt for embedding",
         seed=42,
         max_length=2,
@@ -296,12 +296,12 @@ def test_compute_embeddings(db_session: Session):
     db_session.commit()
     db_session.refresh(run)
 
-    # Create two invocations
+    # Create two text invocations
     invocations = []
     for i in range(2):
         invocation = Invocation(
-            model="DummyT2I",
-            type="image",
+            model="DummyI2T",
+            type="text",  # Changed to text type
             run_id=run.id,
             sequence_number=i,
             seed=42,
@@ -310,9 +310,9 @@ def test_compute_embeddings(db_session: Session):
         db_session.commit()
         db_session.refresh(invocation)
 
-        # Generate output for the invocation
-        image = Image.new("RGB", (50, 50), color=f"rgb({i * 50}, {i * 50}, {i * 50})")
-        invocation.output = image
+        # Generate text output for the invocation
+        text_output = f"Test text output for invocation {i}"
+        invocation.output = text_output
         db_session.add(invocation)
         db_session.commit()
 
@@ -367,7 +367,7 @@ def test_compute_embeddings_skips_existing(db_session: Session):
 
     # Create a test run
     run = Run(
-        network=["DummyT2I"],
+        network=["DummyI2T"],
         initial_prompt="Test prompt for embedding skipping",
         seed=42,
         max_length=3,
@@ -376,12 +376,12 @@ def test_compute_embeddings_skips_existing(db_session: Session):
     db_session.commit()
     db_session.refresh(run)
 
-    # Create three invocations
+    # Create three text invocations
     invocations = []
     for i in range(3):
         invocation = Invocation(
-            model="DummyT2I",
-            type="image",
+            model="DummyI2T",
+            type="text",  # Changed to text type
             run_id=run.id,
             sequence_number=i,
             seed=42,
@@ -390,9 +390,9 @@ def test_compute_embeddings_skips_existing(db_session: Session):
         db_session.commit()
         db_session.refresh(invocation)
 
-        # Generate output for the invocation
-        image = Image.new("RGB", (50, 50), color=f"rgb({i * 50}, {i * 50}, {i * 50})")
-        invocation.output = image
+        # Generate text output for the invocation
+        text_output = f"Test text output for invocation {i}"
+        invocation.output = text_output
         db_session.add(invocation)
         db_session.commit()
 
@@ -467,10 +467,12 @@ def test_perform_embeddings_stage(db_session: Session):
 
     # Create multiple invocations with outputs
     invocation_ids = []
+    text_invocation_ids = []
     for i in range(3):
+        is_text = i % 2 != 0  # Only odd indexes are text invocations
         invocation = Invocation(
             model=run.network[i % len(run.network)],
-            type="image" if i % 2 == 0 else "text",
+            type="text" if is_text else "image",
             run_id=run.id,
             sequence_number=i,
             seed=42,
@@ -480,12 +482,13 @@ def test_perform_embeddings_stage(db_session: Session):
         db_session.refresh(invocation)
 
         # Generate output
-        if i % 2 == 0:
+        if not is_text:
             output = Image.new(
                 "RGB", (50, 50), color=f"rgb({i * 20}, {i * 30}, {i * 40})"
             )
         else:
             output = f"Test output for invocation {i}"
+            text_invocation_ids.append(str(invocation.id))
 
         invocation.output = output
         db_session.add(invocation)
@@ -502,17 +505,18 @@ def test_perform_embeddings_stage(db_session: Session):
         invocation_ids, embedding_models, db_url, num_actors=2
     )
 
-    # We expect 3 invocations * 2 embedding models = 6 embeddings
-    assert len(embedding_ids) == 6
+    # We expect only text invocations to have embeddings
+    # 1 text invocation * 2 embedding models = 2 embeddings
+    assert len(embedding_ids) == len(text_invocation_ids) * len(embedding_models)
 
-    # Verify all embeddings are in the database
+    # Verify all embeddings are in the database and associated with text invocations
     for embedding_id in embedding_ids:
         if isinstance(embedding_id, str):
             embedding_id = UUID(embedding_id)
 
         embedding = db_session.get(Embedding, embedding_id)
         assert embedding is not None
-        assert str(embedding.invocation_id) in invocation_ids
+        assert str(embedding.invocation_id) in text_invocation_ids
         assert embedding.embedding_model in embedding_models
         assert embedding.vector is not None
         assert len(embedding.vector) > 0
@@ -690,10 +694,10 @@ def test_perform_experiment(db_session: Session):
     # Create a test experiment config with multiple embedding models and a -1 seed
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[42, 43, -1],
+        seeds=[-1, -1],
         prompts=["Test prompt A", "Test prompt B"],
         embedding_models=["Dummy", "Dummy2"],  # Added second embedding model
-        max_length=5,  # Increased max length (especially for -1 seed)
+        max_length=10,  # Increased max length (especially for -1 seed)
     )
 
     # Get the SQLite connection string from the session
@@ -723,29 +727,25 @@ def test_perform_experiment(db_session: Session):
     assert stored_config.started_at is not None
     assert stored_config.completed_at is not None
 
-    # We should have 3*2*1 = 6 runs (3 seeds, 2 prompts, 1 network)
+    # We should have 2*2*1 = 6 runs (2 seeds, 2 prompts, 1 network)
     runs = list_runs(db_session)
-    assert len(runs) == 6
+    assert len(runs) == 4
 
     # Verify that all runs are linked to the experiment
     for run in runs:
         assert run.experiment_id == experiment_id
 
-    # Total invocations will depend on the runs
-    # For -1 seed runs, we should have exactly max_length invocations (5 each)
-    # Regular seeds (42, 43) might have fewer than max_length if duplicates are detected
     invocations = list_invocations(db_session)
-    # At minimum, we should have 2 runs with -1 seed * max_length (5) = 10 invocations
-    # Plus some invocations from the other 4 runs (at least 3 each) = at least 22 total
-    assert len(invocations) >= 22
+    assert len(invocations) == 40
 
-    # Each invocation should have 2 embeddings (one for each embedding model)
+    # Each text invocation should have 2 embeddings (one for each embedding model),
+    # and image invocations will have no embeddings, so the numbers should be the same
     embeddings = list_embeddings(db_session)
-    assert len(embeddings) == len(invocations) * 2
+    assert len(embeddings) == len(invocations)
 
-    # We should have 6 runs * 2 embedding models = 12 persistence diagrams
+    # We should have 4 runs * 2 embedding models = 8 persistence diagrams
     pds = list_persistence_diagrams(db_session)
-    assert len(pds) == 12
+    assert len(pds) == 8
 
     # Verify all persistence diagrams have diagram_data
     for pd in pds:

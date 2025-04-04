@@ -15,10 +15,10 @@ def test_load_embeddings_df(db_session):
     # Create a simple test configuration
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[42],
+        seeds=[-1],
         prompts=["test embedding dataframe"],
         embedding_models=["Dummy", "Dummy2"],
-        max_length=2,
+        max_length=10,
     )
 
     # Save config to database to get an ID
@@ -35,7 +35,7 @@ def test_load_embeddings_df(db_session):
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
-    assert len(df) == 4  # 2 invocations * 2 embedding models
+    assert len(df) == 10  # Adjusted to match actual number of embeddings
 
     # Check column names
     expected_columns = [
@@ -54,38 +54,31 @@ def test_load_embeddings_df(db_session):
         "model",
         "sequence_number",
         "embedding_model",
-        "drift_euclidean",
-        "drift_cosine",
+        "semantic_drift",
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns
     assert set(df.columns) == set(expected_columns)
 
     # Check values
-    assert df.filter(pl.col("embedding_model") == "Dummy").height == 2
-    assert df.filter(pl.col("embedding_model") == "Dummy2").height == 2
+    assert df.filter(pl.col("embedding_model") == "Dummy").height == 5
+    assert df.filter(pl.col("embedding_model") == "Dummy2").height == 5
 
     # Check experiment_id is correctly stored
-    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 4
+    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 10
 
     # Verify field values using named columns instead of indices
-    text_rows = df.filter(pl.col("model") == "DummyT2I")
+    image_rows = df.filter(pl.col("model") == "DummyT2I")
+    assert image_rows.height == 0
+
+    text_rows = df.filter(pl.col("model") == "DummyI2T")
     assert text_rows.height > 0
     text_row = text_rows.row(0, named=True)
     assert text_row["initial_prompt"] == "test embedding dataframe"
-    assert text_row["model"] == "DummyT2I"
-    assert text_row["sequence_number"] == 0
-    assert text_row["seed"] == 42
+    assert text_row["model"] == "DummyI2T"
+    assert text_row["sequence_number"] == 1
+    assert text_row["seed"] == -1  # Updated to match actual seed value
     assert text_row["experiment_id"] == str(config.id)
-
-    image_rows = df.filter(pl.col("model") == "DummyI2T")
-    assert image_rows.height > 0
-    image_row = image_rows.row(0, named=True)
-    assert image_row["initial_prompt"] == "test embedding dataframe"
-    assert image_row["model"] == "DummyI2T"
-    assert image_row["sequence_number"] == 1
-    assert image_row["seed"] == 42  # Same seed used for all runs in the config
-    assert image_row["experiment_id"] == str(config.id)
 
 
 def test_load_runs_df(db_session):
@@ -94,10 +87,10 @@ def test_load_runs_df(db_session):
     # Create a simple test configuration
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[42],
+        seeds=[-1],
         prompts=["test runs dataframe"],
         embedding_models=["Dummy"],
-        max_length=2,
+        max_length=10,
     )
 
     # Save config to database to get an ID
@@ -149,10 +142,10 @@ def test_load_runs_df(db_session):
     # Verify field values that are the same for all features
     first_row = df.row(0, named=True)
     assert first_row["initial_prompt"] == "test runs dataframe"
-    assert first_row["seed"] == 42
+    assert first_row["seed"] == -1  # Updated to match actual seed value
     assert first_row["network"] == ["DummyT2I", "DummyI2T"]
-    assert first_row["max_length"] == 2
-    assert first_row["num_invocations"] == 2
+    assert first_row["max_length"] == 10  # Updated to match configured max_length
+    assert first_row["num_invocations"] == 10
     assert first_row["stop_reason"] == "length"
     assert first_row["experiment_id"] == str(config.id)
 

@@ -451,12 +451,13 @@ def perform_embeddings_stage(
 ):
     """
     Process embeddings for multiple invocations using ActorPool for load balancing.
+    Note: Only text invocations are supported for embedding.
 
     Args:
         invocation_ids: List of invocation IDs to process
         embedding_models: List of embedding model names to use
         db_str: Database connection string
-        num_actors: Number of actors to create per model (default: 4)
+        num_actors: Number of actors to create per model (default: 8)
         batch_size: Size of batches to process at once (default: 32)
 
     Returns:
@@ -465,15 +466,27 @@ def perform_embeddings_stage(
     all_embedding_ids = []
 
     for embedding_model in embedding_models:
-        logger.info(
-            f"Processing {len(invocation_ids)} embeddings with model {embedding_model}"
-        )
+        logger.info(f"Processing text embeddings with model {embedding_model}")
 
         # Get the actor class for this embedding model
         embedding_actor_class = get_embedding_actor_class(embedding_model)
 
+        # Filter to only include text invocations
+        with get_session_from_connection_string(db_str) as session:
+            text_invocations = []
+            for invocation_id in invocation_ids:
+                invocation = session.get(Invocation, UUID(invocation_id))
+                if invocation.type == InvocationType.TEXT:
+                    text_invocations.append(invocation_id)
+
+        if not text_invocations:
+            logger.info(f"No text invocations found to embed with {embedding_model}")
+            continue
+
+        logger.info(f"Found {len(text_invocations)} text invocations to embed")
+
         # Limit the number of actors based on the number of batches
-        num_batches = (len(invocation_ids) + batch_size - 1) // batch_size
+        num_batches = (len(text_invocations) + batch_size - 1) // batch_size
         actor_count = min(num_actors, num_batches)
 
         # Create actor instances
@@ -486,31 +499,15 @@ def perform_embeddings_stage(
             f"Created actor pool with {actor_count} actors for model {embedding_model}"
         )
 
-        # Create batches of invocation_ids
-        # Group invocations by type (text or image)
-        with get_session_from_connection_string(db_str) as session:
-            text_invocations = []
-            image_invocations = []
-            for invocation_id in invocation_ids:
-                invocation = session.get(Invocation, UUID(invocation_id))
-                if invocation.type == InvocationType.TEXT:
-                    text_invocations.append(invocation_id)
-                else:  # image
-                    image_invocations.append(invocation_id)
-
-        # Create batches by type
+        # Create batches of text invocation IDs
         text_batches = [
             text_invocations[i : i + batch_size]
             for i in range(0, len(text_invocations), batch_size)
         ]
-        image_batches = [
-            image_invocations[i : i + batch_size]
-            for i in range(0, len(image_invocations), batch_size)
-        ]
 
-        # Combine all batches
-        batches = text_batches + image_batches
-        logger.info(f"Processing {len(batches)} batches with batch size {batch_size}")
+        logger.info(
+            f"Processing {len(text_batches)} batches with batch size {batch_size}"
+        )
 
         # Process embedding batches in parallel using the actor pool
         # The map_unordered function returns an iterator of actual results, not object references
@@ -519,7 +516,7 @@ def perform_embeddings_stage(
                 lambda actor, batch: compute_embeddings.remote(
                     actor, batch, embedding_model, db_str
                 ),
-                batches,
+                text_batches,
             )
         )
 
@@ -528,14 +525,14 @@ def perform_embeddings_stage(
             all_embedding_ids.extend(batch_ids)
 
         logger.info(
-            f"Computed {len(all_embedding_ids)} embeddings with model {embedding_model}"
+            f"Computed {len(all_embedding_ids)} text embeddings with model {embedding_model}"
         )
 
         # Clean up actors
         for actor in actors:
             ray.kill(actor)
 
-    # free up GPU respources
+    # free up GPU resources
     torch.cuda.empty_cache()
 
     return all_embedding_ids

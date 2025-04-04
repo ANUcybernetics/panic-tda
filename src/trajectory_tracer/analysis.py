@@ -6,6 +6,8 @@ from numpy.linalg import norm
 from sqlmodel import Session
 
 from trajectory_tracer.db import list_runs
+from trajectory_tracer.genai_models import get_output_type
+from trajectory_tracer.schemas import InvocationType
 
 ## load the DB objects into dataframes
 
@@ -13,13 +15,14 @@ from trajectory_tracer.db import list_runs
 def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     """
     Load all embeddings from the database and flatten them into a polars DataFrame.
+    Only includes embeddings for text invocations.
 
     Args:
         session: SQLModel database session
         use_cache: Whether to use cached dataframe if available
 
     Returns:
-        A polars DataFrame containing all embedding data
+        A polars DataFrame containing all embedding data for text invocations
     """
     cache_path = "output/cache/embeddings.parquet"
 
@@ -40,53 +43,52 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
         # Get all embeddings for the run - embeddings is a property that returns a dict
         run_embeddings_dict = run.embeddings
         run_id = str(run.id)
-
         # Process embeddings for each model
         for embedding_model, embeddings_list in run_embeddings_dict.items():
-            # Identify first embedding for each embedding model
-            if embeddings_list:
-                key = (run_id, embedding_model)
-                first_embeddings[key] = embeddings_list[0]
+            # Track first text embedding for each model
+            first_text_embedding = None
 
-            # Process all embeddings for this model
+            # Filter to only keep text invocations
+            text_embeddings = []
             for embedding in embeddings_list:
+                if embedding.invocation.type == InvocationType.TEXT:
+                    text_embeddings.append(embedding)
+                    # Identify first text embedding for this embedding model
+                    if first_text_embedding is None:
+                        first_text_embedding = embedding
+
+            # Store the first text embedding for drift calculations
+            if first_text_embedding:
+                key = (run_id, embedding_model)
+                first_embeddings[key] = first_text_embedding
+
+            # Process all text embeddings for this model
+            for embedding in text_embeddings:
                 invocation = embedding.invocation
 
-                # Calculate drift metrics (distance from first embedding)
-                drift_euclidean = None
+                # Calculate semantic drift (distance from first embedding)
                 drift_cosine = None
                 key = (run_id, embedding_model)
                 first_embedding = first_embeddings.get(key)
 
-                if (
-                    first_embedding
-                    and first_embedding.vector is not None
-                    and embedding.vector is not None
-                ):
-                    first_vector = first_embedding.vector
-                    current_vector = embedding.vector
+                if first_embedding:
+                    first_vector = np.array(first_embedding.vector)
+                    current_vector = np.array(embedding.vector)
 
-                    if (
-                        len(first_vector) > 0
-                        and len(current_vector) > 0
-                        and len(first_vector) == len(current_vector)
-                    ):
-                        # Calculate Euclidean distance
-                        drift_euclidean = float(norm(current_vector - first_vector))
+                    # Calculate cosine similarity properly, handling non-normalized vectors
+                    norm_first = norm(first_vector)
+                    norm_current = norm(current_vector)
 
-                        # Calculate Cosine distance (1 - cosine similarity)
-                        # First normalize the vectors
-                        first_norm = norm(first_vector)
-                        current_norm = norm(current_vector)
-
-                        if first_norm > 0 and current_norm > 0:
-                            # Calculate cosine similarity
-                            dot_product = np.dot(first_vector, current_vector)
-                            cosine_similarity = dot_product / (
-                                first_norm * current_norm
-                            )
-                            # Convert to cosine distance (1 - similarity)
-                            drift_cosine = float(1.0 - cosine_similarity)
+                    # Avoid division by zero
+                    if norm_first > 0 and norm_current > 0:
+                        cosine_similarity = np.dot(first_vector, current_vector) / (
+                            norm_first * norm_current
+                        )
+                        drift_cosine = float(1.0 - cosine_similarity)
+                    else:
+                        drift_cosine = (
+                            0.0 if np.array_equal(first_vector, current_vector) else 1.0
+                        )
 
                 row = {
                     "id": str(embedding.id),
@@ -106,14 +108,12 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                     "model": invocation.model,
                     "sequence_number": invocation.sequence_number,
                     "embedding_model": embedding_model,
-                    "drift_euclidean": drift_euclidean,
-                    "drift_cosine": drift_cosine,
+                    "semantic_drift": drift_cosine,
                 }
                 data.append(row)
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
-
     # Save to cache
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     df.write_parquet(cache_path)
@@ -165,9 +165,16 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
         # Extract image_model and text_model from network
         image_model = None
         text_model = None
-        if isinstance(run.network, list) and len(run.network) > 0:
-            image_model = run.network[0] if len(run.network) > 0 else None
-            text_model = run.network[1] if len(run.network) > 1 else None
+        for model in run.network:
+            output_type = get_output_type(model)
+            if output_type == InvocationType.IMAGE and image_model is None:
+                image_model = model
+            elif output_type == InvocationType.TEXT and text_model is None:
+                text_model = model
+
+            # If both models have been assigned, we can stop iterating
+            if image_model is not None and text_model is not None:
+                break
 
         # Base run information
         base_row = {

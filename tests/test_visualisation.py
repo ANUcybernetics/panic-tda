@@ -189,8 +189,7 @@ def test_plot_semantic_drift(db_session):
 
     # Verify we have semantic dispersion data
     assert df.height > 0
-    assert "drift_euclidean" in df.columns
-    assert "drift_cosine" in df.columns
+    assert "semantic_drift" in df.columns
     assert "sequence_number" in df.columns
 
     # Define output file
@@ -207,7 +206,7 @@ def test_plot_persistence_entropy_faceted(db_session):
     # Create a simple test configuration with persistence diagrams
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1, -2],  # Use two seeds to get multiple runs
+        seeds=[-1, -1],  # Use two seeds to get multiple runs
         prompts=["black fish", "green fish"],
         embedding_models=["Dummy"],
         max_length=100,  # Longer run to get more features in persistence diagram

@@ -109,8 +109,8 @@ def plot_persistence_diagram_faceted(
 
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
-        alt.Row("initial_prompt:N").title("Prompt").header(labelAngle=0),
-        alt.Column("network:N").title("Network"),
+        alt.Row("text_model:N").title("image->text model").header(labelAngle=0),
+        alt.Column("image_model:N").title("text->image model"),
     )
 
     # Save chart with high resolution
@@ -220,8 +220,7 @@ def plot_persistence_entropy(
 
 
 def plot_persistence_entropy_faceted(
-    df: pl.DataFrame,
-    output_file: str = "output/vis/persistence_entropy_faceted.html"
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_faceted.html"
 ) -> None:
     """
     Create and save a visualization of entropy distributions for runs in the DataFrame,
@@ -251,8 +250,8 @@ def plot_persistence_entropy_faceted(
         return
 
     chart = create_persistence_entropy_chart(df).encode(
-        alt.Row("initial_prompt:N").title("Prompt").header(labelAngle=0),
-        alt.Column("network:N").title("Network"),
+        alt.Row("text_model:N").title("image->text model").header(labelAngle=0),
+        alt.Column("image_model:N").title("text->image model"),
     )
 
     chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
@@ -293,11 +292,11 @@ def plot_semantic_drift(
     df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.html"
 ) -> None:
     """
-    Create a line plot showing semantic drift (both euclidean and cosine) over sequence number,
-    faceted by run_id with dual axes for different drift metrics.
+    Create a line plot showing semantic drift over sequence number,
+    faceted by run_id.
 
     Args:
-        df: DataFrame containing embedding data with drift_euclidean, drift_cosine and sequence_number
+        df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
     # Ensure output directory exists
@@ -306,8 +305,7 @@ def plot_semantic_drift(
 
     # Check if we have the required columns
     required_columns = {
-        "drift_euclidean",
-        "drift_cosine",
+        "semantic_drift",
         "sequence_number",
         "run_id",
         "initial_prompt",
@@ -319,10 +317,8 @@ def plot_semantic_drift(
         )
         return
 
-    # Filter to only include rows with at least one drift measure
-    df_filtered = df.filter(
-        pl.col("drift_euclidean").is_not_null() | pl.col("drift_cosine").is_not_null()
-    )
+    # Filter to only include rows with drift measure
+    df_filtered = df.filter(pl.col("semantic_drift").is_not_null())
 
     # Get unique run IDs for faceting
     run_ids = df_filtered["run_id"].unique().to_list()
@@ -342,39 +338,23 @@ def plot_semantic_drift(
             x=alt.X("sequence_number:Q", title="Sequence Number")
         )
 
-        # Create euclidean distance line
-        euclidean_line = base.mark_line(color="#57A44C", opacity=0.7).encode(
-            alt.Y("drift_euclidean:Q").axis(
-                title="Euclidean Distance", titleColor="#57A44C"
+        # Create semantic drift line
+        drift_line = base.mark_line(color="#5276A7", opacity=0.7).encode(
+            alt.Y("semantic_drift:Q").axis(
+                title="Semantic Drift", titleColor="#5276A7"
             ),
-            tooltip=["sequence_number", "drift_euclidean", "embedding_model"],
+            tooltip=["sequence_number", "semantic_drift", "embedding_model"],
         )
 
-        # Add points to the euclidean line
-        euclidean_points = base.mark_point(color="#57A44C").encode(
-            alt.Y("drift_euclidean:Q"),
-            tooltip=["sequence_number", "drift_euclidean", "embedding_model"],
+        # Add points to the line
+        drift_points = base.mark_point(color="#5276A7").encode(
+            alt.Y("semantic_drift:Q"),
+            tooltip=["sequence_number", "semantic_drift", "embedding_model"],
         )
 
-        # Create cosine distance line
-        cosine_line = base.mark_line(
-            color="#5276A7", strokeDash=[3, 3], opacity=0.7
-        ).encode(
-            alt.Y("drift_cosine:Q").axis(title="Cosine Distance", titleColor="#5276A7"),
-            tooltip=["sequence_number", "drift_cosine", "embedding_model"],
-        )
-
-        # Add points to the cosine line
-        cosine_points = base.mark_point(color="#5276A7").encode(
-            alt.Y("drift_cosine:Q"),
-            tooltip=["sequence_number", "drift_cosine", "embedding_model"],
-        )
-
-        # Combine the charts with dual axis
-        combined = (
-            alt.layer(euclidean_line + euclidean_points, cosine_line + cosine_points)
-            .resolve_scale(y="independent")
-            .properties(width=400, height=300, title=f"Prompt: {initial_prompt}")
+        # Combine the line and points
+        combined = alt.layer(drift_line + drift_points).properties(
+            width=400, height=300, title=f"Prompt: {initial_prompt}"
         )
 
         charts.append(combined)
@@ -468,5 +448,7 @@ def paper_charts(session: Session) -> None:
     """
     df = load_runs_df(session, use_cache=True)
     plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
-    plot_persistence_diagram_by_run(df, 16, "output/vis/persistence_diagram_by_run.html")
+    plot_persistence_diagram_by_run(
+        df, 16, "output/vis/persistence_diagram_by_run.html"
+    )
     plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")
