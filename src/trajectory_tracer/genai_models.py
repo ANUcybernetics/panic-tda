@@ -280,7 +280,7 @@ class Moondream(GenAIModel):
             random.seed(seed)
 
         result = self._model.caption(image, length="short")
-        return result["caption"]
+        return result["caption"].strip()
 
 
 @ray.remote(num_gpus=0.15)
