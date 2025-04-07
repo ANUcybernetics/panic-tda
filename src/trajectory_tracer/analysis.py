@@ -3,6 +3,7 @@ import os
 import numpy as np
 import polars as pl
 from numpy.linalg import norm
+from pymer4.models import Lmer
 from sqlmodel import Session
 
 from trajectory_tracer.db import list_runs
@@ -251,3 +252,36 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     else:
         print("No valid persistence diagram data found")
         return pl.DataFrame()
+
+
+def run_mixed_effects_model(df: pl.DataFrame):
+    """
+    Run a mixed-effects model analysis with interactions between fixed effects.
+
+    Args:
+        df: A polars DataFrame containing entropy, text_model, image_model,
+            embedding_model, and initial_prompt columns
+
+    Returns:
+        tuple: (model_results, anova_results) containing the model summary and ANOVA table
+    """
+    # Convert polars dataframe to pandas (pymer4 requires pandas)
+    pandas_df = df.to_pandas()
+
+    # Define the model with all possible interactions
+    model = Lmer(
+        "entropy ~ text_model * image_model * embedding_model + (1|initial_prompt)",
+        data=pandas_df,
+    )
+
+    # Fit the model
+    results = model.fit()
+
+    # View the summary
+    print(results)
+
+    # Get ANOVA-style results for easier interpretation of main effects and interactions
+    anova_results = model.anova()
+    print(anova_results)
+
+    return results, anova_results
