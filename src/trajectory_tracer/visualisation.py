@@ -269,7 +269,7 @@ def plot_persistence_entropy_faceted(
     faceted_chart = base_chart.encode(
         row=alt.Row("text_model:N").title("Text Model"),
         column=alt.Column("image_model:N").title("Image Model"),
-    ).properties(title="Persistence Entropy Distribution")
+    )
 
     # Save the chart
     saved_file = save(faceted_chart, output_file)
