@@ -1,10 +1,12 @@
 from contextlib import contextmanager
+from datetime import datetime
 from uuid import UUID
 
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
 
+from trajectory_tracer.genai_models import estimated_time
 from trajectory_tracer.schemas import (
     Embedding,
     ExperimentConfig,
@@ -220,6 +222,26 @@ def list_experiments(session: Session):
     return session.exec(statement).all()
 
 
+# Helper function to format time duration
+def format_time_duration(seconds):
+    return f"{int(seconds // 3600):02d}h {int((seconds % 3600) // 60):02d}m {int(seconds % 60):02d}s"
+
+
+# Helper function to calculate time strings for stages
+def get_time_string(percent_complete, start_time, end_time):
+    if percent_complete >= 100.0:
+        elapsed_seconds = (end_time - start_time).total_seconds()
+        return f" (completed in {format_time_duration(elapsed_seconds)})"
+    else:
+        # Estimate time to completion
+        elapsed_seconds = (datetime.now() - start_time).total_seconds()
+        if percent_complete > 0:
+            total_estimated_seconds = elapsed_seconds / (percent_complete / 100.0)
+            remaining_seconds = total_estimated_seconds - elapsed_seconds
+            return f" (est. {format_time_duration(remaining_seconds)} remaining)"
+    return ""
+
+
 def list_embeddings(session: Session):
     """
     Returns all embeddings.
@@ -331,3 +353,204 @@ def print_run_info(run_id: UUID, session: Session):
 
             if len(generators) > 3:
                 print(f"      ... and {len(generators) - 3} more generators")
+
+
+def print_experiment_info(
+    experiment_config: ExperimentConfig, session: Session
+) -> None:
+    """
+    Get a status report of the experiment's progress.
+
+    Reports:
+    - Invocation progress: Percentage of completed invocations out of total expected
+    - Embedding progress: Percentage of completed embeddings broken down by model
+    - Persistence diagram progress: Percentage of runs with completed diagrams
+    """
+    # Import here to avoid circular imports
+
+    runs = list(experiment_config.runs)  # Ensure runs are loaded into a list
+    if not runs:
+        print("No runs found in experiment")
+        return
+
+    # Calculate expected total invocations for the experiment
+    total_expected_invocations = (
+        len(experiment_config.networks)
+        * len(experiment_config.seeds)
+        * len(experiment_config.prompts)
+        * experiment_config.max_length
+    )
+
+    # Single query to get max sequence number for each run, grouped by run_id
+    run_ids = [run.id for run in runs]
+
+    if not run_ids:
+        total_actual_invocations = 0
+    else:
+        query = (
+            select(
+                Invocation.run_id,
+                func.max(Invocation.sequence_number).label("max_sequence"),
+            )
+            .where(Invocation.run_id.in_(run_ids))
+            .group_by(Invocation.run_id)
+        )
+
+        results = session.exec(query).all()
+
+        # Create dictionary of run_id to max_sequence
+        max_sequences = {run_id: max_seq for run_id, max_seq in results}
+
+        # Calculate total invocations
+        total_actual_invocations = 0
+        for run in runs:
+            # Get max sequence (or None if run not in results)
+            max_sequence = max_sequences.get(run.id)
+            # Add (max_sequence or -1) + 1 to match original logic
+            total_actual_invocations += (max_sequence or -1) + 1
+
+    # Calculate invocation progress
+    invocation_percent = (total_actual_invocations / total_expected_invocations) * 100
+
+    # Calculate the ETA for all runs
+    estimated_time_remaining = 0
+    for run in runs:
+        # Calculate average invocation time for this run's models
+        estimated_time_remaining += (
+            (run.max_length - max_sequences[run.id])
+            * sum(estimated_time(model) for model in run.network)
+            / len(run.network)
+        )
+
+    if experiment_config.started_at:
+        # Get elapsed time from start
+        elapsed_seconds = (
+            (datetime.now() - experiment_config.started_at).total_seconds()
+            if experiment_config.started_at
+            else 0
+        )
+
+        # Create time string for invocations
+        invocation_time_str = (
+            f" (est. {format_time_duration(estimated_time_remaining)} remaining)"
+            if invocation_percent < 100.0
+            else " (completed)"
+        )
+    else:
+        invocation_time_str = "(not yet started)"
+
+    # Embedding progress - overall and per model (but divided by two because only text invocations get embedded)
+    expected_embeddings_total = (
+        total_actual_invocations * len(experiment_config.embedding_models) / 2
+    )
+
+    # Get the total count of embeddings for this experiment using a database query
+    # Group by embedding_model to get counts per model
+    embedding_counts_by_model = session.exec(
+        select(Embedding.embedding_model, func.count(Embedding.id).label("count"))
+        .join(Invocation, Embedding.invocation_id == Invocation.id)
+        .join(Run, Invocation.run_id == Run.id)
+        .where(Run.experiment_id == experiment_config.id)
+        .group_by(Embedding.embedding_model)
+    ).all()
+
+    # Calculate the total by summing up all model counts
+    actual_embeddings_total = sum(count for _, count in embedding_counts_by_model)
+
+    embedding_percent_total = (
+        (actual_embeddings_total / expected_embeddings_total) * 100
+        if expected_embeddings_total > 0
+        else 0
+    )
+
+    # Per-model embedding statistics
+    model_stats = {}
+    # Create a dictionary of model names to counts from the query results
+    model_count_dict = {model: count for model, count in embedding_counts_by_model}
+
+    for model in experiment_config.embedding_models:
+        # Get the actual count from query results (or 0 if not found)
+        actual_for_model = model_count_dict.get(model, 0)
+        # Expected embeddings for this model (each text invocation needs an embedding)
+        expected_for_model = (
+            total_actual_invocations / 2
+        )  # Only text invocations get embedded
+        percent_for_model = (
+            (actual_for_model / expected_for_model) * 100
+            if expected_for_model > 0
+            else 0
+        )
+        model_stats[model] = (
+            actual_for_model,
+            expected_for_model,
+            percent_for_model,
+        )
+
+    embedding_time_str = (
+        " (in progress)" if embedding_percent_total < 100.0 else " (completed)"
+    )
+
+    # Count runs that have persistence diagrams for all embedding models
+    runs_with_diagrams = session.exec(
+        select(func.count()).select_from(
+            select(PersistenceDiagram.run_id)
+            .join(Run, PersistenceDiagram.run_id == Run.id)
+            .where(Run.experiment_id == experiment_config.id)
+            .group_by(PersistenceDiagram.run_id)
+            .having(
+                func.count(func.distinct(PersistenceDiagram.embedding_model))
+                == len(experiment_config.embedding_models)
+            )
+        )
+    ).one()
+
+    total_runs = len(runs)
+    diagram_percent = (runs_with_diagrams / total_runs) * 100 if total_runs > 0 else 0
+
+    # Calculate diagram time string consistent with other time strings
+    if experiment_config.started_at:
+        diagram_time_str = (
+            " (in progress)" if diagram_percent < 100.0 else " (completed)"
+        )
+    else:
+        diagram_time_str = "(not yet started)"
+
+    # Calculate elapsed time from start
+    elapsed_seconds = (
+        (datetime.now() - experiment_config.started_at).total_seconds()
+        if experiment_config.started_at
+        else 0
+    )
+
+    # Summarize configuration information
+    network_summary = f"{len(experiment_config.networks)} networks"
+    embedding_model_summary = (
+        f"{len(experiment_config.embedding_models)} embedding models"
+    )
+    seed_summary = f"{len(experiment_config.seeds)} seeds"
+    prompt_summary = f"{len(experiment_config.prompts)} prompts"
+
+    status_report = (
+        f"Experiment Configuration:\n"
+        f"  ID: {experiment_config.id}\n"
+        f"  Total Runs: {total_runs}\n"
+        f"  Networks: {network_summary} {experiment_config.networks}\n"
+        f"  Embedding Models: {embedding_model_summary} {experiment_config.embedding_models}\n"
+        f"  Seeds: {seed_summary} {experiment_config.seeds}\n"
+        f"  Prompts: {prompt_summary} {[p[:50] + '...' if len(p) > 50 else p for p in experiment_config.prompts]}\n"
+        f"  Max Length: {experiment_config.max_length}\n\n"
+        f"Experiment Status:\n"
+        f"  Invocation Progress: {invocation_percent:.1f}% ({total_actual_invocations}/{total_expected_invocations}){invocation_time_str}\n"
+        f"  Embedding Progress (Overall): {embedding_percent_total:.1f}% ({actual_embeddings_total}/{expected_embeddings_total}){embedding_time_str}\n"
+    )
+
+    # Add per-model embedding statistics
+    for model, (actual, expected, percent) in model_stats.items():
+        status_report += f"    - {model}: {percent:.1f}% ({actual}/{expected})\n"
+
+    status_report += (
+        f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs}){diagram_time_str}"
+        f"\n  Elapsed Time: {format_time_duration(elapsed_seconds)}"
+    )
+
+    print(status_report)
