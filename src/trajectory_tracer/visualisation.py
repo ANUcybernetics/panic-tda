@@ -12,6 +12,34 @@ CHART_SCALE_FACTOR = 4.0
 
 ## visualisation
 
+def save(chart: alt.Chart, filename: str) -> str:
+    """
+    Save an Altair chart to both HTML and PNG formats with the given scale factor.
+
+    Args:
+        chart: Altair chart to save
+        filename: Path to save the chart
+
+    Returns:
+        Path to the saved HTML file
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(filename)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Get file base and extension
+    base, ext = os.path.splitext(filename)
+
+    # Save as HTML
+    html_filename = f"{base}.html"
+    chart.save(html_filename, scale_factor=CHART_SCALE_FACTOR)
+
+    # Save as PNG
+    png_filename = f"{base}.png"
+    chart.save(png_filename, scale_factor=CHART_SCALE_FACTOR)
+
+    return html_filename
+
 
 def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     """
@@ -76,17 +104,13 @@ def plot_persistence_diagram(
         df: DataFrame containing run data with persistence homology information
         output_file: Path to save the visualization
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Create the chart
     chart = create_persistence_diagram_chart(df)
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    saved_file = save(chart, output_file)
 
-    logging.info(f"Saved single persistence diagram to {output_file}")
+    logging.info(f"Saved single persistence diagram to {saved_file}")
 
 
 def plot_persistence_diagram_faceted(
@@ -103,10 +127,6 @@ def plot_persistence_diagram_faceted(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
         alt.Row("text_model:N").title("image->text model").header(labelAngle=0),
@@ -114,9 +134,9 @@ def plot_persistence_diagram_faceted(
     )
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    saved_file = save(chart, output_file)
 
-    logging.info(f"Saved persistence diagrams to {output_file}")
+    logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
 def plot_persistence_diagram_by_run(
@@ -134,19 +154,15 @@ def plot_persistence_diagram_by_run(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
         alt.Facet("run_id:N", columns=cols, title="Run ID")
     )
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    saved_file = save(chart, output_file)
 
-    logging.info(f"Saved persistence diagrams to {output_file}")
+    logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
 def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
@@ -192,10 +208,6 @@ def plot_persistence_entropy(
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Check if we have the required columns
     required_columns = {"homology_dimension", "entropy"}
     missing_columns = required_columns - set(df.columns)
@@ -214,9 +226,9 @@ def plot_persistence_entropy(
     chart = create_persistence_entropy_chart(df)
 
     # Save chart with high resolution
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    saved_file = save(chart, output_file)
 
-    logging.info(f"Saved persistence entropy plot to {output_file}")
+    logging.info(f"Saved persistence entropy plot to {saved_file}")
 
 
 def plot_persistence_entropy_faceted(
@@ -231,10 +243,6 @@ def plot_persistence_entropy_faceted(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Check if we have the required columns
     required_columns = {"homology_dimension", "entropy", "initial_prompt", "network"}
     missing_columns = required_columns - set(df.columns)
@@ -254,8 +262,8 @@ def plot_persistence_entropy_faceted(
         alt.Column("image_model:N").title("text->image model"),
     )
 
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
-    logging.info(f"Saved faceted persistence entropy plots to {output_file}")
+    saved_file = save(chart, output_file)
+    logging.info(f"Saved faceted persistence entropy plots to {saved_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -285,7 +293,7 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     )
 
     # Save the chart
-    chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
+    saved_file = save(chart, output_file)
 
 
 def plot_semantic_drift(
@@ -299,10 +307,6 @@ def plot_semantic_drift(
         df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_file)
-    os.makedirs(output_dir, exist_ok=True)
-
     # Check if we have the required columns
     required_columns = {
         "semantic_drift",
@@ -375,8 +379,8 @@ def plot_semantic_drift(
     final_chart = alt.vconcat(*rows)
 
     # Save the chart
-    final_chart.save(output_file, scale_factor=CHART_SCALE_FACTOR)
-    logging.info(f"Saved semantic drift plot to {output_file}")
+    saved_file = save(final_chart, output_file)
+    logging.info(f"Saved semantic drift plot to {saved_file}")
 
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
@@ -434,9 +438,7 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
     )
 
     # Save the chart to a file
-    combined_chart.save(
-        "output/vis/giotto_benchmark.html", scale_factor=CHART_SCALE_FACTOR
-    )
+    saved_file = save(combined_chart, "output/vis/giotto_benchmark.html")
 
 
 def paper_charts(session: Session) -> None:

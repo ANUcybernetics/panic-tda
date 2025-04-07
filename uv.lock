@@ -1971,6 +1971,7 @@ dependencies = [
     { name = "transformers" },
     { name = "typer" },
     { name = "uuid-v7" },
+    { name = "vl-convert-python" },
 ]
 
 [package.optional-dependencies]
@@ -2012,6 +2013,7 @@ requires-dist = [
     { name = "transformers", specifier = ">=4.49.0" },
     { name = "typer", specifier = ">=0.15.2" },
     { name = "uuid-v7", specifier = ">=1.0.0" },
+    { name = "vl-convert-python", specifier = ">=1.7.0" },
 ]
 
 [[package]]
@@ -2084,6 +2086,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a1/94/b7c21adccab9cc3b5d7f7bf86855e9648cbdb93962a16c68f67d51af212d/uuid_v7-1.0.0.tar.gz", hash = "sha256:56eb79baa5c6c5cf02e9e8ce7652bda666bd7671a49fc9a3c3d4565aa7e0ba3b", size = 5093 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2e/8b/cbcb38c01d1fd9682043f3d7a3ef5eb0a628a2d7c917fec21b04ffc2cf98/uuid_v7-1.0.0-py3-none-any.whl", hash = "sha256:b27f8e1a90ad5c81577f8eaebf9ef67ab8b4dc8d0838c4fcc2e57fd52ebf7fff", size = 4665 },
+]
+
+[[package]]
+name = "vl-convert-python"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/f1/43803e91e12d4ab697eedc5e14029d1630daea0c81abc6321b96a31a7dc0/vl_convert_python-1.7.0.tar.gz", hash = "sha256:bc9e1f8ca0d8d3b3789c66e37cd6a8cf0a83406427d5143133346c2b5004485b", size = 4719466 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e2/1c/b0dc67d9e51eb9d14c35c79e033a680a92418edd12a3879bb50aade597a1/vl_convert_python-1.7.0-cp37-abi3-macosx_10_12_x86_64.whl", hash = "sha256:90fba4356bd621bd31e72507a55e26dd13ebe79efa784715743116109afd0d47", size = 28233538 },
+    { url = "https://files.pythonhosted.org/packages/dc/50/4b8b500f0b3c0b24ef3bec01563de412e95dbf27cfe53e403e6fa8514525/vl_convert_python-1.7.0-cp37-abi3-macosx_11_0_arm64.whl", hash = "sha256:51f99c58b1d0d74126455ece7d41972740cb4430b8dfdf7e0908270eed5be32d", size = 26940338 },
+    { url = "https://files.pythonhosted.org/packages/95/0f/139568d71fadcb1be697acd2ccd0b79bd1553ca833d4448312191cd33654/vl_convert_python-1.7.0-cp37-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:962100d7670b9d35f9bb9745cdf590412f62f57c134b4a142340ba93a4dbddba", size = 29124271 },
+    { url = "https://files.pythonhosted.org/packages/91/3c/c34e52138fa38eb6059cdb2c603ba1433decf4f97cb89e767c04a9605eff/vl_convert_python-1.7.0-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8b50c492b640abb89a54a71e2c26f0f2d2c1cedc42030cc55bcc202670334724", size = 30089941 },
+    { url = "https://files.pythonhosted.org/packages/ae/e2/c4a3fff3efcfeebaab554c9c4b027e875fd339da7f619b144765353a60d1/vl_convert_python-1.7.0-cp37-abi3-win_amd64.whl", hash = "sha256:285bbadb1ce8a922c87f6e75a9544fe10a652d37bd4c1519fb93f90bab381588", size = 29796401 },
 ]
 
 [[package]]
