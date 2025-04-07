@@ -180,9 +180,16 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
         alt.Chart(df)
         .mark_boxplot(opacity=0.7)
         .encode(
-            x=alt.X("entropy:Q").title("Entropy").scale(zero=False),
-            y=alt.Y("homology_dimension:N").title("Homology dimension"),
+            x=alt.X("entropy:Q").title("Persistence Entropy").scale(zero=False),
+            y=alt.Y("homology_dimension:N")
+            .title("Homology dimension")
+            .axis(
+                labelExpr="'h' + (datum.label == '0' ? '₀' : (datum.label == '1' ? '₁' : '₂'))"
+            ),
             color=alt.Color("embedding_model:N").title("Embedding model"),
+            yOffset=alt.YOffset(
+                "embedding_model:N"
+            ),  # Offset boxplots by embedding model
             tooltip=[
                 "homology_dimension:N",
                 "entropy:Q",
