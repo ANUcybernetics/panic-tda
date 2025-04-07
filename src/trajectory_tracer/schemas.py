@@ -732,3 +732,30 @@ class ExperimentConfig(SQLModel, table=True):
                 )
 
         return self
+
+    def missing_persistence_diagrams(self) -> List[tuple]:
+        """
+        Get all combinations of runs and embedding models missing persistence diagrams.
+
+        Returns:
+            List of tuples (run, embedding_model) representing runs that are missing
+            persistence diagrams for specific embedding models. The run is a Run object,
+            not just an ID.
+        """
+        missing = []
+
+        # Loop through all embedding models
+        for embedding_model in self.embedding_models:
+            # For each model, check all runs in this experiment
+            for run in self.runs:
+                # Check if this run has a persistence diagram for this model
+                has_diagram = any(
+                    pd.embedding_model == embedding_model
+                    for pd in run.persistence_diagrams
+                )
+
+                # If not, add to the missing list
+                if not has_diagram:
+                    missing.append((run, embedding_model))
+
+        return missing

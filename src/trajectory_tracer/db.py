@@ -490,22 +490,19 @@ def print_experiment_info(
         " (in progress)" if embedding_percent_total < 100.0 else " (completed)"
     )
 
-    # Count runs that have persistence diagrams for all embedding models
-    runs_with_diagrams = session.exec(
-        select(func.count()).select_from(
-            select(PersistenceDiagram.run_id)
-            .join(Run, PersistenceDiagram.run_id == Run.id)
-            .where(Run.experiment_id == experiment_config.id)
-            .group_by(PersistenceDiagram.run_id)
-            .having(
-                func.count(func.distinct(PersistenceDiagram.embedding_model))
-                == len(experiment_config.embedding_models)
-            )
-        )
-    ).one()
+    # Get missing persistence diagrams using the ExperimentConfig method
+    missing_diagrams = experiment_config.missing_persistence_diagrams()
 
-    total_runs = len(runs)
-    diagram_percent = (runs_with_diagrams / total_runs) * 100 if total_runs > 0 else 0
+    # Count total expected persistence diagrams
+    total_expected_diagrams = len(runs) * len(experiment_config.embedding_models)
+
+    # Calculate completed diagrams and percentage
+    completed_diagrams = total_expected_diagrams - len(missing_diagrams)
+    diagram_percent = (
+        (completed_diagrams / total_expected_diagrams * 100)
+        if total_expected_diagrams > 0
+        else 0
+    )
 
     # Calculate diagram time string consistent with other time strings
     if experiment_config.started_at:
@@ -514,6 +511,30 @@ def print_experiment_info(
         )
     else:
         diagram_time_str = "(not yet started)"
+
+    # Calculate counts per embedding model
+    missing_by_model = {}
+    for run, embedding_model in missing_diagrams:
+        if embedding_model not in missing_by_model:
+            missing_by_model[embedding_model] = 0
+        missing_by_model[embedding_model] += 1
+
+    # Prepare model-specific statistics dictionary
+    diagram_model_stats = {}
+    for model in experiment_config.embedding_models:
+        missing_for_model = missing_by_model.get(model, 0)
+        expected_for_model = len(runs)
+        completed_for_model = expected_for_model - missing_for_model
+        percent_for_model = (
+            (completed_for_model / expected_for_model * 100)
+            if expected_for_model > 0
+            else 0
+        )
+        diagram_model_stats[model] = (
+            completed_for_model,
+            expected_for_model,
+            percent_for_model,
+        )
 
     # Calculate elapsed time from start
     elapsed_seconds = (
@@ -533,7 +554,7 @@ def print_experiment_info(
     status_report = (
         f"Experiment Configuration:\n"
         f"  ID: {experiment_config.id}\n"
-        f"  Total Runs: {total_runs}\n"
+        f"  Total Runs: {len(runs)}\n"
         f"  Networks: {network_summary} {experiment_config.networks}\n"
         f"  Embedding Models: {embedding_model_summary} {experiment_config.embedding_models}\n"
         f"  Seeds: {seed_summary} {experiment_config.seeds}\n"
@@ -548,9 +569,12 @@ def print_experiment_info(
     for model, (actual, expected, percent) in model_stats.items():
         status_report += f"    - {model}: {percent:.1f}% ({actual}/{expected})\n"
 
-    status_report += (
-        f"  Persistence Diagrams: {diagram_percent:.1f}% ({runs_with_diagrams}/{total_runs}){diagram_time_str}"
-        f"\n  Elapsed Time: {format_time_duration(elapsed_seconds)}"
-    )
+    status_report += f"  Persistence Diagrams (Overall): {diagram_percent:.1f}% ({completed_diagrams}/{total_expected_diagrams}){diagram_time_str}\n"
+
+    # Add per-model persistence diagram statistics
+    for model, (completed, expected, percent) in diagram_model_stats.items():
+        status_report += f"    - {model}: {percent:.1f}% ({completed}/{expected})\n"
+
+    status_report += f"  Elapsed Time: {format_time_duration(elapsed_seconds)}"
 
     print(status_report)
