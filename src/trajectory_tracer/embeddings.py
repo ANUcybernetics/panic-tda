@@ -164,10 +164,20 @@ class EmbeddingModel:
 class Nomic(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Load model using NoSortingSentenceTransformer instead
-        self.model = NoSortingSentenceTransformer(
-            "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True
-        )
+        try:
+            # First try to load normally
+            self.model = NoSortingSentenceTransformer(
+                "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True
+            )
+        except FileNotFoundError:
+            # If that fails, try downloading with regular SentenceTransformer first
+            _ = SentenceTransformer(
+                "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True
+            )
+            # Then load with custom class
+            self.model = NoSortingSentenceTransformer(
+                "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True
+            )
 
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
@@ -234,10 +244,19 @@ class JinaClip(EmbeddingModel):
 class STSBMpnet(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Use the custom NoSortingSentenceTransformer
-        self.model = NoSortingSentenceTransformer(
-            "sentence-transformers/stsb-mpnet-base-v2"
-        )
+        try:
+            # First try to load normally
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-mpnet-base-v2"
+            )
+        except FileNotFoundError:
+            # If that fails, try downloading with regular SentenceTransformer first
+            _ = SentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
+            # Then load with custom class
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-mpnet-base-v2"
+            )
+
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -272,10 +291,19 @@ class STSBMpnet(EmbeddingModel):
 class STSBRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Use the custom NoSortingSentenceTransformer
-        self.model = NoSortingSentenceTransformer(
-            "sentence-transformers/stsb-roberta-base-v2"
-        )
+        try:
+            # First try to load normally
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-roberta-base-v2"
+            )
+        except FileNotFoundError:
+            # If that fails, try downloading with regular SentenceTransformer first
+            _ = SentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
+            # Then load with custom class
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-roberta-base-v2"
+            )
+
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -310,10 +338,19 @@ class STSBRoberta(EmbeddingModel):
 class STSBDistilRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
-        # Use the custom NoSortingSentenceTransformer
-        self.model = NoSortingSentenceTransformer(
-            "sentence-transformers/stsb-distilroberta-base-v2"
-        )
+        try:
+            # First try to load normally
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-distilroberta-base-v2"
+            )
+        except FileNotFoundError:
+            # If that fails, try downloading with regular SentenceTransformer first
+            _ = SentenceTransformer("sentence-transformers/stsb-distilroberta-base-v2")
+            # Then load with custom class
+            self.model = NoSortingSentenceTransformer(
+                "sentence-transformers/stsb-distilroberta-base-v2"
+            )
+
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
