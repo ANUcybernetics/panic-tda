@@ -12,6 +12,7 @@ CHART_SCALE_FACTOR = 4.0
 
 ## visualisation
 
+
 def save(chart: alt.Chart, filename: str) -> str:
     """
     Save an Altair chart to both HTML and PNG formats with the given scale factor.
@@ -135,7 +136,6 @@ def plot_persistence_diagram_faceted(
 
     # Save chart with high resolution
     saved_file = save(chart, output_file)
-
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
@@ -161,7 +161,6 @@ def plot_persistence_diagram_by_run(
 
     # Save chart with high resolution
     saved_file = save(chart, output_file)
-
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
@@ -183,7 +182,7 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
         .encode(
             y=alt.Y("homology_dimension:N").title(None),
             x=alt.X("entropy:Q").title("Entropy").scale(zero=False),
-            color=alt.Color("homology_dimension:N").title("Homology Dimension"),
+            color=alt.Color("embedding_model:N").title("Embedding model"),
             tooltip=[
                 "homology_dimension:N",
                 "entropy:Q",
@@ -191,7 +190,7 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
                 "run_id:N",
             ],
         )
-        .properties(width=300, height=100, title="Persistence Entropy")
+        .properties(width=300, height=100, title="Persistence entropy")
         .interactive()
     )
 
@@ -227,7 +226,6 @@ def plot_persistence_entropy(
 
     # Save chart with high resolution
     saved_file = save(chart, output_file)
-
     logging.info(f"Saved persistence entropy plot to {saved_file}")
 
 
@@ -294,6 +292,7 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
 
     # Save the chart
     saved_file = save(chart, output_file)
+    logging.info(f"Saved loop length plot to {saved_file}")
 
 
 def plot_semantic_drift(
@@ -439,6 +438,7 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
 
     # Save the chart to a file
     saved_file = save(combined_chart, "output/vis/giotto_benchmark.html")
+    logging.info(f"Saved Giotto benchmark plot to {saved_file}")
 
 
 def paper_charts(session: Session) -> None:

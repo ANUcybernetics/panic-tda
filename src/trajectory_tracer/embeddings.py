@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import transformers
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import batch_to_device
-from transformers import AutoModel, AutoTokenizer
+from transformers import AutoModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -30,13 +30,24 @@ transformers.logging.set_verbosity_error()
 # Fixed embedding dimension
 EMBEDDING_DIM = 768
 
+
 # Create a custom SentenceTransformer that doesn't sort by length to avoid index issues
 class NoSortingSentenceTransformer(SentenceTransformer):
     """SentenceTransformer that doesn't sort by length to avoid index issues."""
 
-    def encode(self, sentences, batch_size=32, show_progress_bar=None, output_value="sentence_embedding",
-               convert_to_numpy=True, convert_to_tensor=False, device=None, normalize_embeddings=False,
-               precision="float32", **kwargs):
+    def encode(
+        self,
+        sentences,
+        batch_size=32,
+        show_progress_bar=None,
+        output_value="sentence_embedding",
+        convert_to_numpy=True,
+        convert_to_tensor=False,
+        device=None,
+        normalize_embeddings=False,
+        precision="float32",
+        **kwargs,
+    ):
         """Remove sorting to avoid index issues."""
         self.eval()
 
@@ -58,7 +69,7 @@ class NoSortingSentenceTransformer(SentenceTransformer):
                 features = batch_to_device(features, device)
 
                 out_features = self.forward(features)
-                embedding = out_features['sentence_embedding']
+                embedding = out_features["sentence_embedding"]
 
                 if normalize_embeddings:
                     embedding = F.normalize(embedding, p=2, dim=1)
@@ -155,8 +166,7 @@ class Nomic(EmbeddingModel):
         """Initialize the model and load to device."""
         # Load model using NoSortingSentenceTransformer instead
         self.model = NoSortingSentenceTransformer(
-            "nomic-ai/nomic-embed-text-v2-moe",
-            trust_remote_code=True
+            "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True
         )
 
         if torch.cuda.is_available():
@@ -180,11 +190,15 @@ class Nomic(EmbeddingModel):
                 contents,
                 convert_to_numpy=True,
                 normalize_embeddings=True,
-                prompt_name="passage"  # This adds the "search_document:" prefix automatically
+                prompt_name="passage",  # This adds the "search_document:" prefix automatically
             )
 
             # Return list of numpy arrays
-            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
+            return (
+                [emb for emb in embeddings]
+                if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1
+                else embeddings
+            )
 
 
 @ray.remote(num_gpus=0.03)
@@ -221,7 +235,9 @@ class STSBMpnet(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
         # Use the custom NoSortingSentenceTransformer
-        self.model = NoSortingSentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
+        self.model = NoSortingSentenceTransformer(
+            "sentence-transformers/stsb-mpnet-base-v2"
+        )
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -245,7 +261,11 @@ class STSBMpnet(EmbeddingModel):
             )
 
             # Return list of numpy arrays
-            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
+            return (
+                [emb for emb in embeddings]
+                if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1
+                else embeddings
+            )
 
 
 @ray.remote(num_gpus=0.01)
@@ -253,7 +273,9 @@ class STSBRoberta(EmbeddingModel):
     def __init__(self):
         """Initialize the model and load to device."""
         # Use the custom NoSortingSentenceTransformer
-        self.model = NoSortingSentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
+        self.model = NoSortingSentenceTransformer(
+            "sentence-transformers/stsb-roberta-base-v2"
+        )
         if torch.cuda.is_available():
             self.model = self.model.to("cuda")
         self.model.eval()
@@ -277,7 +299,11 @@ class STSBRoberta(EmbeddingModel):
             )
 
             # Return list of numpy arrays
-            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
+            return (
+                [emb for emb in embeddings]
+                if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1
+                else embeddings
+            )
 
 
 @ray.remote(num_gpus=0.01)
@@ -311,7 +337,11 @@ class STSBDistilRoberta(EmbeddingModel):
             )
 
             # Return list of numpy arrays
-            return [emb for emb in embeddings] if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1 else embeddings
+            return (
+                [emb for emb in embeddings]
+                if isinstance(embeddings, np.ndarray) and embeddings.ndim > 1
+                else embeddings
+            )
 
 
 @ray.remote
