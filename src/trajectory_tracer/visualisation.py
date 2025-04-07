@@ -166,8 +166,8 @@ def plot_persistence_diagram_by_run(
 
 def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
     """
-    Create a base strip plot showing the distribution of entropy values
-    with embedding_model on the y-axis.
+    Create a base boxplot showing the distribution of entropy values
+    with homology_dimension on the y-axis.
 
     Args:
         df: DataFrame containing runs data with homology_dimension and entropy
@@ -175,14 +175,14 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
     Returns:
         An Altair chart object for the entropy distribution
     """
-    # Create a strip plot with tick marks
+    # Create a boxplot chart
     base_chart = (
         alt.Chart(df)
-        .mark_tick(opacity=0.7)
+        .mark_boxplot(opacity=0.7)
         .encode(
             x=alt.X("entropy:Q").title("Entropy").scale(zero=False),
-            y=alt.Y("embedding_model:N").title("Embedding model"),
-            color=alt.Color("homology_dimension:N").title("Homology dimension"),
+            y=alt.Y("homology_dimension:N").title("Homology dimension"),
+            color=alt.Color("embedding_model:N").title("Embedding model"),
             tooltip=[
                 "homology_dimension:N",
                 "entropy:Q",
@@ -190,7 +190,7 @@ def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
                 "run_id:N",
             ],
         )
-        .properties(width=300, height=80)
+        .properties(width=300, height=120)
     )
 
     return base_chart
@@ -234,9 +234,9 @@ def plot_persistence_entropy_faceted(
     """
     Create and save a visualization of entropy distributions with:
     - entropy on x axis
-    - embedding_model on y axis
-    - homology_dimension as inner facet (stacked)
-    - text_model/image_model as outer facet (grid)
+    - homology_dimension on y axis
+    - embedding_model as color
+    - faceted by text_model (rows) and image_model (columns)
 
     Args:
         df: DataFrame containing runs data with homology_dimension and entropy
@@ -262,56 +262,17 @@ def plot_persistence_entropy_faceted(
         logging.info("ERROR: DataFrame is empty - no entropy data to plot")
         return
 
-    # Get unique values for our grid
-    text_models = sorted(df["text_model"].unique().to_list())
-    image_models = sorted(df["image_model"].unique().to_list())
-    homology_dims = sorted(df["homology_dimension"].unique().to_list())
+    # Create the base chart
+    base_chart = create_persistence_entropy_chart(df)
 
-    # Create the nested grid structure
-    outer_rows = []
-
-    for text_model in text_models:
-        outer_columns = []
-
-        for image_model in image_models:
-            # Filter data for this text_model/image_model combination
-            model_df = df.filter(
-                (pl.col("text_model") == text_model)
-                & (pl.col("image_model") == image_model)
-            )
-
-            if model_df.is_empty():
-                continue
-
-            # Create inner charts (one per homology dimension)
-            inner_charts = []
-
-            for dim in homology_dims:
-                dim_df = model_df.filter(pl.col("homology_dimension") == dim)
-
-                if dim_df.is_empty():
-                    continue
-
-                inner_chart = create_persistence_entropy_chart(dim_df)
-                inner_charts.append(inner_chart)
-
-            # Stack the homology dimension charts vertically
-            if inner_charts:
-                combined_inner = alt.vconcat(*inner_charts).properties(
-                    title=f"Text: {text_model}, Image: {image_model}"
-                )
-                outer_columns.append(combined_inner)
-
-        # Arrange the image_model charts horizontally
-        if outer_columns:
-            outer_row = alt.hconcat(*outer_columns)
-            outer_rows.append(outer_row)
-
-    # Arrange the text_model rows vertically
-    final_chart = alt.vconcat(*outer_rows)
+    # Add faceting for text_model (rows) and image_model (columns)
+    faceted_chart = base_chart.encode(
+        row=alt.Row("text_model:N").title("Text Model"),
+        column=alt.Column("image_model:N").title("Image Model"),
+    ).properties(title="Persistence Entropy Distribution")
 
     # Save the chart
-    saved_file = save(final_chart, output_file)
+    saved_file = save(faceted_chart, output_file)
     logging.info(f"Saved faceted persistence entropy plots to {saved_file}")
 
 
