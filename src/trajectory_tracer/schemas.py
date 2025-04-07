@@ -458,20 +458,22 @@ class Run(SQLModel, table=True):
 
     def missing_embeddings(self, model_name: str) -> List[Invocation]:
         """
-        Get all invocations that either don't have an embedding for a specific model
-        or have an embedding with a null vector.
+        Get all odd-numbered invocations that either don't have an embedding for a specific model
+        or have an embedding with a null vector. Only odd-numbered invocations should have embeddings.
 
         Args:
             model_name: Name of the embedding model to check
 
         Returns:
-            List of invocations missing valid embeddings for the specified model
+            List of odd-numbered invocations missing valid embeddings for the specified model
         """
         missing = []
         for invocation in self.invocations:
-            embedding = invocation.embedding(model_name)
-            if embedding is None or embedding.vector is None:
-                missing.append(invocation)
+            # Only check odd-numbered invocations since only they should have embeddings
+            if invocation.sequence_number % 2 == 1:  # Odd sequence numbers
+                embedding = invocation.embedding(model_name)
+                if embedding is None or embedding.vector is None:
+                    missing.append(invocation)
         return missing
 
     @property
