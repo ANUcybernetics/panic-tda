@@ -454,7 +454,7 @@ def get_output_type(model_name: str) -> InvocationType:
         "DummyI2T": InvocationType.TEXT,
         "DummyT2I": InvocationType.IMAGE,
         "DummyI2T2": InvocationType.TEXT,
-        "DummyT2I2": InvocationType.IMAGE
+        "DummyT2I2": InvocationType.IMAGE,
     }
 
     if model_name not in output_types:
@@ -535,3 +535,7 @@ def get_all_models_memory_usage(verbose=False):
             memory_usage[model_name] = -1  # No method available
 
     return memory_usage
+
+
+def estimated_time(model_name: str) -> float:
+    return 1.0
