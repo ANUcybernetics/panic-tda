@@ -1,27 +1,27 @@
 # TODO
 
-- nicer alignment of the prompts in the factored charts
+- finish off the PDs for the big 5000 run
 
-- delete that short test experiment
+- delete any duplicate embeddings
 
-- save charts to png as well
+- figure out what runs to do next
 
-- update existing experiment config embedding models
+- map the generators into the PD chart (and display the images)
 
-- figure out how to facet by embedding model as well
+- implement mixed effects modelling & statistical testing
 
-- build out mixed modelling testing
+- overplot the jittered points over the boxplots
 
-- maybe unplug the screen for weddle? probably not necessary (cybersonic, otoh)
+- update the "title card" mosaic image generation to create row/col title cards
+  (for both prompt and network)
+
+- add a "paper charts" CLI function
 
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
   invocations & embeddings)
 
 - run a script to find orphaned runs and invocations in the db (not attached to
   an experiment config)
-
-- statistical tests on PE across different networks, prompts, seeds, and
-  embedding models (look into contrast tests)
 
 - look into indexes for the db
 
