@@ -259,8 +259,24 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         PersistenceDiagram ID as string
     """
     with get_session_from_connection_string(db_str) as session:
-        # Create persistence diagram object with empty diagram data
+        # Check if a persistence diagram already exists for this run and embedding model
         run_uuid = UUID(run_id)
+        existing_pd = (
+            session.query(PersistenceDiagram)
+            .filter(
+                PersistenceDiagram.run_id == run_uuid,
+                PersistenceDiagram.embedding_model == embedding_model,
+            )
+            .first()
+        )
+
+        if existing_pd:
+            logger.debug(
+                f"Persistence diagram already exists for run {run_id} with model {embedding_model}"
+            )
+            return str(existing_pd.id)
+
+        # Create persistence diagram object with empty diagram data
         pd = PersistenceDiagram(
             run_id=run_uuid, embedding_model=embedding_model, diagram_data=None
         )
