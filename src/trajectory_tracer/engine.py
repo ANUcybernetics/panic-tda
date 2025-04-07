@@ -270,11 +270,18 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
             .first()
         )
 
-        if existing_pd:
+        if existing_pd and existing_pd.diagram_data is not None:
             logger.debug(
                 f"Persistence diagram already exists for run {run_id} with model {embedding_model}"
             )
             return str(existing_pd.id)
+        elif existing_pd:
+            # If diagram_data is None or invalid, delete the existing persistence diagram
+            logger.debug(
+                f"Found persistence diagram with invalid data for run {run_id}. Deleting and recreating."
+            )
+            session.delete(existing_pd)
+            session.commit()
 
         # Create persistence diagram object with empty diagram data
         pd = PersistenceDiagram(
