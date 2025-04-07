@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -13,13 +14,17 @@ from trajectory_tracer.db import (
     latest_experiment,
     list_experiments,
     list_runs,
+    print_experiment_info,
 )
 from trajectory_tracer.db import delete_experiment as db_delete_experiment
 from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.utils import export_run_mosaic, order_runs_for_mosaic
+from trajectory_tracer.utils import (
+    export_run_mosaic,
+    order_runs_for_mosaic,
+)
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -172,44 +177,39 @@ def list_experiments_command(
     Displays experiment IDs and basic information about each experiment.
     Use --verbose for more detailed output.
     """
-    try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
 
-        # List all experiments using the function from db module
-        with get_session_from_connection_string(db_str) as session:
-            experiments = list_experiments(session)
+    # List all experiments using the function from db module
+    with get_session_from_connection_string(db_str) as session:
+        experiments = list_experiments(session)
 
-            if not experiments:
-                typer.echo("No experiments found in the database.")
-                return
+        if not experiments:
+            typer.echo("No experiments found in the database.")
+            return
 
-            typer.echo(f"Found {len(experiments)} experiments:")
+        typer.echo(f"Found {len(experiments)} experiments:")
 
-            for experiment in experiments:
-                run_count = len(experiment.runs)
+        for experiment in experiments:
+            run_count = len(experiment.runs)
 
-                if verbose:
-                    # Detailed output
-                    # Print experiment status
-                    experiment.print_status()
-                    typer.echo("\n---\n")
-                else:
-                    # Simple output
-                    elapsed = (
-                        experiment.completed_at - experiment.started_at
-                    ).total_seconds()
-                    typer.echo(
-                        f"{experiment.id} - runs: {run_count}, "
-                        f"max_length: {experiment.max_length}, "
-                        f"started: {experiment.started_at.strftime('%Y-%m-%d %H:%M')}, "
-                        f"elapsed: {elapsed:.1f}s"
-                    )
-
-    except Exception as e:
-        logger.error(f"Error listing experiments: {e}")
-        raise typer.Exit(code=1)
+            if verbose:
+                # Detailed output
+                # Print experiment status
+                print_experiment_info(experiment, session)
+                typer.echo("\n---\n")
+            else:
+                # Simple output
+                elapsed = (
+                    (experiment.completed_at or datetime.now()) - experiment.started_at
+                ).total_seconds()
+                typer.echo(
+                    f"{experiment.id} - runs: {run_count}, "
+                    f"max_length: {experiment.max_length}, "
+                    f"started: {experiment.started_at.strftime('%Y-%m-%d %H:%M')}, "
+                    f"elapsed: {elapsed:.1f}s"
+                )
 
 
 @app.command("experiment-status")
@@ -251,7 +251,7 @@ def experiment_status(
                 logger.error(f"Experiment with ID {experiment_id} not found")
                 raise typer.Exit(code=1)
 
-        experiment.print_status()
+        print_experiment_info(experiment, session)
 
 
 @app.command("delete-experiment")
