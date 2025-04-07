@@ -22,6 +22,7 @@ from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_
 from trajectory_tracer.engine import (
     compute_embeddings,
     compute_persistence_diagram,
+    experiment_doctor,
     get_output_hash,
     init_runs,
     perform_embeddings_stage,
@@ -1071,3 +1072,114 @@ def test_model_combination(t2i_model, i2t_model, db_session: Session):
     assert run is not None
     assert len(run.invocations) > 0
     assert len(run.persistence_diagrams) > 0
+
+
+def test_experiment_doctor_with_fix(db_session: Session):
+    """Test that experiment_doctor correctly identifies and fixes issues with an experiment."""
+
+    # Create a test experiment config
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt for doctor"],
+        embedding_models=["Dummy", "Dummy2"],  # Using two embedding models
+        max_length=4,  # Increased to 4 to ensure at least 2 text invocations for PD
+    )
+
+    # Save to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    experiment_id = str(config.id)
+
+    # Create a run with missing invocations (will be detected as an issue)
+    run = Run(
+        network=["DummyT2I", "DummyI2T"],
+        initial_prompt="Test prompt for doctor",
+        seed=42,
+        max_length=4,  # Increased to 4 to ensure at least 2 text invocations for PD
+        experiment_id=config.id,
+    )
+    db_session.add(run)
+    db_session.commit()
+    db_session.refresh(run)
+    run_id = run.id
+
+    # Create incomplete invocations with issues
+    # We need at least 2 text invocations for persistence diagrams to work
+    for i in range(4):  # Create all 4 invocations to avoid run regeneration
+        # Alternate between image and text
+        inv_type = InvocationType.IMAGE if i % 2 == 0 else InvocationType.TEXT
+        model = "DummyT2I" if i % 2 == 0 else "DummyI2T"
+
+        invocation = Invocation(
+            model=model,
+            type=inv_type,
+            run_id=run_id,
+            sequence_number=i,
+            seed=42,
+        )
+        db_session.add(invocation)
+        db_session.commit()
+        db_session.refresh(invocation)
+
+        # Set output based on type
+        if inv_type == InvocationType.IMAGE:
+            image = Image.new("RGB", (50, 50), color="blue")
+            invocation.output = image
+        else:
+            invocation.output = f"Text output {i}"
+
+            # 2. For text invocation, create one embedding with null vector
+            # and completely missing the other embedding model
+            embedding = Embedding(
+                invocation_id=invocation.id,
+                embedding_model="Dummy",
+                vector=None,  # Null vector - will be detected as an issue
+                started_at=datetime.now(),
+                completed_at=datetime.now(),
+            )
+            db_session.add(embedding)
+            # We don't create an embedding for "Dummy2" at all - will be detected as missing
+
+        db_session.add(invocation)
+        db_session.commit()
+
+    # Get the SQLite connection string from the session
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Call experiment_doctor with fix=True
+    experiment_doctor(experiment_id, db_url, fix=True)
+
+    # Refresh the session to see changes
+    db_session.expire_all()
+
+    # Verify issues were fixed
+
+    # 1. Check invocations - should now have 4 invocations (already created all of them)
+    run = db_session.get(Run, run_id)
+    assert len(run.invocations) == 4
+    assert set(inv.sequence_number for inv in run.invocations) == {0, 1, 2, 3}
+
+    # 2. Check embeddings - all text invocations should have valid embeddings for both models
+    text_invocations = [
+        inv for inv in run.invocations if inv.type == InvocationType.TEXT
+    ]
+    assert len(text_invocations) > 0  # Make sure we have at least one text invocation
+
+    for inv in text_invocations:
+        for model in config.embedding_models:
+            embedding = inv.embedding(model)
+            assert embedding is not None
+            assert embedding.vector is not None
+
+    # 3. Check persistence diagrams - should have one for each embedding model
+    # Now that we have 2 text invocations with proper embeddings, this should work
+    assert len(run.persistence_diagrams) == len(config.embedding_models)
+    embedding_models_with_diagrams = {
+        pd.embedding_model for pd in run.persistence_diagrams
+    }
+    assert embedding_models_with_diagrams == set(config.embedding_models)
+
+    for pd in run.persistence_diagrams:
+        assert pd.diagram_data is not None

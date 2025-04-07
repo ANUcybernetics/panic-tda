@@ -10,6 +10,7 @@ import ray
 import torch
 from PIL import Image
 from ray.util import ActorPool
+from sqlmodel import func, select
 
 from trajectory_tracer.db import get_session_from_connection_string
 from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
@@ -665,3 +666,338 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
     except Exception as e:
         logger.error(f"Error performing experiment: {e}")
         raise
+
+
+def check_run_invocations(experiment, session):
+    """Check that all runs have the expected invocations."""
+    issues = []
+
+    # Get all runs for this experiment
+    runs = session.exec(select(Run).where(Run.experiment_id == experiment.id)).all()
+
+    for run in runs:
+        # Check invocation count
+        invocation_count = session.exec(
+            select(func.count())
+            .select_from(Invocation)
+            .where(Invocation.run_id == run.id)
+        ).one()
+
+        # Check for sequence_number 0
+        has_first = (
+            session.exec(
+                select(Invocation).where(
+                    Invocation.run_id == run.id, Invocation.sequence_number == 0
+                )
+            ).first()
+            is not None
+        )
+
+        # Check for sequence_number (max_length - 1)
+        has_last = (
+            session.exec(
+                select(Invocation).where(
+                    Invocation.run_id == run.id,
+                    Invocation.sequence_number == run.max_length - 1,
+                )
+            ).first()
+            is not None
+        )
+
+        if not has_first or not has_last or invocation_count != run.max_length:
+            issues.append({
+                "run_id": run.id,
+                "missing_first": not has_first,
+                "missing_last": not has_last,
+                "expected_count": run.max_length,
+                "actual_count": invocation_count,
+            })
+
+    if issues:
+        logger.info(f"Found {len(issues)} runs with invocation issues")
+        for issue in issues:
+            logger.info(
+                f"Run {issue['run_id']}: first={not issue['missing_first']}, "
+                f"last={not issue['missing_last']}, "
+                f"count={issue['actual_count']}/{issue['expected_count']}"
+            )
+    else:
+        logger.info("All runs have correct invocation sequences")
+
+    return issues
+
+
+def check_embeddings(experiment, session):
+    """Check that all invocations have proper embeddings."""
+    issues = []
+
+    # Get all text invocations for all runs in this experiment
+    invocations = session.exec(
+        select(Invocation)
+        .join(Run, Invocation.run_id == Run.id)
+        .where(
+            Run.experiment_id == experiment.id, Invocation.type == InvocationType.TEXT
+        )
+    ).all()
+
+    for invocation in invocations:
+        for embedding_model in experiment.embedding_models:
+            # Count embeddings for this invocation and model
+            embedding_count = session.exec(
+                select(func.count())
+                .select_from(Embedding)
+                .where(
+                    Embedding.invocation_id == invocation.id,
+                    Embedding.embedding_model == embedding_model,
+                )
+            ).one()
+
+            # Check for null vectors
+            null_vectors = session.exec(
+                select(func.count())
+                .select_from(Embedding)
+                .where(
+                    Embedding.invocation_id == invocation.id,
+                    Embedding.embedding_model == embedding_model,
+                    Embedding.vector.is_(None),
+                )
+            ).one()
+
+            if embedding_count != 1 or null_vectors > 0:
+                issues.append({
+                    "invocation_id": invocation.id,
+                    "embedding_model": embedding_model,
+                    "embedding_count": embedding_count,
+                    "has_null_vector": null_vectors > 0,
+                })
+
+    if issues:
+        logger.info(f"Found {len(issues)} invocations with embedding issues")
+        for issue in issues:
+            logger.info(
+                f"Invocation {issue['invocation_id']}: "
+                f"model={issue['embedding_model']}, "
+                f"count={issue['embedding_count']}, "
+                f"null_vector={issue['has_null_vector']}"
+            )
+    else:
+        logger.info("All invocations have correct embeddings")
+
+    return issues
+
+
+def check_persistence_diagrams(experiment, session):
+    """Check that all runs have proper persistence diagrams."""
+    issues = []
+
+    # Get all runs for this experiment
+    runs = session.exec(select(Run).where(Run.experiment_id == experiment.id)).all()
+
+    for run in runs:
+        for embedding_model in experiment.embedding_models:
+            # Count persistence diagrams for this run and model
+            pd_count = session.exec(
+                select(func.count())
+                .select_from(PersistenceDiagram)
+                .where(
+                    PersistenceDiagram.run_id == run.id,
+                    PersistenceDiagram.embedding_model == embedding_model,
+                )
+            ).one()
+
+            # Check for null diagram data
+            null_data = session.exec(
+                select(func.count())
+                .select_from(PersistenceDiagram)
+                .where(
+                    PersistenceDiagram.run_id == run.id,
+                    PersistenceDiagram.embedding_model == embedding_model,
+                    PersistenceDiagram.diagram_data.is_(None),
+                )
+            ).one()
+
+            if pd_count != 1 or null_data > 0:
+                issues.append({
+                    "run_id": run.id,
+                    "embedding_model": embedding_model,
+                    "pd_count": pd_count,
+                    "has_null_data": null_data > 0,
+                })
+
+    if issues:
+        logger.info(f"Found {len(issues)} runs with persistence diagram issues")
+        for issue in issues:
+            logger.info(
+                f"Run {issue['run_id']}: "
+                f"model={issue['embedding_model']}, "
+                f"count={issue['pd_count']}, "
+                f"null_data={issue['has_null_data']}"
+            )
+    else:
+        logger.info("All runs have correct persistence diagrams")
+
+    return issues
+
+
+def fix_run_invocations(issues, experiment, db_str):
+    """Fix missing or extra invocations in runs."""
+    logger.info("Fixing run invocation issues...")
+
+    # Group issues by network to use perform_runs_stage efficiently
+    network_to_runs = {}
+
+    with get_session_from_connection_string(db_str) as session:
+        for issue in issues:
+            run = session.get(Run, issue["run_id"])
+            if run:
+                network_key = tuple(run.network)
+                if network_key not in network_to_runs:
+                    network_to_runs[network_key] = []
+                network_to_runs[network_key].append(str(run.id))
+
+                # Delete existing invocations for this run
+                invocations = session.exec(
+                    select(Invocation).where(Invocation.run_id == run.id)
+                ).all()
+                for invocation in invocations:
+                    session.delete(invocation)
+
+        session.commit()
+
+    # For each network, regenerate invocations using perform_runs_stage
+    for network, run_ids in network_to_runs.items():
+        logger.info(
+            f"Regenerating invocations for {len(run_ids)} runs with network {list(network)}"
+        )
+        perform_runs_stage(run_ids, db_str)
+
+    logger.info("Fixed run invocation issues")
+
+
+def fix_embeddings(issues, experiment, db_str):
+    """Fix missing or invalid embeddings."""
+    logger.info("Fixing embedding issues...")
+
+    # Group by embedding model to process efficiently
+    model_to_invocations = {}
+
+    # Remove existing bad embeddings
+    with get_session_from_connection_string(db_str) as session:
+        for issue in issues:
+            if issue["embedding_model"] not in model_to_invocations:
+                model_to_invocations[issue["embedding_model"]] = []
+
+            # Only add each invocation once per model
+            invocation_id = str(issue["invocation_id"])
+            if invocation_id not in model_to_invocations[issue["embedding_model"]]:
+                model_to_invocations[issue["embedding_model"]].append(invocation_id)
+
+            # Delete existing embeddings for this invocation and model
+            embeddings = session.exec(
+                select(Embedding).where(
+                    Embedding.invocation_id == issue["invocation_id"],
+                    Embedding.embedding_model == issue["embedding_model"],
+                )
+            ).all()
+            for embedding in embeddings:
+                session.delete(embedding)
+
+        session.commit()
+
+    # Process each model's invocations
+    for model, invocation_ids in model_to_invocations.items():
+        logger.info(
+            f"Generating embeddings for {len(invocation_ids)} invocations with model {model}"
+        )
+        perform_embeddings_stage(invocation_ids, [model], db_str)
+
+    logger.info("Fixed embedding issues")
+
+
+def fix_persistence_diagrams(issues, experiment, db_str):
+    """Fix missing or invalid persistence diagrams."""
+    logger.info("Fixing persistence diagram issues...")
+
+    # Group by embedding model to process efficiently
+    model_to_runs = {}
+
+    # Remove existing bad persistence diagrams
+    with get_session_from_connection_string(db_str) as session:
+        for issue in issues:
+            if issue["embedding_model"] not in model_to_runs:
+                model_to_runs[issue["embedding_model"]] = []
+
+            # Only add each run once per model
+            run_id = str(issue["run_id"])
+            if run_id not in model_to_runs[issue["embedding_model"]]:
+                model_to_runs[issue["embedding_model"]].append(run_id)
+
+            # Delete existing persistence diagrams for this run and model
+            diagrams = session.exec(
+                select(PersistenceDiagram).where(
+                    PersistenceDiagram.run_id == issue["run_id"],
+                    PersistenceDiagram.embedding_model == issue["embedding_model"],
+                )
+            ).all()
+            for diagram in diagrams:
+                session.delete(diagram)
+
+        session.commit()
+
+    # Process each model's runs
+    for model, run_ids in model_to_runs.items():
+        logger.info(
+            f"Generating persistence diagrams for {len(run_ids)} runs with model {model}"
+        )
+        perform_pd_stage(run_ids, [model], db_str)
+
+    logger.info("Fixed persistence diagram issues")
+
+
+def experiment_doctor(experiment_id: str, db_str: str, fix: bool):
+    """
+    Diagnose and fix issues with an experiment's data.
+
+    Performs several checks:
+    1. Ensures all runs have the correct invocation sequence
+    2. Ensures all invocations have proper embeddings
+    3. Ensures all runs have proper persistence diagrams
+
+    Args:
+        experiment_id: UUID string of the experiment to check
+        db_str: Database connection string
+        fix: If True, automatically fix any issues found; if False, only report issues
+    """
+    with get_session_from_connection_string(db_str) as session:
+        # Load the experiment
+        experiment_uuid = UUID(experiment_id)
+        experiment = session.get(ExperimentConfig, experiment_uuid)
+        if not experiment:
+            logger.error(f"Experiment {experiment_id} not found")
+            return
+
+        logger.info(f"Checking experiment {experiment_id}")
+
+        # Check runs and invocations
+        run_issues = check_run_invocations(experiment, session)
+        if run_issues:
+            if fix:
+                fix_run_invocations(run_issues, experiment, db_str)
+            else:
+                logger.info("Use --fix flag to repair missing or extra invocations")
+
+        # Check embeddings
+        embedding_issues = check_embeddings(experiment, session)
+        if embedding_issues:
+            if fix:
+                fix_embeddings(embedding_issues, experiment, db_str)
+            else:
+                logger.info("Use --fix flag to repair missing embeddings")
+
+        # Check persistence diagrams
+        pd_issues = check_persistence_diagrams(experiment, session)
+        if pd_issues:
+            if fix:
+                fix_persistence_diagrams(pd_issues, experiment, db_str)
+            else:
+                logger.info("Use --fix flag to repair missing persistence diagrams")
