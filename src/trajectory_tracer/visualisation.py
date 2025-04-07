@@ -129,8 +129,8 @@ def plot_persistence_diagram_faceted(
     """
     # Create the base chart then facet by run_id
     chart = create_persistence_diagram_chart(df).encode(
-        alt.Row("text_model:N").title("image->text model").header(labelAngle=0),
-        alt.Column("image_model:N").title("text->image model"),
+        alt.Row("text_model:N").title("text model").header(labelAngle=0),
+        alt.Column("image_model:N").title("image model"),
     )
 
     # Save chart with high resolution
@@ -258,8 +258,8 @@ def plot_persistence_entropy_faceted(
         return
 
     chart = create_persistence_entropy_chart(df).encode(
-        alt.Row("text_model:N").title("image->text model").header(labelAngle=0),
-        alt.Column("image_model:N").title("text->image model"),
+        alt.Row("text_model:N").title("text model").header(labelAngle=0),
+        alt.Column("image_model:N").title("image model"),
     )
 
     saved_file = save(chart, output_file)
