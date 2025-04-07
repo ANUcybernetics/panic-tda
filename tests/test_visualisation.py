@@ -215,10 +215,11 @@ def test_plot_semantic_drift(db_session):
 def test_plot_persistence_entropy_faceted(db_session):
     # Create a simple test configuration with persistence diagrams
     config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"],
+                  ["DummyT2I", "DummyI2T2"], ["DummyT2I2", "DummyI2T"]],
         seeds=[-1, -1],  # Use two seeds to get multiple runs
         prompts=["black fish", "green fish"],
-        embedding_models=["Dummy"],
+        embedding_models=["Dummy", "Dummy2"],
         max_length=100,  # Longer run to get more features in persistence diagram
     )
 
@@ -233,6 +234,13 @@ def test_plot_persistence_entropy_faceted(db_session):
 
     # Load the actual runs data with persistence diagram information
     df = load_runs_df(db_session)
+
+    # Print unique combinations of image_model and text_model
+    print("\nUnique combinations of image_model x text_model:")
+    unique_models = df.select(["image_model", "text_model"]).unique()
+    print(f"Found {unique_models.height} unique combinations:")
+    for row in unique_models.iter_rows(named=True):
+        print(f"  - {row['image_model']} x {row['text_model']}")
 
     # Verify we have persistence diagram data with entropy values
     assert df.height > 0
