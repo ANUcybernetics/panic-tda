@@ -472,7 +472,7 @@ def print_experiment_info(
         # Get the actual count from query results (or 0 if not found)
         actual_for_model = model_count_dict.get(model, 0)
         # Expected embeddings for this model (each text invocation needs an embedding)
-        expected_for_model = (
+        expected_for_model = int(
             total_actual_invocations / 2
         )  # Only text invocations get embedded
         percent_for_model = (
