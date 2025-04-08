@@ -352,16 +352,20 @@ def test_run_missing_embeddings(db_session):
         # Test missing_embeddings for "Dummy2" model
         missing_dummy2 = run.missing_embeddings("Dummy2")
 
-        # Should return only invocation2 (the method only checks odd-numbered invocations)
-        assert len(missing_dummy2) == 1
-        assert missing_dummy2[0].id == invocation2.id
+        # Should return invocation2 and invocation3 (both missing "Dummy2" embeddings)
+        assert len(missing_dummy2) == 2
+        assert set(inv.id for inv in missing_dummy2) == {invocation2.id, invocation3.id}
 
         # Test missing_embeddings for a model that doesn't exist
         missing_nonexistent = run.missing_embeddings("NonexistentModel")
 
-        # Should return only invocation2 (the method only checks odd-numbered invocations)
-        assert len(missing_nonexistent) == 1
-        assert missing_nonexistent[0].id == invocation2.id
+        # Should return all three invocations (all missing this embedding)
+        assert len(missing_nonexistent) == 3
+        assert set(inv.id for inv in missing_nonexistent) == {
+            invocation1.id,
+            invocation2.id,
+            invocation3.id,
+        }
     finally:
         # Terminate the actors to clean up resources
         if "dummy_model" in locals():
