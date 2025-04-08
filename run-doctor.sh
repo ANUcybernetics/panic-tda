@@ -14,7 +14,7 @@ mkdir -p logs
 
 # Generate a timestamp for the log file
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-LOG_FILE="logs/script_${TIMESTAMP}.log"
+LOG_FILE="logs/doctor_${TIMESTAMP}.log"
 
 echo "Starting doctor --fix with UUID: $UUID"
 echo "Output will be logged to: $LOG_FILE"
