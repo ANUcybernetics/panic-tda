@@ -62,3 +62,68 @@
   property/method for Run. Or maybe just a cleanup function
 
 - create similarity matrices for runs
+
+## Int8 quantization for Flux.1-schnell
+
+```python
+class FluxSchnell(GenAIModel):
+    def __init__(self):
+        """Initialize the model and load to device with int8 weight-only quantization."""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+
+        # Define the int8 weight-only quantization configuration
+        # Using the AOBaseConfig approach (recommended for torchao >= 0.10.0)
+        quant_config = Int8WeightOnlyConfig()  # Default group_size optimizes for balance, good for VRAM
+        quantization_config = TorchAoConfig(quant_type=quant_config)
+
+        logger.info("Applying int8 weight-only quantization using torchao.")
+
+        # Initialize the model with quantization config
+        # Using device_map="auto" and torch_dtype="auto" as recommended with quantization
+        self._model = FluxPipeline.from_pretrained(
+            "black-forest-labs/FLUX.1-schnell",
+            use_fast=True,
+            device_map="balanced",  # Use device_map for better handling with quantization
+            quantization_config=quantization_config,
+        )
+
+        # Try to compile the UNet's forward method (torchao is compatible with torch.compile)
+        try:
+            if hasattr(self._model, "unet") and hasattr(self._model.unet, "forward"):
+                logger.info("Attempting to compile UNet forward method...")
+                original_forward = self._model.unet.forward
+                self._model.unet.forward = torch.compile(
+                    original_forward,
+                    mode="reduce-overhead",  # Good mode for inference speedup
+                    fullgraph=True,
+                    dynamic=False,
+                )
+                logger.info("Successfully compiled UNet forward method.")
+            else:
+                 logger.warning("Could not find UNet or its forward method for compilation.")
+
+        except Exception as e:
+            logger.warning(f"Could not compile FluxSchnell UNet forward method: {e}")
+
+        logger.info(f"Model {self.__class__.__name__} (int8 quantized) loaded successfully")
+
+    def invoke(self, prompt: str, seed: int) -> Image.Image:
+        """Generate an image from a text prompt using the quantized model"""
+        generator = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
+
+        # Inference parameters might need tuning after quantization, but start with original values
+        image = self._model(
+            prompt,
+            height=IMAGE_SIZE,
+            width=IMAGE_SIZE,
+            guidance_scale=3.5,
+            num_inference_steps=6, # Schnell uses fewer steps
+            generator=generator,
+        ).images[0]
+
+        return image
+```
+
+(on cybersonic, the test runs in ~220 sec, so pretty slow)
