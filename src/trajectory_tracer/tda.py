@@ -16,8 +16,9 @@ def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> List[np.ndarray]:
     Returns:
         Dictionary containing the persistence diagram
     """
+    # NOTE: if you update n_threads, make sure to update the ray.remote decorator in engine.py
     dgm = ripser_parallel(
-        point_cloud, maxdim=max_dim, return_generators=True, n_threads=-1
+        point_cloud, maxdim=max_dim, return_generators=True, n_threads=8
     )
     dgm["entropy"] = persistent_entropy(dgm["dgms"], normalize=False)
     return dgm
