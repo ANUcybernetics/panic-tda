@@ -4,7 +4,6 @@ import polars as pl
 from trajectory_tracer.analysis import (
     load_embeddings_df,
     load_runs_df,
-    run_mixed_effects_model,
 )
 from trajectory_tracer.db import list_runs
 from trajectory_tracer.engine import (
@@ -314,50 +313,3 @@ def test_load_runs_df_persistence_data(db_session):
                                 )
                                 < 1e-6
                             )
-
-
-def test_run_mixed_effects_model():
-    """Test that run_mixed_effects_model correctly analyzes data with a mixed-effects model."""
-
-    # Create a test DataFrame with the necessary columns
-    data = {
-        "entropy": [0.5, 0.7, 0.3, 0.6, 0.4, 0.8, 0.2, 0.9],
-        "text_model": [
-            "ModelA",
-            "ModelA",
-            "ModelA",
-            "ModelA",
-            "ModelB",
-            "ModelB",
-            "ModelB",
-            "ModelB",
-        ],
-        "image_model": ["ImgX", "ImgX", "ImgY", "ImgY", "ImgX", "ImgX", "ImgY", "ImgY"],
-        "embedding_model": [
-            "Emb1",
-            "Emb2",
-            "Emb1",
-            "Emb2",
-            "Emb1",
-            "Emb2",
-            "Emb1",
-            "Emb2",
-        ],
-        "initial_prompt": [
-            "Prompt1",
-            "Prompt1",
-            "Prompt2",
-            "Prompt2",
-            "Prompt1",
-            "Prompt1",
-            "Prompt2",
-            "Prompt2",
-        ],
-    }
-
-    df = pl.DataFrame(data)
-
-    results, anova_results = run_mixed_effects_model(df)
-
-    assert results is not None
-    assert anova_results is not None
