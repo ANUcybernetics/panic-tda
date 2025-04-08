@@ -319,7 +319,7 @@ def plot_semantic_drift(
 ) -> None:
     """
     Create a line plot showing semantic drift over sequence number,
-    faceted by run_id.
+    faceted by initial prompt and model.
 
     Args:
         df: DataFrame containing embedding data with semantic_drift and sequence_number
@@ -331,6 +331,7 @@ def plot_semantic_drift(
         "sequence_number",
         "run_id",
         "initial_prompt",
+        "embedding_model",  # Added for faceting
     }
     missing_columns = required_columns - set(df.columns)
     if missing_columns:
@@ -342,62 +343,26 @@ def plot_semantic_drift(
     # Filter to only include rows with drift measure
     df_filtered = df.filter(pl.col("semantic_drift").is_not_null())
 
-    # Get unique run IDs for faceting
-    run_ids = df_filtered["run_id"].unique().to_list()
-
-    # Create a separate chart for each run ID
-    charts = []
-
-    for run_id in run_ids:
-        # Filter data for this run
-        run_df = df_filtered.filter(pl.col("run_id") == run_id)
-
-        # Get the initial prompt for this run (should be the same for all rows with the same run_id)
-        initial_prompt = run_df["initial_prompt"].unique()[0]
-
-        # Create base chart
-        base = alt.Chart(run_df).encode(
-            x=alt.X("sequence_number:Q", title="Sequence Number")
+    # Create a single chart with faceting
+    chart = (
+        alt.Chart(df_filtered)
+        .mark_line(opacity=0.9)
+        .encode(
+            x=alt.X("sequence_number:Q", title="Sequence Number"),
+            y=alt.Y("semantic_drift:Q").title("Semantic Drift"),
+            color=alt.Color("run_id:N").title("Run ID"),
+            tooltip=["sequence_number", "semantic_drift", "embedding_model", "initial_prompt"],
+            row=alt.Row("initial_prompt:N").title("Prompt"),
+            column=alt.Column("embedding_model:N").title("Model"),
         )
-
-        # Create semantic drift line
-        drift_line = base.mark_line(color="#5276A7", opacity=0.7).encode(
-            alt.Y("semantic_drift:Q").axis(
-                title="Semantic Drift", titleColor="#5276A7"
-            ),
-            tooltip=["sequence_number", "semantic_drift", "embedding_model"],
+        .properties(
+            width=300,
+            height=200,
         )
-
-        # Add points to the line
-        drift_points = base.mark_point(color="#5276A7").encode(
-            alt.Y("semantic_drift:Q"),
-            tooltip=["sequence_number", "semantic_drift", "embedding_model"],
-        )
-
-        # Combine the line and points
-        combined = alt.layer(drift_line + drift_points).properties(
-            width=400, height=300, title=f"Prompt: {initial_prompt}"
-        )
-
-        charts.append(combined)
-
-    # Arrange charts in a grid
-    # Determine the number of columns (default to 2)
-    cols = 2
-    # Split the charts into rows with the specified number of columns
-    chart_rows = [charts[i : i + cols] for i in range(0, len(charts), cols)]
-
-    # Create a row of charts for each group
-    rows = []
-    for row_charts in chart_rows:
-        row = alt.hconcat(*row_charts)
-        rows.append(row)
-
-    # Combine all rows vertically
-    final_chart = alt.vconcat(*rows)
+    )
 
     # Save the chart
-    saved_file = save(final_chart, output_file)
+    saved_file = save(chart, output_file)
     logging.info(f"Saved semantic drift plot to {saved_file}")
 
 
