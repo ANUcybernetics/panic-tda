@@ -6,7 +6,7 @@ import altair as alt
 import polars as pl
 from sqlmodel import Session
 
-from trajectory_tracer.analysis import load_runs_df
+from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
 
 CHART_SCALE_FACTOR = 4.0
 
@@ -428,13 +428,18 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
 def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
-
-    Args:
-        session: SQLModel database session
     """
-    df = load_runs_df(session, use_cache=True)
-    plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
-    plot_persistence_diagram_by_run(
-        df, 16, "output/vis/persistence_diagram_by_run.html"
+    embeddings_df = load_embeddings_df(session, use_cache=True)
+    # Filter to only rows in specified experiments
+    embeddings_df = embeddings_df.filter(
+        (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
+        | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
     )
-    plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")
+    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.html")
+
+    # runs_df = load_runs_df(session, use_cache=True)
+    # plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
+    # plot_persistence_diagram_by_run(
+    #     df, 16, "output/vis/persistence_diagram_by_run.html"
+    # )
+    # plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")
