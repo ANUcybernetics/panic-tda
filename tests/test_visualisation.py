@@ -8,7 +8,6 @@ from trajectory_tracer.visualisation import (
     plot_persistence_diagram_by_run,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy,
-    plot_persistence_entropy_faceted,
     plot_semantic_drift,
 )
 
@@ -128,43 +127,6 @@ def test_plot_persistence_diagram_by_run(db_session):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_entropy(db_session):
-    # Create a simple test configuration with persistence diagrams
-    config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1],
-        prompts=["red fish", "blue fish"],
-        embedding_models=["Dummy"],
-        max_length=100,  # Longer run to get more features in persistence diagram
-    )
-
-    # Save config to database to get an ID
-    db_session.add(config)
-    db_session.commit()
-    db_session.refresh(config)
-
-    # Run the experiment to populate database with real data
-    db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(str(config.id), db_url)
-
-    # Load the actual runs data with persistence diagram information
-    df = load_runs_df(db_session)
-
-    # Verify we have persistence diagram data with entropy values
-    assert df.height > 0
-    assert "homology_dimension" in df.columns
-    assert "entropy" in df.columns
-
-    # Define output file
-    output_file = "output/vis/test/persistence_entropy.html"
-
-    # Generate the plot
-    plot_persistence_entropy(df, output_file)
-
-    # Verify file was created
-    assert os.path.exists(output_file), f"File was not created: {output_file}"
-
-
 def test_plot_semantic_drift(db_session):
     # Create a simple test configuration
     config = ExperimentConfig(
@@ -202,7 +164,7 @@ def test_plot_semantic_drift(db_session):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_entropy_faceted(db_session):
+def test_plot_persistence_entropy(db_session):
     # Create a simple test configuration with persistence diagrams
     config = ExperimentConfig(
         networks=[
@@ -243,10 +205,10 @@ def test_plot_persistence_entropy_faceted(db_session):
     assert "run_id" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_entropy_faceted.html"
+    output_file = "output/vis/test/persistence_entropy.html"
 
     # Generate the plot
-    plot_persistence_entropy_faceted(df, output_file)
+    plot_persistence_entropy(df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

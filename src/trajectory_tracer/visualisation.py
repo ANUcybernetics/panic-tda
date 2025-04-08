@@ -1,39 +1,31 @@
 import json
 import logging
-import os
 
-import altair as alt
+import holoviews as hv
+import hvplot.polars  # noqa: F401  # Register hvplot with polars DataFrames
 import polars as pl
+from holoviews import opts
 from sqlmodel import Session
 
 from trajectory_tracer.analysis import load_runs_df
 
-CHART_SCALE_FACTOR = 4.0
+# Set up HoloViews rendering options for high-quality output
+hv.extension("plotly")
+hv.output(size=200)
+
+# Default plot options
+PLOT_WIDTH = 600
+PLOT_HEIGHT = 400
+POINT_SIZE = 5
 
 ## visualisation
 
 
-def save(chart: alt.Chart, filename: str) -> str:
-    """
-    Save an Altair chart to both HTML and PNG formats with the given scale factor.
-
-    Args:
-        chart: Altair chart to save
-        filename: Path to save the chart
-
-    Returns:
-        Path to the saved HTML file
-    """
-    # Ensure output directory exists
-    output_dir = os.path.dirname(filename)
-    os.makedirs(output_dir, exist_ok=True)
-
-    chart.save(filename, scale_factor=CHART_SCALE_FACTOR)
-
-    return filename
+def save(chart, file):
+    raise
 
 
-def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
+def create_persistence_diagram_chart(df: pl.DataFrame) -> hv.Overlay:
     """
     Create a base persistence diagram chart for a single run.
 
@@ -41,7 +33,7 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
         df: DataFrame containing run data with persistence homology information
 
     Returns:
-        An Altair chart object for the persistence diagram
+        A HoloViews plot object for the persistence diagram
     """
     # Extract initial prompt, or indicate if there are multiple prompts
     unique_prompts = df["initial_prompt"].unique()
@@ -50,20 +42,7 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     else:
         _initial_prompt = unique_prompts[0]
 
-    # Create a scatterplot for the persistence diagram
-    points_chart = (
-        alt.Chart(df)
-        .mark_point(filled=True, opacity=0.1)
-        .encode(
-            x=alt.X("birth:Q").title("Feature Appearance").scale(domainMin=-0.1),
-            y=alt.Y("persistence:Q").title("Feature Persistence").scale(domainMin=-0.1),
-            color=alt.Color("homology_dimension:N").title("Dimension"),
-            tooltip=["homology_dimension:N", "birth:Q", "persistence:Q"],
-        )
-    )
-
     # Get entropy values per dimension if they exist
-    # Get unique homology dimensions and their entropy values
     dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(
         subset=["homology_dimension", "entropy"]
     )
@@ -76,14 +55,24 @@ def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
     # Join entropy values into subtitle
     _subtitle = "Entropy " + ", ".join(entropy_values)
 
-    # Set title/subtitle
-    combined_chart = points_chart.properties(
+    # Create scatter plot
+    scatter_plot = df.hvplot.scatter(
+        x="birth",
+        y="persistence",
+        by="homology_dimension",
+        color="homology_dimension",
+        alpha=0.1,
+        legend="top",
         width=300,
         height=300,
-        # title={"text": f"Prompt: {initial_prompt}", "subtitle": subtitle}
-    ).interactive()
+        xlim=(-0.1, None),
+        ylim=(-0.1, None),
+        xlabel="Feature Appearance",
+        ylabel="Feature Persistence",
+        hover_cols=["homology_dimension", "birth", "persistence"],
+    )
 
-    return combined_chart
+    return scatter_plot
 
 
 def plot_persistence_diagram(
@@ -99,7 +88,7 @@ def plot_persistence_diagram(
     # Create the chart
     chart = create_persistence_diagram_chart(df)
 
-    # Save chart with high resolution
+    # Save chart
     saved_file = save(chart, output_file)
 
     logging.info(f"Saved single persistence diagram to {saved_file}")
@@ -119,13 +108,27 @@ def plot_persistence_diagram_faceted(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Create the base chart then facet by run_id
-    chart = create_persistence_diagram_chart(df).encode(
-        alt.Row("text_model:N").title("text model").header(labelAngle=0),
-        alt.Column("image_model:N").title("image model"),
-    )
+    # Create faceted plot by text_model and image_model
+    chart = df.hvplot.scatter(
+        x="birth",
+        y="persistence",
+        by="homology_dimension",
+        color="homology_dimension",
+        alpha=0.1,
+        width=300,
+        height=300,
+        xlim=(-0.1, None),
+        ylim=(-0.1, None),
+        xlabel="Feature Appearance",
+        ylabel="Feature Persistence",
+        hover_cols=["homology_dimension", "birth", "persistence"],
+        groupby=["text_model", "image_model"],
+        row="text_model",
+        col="image_model",
+        subplots=True,
+    ).opts(opts.Scatter(width=300, height=300, show_grid=True))
 
-    # Save chart with high resolution
+    # Save chart
     saved_file = save(chart, output_file)
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
@@ -145,133 +148,60 @@ def plot_persistence_diagram_by_run(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Create the base chart then facet by run_id
-    chart = create_persistence_diagram_chart(df).encode(
-        alt.Facet("run_id:N", columns=cols, title="Run ID")
-    )
+    # Create faceted plot by run_id
+    chart = df.hvplot.scatter(
+        x="birth",
+        y="persistence",
+        by="homology_dimension",
+        color="homology_dimension",
+        alpha=0.1,
+        width=300,
+        height=300,
+        xlim=(-0.1, None),
+        ylim=(-0.1, None),
+        xlabel="Feature Appearance",
+        ylabel="Feature Persistence",
+        hover_cols=["homology_dimension", "birth", "persistence"],
+        groupby=["run_id"],
+        cols=cols,
+    ).opts(opts.Scatter(width=300, height=300, show_grid=True))
 
-    # Save chart with high resolution
+    # Save chart
     saved_file = save(chart, output_file)
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
-def create_persistence_entropy_chart(df: pl.DataFrame) -> alt.Chart:
-    """
-    Create a base boxplot showing the distribution of entropy values
-    with homology_dimension on the y-axis.
-
-    Args:
-        df: DataFrame containing runs data with homology_dimension and entropy
-
-    Returns:
-        An Altair chart object for the entropy distribution
-    """
-    # Create a boxplot chart
-    base_chart = (
-        alt.Chart(df)
-        .mark_boxplot(opacity=0.7)
-        .encode(
-            x=alt.X("entropy:Q").title("Persistence Entropy").scale(zero=False),
-            y=alt.Y("homology_dimension:N")
-            .title("Homology dimension")
-            .axis(
-                labelExpr="'h' + (datum.label == '0' ? '₀' : (datum.label == '1' ? '₁' : '₂'))"
-            ),
-            color=alt.Color("embedding_model:N").title("Embedding model"),
-            yOffset=alt.YOffset(
-                "embedding_model:N"
-            ),  # Offset boxplots by embedding model
-            tooltip=[
-                "homology_dimension:N",
-                "entropy:Q",
-                "initial_prompt:N",
-                "run_id:N",
-            ],
-        )
-        .properties(width=300, height=120)
-    )
-
-    return base_chart
-
-
 def plot_persistence_entropy(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.html"
-) -> None:
-    """
-    Create and save a visualization of entropy distribution across different homology dimensions.
-
-    Args:
-        df: DataFrame containing runs data with homology_dimension and entropy
-        output_file: Path to save the visualization
-    """
-    # Check if we have the required columns
-    required_columns = {"homology_dimension", "entropy"}
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(
-            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
-        )
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
-        return
-
-    # Create the chart
-    chart = create_persistence_entropy_chart(df)
-
-    # Save chart with high resolution
-    saved_file = save(chart, output_file)
-    logging.info(f"Saved persistence entropy plot to {saved_file}")
-
-
-def plot_persistence_entropy_faceted(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_faceted.html"
+    df: pl.DataFrame,
+    output_file: str = "output/vis/persistence_entropy.html",
 ) -> None:
     """
     Create and save a visualization of entropy distributions with:
     - entropy on x axis
     - homology_dimension on y axis
     - embedding_model as color
-    - faceted by text_model (rows) and image_model (columns)
 
     Args:
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
-    # Check if we have the required columns
-    required_columns = {
-        "homology_dimension",
-        "entropy",
-        "embedding_model",
-        "text_model",
-        "image_model",
-    }
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(
-            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
-        )
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
-        return
-
-    # Create the base chart
-    base_chart = create_persistence_entropy_chart(df)
-
-    # Add faceting for text_model (rows) and image_model (columns)
-    faceted_chart = base_chart.encode(
-        row=alt.Row("text_model:N").title("Text Model"),
-        column=alt.Column("image_model:N").title("Image Model"),
+    # Create boxplot chart with embedding_model as color
+    chart = df.hvplot.box(
+        y="entropy",  # The values to display in the boxes
+        by=["homology_dimension", "embedding_model"],  # Group by both dimensions
+        cmap="Category10",  # Use a categorical color palette instead of direct color mapping
+        width=600,
+        height=300,
+        legend="top",
+        xlabel="Homology Dimension / Model",
+        ylabel="Persistence Entropy",
+        alpha=0.7,
+        hover_cols=["homology_dimension", "entropy", "initial_prompt", "run_id"],
     )
 
-    # Save the chart
-    saved_file = save(faceted_chart, output_file)
-    logging.info(f"Saved faceted persistence entropy plots to {saved_file}")
+    # Save the chart using the save function
+    hvplot.save(chart, output_file)
+    logging.info(f"Saved persistence entropy plot to {output_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -285,20 +215,17 @@ def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
     # Filter to only include rows with loop_length
     df_filtered = df.filter(pl.col("loop_length").is_not_null())
 
-    # Create Altair faceted histogram chart
-    chart = (
-        alt.Chart(df_filtered)
-        .mark_bar()
-        .encode(
-            x=alt.X("loop_length:Q", title="Loop Length", axis=alt.Axis(tickMinStep=1)),
-            y=alt.Y("count()", title=None),
-            row=alt.Row("initial_prompt:N", title=None),
-        )
-        .properties(
-            width=500,
-            height=300,  # 3x as wide as tall
-        )
-    )
+    # Create faceted histogram
+    chart = df_filtered.hvplot.hist(
+        "loop_length",
+        by="initial_prompt",
+        width=500,
+        height=300,
+        subplots=True,
+        row="initial_prompt",
+        xlabel="Loop Length",
+        ylabel="Count",
+    ).opts(opts.Histogram(width=500, height=300))
 
     # Save the chart
     saved_file = save(chart, output_file)
@@ -334,28 +261,26 @@ def plot_semantic_drift(
     # Filter to only include rows with drift measure
     df_filtered = df.filter(pl.col("semantic_drift").is_not_null())
 
-    # Create a single chart with faceting
-    chart = (
-        alt.Chart(df_filtered)
-        .mark_line(opacity=0.9)
-        .encode(
-            x=alt.X("sequence_number:Q", title="Sequence Number"),
-            y=alt.Y("semantic_drift:Q").title("Semantic Drift"),
-            color=alt.Color("run_id:N").title("Run ID"),
-            tooltip=[
-                "sequence_number",
-                "semantic_drift",
-                "embedding_model",
-                "initial_prompt",
-            ],
-            row=alt.Row("initial_prompt:N").title("Prompt"),
-            column=alt.Column("embedding_model:N").title("Model"),
-        )
-        .properties(
-            width=300,
-            height=200,
-        )
-    )
+    # Create a faceted line plot
+    chart = df_filtered.hvplot.line(
+        x="sequence_number",
+        y="semantic_drift",
+        by="run_id",
+        groupby=["initial_prompt", "embedding_model"],
+        row="initial_prompt",
+        col="embedding_model",
+        width=300,
+        height=200,
+        xlabel="Sequence Number",
+        ylabel="Semantic Drift",
+        line_alpha=0.9,
+        hover_cols=[
+            "sequence_number",
+            "semantic_drift",
+            "embedding_model",
+            "initial_prompt",
+        ],
+    ).opts(opts.Curve(width=300, height=200, show_grid=True))
 
     # Save the chart
     saved_file = save(chart, output_file)
@@ -364,12 +289,11 @@ def plot_semantic_drift(
 
 def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
     """
-    Visualize PD (Giotto PH) benchmark data from a JSON file using Altair.
+    Visualize PD (Giotto PH) benchmark data from a JSON file using hvPlot.
 
     Args:
         benchmark_file: Path to the JSON benchmark file
     """
-
     # Load the benchmark data
     with open(benchmark_file, "r") as f:
         data = json.load(f)
@@ -388,33 +312,30 @@ def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
     # Convert to DataFrame
     df = pl.DataFrame(benchmark_data)
 
-    # Create Altair chart
-    chart = (
-        alt.Chart(df)
-        .mark_bar()
-        .encode(
-            x=alt.X("n_points:O", title="Number of Points"),
-            y=alt.Y("mean:Q", title="Time (seconds)"),
-            tooltip=["n_points", "mean", "min", "max", "stddev"],
-        )
-        .properties(title="Giotto PH wall-clock time", width=600, height=400)
+    # Create bar chart with error bars
+    base_chart = df.hvplot.bar(
+        x="n_points",
+        y="mean",
+        width=600,
+        height=400,
+        title="Giotto PH wall-clock time",
+        xlabel="Number of Points",
+        ylabel="Time (seconds)",
+        hover_cols=["n_points", "mean", "min", "max", "stddev"],
     )
 
-    # Add error bars
-    error_bars = (
-        alt.Chart(df)
-        .mark_errorbar()
-        .encode(
-            x=alt.X("n_points:O"),
-            y=alt.Y("min:Q", title="Time (seconds)"),
-            y2=alt.Y2("max:Q"),
-        )
+    # Add error bars using HoloViews errorbars
+    error_bars = hv.ErrorBars(
+        [
+            (row["n_points"], row["mean"], row["min"], row["max"])
+            for row in df.iter_rows(named=True)
+        ],
+        kdims=["n_points"],
+        vdims=["mean", "min", "max"],
     )
 
-    # Combine the bar chart and error bars
-    combined_chart = (chart + error_bars).configure_axis(
-        labelFontSize=12, titleFontSize=14
-    )
+    # Combine charts
+    combined_chart = base_chart * error_bars
 
     # Save the chart to a file
     saved_file = save(combined_chart, "output/vis/giotto_benchmark.html")
@@ -441,6 +362,6 @@ def paper_charts(session: Session) -> None:
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.html"
     # )
-    plot_persistence_entropy_faceted(
-        runs_df, "output/vis/persistence_entropy_faceted.png"
+    plot_persistence_entropy(
+        runs_df, "output/vis/persistence_entropy_faceted.json"
     )
