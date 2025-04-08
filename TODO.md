@@ -2,26 +2,18 @@
 
 - finish off the PDs for the big 5000 run
 
-- delete any duplicate embeddings
-
-- figure out what runs to do next
-
-- map the generators into the PD chart (and display the images)
-
 - implement mixed effects modelling & statistical testing
 
-- overplot the jittered points over the boxplots
+- map the generators into the PD chart (and display the images)
 
 - update the "title card" mosaic image generation to create row/col title cards
   (for both prompt and network)
 
-- add a "paper charts" CLI function
-
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
   invocations & embeddings)
 
-- run a script to find orphaned runs and invocations in the db (not attached to
-  an experiment config)
+- update doctor to find orphaned runs and invocations in the db (although be
+  careful of breaking tests)
 
 - look into indexes for the db
 
@@ -57,9 +49,6 @@
 - visualise the time taken for the various different invocations
 
 - run the tests in GitHub actions
-
-- write an orphans (or some other validation that the run is all there)
-  property/method for Run. Or maybe just a cleanup function
 
 - create similarity matrices for runs
 
