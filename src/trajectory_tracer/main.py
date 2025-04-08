@@ -25,6 +25,7 @@ from trajectory_tracer.utils import (
     export_run_mosaic,
     order_runs_for_mosaic,
 )
+from trajectory_tracer.visualisation import paper_charts
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -585,25 +586,37 @@ def doctor_command(
         raise typer.Exit(code=1)
 
 
+@app.command("paper-charts")
+def paper_charts_command(
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+):
+    """
+    Generate charts for publication using data from specific experiments.
+    """
+
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    # Call the paper_charts function with a database session
+    with get_session_from_connection_string(db_str) as session:
+        paper_charts(session)
+        logger.info("Paper charts generation completed successfully.")
+
+
 @app.command("script")
 def script():
-    """
-    Execute a Python script in the context of the application.
-
-    This provides access to the application's database and other utilities,
-    allowing for quick development and testing of scripts without needing to set up
-    the environment manually.
-    """
     # Create database connection
     db_str = "sqlite:///db/trajectory_data.sqlite"
-    logger.info("Connecting to database...")
+    logger.info("Connecting to database to process all experiments...")
 
     with get_session_from_connection_string(db_str) as session:
-        from trajectory_tracer.visualisation import paper_charts
-
-        paper_charts(session)
-
-    logger.info("Script execution completed")
+        session
 
 
 if __name__ == "__main__":
