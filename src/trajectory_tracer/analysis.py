@@ -94,21 +94,18 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                 row = {
                     "id": str(embedding.id),
                     "invocation_id": str(invocation.id),
+                    "embedding_model": embedding_model,
                     "embedding_started_at": embedding.started_at,
                     "embedding_completed_at": embedding.completed_at,
                     "invocation_started_at": invocation.started_at,
                     "invocation_completed_at": invocation.completed_at,
-                    "duration": embedding.duration,
                     "run_id": run_id,
-                    "experiment_id": str(run.experiment_id)
-                    if run.experiment_id
-                    else None,
+                    "experiment_id": str(run.experiment_id) if run.experiment_id else None,
                     "type": invocation.type,
                     "initial_prompt": run.initial_prompt,
                     "seed": run.seed,
                     "model": invocation.model,
                     "sequence_number": invocation.sequence_number,
-                    "embedding_model": embedding_model,
                     "semantic_drift": drift_cosine,
                 }
                 data.append(row)
