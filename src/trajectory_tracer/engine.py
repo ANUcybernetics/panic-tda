@@ -246,7 +246,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         return all_embedding_ids
 
 
-@ray.remote(num_cpus=8)
+# @ray.remote(num_cpus=8)
 def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store persistence diagram for a run.
@@ -260,16 +260,17 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         PersistenceDiagram ID as string
     """
     with get_session_from_connection_string(db_str) as session:
-        # Check if a persistence diagram already exists for this run and embedding model
         run_uuid = UUID(run_id)
-        existing_pd = (
-            session.query(PersistenceDiagram)
-            .filter(
-                PersistenceDiagram.run_id == run_uuid,
-                PersistenceDiagram.embedding_model == embedding_model,
-            )
-            .first()
-        )
+        run = session.get(Run, run_uuid)
+        if not run:
+            raise ValueError(f"Run {run_id} not found")
+
+        # Check if a persistence diagram already exists for this run and embedding model
+        existing_pd = None
+        for pd in run.persistence_diagrams:
+            if pd.embedding_model == embedding_model:
+                existing_pd = pd
+                break
 
         if existing_pd and existing_pd.diagram_data is not None:
             logger.debug(
@@ -297,10 +298,6 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         pd_id = str(pd.id)
         logger.debug(f"Created empty persistence diagram {pd_id} for run {run_id}")
 
-        # Load the run and its embeddings
-        run = session.get(Run, run_uuid)
-        if not run:
-            raise ValueError(f"Run {run_id} not found")
 
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings[embedding_model]
@@ -574,15 +571,12 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     Returns:
         List of persistence diagram IDs
     """
-    pd_tasks = []
+    pd_ids = []
     for run_id in run_ids:
         for embedding_model in embedding_models:
-            pd_tasks.append(
-                compute_persistence_diagram.remote(run_id, embedding_model, db_str)
-            )
+            pd_id = compute_persistence_diagram(run_id, embedding_model, db_str)
+            pd_ids.append(pd_id)
 
-    # Wait for all persistence diagram computations to complete
-    pd_ids = ray.get(pd_tasks)
     logger.info(f"Computed {len(pd_ids)} persistence diagrams")
 
     return pd_ids
