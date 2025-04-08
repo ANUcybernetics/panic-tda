@@ -43,14 +43,12 @@ def test_plot_persistence_diagram(db_session):
 
     # Define output file
     output_file = "output/vis/test/persistence_diagram.html"
-    output_png = "output/vis/test/persistence_diagram.png"
 
     # Generate the plot
     plot_persistence_diagram(df, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
 def test_plot_persistence_diagram_faceted(db_session):
@@ -83,14 +81,12 @@ def test_plot_persistence_diagram_faceted(db_session):
 
     # Define output file
     output_file = "output/vis/test/persistence_diagram_faceted.html"
-    output_png = "output/vis/test/persistence_diagram_faceted.png"
 
     # Generate the plot
     plot_persistence_diagram_faceted(df, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
 def test_plot_persistence_diagram_by_run(db_session):
@@ -124,14 +120,12 @@ def test_plot_persistence_diagram_by_run(db_session):
 
     # Define output file
     output_file = "output/vis/test/persistence_diagram_by_run.html"
-    output_png = "output/vis/test/persistence_diagram_by_run.png"
 
     # Generate the plot
     plot_persistence_diagram_by_run(df, 4, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
 def test_plot_persistence_entropy(db_session):
@@ -163,14 +157,12 @@ def test_plot_persistence_entropy(db_session):
 
     # Define output file
     output_file = "output/vis/test/persistence_entropy.html"
-    output_png = "output/vis/test/persistence_entropy.png"
 
     # Generate the plot
     plot_persistence_entropy(df, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
 def test_plot_semantic_drift(db_session):
@@ -202,21 +194,23 @@ def test_plot_semantic_drift(db_session):
 
     # Define output file
     output_file = "output/vis/test/semantic_drift.html"
-    output_png = "output/vis/test/semantic_drift.png"
 
     # Generate the plot
     plot_semantic_drift(df, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
 def test_plot_persistence_entropy_faceted(db_session):
     # Create a simple test configuration with persistence diagrams
     config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"],
-                  ["DummyT2I", "DummyI2T2"], ["DummyT2I2", "DummyI2T"]],
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyT2I2", "DummyI2T2"],
+            ["DummyT2I", "DummyI2T2"],
+            ["DummyT2I2", "DummyI2T"],
+        ],
         seeds=[-1, -1],  # Use two seeds to get multiple runs
         prompts=["black fish", "green fish"],
         embedding_models=["Dummy", "Dummy2"],
@@ -250,11 +244,9 @@ def test_plot_persistence_entropy_faceted(db_session):
 
     # Define output file
     output_file = "output/vis/test/persistence_entropy_faceted.html"
-    output_png = "output/vis/test/persistence_entropy_faceted.png"
 
     # Generate the plot
     plot_persistence_entropy_faceted(df, output_file)
 
-    # Verify both HTML and PNG files were created
-    assert os.path.exists(output_file), f"HTML file was not created: {output_file}"
-    assert os.path.exists(output_png), f"PNG file was not created: {output_png}"
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"

@@ -6,7 +6,7 @@ import altair as alt
 import polars as pl
 from sqlmodel import Session
 
-from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
+from trajectory_tracer.analysis import load_runs_df
 
 CHART_SCALE_FACTOR = 4.0
 
@@ -28,18 +28,9 @@ def save(chart: alt.Chart, filename: str) -> str:
     output_dir = os.path.dirname(filename)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Get file base and extension
-    base, ext = os.path.splitext(filename)
+    chart.save(filename, scale_factor=CHART_SCALE_FACTOR)
 
-    # Save as HTML
-    html_filename = f"{base}.html"
-    chart.save(html_filename, scale_factor=CHART_SCALE_FACTOR)
-
-    # Save as PNG
-    png_filename = f"{base}.png"
-    chart.save(png_filename, scale_factor=CHART_SCALE_FACTOR)
-
-    return html_filename
+    return filename
 
 
 def create_persistence_diagram_chart(df: pl.DataFrame) -> alt.Chart:
@@ -351,7 +342,12 @@ def plot_semantic_drift(
             x=alt.X("sequence_number:Q", title="Sequence Number"),
             y=alt.Y("semantic_drift:Q").title("Semantic Drift"),
             color=alt.Color("run_id:N").title("Run ID"),
-            tooltip=["sequence_number", "semantic_drift", "embedding_model", "initial_prompt"],
+            tooltip=[
+                "sequence_number",
+                "semantic_drift",
+                "embedding_model",
+                "initial_prompt",
+            ],
             row=alt.Row("initial_prompt:N").title("Prompt"),
             column=alt.Column("embedding_model:N").title("Model"),
         )
@@ -429,17 +425,22 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    embeddings_df = load_embeddings_df(session, use_cache=True)
-    # Filter to only rows in specified experiments
-    embeddings_df = embeddings_df.filter(
+    # embeddings_df = load_embeddings_df(session, use_cache=True)
+    # embeddings_df = embeddings_df.filter(
+    #     (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
+    #     | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
+    # )
+    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.html")
+
+    runs_df = load_runs_df(session, use_cache=True)
+    runs_df = runs_df.filter(
         (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
         | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
     )
-    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.html")
-
-    # runs_df = load_runs_df(session, use_cache=True)
-    # plot_persistence_diagram_faceted(df, "output/vis/persistence_diagram_faceted.html")
+    # plot_persistence_diagram_faceted(runs_df, "output/vis/persistence_diagram_faceted.html")
     # plot_persistence_diagram_by_run(
-    #     df, 16, "output/vis/persistence_diagram_by_run.html"
+    #     runs_df, 16, "output/vis/persistence_diagram_by_run.html"
     # )
-    # plot_persistence_entropy_faceted(df, "output/vis/persistence_entropy_faceted.html")
+    plot_persistence_entropy_faceted(
+        runs_df, "output/vis/persistence_entropy_faceted.png"
+    )
