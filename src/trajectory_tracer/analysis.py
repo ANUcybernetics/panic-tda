@@ -100,8 +100,9 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                     "invocation_started_at": invocation.started_at,
                     "invocation_completed_at": invocation.completed_at,
                     "run_id": run_id,
-                    "experiment_id": str(run.experiment_id) if run.experiment_id else None,
-                    "type": invocation.type,
+                    "experiment_id": str(run.experiment_id)
+                    if run.experiment_id
+                    else None,
                     "initial_prompt": run.initial_prompt,
                     "seed": run.seed,
                     "model": invocation.model,
