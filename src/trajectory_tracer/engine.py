@@ -298,7 +298,6 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         pd_id = str(pd.id)
         logger.debug(f"Created empty persistence diagram {pd_id} for run {run_id}")
 
-
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings[embedding_model]
 
@@ -992,8 +991,10 @@ def fix_persistence_diagrams(issues, experiment, db_str):
     logger.info("Fixing persistence diagram issues...")
 
     # Group by embedding model to process efficiently
-    model_to_runs = {}
+    model_to_missing_runs = {}  # For runs with no PDs (count == 0)
+    model_to_null_runs = {}  # For runs with PDs but null data
     missing_count = 0
+    null_data_count = 0
     duplicate_count = 0
     invalid_model_count = 0
 
@@ -1022,21 +1023,30 @@ def fix_persistence_diagrams(issues, experiment, db_str):
             if issue["embedding_model"] not in experiment.embedding_models:
                 continue
 
-            if issue["embedding_model"] not in model_to_runs:
-                model_to_runs[issue["embedding_model"]] = []
+            # Initialize dictionaries for this model if needed
+            embedding_model = issue["embedding_model"]
+            if embedding_model not in model_to_missing_runs:
+                model_to_missing_runs[embedding_model] = []
+            if embedding_model not in model_to_null_runs:
+                model_to_null_runs[embedding_model] = []
 
             # Only add each run once per model
             run_id = str(issue["run_id"])
             run_uuid = issue["run_id"]
-            embedding_model = issue["embedding_model"]
 
-            if run_id not in model_to_runs[embedding_model]:
-                # Track issue type for logging
-                if issue["pd_count"] == 0 or (
-                    issue["has_null_data"] and issue["pd_count"] == 1
-                ):
+            # Separate completely missing PDs from PDs with null data
+            if (
+                run_id not in model_to_missing_runs[embedding_model]
+                and run_id not in model_to_null_runs[embedding_model]
+            ):
+                if issue["pd_count"] == 0:
+                    # Completely missing PD
                     missing_count += 1
-                    model_to_runs[embedding_model].append(run_id)
+                    model_to_missing_runs[embedding_model].append(run_id)
+                elif issue["has_null_data"] and issue["pd_count"] == 1:
+                    # Has PD but with null data
+                    null_data_count += 1
+                    model_to_null_runs[embedding_model].append(run_id)
                 elif issue["pd_count"] > 1:
                     duplicate_count += 1
 
@@ -1062,20 +1072,30 @@ def fix_persistence_diagrams(issues, experiment, db_str):
 
                     # Only regenerate if we didn't find a valid diagram
                     if valid_diagram is None:
-                        model_to_runs[embedding_model].append(run_id)
+                        model_to_null_runs[embedding_model].append(run_id)
+                        null_data_count += 1
 
         session.commit()
 
-    # Process each model's runs that need regeneration
-    for model, run_ids in model_to_runs.items():
+    # First process each model's runs that are completely missing PDs
+    for model, run_ids in model_to_missing_runs.items():
         if run_ids:
             logger.info(
-                f"Generating persistence diagrams for {len(run_ids)} runs with model {model}"
+                f"Generating completely missing persistence diagrams for {len(run_ids)} runs with model {model}"
+            )
+            perform_pd_stage(run_ids, [model], db_str)
+
+    # Then process each model's runs that have PDs with null data
+    for model, run_ids in model_to_null_runs.items():
+        if run_ids:
+            logger.info(
+                f"Regenerating persistence diagrams with null data for {len(run_ids)} runs with model {model}"
             )
             perform_pd_stage(run_ids, [model], db_str)
 
     logger.info(
-        f"Fixed persistence diagram issues ({missing_count} missing, {duplicate_count} duplicate, {invalid_model_count} invalid model)"
+        f"Fixed persistence diagram issues ({missing_count} missing, {null_data_count} null data, "
+        f"{duplicate_count} duplicate, {invalid_model_count} invalid model)"
     )
 
 
