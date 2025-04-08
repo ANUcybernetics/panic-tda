@@ -790,9 +790,40 @@ def check_persistence_diagrams(experiment, session):
     """Check that all runs have proper persistence diagrams."""
     issues = []
 
+    # Tracking dictionaries for different types of issues by embedding model
+    missing_by_model = {}
+    duplicate_by_model = {}
+    invalid_models = set()  # Track models that aren't in experiment.embedding_models
+
+    # Initialize counters for each embedding model
+    for model in experiment.embedding_models:
+        missing_by_model[model] = 0
+        duplicate_by_model[model] = 0
+
     # Get all runs for this experiment
     runs = session.exec(select(Run).where(Run.experiment_id == experiment.id)).all()
+    run_ids = [run.id for run in runs]
 
+    # First check for PDs with invalid embedding models
+    if run_ids:
+        # Get all PDs for this experiment's runs
+        all_pds = session.exec(
+            select(PersistenceDiagram).where(PersistenceDiagram.run_id.in_(run_ids))
+        ).all()
+
+        # Check for invalid embedding models
+        for pd in all_pds:
+            if pd.embedding_model not in experiment.embedding_models:
+                invalid_models.add(pd.embedding_model)
+                issues.append({
+                    "run_id": pd.run_id,
+                    "embedding_model": pd.embedding_model,
+                    "issue_type": "invalid_model",
+                    "pd_count": 1,
+                    "has_null_data": pd.diagram_data is None,
+                })
+
+    # Now check for missing or duplicate PDs for valid models
     for run in runs:
         for embedding_model in experiment.embedding_models:
             # Count persistence diagrams for this run and model
@@ -816,20 +847,68 @@ def check_persistence_diagrams(experiment, session):
                 )
             ).one()
 
-            if pd_count != 1 or null_data > 0:
+            # Track issues by type
+            if pd_count == 0 or null_data == pd_count:
+                missing_by_model[embedding_model] += 1
                 issues.append({
                     "run_id": run.id,
                     "embedding_model": embedding_model,
+                    "issue_type": "missing",
+                    "pd_count": pd_count,
+                    "has_null_data": null_data > 0,
+                })
+            elif pd_count > 1:
+                duplicate_by_model[embedding_model] += 1
+                issues.append({
+                    "run_id": run.id,
+                    "embedding_model": embedding_model,
+                    "issue_type": "duplicate",
                     "pd_count": pd_count,
                     "has_null_data": null_data > 0,
                 })
 
     if issues:
         logger.info(f"Found {len(issues)} runs with persistence diagram issues")
+
+        # Print summary of missing PDs by model
+        missing_models = [
+            model for model, count in missing_by_model.items() if count > 0
+        ]
+        if missing_models:
+            logger.info("Missing persistence diagrams by embedding model:")
+            for model in missing_models:
+                logger.info(f"  - {model}: {missing_by_model[model]} missing PDs")
+
+        # Print summary of duplicate PDs by model
+        duplicate_models = [
+            model for model, count in duplicate_by_model.items() if count > 0
+        ]
+        if duplicate_models:
+            logger.info("Duplicate persistence diagrams by embedding model:")
+            for model in duplicate_models:
+                logger.info(
+                    f"  - {model}: {duplicate_by_model[model]} runs with duplicate PDs"
+                )
+
+        # Print summary of invalid models
+        if invalid_models:
+            logger.info("Invalid embedding models (not in experiment configuration):")
+            for model in invalid_models:
+                count = sum(
+                    1
+                    for issue in issues
+                    if issue.get("issue_type") == "invalid_model"
+                    and issue["embedding_model"] == model
+                )
+                logger.info(f"  - {model}: {count} diagrams to be removed")
+
+        # Print details for each issue
         for issue in issues:
+            issue_type = issue.get("issue_type", "unknown")
             logger.info(
                 f"Run {issue['run_id']}: "
                 f"model={issue['embedding_model']}, "
+                f"type={issue_type}, "
                 f"count={issue['pd_count']}, "
                 f"null_data={issue['has_null_data']}"
             )
@@ -920,38 +999,90 @@ def fix_persistence_diagrams(issues, experiment, db_str):
 
     # Group by embedding model to process efficiently
     model_to_runs = {}
+    missing_count = 0
+    duplicate_count = 0
+    invalid_model_count = 0
 
-    # Remove existing bad persistence diagrams
+    # Process persistence diagrams, keeping one valid diagram per run/model pair
     with get_session_from_connection_string(db_str) as session:
         for issue in issues:
+            # Handle invalid embedding models (not in experiment configuration)
+            if issue.get("issue_type") == "invalid_model":
+                invalid_model_count += 1
+                run_uuid = issue["run_id"]
+                embedding_model = issue["embedding_model"]
+
+                # Delete all persistence diagrams for this run/invalid model combination
+                diagrams = session.exec(
+                    select(PersistenceDiagram).where(
+                        PersistenceDiagram.run_id == run_uuid,
+                        PersistenceDiagram.embedding_model == embedding_model,
+                    )
+                ).all()
+
+                for diagram in diagrams:
+                    session.delete(diagram)
+                continue
+
+            # Skip models not in experiment configuration
+            if issue["embedding_model"] not in experiment.embedding_models:
+                continue
+
             if issue["embedding_model"] not in model_to_runs:
                 model_to_runs[issue["embedding_model"]] = []
 
             # Only add each run once per model
             run_id = str(issue["run_id"])
-            if run_id not in model_to_runs[issue["embedding_model"]]:
-                model_to_runs[issue["embedding_model"]].append(run_id)
+            run_uuid = issue["run_id"]
+            embedding_model = issue["embedding_model"]
 
-            # Delete existing persistence diagrams for this run and model
-            diagrams = session.exec(
-                select(PersistenceDiagram).where(
-                    PersistenceDiagram.run_id == issue["run_id"],
-                    PersistenceDiagram.embedding_model == issue["embedding_model"],
-                )
-            ).all()
-            for diagram in diagrams:
-                session.delete(diagram)
+            if run_id not in model_to_runs[embedding_model]:
+                # Track issue type for logging
+                if issue["pd_count"] == 0 or (
+                    issue["has_null_data"] and issue["pd_count"] == 1
+                ):
+                    missing_count += 1
+                    model_to_runs[embedding_model].append(run_id)
+                elif issue["pd_count"] > 1:
+                    duplicate_count += 1
+
+                    # Find all persistence diagrams for this run/model
+                    diagrams = session.exec(
+                        select(PersistenceDiagram).where(
+                            PersistenceDiagram.run_id == run_uuid,
+                            PersistenceDiagram.embedding_model == embedding_model,
+                        )
+                    ).all()
+
+                    # Keep the first valid diagram (with non-null data)
+                    valid_diagram = None
+                    for diagram in diagrams:
+                        if diagram.diagram_data is not None:
+                            valid_diagram = diagram
+                            break
+
+                    # Delete all diagrams except the valid one
+                    for diagram in diagrams:
+                        if valid_diagram is None or diagram.id != valid_diagram.id:
+                            session.delete(diagram)
+
+                    # Only regenerate if we didn't find a valid diagram
+                    if valid_diagram is None:
+                        model_to_runs[embedding_model].append(run_id)
 
         session.commit()
 
-    # Process each model's runs
+    # Process each model's runs that need regeneration
     for model, run_ids in model_to_runs.items():
-        logger.info(
-            f"Generating persistence diagrams for {len(run_ids)} runs with model {model}"
-        )
-        perform_pd_stage(run_ids, [model], db_str)
+        if run_ids:
+            logger.info(
+                f"Generating persistence diagrams for {len(run_ids)} runs with model {model}"
+            )
+            perform_pd_stage(run_ids, [model], db_str)
 
-    logger.info("Fixed persistence diagram issues")
+    logger.info(
+        f"Fixed persistence diagram issues ({missing_count} missing, {duplicate_count} duplicate, {invalid_model_count} invalid model)"
+    )
 
 
 def experiment_doctor(experiment_id: str, db_str: str, fix: bool):

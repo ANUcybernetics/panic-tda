@@ -1145,6 +1145,20 @@ def test_experiment_doctor_with_fix(db_session: Session):
         db_session.add(invocation)
         db_session.commit()
 
+    # Create a persistence diagram for an embedding model not in the experiment config
+    # This should be detected and removed during the doctor run
+    invalid_pd = PersistenceDiagram(
+        run_id=run_id,
+        embedding_model="InvalidModel",  # Not in config.embedding_models
+        diagram_data={"dgms": [np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)]},
+        started_at=datetime.now(),
+        completed_at=datetime.now(),
+    )
+    db_session.add(invalid_pd)
+    db_session.commit()
+    db_session.refresh(invalid_pd)
+    invalid_pd_id = invalid_pd.id
+
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
 
@@ -1183,3 +1197,9 @@ def test_experiment_doctor_with_fix(db_session: Session):
 
     for pd in run.persistence_diagrams:
         assert pd.diagram_data is not None
+
+    # 4. Verify that persistence diagrams from invalid embedding models were deleted
+    invalid_pd = db_session.get(PersistenceDiagram, invalid_pd_id)
+    assert invalid_pd is None, (
+        "Persistence diagram with invalid embedding model should be deleted"
+    )
