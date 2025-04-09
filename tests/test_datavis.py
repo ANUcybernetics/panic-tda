@@ -117,7 +117,7 @@ def test_plot_persistence_diagram(mock_runs_df):
     assert "death" in mock_runs_df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram.png"
+    output_file = "output/test/persistence_diagram.png"
 
     # Ensure directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -137,7 +137,7 @@ def test_plot_persistence_diagram_faceted(mock_runs_df):
     assert "death" in mock_runs_df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram_faceted.png"
+    output_file = "output/test/persistence_diagram_faceted.png"
 
     # Ensure directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -158,7 +158,7 @@ def test_plot_persistence_diagram_by_run(mock_runs_df):
     assert "run_id" in mock_runs_df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram_by_run.png"
+    output_file = "output/test/persistence_diagram_by_run.png"
 
     # Ensure directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -180,7 +180,7 @@ def test_plot_semantic_drift(mock_embeddings_df):
     assert "sequence_number" in mock_embeddings_df.columns
 
     # Define output file
-    output_file = "output/vis/test/semantic_drift.png"
+    output_file = "output/test/semantic_drift.png"
 
     # Ensure directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -200,7 +200,7 @@ def test_plot_persistence_entropy(mock_runs_df):
     assert "run_id" in mock_runs_df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_entropy.png"
+    output_file = "output/test/persistence_entropy.png"
 
     # Ensure directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
