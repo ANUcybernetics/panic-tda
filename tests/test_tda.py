@@ -10,7 +10,7 @@ from trajectory_tracer.tda import giotto_phd
 def test_giotto_phd():
     """Test the giotto_phd function for computing persistent homology diagrams."""
     # Ensure output directory exists
-    os.makedirs("output/vis", exist_ok=True)
+    os.makedirs("output/test", exist_ok=True)
 
     # Create a simple point cloud (a circle-like shape)
     n_points = 100
@@ -21,7 +21,7 @@ def test_giotto_phd():
     result = giotto_phd(point_cloud, max_dim=2)
 
     # Print each key and full values from the result to a file
-    with open("output/vis/persistence_diagram_keys.txt", "w") as f:
+    with open("output/test/persistence_diagram_keys.txt", "w") as f:
         for key, value in result.items():
             f.write(f"Key: {key}\n")
             f.write(f"Type: {type(value)}\n")
@@ -78,7 +78,7 @@ def test_giotto_phd():
 def test_plot_diagram():
     """Test plotting a persistence diagram."""
     # Ensure output directory exists
-    os.makedirs("output/vis", exist_ok=True)
+    os.makedirs("output/test", exist_ok=True)
 
     # Create a simple point cloud (a circle-like shape)
     n_points = 1000
@@ -107,7 +107,7 @@ def test_plot_diagram():
     fig.update_layout(title="Persistence Diagram for a Circle")
 
     # Save the figure as HTML and/or image file
-    fig.write_html("output/vis/giotto-pd.html")
+    fig.write_html("output/test/giotto-pd.html")
     # fig.write_image("circle_persistence_diagram.png")
 
 

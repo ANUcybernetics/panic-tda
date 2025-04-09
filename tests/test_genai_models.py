@@ -508,7 +508,7 @@ def test_fluxschnell_inference_steps_grid():
         grid_image.paste(img, (step_idx * IMAGE_SIZE, prompt_idx * IMAGE_SIZE))
 
     # Save the grid image
-    output_file = "output/vis/fluxschnell_inference_steps_grid.png"
+    output_file = "output/test/fluxschnell_inference_steps_grid.png"
     grid_image.save(output_file)
     print(f"Saved grid image to {output_file}")
 
@@ -589,7 +589,7 @@ def test_sdxlturbo_inference_steps_grid():
         grid_image.paste(img, (step_idx * IMAGE_SIZE, prompt_idx * IMAGE_SIZE))
 
     # Save the grid image
-    output_file = "output/vis/sdxlturbo_inference_steps_grid.png"
+    output_file = "output/test/sdxlturbo_inference_steps_grid.png"
     grid_image.save(output_file)
     print(f"Saved grid image to {output_file}")
 
