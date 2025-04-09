@@ -149,7 +149,7 @@ def plot_persistence_diagram_by_run(
         + scale_x_continuous(name="Feature Appearance", limits=[-0.1, None])
         + scale_y_continuous(name="Feature Persistence", limits=[-0.1, None])
         + labs(color="Dimension")
-        + facet_wrap("~ run_id", ncol=cols, labeller="label_both")
+        + facet_wrap("~ run_id", ncol=cols)
         + theme(figure_size=(16, 10), strip_text=element_text(size=8))
     )
 
