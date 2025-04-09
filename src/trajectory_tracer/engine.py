@@ -670,7 +670,9 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             experiment.completed_at = datetime.now()
             session.add(experiment)
             session.commit()
+            session.refresh(experiment)
             logger.info(f"Experiment {experiment_id} marked as completed")
+            return experiment
 
     except Exception as e:
         logger.error(f"Error performing experiment: {e}")
