@@ -1,39 +1,14 @@
 # TODO
 
-- finish off the PDs for the big 5000 run
-
-- delete the distilroberta embeddings & PDs
+- find the before & after text & images for the "transition points"
 
 - update the "title card" mosaic image generation to create row/col title cards
   (for both prompt and network)
 
-- check that ExperimentConfig deletion cascades to all runs (and therefore all
-  invocations & embeddings)
-
-- update doctor to find orphaned runs and invocations in the db (although be
-  careful of breaking tests)
-
-- look into indexes for the db
-
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
 
-- chart ideas:
-
-  - [this one](https://altair-viz.github.io/gallery/select_detail.html) with PE
-    on left, and PD on the right
-  - add [strips](https://altair-viz.github.io/gallery/dot_dash_plot.html) to the
-    new PD plots
-  - maybe use a
-    [minimap](https://altair-viz.github.io/gallery/scatter_with_minimap.html)
-  - [wrapped facets](https://altair-viz.github.io/gallery/us_population_over_time_facet.html)
-  - plot the
-    [images in a tooltip](https://altair-viz.github.io/case_studies/numpy-tooltip-images.html)
-
 - add florence2 or blip3 or some other (more modern) captioning model
-
-- [try this approach](https://gist.github.com/sayakpaul/e1f28e86d0756d587c0b898c73822c47)
-  to getting flux running on cybersonic, or perhaps onnx
 
 - experiment with actor pools for the run stage (because e.g. SDXLTurbo can
   certainly fit a few copies at once)
@@ -47,7 +22,27 @@
 
 - create similarity matrices for runs
 
+- check that ExperimentConfig deletion cascades to all runs (and therefore all
+  invocations & embeddings)
+
+- DB indexes
+
+- chart ideas:
+
+  - [this one](https://altair-viz.github.io/gallery/select_detail.html) with PE
+    on left, and PD on the right
+  - add [strips](https://altair-viz.github.io/gallery/dot_dash_plot.html) to the
+    new PD plots
+  - maybe use a
+    [minimap](https://altair-viz.github.io/gallery/scatter_with_minimap.html)
+  - [wrapped facets](https://altair-viz.github.io/gallery/us_population_over_time_facet.html)
+  - plot the
+    [images in a tooltip](https://altair-viz.github.io/case_studies/numpy-tooltip-images.html)
+
 ## Int8 quantization for Flux.1-schnell
+
+- [try this approach](https://gist.github.com/sayakpaul/e1f28e86d0756d587c0b898c73822c47)
+  to getting flux running on cybersonic, or perhaps onnx
 
 ```python
 class FluxSchnell(GenAIModel):
