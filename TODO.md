@@ -2,10 +2,12 @@
 
 - finish off the PDs for the big 5000 run
 
-- map the generators into the PD chart (and display the images)
+- delete the distilroberta embeddings & PDs
 
 - update the "title card" mosaic image generation to create row/col title cards
   (for both prompt and network)
+
+- rename utils module to video
 
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
   invocations & embeddings)
@@ -17,9 +19,6 @@
 
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
-
-- ensure persistence diagrams and mosaic videos use the same layout algo (for
-  ease of comparison between the two)
 
 - chart ideas:
 
