@@ -277,7 +277,7 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     return df
 
 
-def warm_caches(session: Session) -> None:
+def warm_caches(session: Session, runs: bool = True, embeddings: bool = True) -> None:
     """
     Preload and cache both runs and embeddings dataframes.
 
@@ -287,10 +287,12 @@ def warm_caches(session: Session) -> None:
     Returns:
         None
     """
-    print("Warming cache for runs dataframe...")
-    load_runs_df(session, use_cache=False)
+    if runs:
+        print("Warming cache for runs dataframe...")
+        load_runs_df(session, use_cache=False)
 
-    print("Warming cache for embeddings dataframe...")
-    load_embeddings_df(session, use_cache=False)
+    if embeddings:
+        print("Warming cache for embeddings dataframe...")
+        load_embeddings_df(session, use_cache=False)
 
     print("Cache warming complete.")
