@@ -121,7 +121,7 @@ def test_export_run_images(db_session: Session, tmp_path):
         )  # Image invocations come from DummyT2I in this test
 
 
-def test_export_run_mosaic(db_session: Session, tmp_path):
+def test_export_video(db_session: Session, tmp_path):
     """Test that export_video correctly creates a mosaic grid from multiple runs."""
 
     # Define output file
@@ -133,10 +133,10 @@ def test_export_run_mosaic(db_session: Session, tmp_path):
     # Create a test configuration with dummy models
     experiment = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
-        seeds=[-1, -1],
-        prompts=["Test prompt A", "Test prompt B"],
+        seeds=[-1] * 4,
+        prompts=["north", "south", "east", "west"],
         embedding_models=["Dummy"],
-        max_length=6,  # Short sequences for testing
+        max_length=10,  # Short sequences for testing
     )
 
     # Save experiment to database to get an ID

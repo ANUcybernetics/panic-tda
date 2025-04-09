@@ -167,21 +167,7 @@ def create_prompt_title_card(
     draw = ImageDraw.Draw(img)
 
     title_font_size = max(12, int(base_font_size * 0.8))
-    try:
-        font = ImageFont.truetype(font_path, title_font_size)
-    except IOError:
-        logger.warning(f"Font not found at {font_path}. Using default PIL font.")
-        try:
-            font = ImageFont.load_default(size=title_font_size)
-        except Exception:
-            logger.error("Could not load any default font.")
-            # Draw simple error text on the blank image
-            try:  # Use a known basic font if possible
-                error_font = ImageFont.load_default()
-                draw.text((10, 10), "FONT ERR", font=error_font, fill="red")
-            except Exception:
-                pass  # If even default fails, return blank
-            return img
+    font = ImageFont.truetype(font_path, title_font_size)
 
     # Calculate max width allowing for padding
     padding = size * 0.1
@@ -295,16 +281,6 @@ def export_video(
     # Set up font for border text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     base_font_size = int(IMAGE_SIZE * 0.08)
-
-    try:
-        font = ImageFont.truetype(font_path, base_font_size)
-    except IOError:
-        logger.warning(f"Font not found at {font_path}. Using default PIL font.")
-        try:
-            font = ImageFont.load_default(size=base_font_size)
-        except Exception:
-            logger.error("Could not load any default font.")
-            font = None
 
     # Draw the border tiles with prompt and network information
     draw = ImageDraw.Draw(base_canvas)
