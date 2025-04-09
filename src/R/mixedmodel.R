@@ -1,3 +1,6 @@
+# run this file with `Rscript src/R/mixedmodel.R` from the top-level of the project
+# results will be printed to stdout
+
 library(arrow)
 library(lme4)
 library(lmerTest)  # For p-values in mixed models
