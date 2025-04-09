@@ -583,10 +583,9 @@ def test_compute_persistence_diagram(db_session: Session):
 
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
-
     # Call the compute_persistence_diagram function
-    pd_id = compute_persistence_diagram(str(run.id), "Dummy", db_url)
-
+    pd_id_ref = compute_persistence_diagram.remote(str(run.id), "Dummy", db_url)
+    pd_id = ray.get(pd_id_ref)
     # Convert string UUID to UUID object
     pd_uuid = UUID(pd_id)
 
