@@ -20,11 +20,14 @@ from plotnine import (
     scale_y_continuous,
     theme,
 )
+from plotnine.options import set_option
 from sqlmodel import Session
 
 from trajectory_tracer.analysis import load_embeddings_df
 
 ## visualisation
+
+set_option("limitsize", False)
 
 
 def save(plot, filename: str) -> str:
@@ -243,14 +246,14 @@ def plot_semantic_drift(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="sequence_number", y="semantic_drift", color="run_id"),
+            aes(x="sequence_number", y="semantic_drift", group="run_id"),
         )
-        + geom_line(alpha=0.9)
-        + labs(x="sequence number", y="semantic drift", color="embedding model")
+        + geom_line(alpha=0.8)
+        + labs(x="sequence number", y="semantic drift")
         + facet_grid("initial_prompt ~ embedding_model")
         + theme(
-            figure_size=(10, 25),
-            strip_text=element_text(size=4),
+            figure_size=(30, 80),
+            strip_text=element_text(size=10),
             legend_position="none",
         )
     )
