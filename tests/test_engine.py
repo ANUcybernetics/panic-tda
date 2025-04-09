@@ -917,9 +917,9 @@ def test_perform_experiment_with_real_models_3(db_session: Session):
     # Verify the run is linked to the experiment
     assert runs[0].experiment_id == UUID(experiment_id)
 
-    # For -1 seed run with max_length 2, we should have exactly 2 invocations
+    # For -1 seed run with max_length 4, we should have exactly 2 invocations
     invocations = list_invocations(db_session)
-    assert len(invocations) == 2
+    assert len(invocations) == 4
 
     # Only TEXT invocations (Moondream) have embeddings (half of all invocations)
     embeddings = list_embeddings(db_session)
