@@ -55,7 +55,8 @@ def test_load_embeddings_df(db_session):
         "model",
         "sequence_number",
         "embedding_model",
-        "semantic_drift",
+        "semantic_drift_overall",
+        "semantic_drift_instantaneous",
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns

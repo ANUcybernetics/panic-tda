@@ -63,17 +63,21 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                 first_embeddings[key] = first_text_embedding
 
             # Process all text embeddings for this model
-            for embedding in text_embeddings:
+            for i, embedding in enumerate(text_embeddings):
                 invocation = embedding.invocation
 
                 # Calculate semantic drift (distance from first embedding)
-                drift_cosine = None
+                semantic_drift_overall = None
+                semantic_drift_instantaneous = (
+                    None  # New variable for embedding-to-embedding drift
+                )
                 key = (run_id, embedding_model)
                 first_embedding = first_embeddings.get(key)
+                current_vector = np.array(embedding.vector)
 
+                # Calculate drift from first embedding (origin)
                 if first_embedding:
                     first_vector = np.array(first_embedding.vector)
-                    current_vector = np.array(embedding.vector)
 
                     # Calculate cosine similarity properly, handling non-normalized vectors
                     norm_first = norm(first_vector)
@@ -84,10 +88,31 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                         cosine_similarity = np.dot(first_vector, current_vector) / (
                             norm_first * norm_current
                         )
-                        drift_cosine = float(1.0 - cosine_similarity)
+                        semantic_drift_overall = float(1.0 - cosine_similarity)
                     else:
-                        drift_cosine = (
+                        semantic_drift_overall = (
                             0.0 if np.array_equal(first_vector, current_vector) else 1.0
+                        )
+
+                # Calculate drift from previous embedding
+                if i > 0 and text_embeddings[i - 1]:
+                    prev_vector = np.array(text_embeddings[i - 1].vector)
+
+                    # Calculate cosine similarity properly, handling non-normalized vectors
+                    norm_prev = norm(prev_vector)
+                    norm_current = norm(current_vector)
+
+                    # Avoid division by zero
+                    if norm_prev > 0 and norm_current > 0:
+                        sequential_cosine_similarity = np.dot(
+                            prev_vector, current_vector
+                        ) / (norm_prev * norm_current)
+                        semantic_drift_instantaneous = float(
+                            1.0 - sequential_cosine_similarity
+                        )
+                    else:
+                        semantic_drift_instantaneous = (
+                            0.0 if np.array_equal(prev_vector, current_vector) else 1.0
                         )
 
                 row = {
@@ -106,7 +131,8 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                     "seed": run.seed,
                     "model": invocation.model,
                     "sequence_number": invocation.sequence_number,
-                    "semantic_drift": drift_cosine,
+                    "semantic_drift_overall": semantic_drift_overall,
+                    "semantic_drift_instantaneous": semantic_drift_instantaneous,  # Add the new drift metric
                 }
                 data.append(row)
 
