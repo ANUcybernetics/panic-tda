@@ -17,4 +17,3 @@ db/
 mise.local.toml
 
 .benchmarks/
-test.sqlite

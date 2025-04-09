@@ -233,7 +233,7 @@ def test_embedding(db_session: Session):
 
 def test_engine_initialization():
     """Test the engine initialization with connection pooling."""
-    connection_string = "sqlite:///test.sqlite"
+    connection_string = "sqlite:///output/test/test.sqlite"
     engine = get_engine_from_connection_string(connection_string)
     assert engine is not None
     assert str(engine.url) == connection_string
