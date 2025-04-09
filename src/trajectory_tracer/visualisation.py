@@ -11,10 +11,10 @@ from plotnine import (
     geom_bar,
     geom_boxplot,
     geom_errorbar,
-    geom_line,
     geom_point,
     ggplot,
     labs,
+    scale_color_manual,
     scale_x_continuous,
     scale_x_discrete,
     scale_y_continuous,
@@ -246,9 +246,14 @@ def plot_semantic_drift(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="sequence_number", y="semantic_drift", group="run_id"),
+            aes(
+                x="sequence_number",
+                y="semantic_drift_instantaneous",
+                color="semantic_drift_instantaneous > 0.5",
+            ),
         )
-        + geom_line(alpha=0.8)
+        + geom_point(alpha=0.8)
+        + scale_color_manual(values=["black", "red"])
         + labs(x="sequence number", y="semantic drift")
         + facet_grid("initial_prompt ~ embedding_model")
         + theme(
