@@ -193,39 +193,40 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
 
         # Only include runs with persistence diagrams
         if run.persistence_diagrams:
-            for pd in run.persistence_diagrams:
-                row = base_row.copy()
-                row["persistence_diagram_id"] = str(pd.id)
-                row["embedding_model"] = pd.embedding_model
-                row["persistence_diagram_started_at"] = pd.started_at
-                row["persistence_diagram_completed_at"] = pd.completed_at
-                row["persistence_diagram_duration"] = pd.duration
+            # Only process the first persistence diagram
+            pd = run.persistence_diagrams[0]
+            row = base_row.copy()
+            row["persistence_diagram_id"] = str(pd.id)
+            row["embedding_model"] = pd.embedding_model
+            row["persistence_diagram_started_at"] = pd.started_at
+            row["persistence_diagram_completed_at"] = pd.completed_at
+            row["persistence_diagram_duration"] = pd.duration
 
-                # Only include persistence diagrams with diagram_data
-                if pd.diagram_data and "dgms" in pd.diagram_data:
-                    # Process each dimension in the diagram data
-                    for dim, dgm in enumerate(pd.diagram_data["dgms"]):
-                        # Add entropy for this dimension if available
-                        entropy_value = None
-                        if "entropy" in pd.diagram_data and dim < len(
-                            pd.diagram_data["entropy"]
-                        ):
-                            entropy_value = float(pd.diagram_data["entropy"][dim])
+            # Only include persistence diagrams with diagram_data
+            if pd.diagram_data and "dgms" in pd.diagram_data:
+                # Process each dimension in the diagram data
+                for dim, dgm in enumerate(pd.diagram_data["dgms"]):
+                    # Add entropy for this dimension if available
+                    entropy_value = None
+                    if "entropy" in pd.diagram_data and dim < len(
+                        pd.diagram_data["entropy"]
+                    ):
+                        entropy_value = float(pd.diagram_data["entropy"][dim])
 
-                        # Create a row for each birth/death pair in this dimension
-                        for i, (birth, death) in enumerate(dgm):
-                            feature_row = row.copy()
-                            feature_row["homology_dimension"] = dim
-                            feature_row["feature_id"] = i
-                            feature_row["birth"] = float(birth)
-                            feature_row["death"] = float(death)
-                            feature_row["persistence"] = float(death - birth)
+                    # Create a row for each birth/death pair in this dimension
+                    for i, (birth, death) in enumerate(dgm):
+                        feature_row = row.copy()
+                        feature_row["homology_dimension"] = dim
+                        feature_row["feature_id"] = i
+                        feature_row["birth"] = float(birth)
+                        feature_row["death"] = float(death)
+                        feature_row["persistence"] = float(death - birth)
 
-                            # Add entropy for the dimension
-                            if entropy_value is not None:
-                                feature_row["entropy"] = entropy_value
+                        # Add entropy for the dimension
+                        if entropy_value is not None:
+                            feature_row["entropy"] = entropy_value
 
-                            data.append(feature_row)
+                        data.append(feature_row)
 
     # Create a polars DataFrame with explicit schema for numeric fields
     schema_overrides = {
