@@ -417,7 +417,7 @@ def print_experiment_info(
     for run in runs:
         # Calculate average invocation time for this run's models
         estimated_time_remaining += (
-            (run.max_length - max_sequences[run.id])
+            (run.max_length - max_sequences.get(run.id, 0))
             * sum(estimated_time(model) for model in run.network)
             / len(run.network)
         )
