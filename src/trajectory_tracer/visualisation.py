@@ -22,7 +22,7 @@ from plotnine import (
 )
 from sqlmodel import Session
 
-from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
+from trajectory_tracer.analysis import load_embeddings_df
 
 ## visualisation
 
@@ -243,17 +243,16 @@ def plot_semantic_drift(
     plot = (
         ggplot(
             pandas_df,
-            aes(
-                x="sequence_number",
-                y="semantic_drift",
-                color="embedding_model",
-                group="run_id",
-            ),
+            aes(x="sequence_number", y="semantic_drift", color="run_id"),
         )
         + geom_line(alpha=0.9)
         + labs(x="sequence number", y="semantic drift", color="embedding model")
-        + facet_wrap("run_id")
-        + theme(figure_size=(12, 8))
+        + facet_grid("initial_prompt ~ embedding_model")
+        + theme(
+            figure_size=(10, 25),
+            strip_text=element_text(size=4),
+            legend_position="none",
+        )
     )
 
     # Save the chart
@@ -310,20 +309,23 @@ def paper_charts(session: Session) -> None:
     # warm_caches(session)
     embeddings_df = load_embeddings_df(session, use_cache=True)
     embeddings_df = embeddings_df.filter(
-        (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
-        | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
+        (
+            (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
+            | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
+        )
+        & (pl.col("embedding_model") != "STSBDistilRoberta")
     )
     plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
-    runs_df = load_runs_df(session, use_cache=True)
-    runs_df = runs_df.filter(
-        (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
-        | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
-    )
-    plot_persistence_diagram_faceted(
-        runs_df, "output/vis/persistence_diagram_faceted.png"
-    )
-    # plot_persistence_diagram_by_run(
-    #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
+    # runs_df = load_runs_df(session, use_cache=True)
+    # runs_df = runs_df.filter(
+    #     (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
+    #     | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
     # )
-    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    # plot_persistence_diagram_faceted(
+    #     runs_df, "output/vis/persistence_diagram_faceted.png"
+    # )
+    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    # # plot_persistence_diagram_by_run(
+    # #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
+    # # )
