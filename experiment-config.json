@@ -5,8 +5,8 @@
         ["SDXLTurbo", "BLIP2"],
         ["SDXLTurbo", "Moondream"]
     ],
-    "seed_count": 16,
-    "prompts": ["yeah", "nah"],
+    "seed_count": 4,
+    "prompts": ["red", "orange", "yellow", "green", "blue", "indigo", "violet"],
     "embedding_models": ["STSBMpnet", "STSBRoberta", "Nomic"],
-    "max_length": 5000
+    "max_length": 1000
 }
