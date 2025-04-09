@@ -246,7 +246,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         return all_embedding_ids
 
 
-# @ray.remote(num_cpus=8)
+@ray.remote(num_cpus=8)
 def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store persistence diagram for a run.
@@ -570,12 +570,14 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     Returns:
         List of persistence diagram IDs
     """
-    pd_ids = []
+    pd_tasks = []
     for run_id in run_ids:
         for embedding_model in embedding_models:
-            pd_id = compute_persistence_diagram(run_id, embedding_model, db_str)
-            pd_ids.append(pd_id)
+            pd_tasks.append(
+                compute_persistence_diagram.remote(run_id, embedding_model, db_str)
+            )
 
+    pd_ids = ray.get(pd_tasks)
     logger.info(f"Computed {len(pd_ids)} persistence diagrams")
 
     return pd_ids
