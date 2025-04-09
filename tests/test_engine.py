@@ -799,9 +799,9 @@ def test_perform_experiment_real_models(db_session: Session):
     # We should have 1 run with -1 seed * max_length (10) = 10 invocations
     assert len(invocations) == 10
 
-    # Each invocation should have 1 embedding (one embedding model)
+    # Only TEXT invocations have embeddings (approximately half of all invocations)
     embeddings = list_embeddings(db_session)
-    assert len(embeddings) == len(invocations)
+    assert len(embeddings) == len(invocations) // 2
 
     # We should have 1 run * 1 embedding model = 1 persistence diagram
     pds = list_persistence_diagrams(db_session)
@@ -857,12 +857,13 @@ def test_perform_experiment_real_models_2(db_session: Session):
 
     # For -1 seed runs, we should have exactly max_length invocations (100 each)
     invocations = list_invocations(db_session)
-    # We should have 2 runs with -1 seed * max_length (100) = 200 invocations
+    # We should have 2 runs with -1 seed * max_length (10) = 20 invocations
     assert len(invocations) == 20
 
-    # Each invocation should have 2 embeddings (two embedding models)
+    # Only TEXT invocations have embeddings (half of all invocations)
+    # With 2 embedding models per text invocation
     embeddings = list_embeddings(db_session)
-    assert len(embeddings) == len(invocations) * 2
+    assert len(embeddings) == (len(invocations) // 2) * 2
 
     # We should have 2 runs * 2 embedding models = 4 persistence diagrams
     pds = list_persistence_diagrams(db_session)
@@ -884,7 +885,7 @@ def test_perform_experiment_with_real_models_3(db_session: Session):
         seeds=[-1],
         prompts=["Look on my Works, ye Mighty, and despair!"],
         embedding_models=["JinaClip"],
-        max_length=2,
+        max_length=4,
     )
 
     # Get the SQLite connection string from the session
@@ -920,9 +921,9 @@ def test_perform_experiment_with_real_models_3(db_session: Session):
     invocations = list_invocations(db_session)
     assert len(invocations) == 2
 
-    # Each invocation should have 1 embedding (one embedding model)
+    # Only TEXT invocations (Moondream) have embeddings (half of all invocations)
     embeddings = list_embeddings(db_session)
-    assert len(embeddings) == len(invocations)
+    assert len(embeddings) == len(invocations) // 2
 
     # We should have 1 run * 1 embedding model = 1 persistence diagram
     pds = list_persistence_diagrams(db_session)
@@ -997,9 +998,10 @@ def test_perform_experiment_with_file_db():
             # We should have 2 runs with -1 seed * max_length (10) = 20 invocations
             assert len(invocations) == 20
 
-            # Each invocation should have 2 embeddings (two embedding models)
+            # Only TEXT invocations have embeddings (half of all invocations)
+            # With 2 embedding models per text invocation
             embeddings = list_embeddings(session)
-            assert len(embeddings) == len(invocations) * 2
+            assert len(embeddings) == (len(invocations) // 2) * 2
 
             # We should have 2 runs * 2 embedding models = 4 persistence diagrams
             pds = list_persistence_diagrams(session)
@@ -1056,7 +1058,7 @@ def test_model_combination(t2i_model, i2t_model, db_session: Session):
     embedding_model = "Dummy"
     embedding_ids = perform_embeddings_stage(invocation_ids, [embedding_model], db_url)
 
-    # Verify we got embeddings
+    # Verify we got embeddings (only for TEXT invocations)
     assert len(embedding_ids) > 0
 
     # Compute persistence diagrams
