@@ -112,10 +112,12 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
-    # Save to cache
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    df.write_parquet(cache_path)
-    print(f"Saved embeddings to cache: {cache_path}")
+
+    # Only save to cache if use_cache is False
+    if not use_cache:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        df.write_parquet(cache_path)
+        print(f"Saved embeddings to cache: {cache_path}")
 
     return df
 
@@ -237,15 +239,12 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     }
 
     # Only create DataFrame if we have data
-    if data:
-        df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    df = pl.DataFrame(data, schema_overrides=schema_overrides)
 
-        # Save to cache
+    # Only save to cache if use_cache is False
+    if not use_cache:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         df.write_parquet(cache_path)
         print(f"Saved runs to cache: {cache_path}")
 
-        return df
-    else:
-        print("No valid persistence diagram data found")
-        return pl.DataFrame()
+    return df
