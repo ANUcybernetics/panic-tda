@@ -13,9 +13,9 @@ from plotnine import (
     geom_errorbar,
     geom_line,
     geom_point,
+    geom_violin,
     ggplot,
     labs,
-    position_dodge,
     scale_x_continuous,
     scale_x_discrete,
     scale_y_continuous,
@@ -181,73 +181,13 @@ def plot_persistence_diagram_by_run(
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
-def create_persistence_entropy_chart(df: pl.DataFrame):
-    """
-    Create a base boxplot showing the distribution of entropy values
-    with homology_dimension on the y-axis.
-
-    Args:
-        df: DataFrame containing runs data with homology_dimension and entropy
-
-    Returns:
-        A plotnine plot object for the entropy distribution
-    """
-    # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
-
-    # Create a boxplot chart
-    plot = (
-        ggplot(
-            pandas_df, aes(x="entropy", y="homology_dimension", fill="embedding_model")
-        )
-        + geom_boxplot(alpha=0.7, position=position_dodge(width=0.8))
-        + scale_x_continuous(name="Persistence Entropy")
-        + labs(y="Homology dimension", fill="Embedding model")
-        + theme(figure_size=(5, 2))
-    )
-
-    return plot
-
-
 def plot_persistence_entropy(
     df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.png"
 ) -> None:
     """
-    Create and save a visualization of entropy distribution across different homology dimensions.
-
-    Args:
-        df: DataFrame containing runs data with homology_dimension and entropy
-        output_file: Path to save the visualization
-    """
-    # Check if we have the required columns
-    required_columns = {"homology_dimension", "entropy"}
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(
-            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
-        )
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
-        return
-
-    # Create the chart
-    plot = create_persistence_entropy_chart(df)
-
-    # Save plot with high resolution
-    saved_file = save(plot, output_file)
-    logging.info(f"Saved persistence entropy plot to {saved_file}")
-
-
-def plot_persistence_entropy_faceted(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_faceted.png"
-) -> None:
-    """
     Create and save a visualization of entropy distributions with:
     - entropy on x axis
-    - homology_dimension on y axis
+    - homology_dimension on y axis (treated as a factor)
     - embedding_model as color
     - faceted by text_model (rows) and image_model (columns)
 
@@ -255,44 +195,25 @@ def plot_persistence_entropy_faceted(
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
-    # Check if we have the required columns
-    required_columns = {
-        "homology_dimension",
-        "entropy",
-        "embedding_model",
-        "text_model",
-        "image_model",
-    }
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(
-            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
-        )
-        return
-
-    # If the DataFrame is empty, return early
-    if df.is_empty():
-        logging.info("ERROR: DataFrame is empty - no entropy data to plot")
-        return
-
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
 
-    # Create the base plot with faceting
+    # Create the plot with faceting
     plot = (
         ggplot(
-            pandas_df, aes(x="entropy", y="homology_dimension", fill="embedding_model")
+            pandas_df,
+            aes(x="factor(homology_dimension)", y="entropy", fill="embedding_model"),
         )
-        + geom_boxplot(alpha=0.7, position=position_dodge(width=0.8))
-        + scale_x_continuous(name="Persistence Entropy")
-        + labs(y="Homology dimension", fill="Embedding model")
+        + geom_violin(alpha=0.7, width=0.7)
+        + geom_boxplot(width=0.3)
+        + labs(x="homology dimension", y="entropy", fill="embedding model")
         + facet_grid("text_model ~ image_model", labeller="label_both")
-        + theme(figure_size=(12, 8), strip_text=element_text(size=10))
+        + theme(figure_size=(14, 8), strip_text=element_text(size=10))
     )
 
-    # Save the plot
+    # Save plot with high resolution
     saved_file = save(plot, output_file)
-    logging.info(f"Saved faceted persistence entropy plots to {saved_file}")
+    logging.info(f"Saved persistence entropy plot to {saved_file}")
 
 
 def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
@@ -433,6 +354,4 @@ def paper_charts(session: Session) -> None:
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
     # )
-    plot_persistence_entropy_faceted(
-        runs_df, "output/vis/persistence_entropy_faceted.png"
-    )
+    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy_faceted.png")
