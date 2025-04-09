@@ -2,8 +2,6 @@
 
 - finish off the PDs for the big 5000 run
 
-- implement mixed effects modelling & statistical testing (probably just in R)
-
 - map the generators into the PD chart (and display the images)
 
 - update the "title card" mosaic image generation to create row/col title cards
