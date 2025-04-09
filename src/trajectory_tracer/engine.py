@@ -326,7 +326,16 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         pd.started_at = datetime.now()
 
         # Compute persistence diagram - store the entire result
-        pd.diagram_data = giotto_phd(point_cloud)
+        try:
+            pd.diagram_data = giotto_phd(point_cloud)
+        except MemoryError as e:
+            logger.error(
+                f"Memory allocation (bad_alloc) error during persistence diagram computation for run {run_id}: {e}"
+            )
+            pd.diagram_data = None
+        except Exception as e:
+            logger.error(f"Error computing persistence diagram for run {run_id}: {e}")
+            pd.diagram_data = None
 
         # Set completion timestamp
         pd.completed_at = datetime.now()
@@ -571,14 +580,19 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
         List of persistence diagram IDs
     """
     pd_tasks = []
+    task_count = len(run_ids) * len(embedding_models)
+    logger.info(f"Computing {task_count} persistence diagrams for {len(run_ids)} runs")
+
+    # Create compute tasks for all run/model combinations
     for run_id in run_ids:
         for embedding_model in embedding_models:
             pd_tasks.append(
                 compute_persistence_diagram.remote(run_id, embedding_model, db_str)
             )
 
+    # Get results from all tasks
     pd_ids = ray.get(pd_tasks)
-    logger.info(f"Computed {len(pd_ids)} persistence diagrams")
+    logger.info(f"Completed {len(pd_ids)} persistence diagrams")
 
     return pd_ids
 
