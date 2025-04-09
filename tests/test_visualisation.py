@@ -191,13 +191,6 @@ def test_plot_persistence_entropy(db_session):
     # Load the actual runs data with persistence diagram information
     df = load_runs_df(db_session)
 
-    # Print unique combinations of image_model and text_model
-    print("\nUnique combinations of image_model x text_model:")
-    unique_models = df.select(["image_model", "text_model"]).unique()
-    print(f"Found {unique_models.height} unique combinations:")
-    for row in unique_models.iter_rows(named=True):
-        print(f"  - {row['image_model']} x {row['text_model']}")
-
     # Verify we have persistence diagram data with entropy values
     assert df.height > 0
     assert "homology_dimension" in df.columns
