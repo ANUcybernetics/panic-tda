@@ -306,6 +306,8 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
+    # from trajectory_tracer.analysis import warm_caches
+    # warm_caches(session)
     embeddings_df = load_embeddings_df(session, use_cache=True)
     embeddings_df = embeddings_df.filter(
         (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
