@@ -19,6 +19,8 @@ from trajectory_tracer.schemas import InvocationType, Run
 logger = logging.getLogger(__name__)
 
 
+# TODO maybe remove this function, and if you need still just use the frames
+# that are the by-product of the video export
 def export_run_images(
     run: Run, session: Session, output_dir: str = "output/images"
 ) -> None:
