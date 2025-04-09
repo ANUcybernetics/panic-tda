@@ -248,3 +248,22 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
         print(f"Saved runs to cache: {cache_path}")
 
     return df
+
+
+def warm_caches(session: Session) -> None:
+    """
+    Preload and cache both runs and embeddings dataframes.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        None
+    """
+    print("Warming cache for runs dataframe...")
+    load_runs_df(session, use_cache=False)
+
+    print("Warming cache for embeddings dataframe...")
+    load_embeddings_df(session, use_cache=False)
+
+    print("Cache warming complete.")
