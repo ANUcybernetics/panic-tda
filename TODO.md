@@ -2,8 +2,6 @@
 
 - finish off the PDs for the big 5000 run
 
-- get boxplots working with large datasets, probably with plotnine
-
 - implement mixed effects modelling & statistical testing (probably just in R)
 
 - map the generators into the PD chart (and display the images)
