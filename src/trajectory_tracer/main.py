@@ -560,30 +560,25 @@ def doctor_command(
     diagrams to ensure data integrity and completeness. Use the --fix flag to
     automatically repair issues that are found.
     """
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    # Validate experiment ID format
     try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
-
-        # Validate experiment ID format
-        try:
-            UUID(experiment_id)
-        except ValueError:
-            logger.error(f"Invalid experiment ID format: {experiment_id}")
-            raise typer.Exit(code=1)
-
-        logger.info(f"Running diagnostics on experiment {experiment_id}")
-        if fix:
-            logger.info("Fix mode enabled - will attempt to repair issues found")
-
-        # Call the experiment_doctor function from the engine module
-        engine.experiment_doctor(experiment_id, db_str, fix)
-
-        logger.info("Experiment diagnostic completed")
-
-    except Exception as e:
-        logger.error(f"Error during experiment diagnostic: {e}")
+        UUID(experiment_id)
+    except ValueError:
+        logger.error(f"Invalid experiment ID format: {experiment_id}")
         raise typer.Exit(code=1)
+
+    logger.info(f"Running diagnostics on experiment {experiment_id}")
+    if fix:
+        logger.info("Fix mode enabled - will attempt to repair issues found")
+
+    # Call the experiment_doctor function from the engine module
+    engine.experiment_doctor(experiment_id, db_str, fix)
+
+    logger.info("Experiment diagnostic completed")
 
 
 @app.command("paper-charts")
