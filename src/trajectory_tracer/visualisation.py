@@ -22,7 +22,7 @@ from plotnine import (
 )
 from sqlmodel import Session
 
-from trajectory_tracer.analysis import load_runs_df
+from trajectory_tracer.analysis import load_embeddings_df, load_runs_df
 
 ## visualisation
 
@@ -66,11 +66,11 @@ def create_persistence_diagram_chart(df: pl.DataFrame):
             pandas_df,
             aes(x="birth", y="persistence", color="factor(homology_dimension)"),
         )
-        + geom_point(alpha=0.1)
+        + geom_point(alpha=0.02)
         + labs(
             x="feature appearance", y="feature persistence", color="homology dimension"
         )
-        + theme(figure_size=(5, 5))  # Roughly equivalent to width/height 300px
+        + theme(figure_size=(10, 5))  # Roughly equivalent to width/height 300px
     )
 
     return plot
@@ -115,8 +115,8 @@ def plot_persistence_diagram_faceted(
     # Add faceting to the plot
     plot = (
         plot
-        + facet_grid("text_model ~ image_model", labeller="label_both")
-        + theme(figure_size=(12, 8), strip_text=element_text(size=10))
+        + facet_grid("text_model ~ image_model + homology_dimension")
+        + theme(figure_size=(15, 5), strip_text=element_text(size=10))
     )
 
     # Save plot with high resolution
@@ -146,8 +146,8 @@ def plot_persistence_diagram_by_run(
     plot = (
         ggplot(pandas_df, aes(x="birth", y="persistence", color="homology_dimension"))
         + geom_point(alpha=0.1)
-        + scale_x_continuous(name="Feature Appearance", limits=[-0.1, None])
-        + scale_y_continuous(name="Feature Persistence", limits=[-0.1, None])
+        + scale_x_continuous(name="Feature Appearance")
+        + scale_y_continuous(name="Feature Persistence")
         + labs(color="Dimension")
         + facet_wrap("~ run_id", ncol=cols)
         + theme(figure_size=(16, 10), strip_text=element_text(size=8))
@@ -306,19 +306,21 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    # embeddings_df = load_embeddings_df(session, use_cache=True)
-    # embeddings_df = embeddings_df.filter(
-    #     (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
-    #     | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
-    # )
-    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
+    embeddings_df = load_embeddings_df(session, use_cache=True)
+    embeddings_df = embeddings_df.filter(
+        (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
+        | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
+    )
+    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
-    runs_df = load_runs_df(session, use_cache=False)
+    runs_df = load_runs_df(session, use_cache=True)
     runs_df = runs_df.filter(
         (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
         | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
     )
-    # plot_persistence_diagram_faceted(runs_df, "output/vis/persistence_diagram_faceted.png")
+    plot_persistence_diagram_faceted(
+        runs_df, "output/vis/persistence_diagram_faceted.png"
+    )
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
     # )
