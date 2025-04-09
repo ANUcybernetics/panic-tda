@@ -62,33 +62,15 @@ def create_persistence_diagram_chart(df: pl.DataFrame):
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
 
-    # Extract initial prompt, or indicate if there are multiple prompts
-    unique_prompts = df["initial_prompt"].unique()
-    if len(unique_prompts) > 1:
-        _initial_prompt = "multiple prompts"
-    else:
-        _initial_prompt = unique_prompts[0]
-
-    # Get entropy values per dimension if they exist
-    dim_entropy_pairs = df.select(["homology_dimension", "entropy"]).unique(
-        subset=["homology_dimension", "entropy"]
-    )
-
-    # Sort by homology dimension and format entropy values
-    entropy_values = []
-    for row in dim_entropy_pairs.sort("homology_dimension").iter_rows(named=True):
-        entropy_values.append(f"{row['homology_dimension']}: {row['entropy']:.3f}")
-
-    # Join entropy values into subtitle
-    _subtitle = "Entropy " + ", ".join(entropy_values)
-
-    # Create a scatterplot for the persistence diagram
     plot = (
-        ggplot(pandas_df, aes(x="birth", y="persistence", color="homology_dimension"))
+        ggplot(
+            pandas_df,
+            aes(x="birth", y="persistence", color="factor(homology_dimension)"),
+        )
         + geom_point(alpha=0.1)
-        + scale_x_continuous(name="Feature Appearance", limits=[-0.1, None])
-        + scale_y_continuous(name="Feature Persistence", limits=[-0.1, None])
-        + labs(color="Dimension")
+        + labs(
+            x="feature appearance", y="feature persistence", color="homology dimension"
+        )
         + theme(figure_size=(5, 5))  # Roughly equivalent to width/height 300px
     )
 
@@ -128,16 +110,12 @@ def plot_persistence_diagram_faceted(
         output_file: Path to save the visualization
         num_cols: Number of columns in the grid layout
     """
-    # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
+    # Create the base plot using the existing function
+    plot = create_persistence_diagram_chart(df)
 
-    # Create the base plot with faceting
+    # Add faceting to the plot
     plot = (
-        ggplot(pandas_df, aes(x="birth", y="persistence", color="homology_dimension"))
-        + geom_point(alpha=0.1)
-        + scale_x_continuous(name="Feature Appearance", limits=[-0.1, None])
-        + scale_y_continuous(name="Feature Persistence", limits=[-0.1, None])
-        + labs(color="Dimension")
+        plot
         + facet_grid("text_model ~ image_model", labeller="label_both")
         + theme(figure_size=(12, 8), strip_text=element_text(size=10))
     )
@@ -260,37 +238,22 @@ def plot_semantic_drift(
         df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
-    # Check if we have the required columns
-    required_columns = {
-        "semantic_drift",
-        "sequence_number",
-        "run_id",
-        "initial_prompt",
-        "embedding_model",  # Added for faceting
-    }
-    missing_columns = required_columns - set(df.columns)
-    if missing_columns:
-        logging.info(
-            f"Required columns not found in DataFrame: {', '.join(missing_columns)}"
-        )
-        return
-
-    # Filter to only include rows with drift measure
-    df_filtered = df.filter(pl.col("semantic_drift").is_not_null())
-    pandas_df = df_filtered.to_pandas()
+    pandas_df = df.to_pandas()
 
     # Create a single chart with faceting
     plot = (
         ggplot(
             pandas_df,
             aes(
-                x="sequence_number", y="semantic_drift", color="run_id", group="run_id"
+                x="sequence_number",
+                y="semantic_drift",
+                color="embedding_model",
+                group="run_id",
             ),
         )
         + geom_line(alpha=0.9)
-        + scale_x_continuous(name="Sequence Number")
-        + labs(y="Semantic Drift", color="Run ID")
-        + facet_grid("initial_prompt ~ embedding_model")
+        + labs(x="sequence number", y="semantic drift", color="embedding model")
+        + facet_wrap("run_id")
         + theme(figure_size=(12, 8))
     )
 
