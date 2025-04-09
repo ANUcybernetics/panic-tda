@@ -11,6 +11,7 @@ from plotnine import (
     geom_bar,
     geom_boxplot,
     geom_errorbar,
+    geom_line,
     geom_point,
     ggplot,
     labs,
@@ -252,6 +253,9 @@ def plot_semantic_drift(
                 color="semantic_drift_instantaneous > 0.5",
             ),
         )
+        + geom_line(
+            aes(group="run_id"), color="black"
+        )  # Add black line connecting points by run_id
         + geom_point(alpha=0.8)
         + scale_color_manual(values=["black", "red"])
         + labs(x="sequence number", y="semantic drift")
