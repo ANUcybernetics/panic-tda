@@ -199,6 +199,9 @@ def plot_persistence_entropy(
     pandas_df = df.to_pandas()
 
     # Create the plot with faceting
+    # Define subscript translator for x-axis labels
+    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
     plot = (
         ggplot(
             pandas_df,
@@ -207,6 +210,9 @@ def plot_persistence_entropy(
         + geom_violin(alpha=0.7, width=0.7)
         + geom_boxplot(width=0.3)
         + labs(x="homology dimension", y="entropy", fill="embedding model")
+        + scale_x_discrete(
+            labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
+        )
         + facet_grid("text_model ~ image_model", labeller="label_both")
         + theme(figure_size=(14, 8), strip_text=element_text(size=10))
     )
