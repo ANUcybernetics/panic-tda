@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from trajectory_tracer.genai_models import IMAGE_SIZE
 from trajectory_tracer.schemas import Invocation, InvocationType, Run
-from trajectory_tracer.utils import export_run_images, export_run_mosaic
+from trajectory_tracer.export import export_run_images, export_run_mosaic
 
 
 def test_export_run_images(db_session: Session, tmp_path):

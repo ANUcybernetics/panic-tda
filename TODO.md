@@ -7,8 +7,6 @@
 - update the "title card" mosaic image generation to create row/col title cards
   (for both prompt and network)
 
-- rename utils module to video
-
 - check that ExperimentConfig deletion cascades to all runs (and therefore all
   invocations & embeddings)
 

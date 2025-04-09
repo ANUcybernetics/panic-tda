@@ -26,7 +26,7 @@ from sqlmodel import Session
 
 from trajectory_tracer.analysis import load_embeddings_df
 
-## visualisation
+## datavis
 
 set_option("limitsize", False)
 

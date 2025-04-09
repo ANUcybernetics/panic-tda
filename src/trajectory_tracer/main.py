@@ -21,11 +21,11 @@ from trajectory_tracer.embeddings import list_models as list_embedding_models
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.utils import (
+from trajectory_tracer.export import (
     export_run_mosaic,
     order_runs_for_mosaic,
 )
-from trajectory_tracer.visualisation import paper_charts
+from trajectory_tracer.datavis import paper_charts
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
