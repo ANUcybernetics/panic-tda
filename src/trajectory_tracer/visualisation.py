@@ -13,7 +13,6 @@ from plotnine import (
     geom_errorbar,
     geom_line,
     geom_point,
-    geom_violin,
     ggplot,
     labs,
     scale_x_continuous,
@@ -185,14 +184,14 @@ def plot_persistence_entropy(
             pandas_df,
             aes(x="factor(homology_dimension)", y="entropy", fill="embedding_model"),
         )
-        + geom_violin(alpha=0.7, width=0.7)
-        + geom_boxplot(width=0.3)
+        # + geom_violin(alpha=0.7, width=0.7)
+        + geom_boxplot()
         + labs(x="homology dimension", y="entropy", fill="embedding model")
         + scale_x_discrete(
             labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
         )
         + facet_grid("text_model ~ image_model", labeller="label_both")
-        + theme(figure_size=(14, 8), strip_text=element_text(size=10))
+        + theme(figure_size=(10, 6), strip_text=element_text(size=10))
     )
 
     # Save plot with high resolution
