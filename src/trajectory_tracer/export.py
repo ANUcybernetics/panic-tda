@@ -1,12 +1,10 @@
 import json
 import logging
-import math
 import os
 import shutil
 import subprocess
 import textwrap
 from io import BytesIO
-from typing import Union
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
@@ -196,26 +194,25 @@ def create_prompt_title_card(
     return img
 
 
-def export_run_mosaic(
+def export_video(
     run_ids: list[str],
     session: Session,
-    cols: Union[int, str],
     fps: int,
     resolution: str,
     output_video: str,
+    prompt_order: list[str] = None,
 ) -> None:
     """
-    Export a mosaic of images from multiple runs and create a video.
-    Title cards are added for each new prompt.
+    Export a mosaic video of images from multiple runs, organized by prompt (rows)
+    and network (columns) with informative borders.
 
     Args:
         run_ids: List of run IDs to include in the mosaic
         session: SQLModel Session for database operations
-        cols: Number of columns in the mosaic grid or "auto" to calculate the optimal
-              number of columns for a 16:9 aspect ratio
         fps: Frames per second for the output video
-        output_video: Name of the output video file
         resolution: Target resolution ("HD", "4K", or "8K")
+        output_video: Name of the output video file
+        prompt_order: Optional custom ordering for prompts (default: alphabetical)
     """
     # Setup output directory
     output_dir = os.path.dirname(output_video)
@@ -223,8 +220,7 @@ def export_run_mosaic(
 
     # Load runs
     runs = []
-    ordered_run_ids = order_runs_for_mosaic(run_ids, session)
-    for run_id in ordered_run_ids:
+    for run_id in run_ids:
         run = read_run(UUID(run_id), session)
         if run:
             session.refresh(run)
@@ -234,227 +230,297 @@ def export_run_mosaic(
         logger.error("No valid runs found for the provided IDs")
         return
 
-    # Step 1: Find prompt changes and create title cards
-    title_cards = []
-    title_card_positions = []
-    run_positions = []
-
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    base_title_font_size = int(IMAGE_SIZE * 0.1)
-
-    # First, collect all runs and identify where prompt changes occur
-    prompt_changes = []
-
-    # Always include the first prompt at position 0
-    if runs:
-        prompt_changes.append((runs[0].initial_prompt, 0))
-
-    # Add runs to run_positions and find prompt changes
-    for idx, run in enumerate(runs):
-        run_positions.append(run)
-
-        # Check if next run has a different prompt
-        if idx < len(runs) - 1:
-            current_prompt = run.initial_prompt or "No prompt"
-            next_prompt = runs[idx + 1].initial_prompt or "No prompt"
-
-            if next_prompt != current_prompt:
-                # Record the position where the next run will be placed
-                prompt_changes.append((next_prompt, idx + 1))
-
-    # Now create title cards and record their positions
-    for prompt, position in prompt_changes:
-        # Create a new title card for this prompt
-        title_card = create_prompt_title_card(
-            prompt, IMAGE_SIZE, font_path, base_title_font_size
-        )
-
-        title_cards.append(title_card)
-        title_card_positions.append(position)
-        logger.debug(f"Added title card for prompt: '{prompt}'")
-
-    # Step 2: Create list-of-lists of images for each run
-    run_image_lists = []
-
+    # Group runs by prompt
+    prompt_to_runs = {}
     for run in runs:
-        # Get and sort invocations by sequence number
-        image_list = [
-            inv.output for inv in run.invocations if inv.type == InvocationType.IMAGE
-        ]
-        run_image_lists.append(image_list)
+        prompt = run.initial_prompt
+        if prompt not in prompt_to_runs:
+            prompt_to_runs[prompt] = []
+        prompt_to_runs[prompt].append(run)
 
-    # Determine the number of columns
-    total_positions = len(run_positions) + len(title_cards)
-
-    if cols == "auto":
-        # Calculate optimal columns for 16:9 aspect ratio
-        # The formula is sqrt((16/9) * total_positions)
-        target_aspect_ratio = 16 / 9
-        ideal_cols = math.sqrt(target_aspect_ratio * total_positions)
-        cols = max(1, round(ideal_cols))
-        logger.info(
-            f"Auto-calculated {cols} columns for optimal 16:9 aspect ratio with {total_positions} positions"
+    # Determine prompt order
+    if prompt_order:
+        # Use specified order, adding any missing prompts at the end
+        ordered_prompts = [p for p in prompt_order if p in prompt_to_runs]
+        # Add any prompts not in prompt_order
+        ordered_prompts.extend(
+            sorted([p for p in prompt_to_runs if p not in prompt_order])
         )
-    elif not isinstance(cols, int) or cols < 1:
-        logger.warning(f"Invalid columns value: {cols}. Using 1 column.")
-        cols = 1
+    else:
+        # Default: sort prompts alphabetically
+        ordered_prompts = sorted(prompt_to_runs.keys())
+
+    # For each prompt, group runs by network and sort
+    grid_layout = []
+    max_cols = 0
+
+    for prompt in ordered_prompts:
+        # Group the runs by network
+        network_to_runs = {}
+        for run in prompt_to_runs[prompt]:
+            network_key = tuple(run.network)  # Convert list to hashable tuple
+            if network_key not in network_to_runs:
+                network_to_runs[network_key] = []
+            network_to_runs[network_key].append(run)
+
+        # Sort networks and then sort runs within each network by ID
+        networks = sorted(network_to_runs.keys())
+        row_runs = []
+
+        for network in networks:
+            # Sort runs with same prompt and network by run_id
+            sorted_runs = sorted(network_to_runs[network], key=lambda r: str(r.id))
+            row_runs.extend(sorted_runs)
+
+        grid_layout.append((prompt, row_runs))
+        max_cols = max(max_cols, len(row_runs))
+
+    # Calculate grid dimensions
+    rows = len(ordered_prompts)
+    cols = max_cols
+
+    logger.info(f"Mosaic grid: {rows} rows × {cols} columns (plus borders)")
 
     # Create dimensions for the canvas
-    rows = (total_positions + cols - 1) // cols
-    base_width = cols * IMAGE_SIZE
-    base_height = rows * IMAGE_SIZE
+    # Adding 2 to rows and cols for the borders
+    base_width = (cols + 2) * IMAGE_SIZE
+    base_height = (rows + 2) * IMAGE_SIZE
     progress_bar_area_height = 30
     canvas_width = base_width
     canvas_height = base_height + progress_bar_area_height
 
-    # Create the black canvas
-    mosaic = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+    # Create the canvas
+    base_canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+
+    # Set up font for border text
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    base_font_size = int(IMAGE_SIZE * 0.08)
+
+    try:
+        font = ImageFont.truetype(font_path, base_font_size)
+    except IOError:
+        logger.warning(f"Font not found at {font_path}. Using default PIL font.")
+        try:
+            font = ImageFont.load_default(size=base_font_size)
+        except Exception:
+            logger.error("Could not load any default font.")
+            font = None
+
+    # Draw the border tiles with prompt and network information
+    draw = ImageDraw.Draw(base_canvas)
+
+    # Draw prompt information in left and right borders
+    for row_idx, (prompt, _) in enumerate(grid_layout):
+        # Left border
+        left_border_x = 0
+        left_border_y = (row_idx + 1) * IMAGE_SIZE
+
+        # Create and paste prompt tile
+        prompt_tile = create_prompt_title_card(
+            prompt, IMAGE_SIZE, font_path, base_font_size
+        )
+        base_canvas.paste(prompt_tile, (left_border_x, left_border_y))
+
+        # Right border - same content as left
+        right_border_x = (cols + 1) * IMAGE_SIZE
+        right_border_y = left_border_y
+        base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
+
+    # Draw network information in top and bottom borders
+    # Collect all networks in order they appear in the grid
+    all_networks = []
+    for _, row_runs in grid_layout:
+        for run in row_runs:
+            network_str = " → ".join(run.network)
+            if network_str not in all_networks:
+                all_networks.append(network_str)
+
+    # Draw network labels in the top and bottom borders
+    for col_idx, network_str in enumerate(all_networks[:cols]):  # Limit to max columns
+        # Top border
+        top_border_x = (col_idx + 1) * IMAGE_SIZE
+        top_border_y = 0
+
+        # Create and paste network tile
+        network_tile = create_prompt_title_card(
+            network_str, IMAGE_SIZE, font_path, base_font_size
+        )
+        base_canvas.paste(network_tile, (top_border_x, top_border_y))
+
+        # Bottom border - same content as top
+        bottom_border_x = top_border_x
+        bottom_border_y = (rows + 1) * IMAGE_SIZE
+        base_canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
 
     # Create temporary directory for frame storage
     temp_dir = os.path.join(output_dir, "temp_frames")
     os.makedirs(temp_dir, exist_ok=True)
 
-    # Step 3 & 4: Create each frame by directly iterating through images
-    # Find the maximum length of any image list
-    max_images = max([len(img_list) for img_list in run_image_lists], default=0)
-
-    # Now iterate through each image position instead of by sequence number
-    for frame_idx in range(0, max_images):
-        # Clear canvas for new frame
-        draw = ImageDraw.Draw(mosaic)
-        draw.rectangle((0, 0, canvas_width, canvas_height), fill=(0, 0, 0))
-
-        # Get frame images for this position from each run
-        frame_images = []
-        for run_idx, image_list in enumerate(run_image_lists):
-            # Get image for this position if it exists
-            # If position exceeds available images, use the last image
-            image = None
-            if frame_idx < len(image_list):
-                image = image_list[frame_idx]
-            elif image_list:  # Use last available image if we've run out
-                image = image_list[-1]
-            frame_images.append(image)
-
-        # Insert title cards at appropriate positions
-        for card_pos, card_idx in sorted(
-            zip(title_card_positions, range(len(title_cards))), reverse=True
-        ):
-            # Insert a copy of the title card at the appropriate position
-            frame_images.insert(card_pos, title_cards[card_idx])
-
-        # Paste each image to the canvas at its grid position
-        for idx, img in enumerate(frame_images):
-            if img is not None:
-                row = idx // cols
-                col = idx % cols
-                x_offset = col * IMAGE_SIZE
-                y_offset = row * IMAGE_SIZE
-                mosaic.paste(img, (x_offset, y_offset))
-
-        # Step 5: Draw progress bar
-        progress_percent = (
-            frame_idx / (max_images - 1)
-            if max_images > 1
-            else (1.0 if frame_idx == 0 else 0.0)
-        )
-        progress_bar_pixel_width = int(canvas_width * progress_percent)
-        progress_bar_y_top = int(base_height + (progress_bar_area_height - 10) / 2)
-        progress_bar_y_bottom = progress_bar_y_top + 10
-
-        draw.rectangle(
-            (0, progress_bar_y_top, canvas_width, progress_bar_y_bottom),
-            fill=(50, 50, 50),
-        )
-        if progress_bar_pixel_width > 0:
-            draw.rectangle(
-                (
-                    0,
-                    progress_bar_y_top,
-                    progress_bar_pixel_width,
-                    progress_bar_y_bottom,
-                ),
-                fill=(255, 255, 255),
-            )
-
-        # Step 6: Save frame (save all frames without checking for uniqueness)
-        output_path = os.path.join(temp_dir, f"{frame_idx:05d}.jpg")
-        mosaic.save(output_path, format="JPEG", quality=95)
-
-        if frame_idx % (max(1, max_images // 20)) == 0 or frame_idx == max_images - 1:
-            if frame_idx == 0:
-                logger.info("Started saving mosaic frames...")
-            logger.info(
-                f"Saved frame {frame_idx + 1}/{max_images} ({int(progress_percent * 100)}%)"
-            )
-
-    # Step 7: Video creation with ffmpeg
-    resolution_settings = {
-        "HD": {"width": 1920, "height": 1080},
-        "4K": {"width": 3840, "height": 2160},
-        "8K": {"width": 7680, "height": 4320},
-    }
-
-    if resolution not in resolution_settings:
-        logger.warning(f"Unknown resolution '{resolution}'. Using HD.")
-        resolution = "HD"
-
-    target_width = resolution_settings[resolution]["width"]
-    target_height = resolution_settings[resolution]["height"]
-
-    filtergraph = (
-        f"scale=w={target_width}:h={target_height}:force_original_aspect_ratio=decrease,"
-        f"pad=w={target_width}:h={target_height}:x=(ow-iw)/2:y=(oh-ih)/2:color=black"
-    )
-
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-y",
-        "-framerate",
-        str(fps),
-        "-pattern_type",
-        "glob",
-        "-i",
-        os.path.join(temp_dir, "*.jpg"),
-        "-c:v",
-        "libx265",
-        "-preset",
-        "medium",
-        "-crf",
-        "22",
-        "-vf",
-        filtergraph,
-        "-tag:v",
-        "hvc1",
-        "-color_primaries",
-        "bt709",
-        "-color_trc",
-        "bt709",
-        "-colorspace",
-        "bt709",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        output_video,
-    ]
-
-    logger.info(f"Creating {resolution} video with ffmpeg")
     try:
-        subprocess.run(
-            ffmpeg_cmd,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+        # Collect all runs in grid order and their image lists
+        all_grid_runs = []
+        for _, row_runs in grid_layout:
+            all_grid_runs.extend(row_runs)
+
+        # Get image lists for each run
+        run_image_lists = []
+        for run in all_grid_runs:
+            image_list = [
+                inv.output
+                for inv in run.invocations
+                if inv.type == InvocationType.IMAGE
+            ]
+            run_image_lists.append(image_list)
+
+        # Find the maximum length of any image list
+        max_images = max([len(img_list) for img_list in run_image_lists], default=0)
+
+        if max_images == 0:
+            logger.warning("No images found in any run")
+            return
+
+        # Now iterate through each image position
+        for frame_idx in range(max_images):
+            # Start with a copy of the base canvas with borders
+            mosaic = base_canvas.copy()
+            draw = ImageDraw.Draw(mosaic)
+
+            # Paste each run's image at the current sequence position
+            run_idx = 0
+            for row_idx, (_, row_runs) in enumerate(grid_layout):
+                for col_idx, run in enumerate(row_runs):
+                    if col_idx >= cols:  # Skip if exceeds max columns
+                        continue
+
+                    # Get image list for this run
+                    if run_idx < len(run_image_lists):
+                        image_list = run_image_lists[run_idx]
+
+                        # Get image for this position if it exists
+                        image = None
+                        if frame_idx < len(image_list):
+                            image = image_list[frame_idx]
+                        elif image_list:  # Use last available image if we've run out
+                            image = image_list[-1]
+
+                        # Paste the image onto the canvas
+                        if image is not None:
+                            # Account for borders (+1 to both row and column)
+                            x_offset = (col_idx + 1) * IMAGE_SIZE
+                            y_offset = (row_idx + 1) * IMAGE_SIZE
+                            mosaic.paste(image, (x_offset, y_offset))
+
+                    run_idx += 1
+
+            # Draw progress bar
+            progress_percent = (
+                frame_idx / (max_images - 1)
+                if max_images > 1
+                else (1.0 if frame_idx == 0 else 0.0)
+            )
+            progress_bar_pixel_width = int(canvas_width * progress_percent)
+            progress_bar_y_top = int(base_height + (progress_bar_area_height - 10) / 2)
+            progress_bar_y_bottom = progress_bar_y_top + 10
+
+            # Background bar
+            draw.rectangle(
+                (0, progress_bar_y_top, canvas_width, progress_bar_y_bottom),
+                fill=(50, 50, 50),
+            )
+
+            # Progress bar
+            if progress_bar_pixel_width > 0:
+                draw.rectangle(
+                    (
+                        0,
+                        progress_bar_y_top,
+                        progress_bar_pixel_width,
+                        progress_bar_y_bottom,
+                    ),
+                    fill=(255, 255, 255),
+                )
+
+            # Save frame
+            output_path = os.path.join(temp_dir, f"{frame_idx:05d}.jpg")
+            mosaic.save(output_path, format="JPEG", quality=95)
+
+            if (
+                frame_idx % (max(1, max_images // 20)) == 0
+                or frame_idx == max_images - 1
+            ):
+                if frame_idx == 0:
+                    logger.info("Started saving mosaic frames...")
+                logger.info(
+                    f"Saved frame {frame_idx + 1}/{max_images} ({int(progress_percent * 100)}%)"
+                )
+
+        # Video creation with ffmpeg
+        resolution_settings = {
+            "HD": {"width": 1920, "height": 1080},
+            "4K": {"width": 3840, "height": 2160},
+            "8K": {"width": 7680, "height": 4320},
+        }
+
+        if resolution not in resolution_settings:
+            logger.warning(f"Unknown resolution '{resolution}'. Using HD.")
+            resolution = "HD"
+
+        target_width = resolution_settings[resolution]["width"]
+        target_height = resolution_settings[resolution]["height"]
+
+        filtergraph = (
+            f"scale=w={target_width}:h={target_height}:force_original_aspect_ratio=decrease,"
+            f"pad=w={target_width}:h={target_height}:x=(ow-iw)/2:y=(oh-ih)/2:color=black"
         )
-        logger.info(f"Video created successfully: {output_video}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"FFmpeg failed: {e.returncode}")
-        stderr_str = e.stderr if hasattr(e, "stderr") else "N/A"
-        logger.error(f"stderr: {stderr_str}")
-        raise e
+
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-y",
+            "-framerate",
+            str(fps),
+            "-pattern_type",
+            "glob",
+            "-i",
+            os.path.join(temp_dir, "*.jpg"),
+            "-c:v",
+            "libx265",
+            "-preset",
+            "medium",
+            "-crf",
+            "22",
+            "-vf",
+            filtergraph,
+            "-tag:v",
+            "hvc1",
+            "-color_primaries",
+            "bt709",
+            "-color_trc",
+            "bt709",
+            "-colorspace",
+            "bt709",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            output_video,
+        ]
+
+        logger.info(f"Creating {resolution} video with ffmpeg")
+        try:
+            subprocess.run(
+                ffmpeg_cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            logger.info(f"Video created successfully: {output_video}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"FFmpeg failed: {e.returncode}")
+            stderr_str = e.stderr if hasattr(e, "stderr") else "N/A"
+            logger.error(f"stderr: {stderr_str}")
+            raise e
     finally:
         if os.path.exists(temp_dir):
             try:

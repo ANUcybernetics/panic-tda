@@ -4,9 +4,10 @@ import os
 from PIL import Image
 from sqlmodel import Session
 
+from trajectory_tracer.engine import perform_experiment
+from trajectory_tracer.export import export_run_images, export_video
 from trajectory_tracer.genai_models import IMAGE_SIZE
-from trajectory_tracer.schemas import Invocation, InvocationType, Run
-from trajectory_tracer.export import export_run_images, export_run_mosaic
+from trajectory_tracer.schemas import ExperimentConfig, Invocation, InvocationType, Run
 
 
 def test_export_run_images(db_session: Session, tmp_path):
@@ -121,56 +122,45 @@ def test_export_run_images(db_session: Session, tmp_path):
 
 
 def test_export_run_mosaic(db_session: Session, tmp_path):
-    """Test that export_run_mosaic correctly creates a mosaic grid from multiple runs."""
-    # Create 4 test runs with dummy models that will generate images
-    run_ids = []
-    for i in range(4):
-        # Create the run
-        run = Run(
-            network=["DummyT2I"],
-            initial_prompt=f"Test prompt {i} for mosaic export",
-            max_length=2,
-            seed=-1,
-        )
-        db_session.add(run)
-        db_session.commit()
-        db_session.refresh(run)
-        run_ids.append(str(run.id))
+    """Test that export_video correctly creates a mosaic grid from multiple runs."""
 
-        # Create an image invocation for each run
-        text_to_image = Invocation(
-            model="DummyT2I",
-            type=InvocationType.IMAGE,
-            seed=-1,
-            run_id=run.id,
-            sequence_number=0,
-        )
+    # Define output file
+    output_file = "output/test/mosaic.mp4"
 
-        # Create a different colored test image for each run
-        colors = ["red", "blue", "green", "yellow"]
-        img = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=colors[i])
-        text_to_image.output = img
-        db_session.add(text_to_image)
-        db_session.commit()
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    # Create a temporary output directory
-    output_dir = tmp_path / "test_mosaic"
-    os.makedirs(str(output_dir), exist_ok=True)
+    # Create a test configuration with dummy models
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
+        seeds=[-1, -1],
+        prompts=["Test prompt A", "Test prompt B"],
+        embedding_models=["Dummy"],
+        max_length=6,  # Short sequences for testing
+    )
 
-    # Create output file path
-    output_video = output_dir / "test-mosaic.mp4"
+    # Save experiment to database to get an ID
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
 
-    # Call the export_run_mosaic function with 2 columns
-    fps = 10
-    export_run_mosaic(
+    # Run the experiment to populate database with dummy model runs
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+    db_session.refresh(experiment)
+
+    # Get the run IDs from the database for this experiment
+    run_ids = [str(run.id) for run in experiment.runs]
+
+    # Call the export_video function with updated parameters
+    fps = 2
+    export_video(
         run_ids,
         db_session,
-        cols=4,
-        resolution="HD",
-        output_video=str(output_video),
         fps=fps,
+        resolution="HD",
+        output_video=output_file,
     )
-    # Check that the mosaic directory was created
-    assert output_dir.exists()
-    assert output_dir.is_dir()
-    assert output_video.exists()
+
+    # Check that the output video was created
+    assert os.path.exists(output_file)
