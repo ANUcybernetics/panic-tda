@@ -8,6 +8,9 @@ run = "uv run trajectory-tracer experiment-status"
 [tasks.script]
 run = "uv run trajectory-tracer script"
 
+[tasks.charts]
+run = "uv run trajectory-tracer paper-charts"
+
 [tasks.test]
 run = "uv run pytest"
 
