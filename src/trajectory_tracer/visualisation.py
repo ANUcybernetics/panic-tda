@@ -314,7 +314,7 @@ def paper_charts(session: Session) -> None:
     # )
     # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
-    runs_df = load_runs_df(session, use_cache=True)
+    runs_df = load_runs_df(session, use_cache=False)
     runs_df = runs_df.filter(
         (pl.col("experiment_id") == "067ed16c-e9a4-7bec-9378-9325a6fb10f7")
         | (pl.col("experiment_id") == "067ee281-70f5-774a-b09f-e199840304d0")
@@ -323,4 +323,4 @@ def paper_charts(session: Session) -> None:
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
     # )
-    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy_faceted.png")
+    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
