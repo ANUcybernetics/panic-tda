@@ -7,6 +7,7 @@ from uuid import UUID
 import typer
 
 import trajectory_tracer.engine as engine
+from trajectory_tracer.datavis import paper_charts
 from trajectory_tracer.db import (
     count_invocations,
     create_db_and_tables,
@@ -18,14 +19,13 @@ from trajectory_tracer.db import (
 )
 from trajectory_tracer.db import delete_experiment as db_delete_experiment
 from trajectory_tracer.embeddings import list_models as list_embedding_models
+from trajectory_tracer.export import (
+    export_video,
+    order_runs_for_mosaic,
+)
 from trajectory_tracer.genai_models import get_output_type
 from trajectory_tracer.genai_models import list_models as list_genai_models
 from trajectory_tracer.schemas import ExperimentConfig
-from trajectory_tracer.export import (
-    export_run_mosaic,
-    order_runs_for_mosaic,
-)
-from trajectory_tracer.datavis import paper_charts
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -406,16 +406,10 @@ def list_models():
 
 
 @app.command("export-video")
-def export_video(
+def export_video_command(
     experiment_ids: list[str] = typer.Argument(
         ...,
         help="One or more Experiment IDs to include in the mosaic video",
-    ),
-    cols: str = typer.Option(
-        "auto",
-        "--cols",
-        "-c",
-        help="Number of columns in the mosaic grid, or 'auto' to calculate optimal layout (default: auto)",
     ),
     fps: int = typer.Option(
         2,
@@ -513,15 +507,10 @@ def export_video(
 
             logger.info(f"Preparing to export mosaic video to {output_video_path}")
 
-            # Convert cols to int if it's a numeric string
-            if cols != "auto" and cols.isdigit():
-                cols = int(cols)
-
             # Create the mosaic video
-            export_run_mosaic(
+            export_video(
                 run_ids=run_ids,
                 session=session,
-                cols=cols,
                 fps=fps,
                 resolution=resolution,
                 output_video=str(output_video_path),
