@@ -41,7 +41,7 @@ def test_plot_persistence_diagram(db_session):
     assert "death" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram.html"
+    output_file = "output/vis/test/persistence_diagram.png"
 
     # Generate the plot
     plot_persistence_diagram(df, output_file)
@@ -79,7 +79,7 @@ def test_plot_persistence_diagram_faceted(db_session):
     assert "death" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram_faceted.html"
+    output_file = "output/vis/test/persistence_diagram_faceted.png"
 
     # Generate the plot
     plot_persistence_diagram_faceted(df, output_file)
@@ -118,7 +118,7 @@ def test_plot_persistence_diagram_by_run(db_session):
     assert "run_id" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_diagram_by_run.html"
+    output_file = "output/vis/test/persistence_diagram_by_run.png"
 
     # Generate the plot
     plot_persistence_diagram_by_run(df, 4, output_file)
@@ -155,7 +155,7 @@ def test_plot_semantic_drift(db_session):
     assert "sequence_number" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/semantic_drift.html"
+    output_file = "output/vis/test/semantic_drift.png"
 
     # Generate the plot
     plot_semantic_drift(df, output_file)
@@ -205,7 +205,7 @@ def test_plot_persistence_entropy(db_session):
     assert "run_id" in df.columns
 
     # Define output file
-    output_file = "output/vis/test/persistence_entropy.html"
+    output_file = "output/vis/test/persistence_entropy.png"
 
     # Generate the plot
     plot_persistence_entropy(df, output_file)
