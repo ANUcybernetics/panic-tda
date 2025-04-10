@@ -1093,6 +1093,83 @@ wheels = [
 ]
 
 [[package]]
+name = "panic-tda"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "accelerate" },
+    { name = "altair" },
+    { name = "connectorx" },
+    { name = "diffusers" },
+    { name = "einops" },
+    { name = "giotto-ph" },
+    { name = "giotto-tda" },
+    { name = "persim" },
+    { name = "piexif" },
+    { name = "pillow" },
+    { name = "plotnine" },
+    { name = "polars" },
+    { name = "protobuf" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "pytest" },
+    { name = "pytest-benchmark" },
+    { name = "pyvips" },
+    { name = "ray" },
+    { name = "rich" },
+    { name = "ruff" },
+    { name = "ruptures" },
+    { name = "sentence-transformers" },
+    { name = "sentencepiece" },
+    { name = "sqlmodel" },
+    { name = "timm" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "transformers" },
+    { name = "typer" },
+    { name = "uuid-v7" },
+    { name = "vegafusion" },
+    { name = "vl-convert-python" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "accelerate", specifier = ">=1.4.0" },
+    { name = "altair", specifier = ">=5.5.0" },
+    { name = "connectorx", specifier = ">=0.4.2" },
+    { name = "diffusers", specifier = ">=0.32.2" },
+    { name = "einops", specifier = ">=0.8.1" },
+    { name = "giotto-ph", specifier = ">=0.2.4" },
+    { name = "giotto-tda", specifier = ">=0.6.2" },
+    { name = "persim", specifier = ">=0.3.7" },
+    { name = "piexif", specifier = ">=1.1.3" },
+    { name = "pillow", specifier = ">=11.1.0" },
+    { name = "plotnine", specifier = ">=0.14.5" },
+    { name = "polars", specifier = ">=1.24.0" },
+    { name = "protobuf", specifier = ">=6.30.0" },
+    { name = "pyarrow", specifier = ">=19.0.1" },
+    { name = "pydantic", specifier = ">=2.10.6" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest-benchmark", specifier = ">=5.1.0" },
+    { name = "pyvips", specifier = ">=2.2.3" },
+    { name = "ray", specifier = ">=2.44.0" },
+    { name = "rich", specifier = ">=13.9.4" },
+    { name = "ruff", specifier = ">=0.11.0" },
+    { name = "ruptures", specifier = ">=1.1.9" },
+    { name = "sentence-transformers", specifier = ">=4.0.2" },
+    { name = "sentencepiece", specifier = ">=0.2.0" },
+    { name = "sqlmodel", specifier = ">=0.0.23" },
+    { name = "timm", specifier = ">=1.0.15" },
+    { name = "torch", specifier = ">=2.6.0" },
+    { name = "torchvision", specifier = ">=0.21.0" },
+    { name = "transformers", specifier = ">=4.49.0" },
+    { name = "typer", specifier = ">=0.15.2" },
+    { name = "uuid-v7", specifier = ">=1.0.0" },
+    { name = "vegafusion", extras = ["embed"], specifier = ">=2.0.2" },
+    { name = "vl-convert-python", specifier = ">=1.7.0" },
+]
+
+[[package]]
 name = "parso"
 version = "0.8.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1187,6 +1264,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/fb/a7960e838bc5df57a2ce23183bfd2290d97c33028b96bde332a9057834d3/pillow-11.1.0-cp313-cp313t-win32.whl", hash = "sha256:dda60aa465b861324e65a78c9f5cf0f4bc713e4309f83bc387be158b077963d9", size = 2295494 },
     { url = "https://files.pythonhosted.org/packages/d7/6c/6ec83ee2f6f0fda8d4cf89045c6be4b0373ebfc363ba8538f8c999f63fcd/pillow-11.1.0-cp313-cp313t-win_amd64.whl", hash = "sha256:ad5db5781c774ab9a9b2c4302bbf0c1014960a0a7be63278d13ae6fdf88126fe", size = 2631595 },
     { url = "https://files.pythonhosted.org/packages/cf/6c/41c21c6c8af92b9fea313aa47c75de49e2f9a467964ee33eb0135d47eb64/pillow-11.1.0-cp313-cp313t-win_arm64.whl", hash = "sha256:67cd427c68926108778a9005f2a04adbd5e67c442ed21d95389fe1d595458756", size = 2377651 },
+]
+
+[[package]]
+name = "pkgconfig"
+version = "1.5.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/e0/e05fee8b5425db6f83237128742e7e5ef26219b687ab8f0d41ed0422125e/pkgconfig-1.5.5.tar.gz", hash = "sha256:deb4163ef11f75b520d822d9505c1f462761b4309b1bb713d08689759ea8b899", size = 6082 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/af/89487c7bbf433f4079044f3dc32f9a9f887597fe04614a37a292e373e16b/pkgconfig-1.5.5-py3-none-any.whl", hash = "sha256:d20023bbeb42ee6d428a0fac6e0904631f545985a10cdd71a20aa58bc47a4209", size = 6732 },
 ]
 
 [[package]]
@@ -1487,6 +1573,7 @@ version = "2.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cffi" },
+    { name = "pkgconfig" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7b/88/f73dae807ec68b228fba72507105e3ba80a561dc0bade0004ce24fd118fc/pyvips-2.2.3.tar.gz", hash = "sha256:43bceced0db492654c93008246a58a508e0373ae1621116b87b322f2ac72212f", size = 56626 }
 
@@ -2082,89 +2169,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/eb/79/72064e6a701c2183016abbbfedaba506d81e30e232a68c9f0d6f6fcd1574/traitlets-5.14.3.tar.gz", hash = "sha256:9ed0579d3502c94b4b3732ac120375cda96f923114522847de4b3bb98b96b6b7", size = 161621 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/c0/8f5d070730d7836adc9c9b6408dec68c6ced86b304a9b26a14df072a6e8c/traitlets-5.14.3-py3-none-any.whl", hash = "sha256:b74e89e397b1ed28cc831db7aea759ba6640cb3de13090ca145426688ff1ac4f", size = 85359 },
-]
-
-[[package]]
-name = "panic-tda"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "accelerate" },
-    { name = "altair" },
-    { name = "connectorx" },
-    { name = "diffusers" },
-    { name = "einops" },
-    { name = "giotto-ph" },
-    { name = "giotto-tda" },
-    { name = "persim" },
-    { name = "piexif" },
-    { name = "pillow" },
-    { name = "plotnine" },
-    { name = "polars" },
-    { name = "protobuf" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pytest" },
-    { name = "pytest-benchmark" },
-    { name = "pyvips" },
-    { name = "ray" },
-    { name = "rich" },
-    { name = "ruptures" },
-    { name = "sentence-transformers" },
-    { name = "sentencepiece" },
-    { name = "sqlmodel" },
-    { name = "timm" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "transformers" },
-    { name = "typer" },
-    { name = "uuid-v7" },
-    { name = "vegafusion" },
-    { name = "vl-convert-python" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "accelerate", specifier = ">=1.4.0" },
-    { name = "altair", specifier = ">=5.5.0" },
-    { name = "connectorx", specifier = ">=0.4.2" },
-    { name = "diffusers", specifier = ">=0.32.2" },
-    { name = "einops", specifier = ">=0.8.1" },
-    { name = "giotto-ph", specifier = ">=0.2.4" },
-    { name = "giotto-tda", specifier = ">=0.6.2" },
-    { name = "persim", specifier = ">=0.3.7" },
-    { name = "piexif", specifier = ">=1.1.3" },
-    { name = "pillow", specifier = ">=11.1.0" },
-    { name = "plotnine", specifier = ">=0.14.5" },
-    { name = "polars", specifier = ">=1.24.0" },
-    { name = "protobuf", specifier = ">=6.30.0" },
-    { name = "pyarrow", specifier = ">=19.0.1" },
-    { name = "pydantic", specifier = ">=2.10.6" },
-    { name = "pytest", specifier = ">=8.3.5" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
-    { name = "pytest-benchmark", specifier = ">=5.1.0" },
-    { name = "pyvips", specifier = ">=2.2.3" },
-    { name = "ray", specifier = ">=2.44.0" },
-    { name = "rich", specifier = ">=13.9.4" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.0" },
-    { name = "ruptures", specifier = ">=1.1.9" },
-    { name = "sentence-transformers", specifier = ">=4.0.2" },
-    { name = "sentencepiece", specifier = ">=0.2.0" },
-    { name = "sqlmodel", specifier = ">=0.0.23" },
-    { name = "timm", specifier = ">=1.0.15" },
-    { name = "torch", specifier = ">=2.6.0" },
-    { name = "torchvision", specifier = ">=0.21.0" },
-    { name = "transformers", specifier = ">=4.49.0" },
-    { name = "typer", specifier = ">=0.15.2" },
-    { name = "uuid-v7", specifier = ">=1.0.0" },
-    { name = "vegafusion", extras = ["embed"], specifier = ">=2.0.2" },
-    { name = "vl-convert-python", specifier = ">=1.7.0" },
 ]
 
 [[package]]
