@@ -160,6 +160,67 @@ def perform_experiment(
         raise typer.Exit(code=1)
 
 
+@app.command("restart-experiment")
+def restart_experiment(
+    experiment_id: str = typer.Argument(
+        ...,
+        help="UUID of the experiment configuration to restart",
+    ),
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose output"
+    ),
+):
+    """
+    Restart a trajectory tracer experiment by its UUID.
+
+    This will continue processing existing runs or restart runs that didn't complete
+    successfully in the original experiment.
+    """
+    # Configure logging based on verbosity
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    try:
+        # Create database engine and tables
+        db_str = f"sqlite:///{db_path}"
+        logger.info(f"Connecting to database at {db_path}")
+
+        # Validate experiment exists
+        with get_session_from_connection_string(db_str) as session:
+            try:
+                experiment = session.get(ExperimentConfig, UUID(experiment_id))
+                if not experiment:
+                    logger.error(f"Experiment with ID {experiment_id} not found")
+                    raise typer.Exit(code=1)
+            except ValueError as e:
+                logger.error(f"Invalid experiment ID format: {e}")
+                raise typer.Exit(code=1)
+
+            # Calculate total number of runs
+            total_runs = len(experiment.networks) * len(experiment.seeds) * len(experiment.prompts)
+
+            logger.info(
+                f"Found experiment with ID {experiment_id}: {len(experiment.networks)} networks, "
+                f"{len(experiment.seeds)} seeds, {len(experiment.prompts)} prompts, "
+                f"for a total of {total_runs} runs"
+            )
+
+        # Run the experiment
+        logger.info(f"Restarting experiment with ID: {experiment_id}")
+        engine.perform_experiment(experiment_id, db_str)
+
+        logger.info(f"Experiment restarted successfully. Results saved to {db_path}")
+    except Exception as e:
+        logger.error(f"Early termination of experiment: {e}")
+        raise typer.Exit(code=1)
+
+
 @app.command("list-experiments")
 def list_experiments_command(
     db_path: Path = typer.Option(
