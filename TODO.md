@@ -1,9 +1,12 @@
 # TODO
 
-- find the before & after text & images for the "transition points"
+- update README (inc. rename project)
 
-- update the "title card" mosaic image generation to create row/col title cards
-  (for both prompt and network)
+- re-start the almost-finished experiment
+
+- re-create the plots with the length 5000 runs excluded
+
+- add visual indicator to mosaic videos for when there's a semantic "jump"
 
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
