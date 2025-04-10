@@ -317,29 +317,18 @@ def paper_charts(session: Session) -> None:
     """
     # from panic_tda.analysis import warm_caches
     # warm_caches(session)
-    # embeddings_df = load_embeddings_df(session, use_cache=True)
-    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
+
+    from panic_tda.analysis import load_embeddings_df
+    embeddings_df = load_embeddings_df(session, use_cache=True)
+    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
     from panic_tda.analysis import load_runs_df
 
     runs_df = load_runs_df(session, use_cache=True)
-
-    # Count rows for each combination of model types and homology dimension
-    model_counts = runs_df.group_by([
-        "text_model",
-        "image_model",
-        "embedding_model",
-        "homology_dimension",
-    ]).count()
-    print("Counts per model combination and homology dimension:")
-    model_counts.write_csv("out.csv")
-
-    # from panic_tda.analysis import load_embeddings_df
-
-    # plot_persistence_diagram_faceted(
-    #     runs_df, "output/vis/persistence_diagram_faceted.png"
-    # )
-    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    plot_persistence_diagram_faceted(
+        runs_df, "output/vis/persistence_diagram_faceted.png"
+    )
+    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
     # )
