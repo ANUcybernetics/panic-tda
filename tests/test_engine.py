@@ -869,14 +869,16 @@ def test_restart_experiment(db_session: Session):
     sequence_numbers = [inv.sequence_number for inv in run_invocations]
     assert set(sequence_numbers) == set(range(10))
 
-    # Verify our original invocations are still there
+    # Verify our original invocations are still there, except the final one
+    # (final one will be re-done as part of the restart)
     current_invocation_ids = [inv.id for inv in invocations]
-    for inv_id in original_invocation_ids:
+    for inv_id in original_invocation_ids[:-1]:
         assert inv_id in current_invocation_ids
 
-    # Verify our original embeddings are still there
+    # Verify our original embeddings are still there, except for embeddings from the final invocation
+    # (final one will be re-done as part of the restart)
     current_embedding_ids = [emb.id for emb in list_embeddings(db_session)]
-    for embedding_id in original_embedding_ids:
+    for embedding_id in original_embedding_ids[:-1]:
         assert embedding_id in current_embedding_ids
 
     # We should have embeddings for all text invocations
