@@ -77,22 +77,49 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
         # Load the run
         run_uuid = UUID(run_id)
         run = session.get(Run, run_uuid)
+
         if not run:
             raise ValueError(f"Run {run_id} not found")
 
+        network_length = len(run.network)
         logger.debug(f"Starting run generator for run {run_id} with seed {run.seed}")
 
-        # Initialize with the first prompt
-        current_input = run.initial_prompt
-        previous_invocation_uuid = None
-        network_length = len(run.network)
+        # Get all existing invocations for this run
+        existing_invocations = session.exec(
+            select(Invocation)
+            .where(Invocation.run_id == run_uuid)
+            .order_by(Invocation.sequence_number)
+        ).all()
+
+        if existing_invocations:
+            # Find the highest sequence number
+            last_sequence = max(inv.sequence_number for inv in existing_invocations)
+            last_invocation = next(inv for inv in existing_invocations if inv.sequence_number == last_sequence)
+
+            # Start from the next sequence number
+            sequence_number = last_sequence + 1
+
+            # Use the last invocation's output as input for the next one
+            current_input = last_invocation.output
+            previous_invocation_uuid = last_invocation.id
+
+            # Initialize the seen outputs set with hashes from all existing invocations
+            seen_outputs = set()
+            if run.seed != -1:  # Only track duplicates for deterministic runs
+                for inv in existing_invocations:
+                    seen_outputs.add(get_output_hash(inv.output))
+        else:
+            # Initialize with the first prompt
+            sequence_number = 0
+            current_input = run.initial_prompt
+            previous_invocation_uuid = None
+            seen_outputs = set()
 
         # Track outputs to detect loops (only if seed is not -1)
-        seen_outputs = set()
         track_duplicates = run.seed != -1
 
         # Process each invocation in the run
-        for sequence_number in range(run.max_length):
+        while sequence_number < run.max_length:
             # Get the next model in the network (cycling if necessary)
             model_index = sequence_number % network_length
             model_name = run.network[model_index]
@@ -154,10 +181,11 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
 
             # Set up for next invocation
             current_input = invocation.output
-            previous_invocation_uuid = UUID(invocation_id)
+            previous_invocation_uuid = invocation.id
+            sequence_number += 1
 
             logger.debug(
-                f"Completed invocation {sequence_number}/{run.max_length}: {model_name}"
+                f"Completed invocation {sequence_number - 1}/{run.max_length}: {model_name}"
             )
 
         logger.debug(f"Run generator for {run_id} completed")
@@ -622,8 +650,18 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
                 f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`"
             )
 
-        # Initialize runs and group them by network (combinations are calculated inside init_runs)
-        run_groups = init_runs(experiment_id, db_str)
+            if not config.runs:
+                # Initialize runs and group them by network (combinations are calculated inside init_runs)
+                run_groups = init_runs(experiment_id, db_str)
+            else:
+                # Group runs by network for restart
+                network_to_runs = {}
+                for run in config.runs:
+                    network_key = tuple(run.network)
+                    if network_key not in network_to_runs:
+                        network_to_runs[network_key] = []
+                    network_to_runs[network_key].append(str(run.id))
+                run_groups = list(network_to_runs.values())
 
         # Process each group of runs (sharing the same network) separately
         all_run_ids = []

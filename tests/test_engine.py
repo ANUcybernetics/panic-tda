@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import ray
 from PIL import Image
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import select, Session, SQLModel, create_engine
 
 from trajectory_tracer.db import (
     create_db_and_tables,
@@ -751,6 +751,148 @@ def test_perform_experiment(db_session: Session):
         assert pd.diagram_data is not None
         assert "dgms" in pd.diagram_data
         assert len(pd.diagram_data["dgms"]) > 0
+
+
+def test_restart_experiment(db_session: Session):
+    """Test that perform_experiment can restart and complete a partially executed experiment."""
+    # Create a test experiment config
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["Test prompt for restart"],
+        embedding_models=["Dummy"],
+        max_length=10,
+    )
+
+    # Save to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    experiment_id = str(config.id)
+
+    # First, run perform_experiment to create a complete run
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(experiment_id, db_url)
+
+    # Refresh the session to see all changes
+    db_session.expire_all()
+
+    # Check that the experiment was completed correctly
+    experiment = db_session.get(ExperimentConfig, UUID(experiment_id))
+    assert experiment.started_at is not None
+    assert experiment.completed_at is not None
+
+    # We should have 1 run
+    runs = list_runs(db_session)
+    assert len(runs) == 1
+    run_id = runs[0].id
+
+    # Get all invocations
+    invocations = list_invocations(db_session)
+    assert len(invocations) == 10
+
+    # Store the IDs of invocations to keep (first half)
+    original_invocation_ids = []
+    for inv in invocations:
+        if inv.sequence_number < config.max_length // 2:
+            original_invocation_ids.append(inv.id)
+
+    # Store the IDs of embeddings to keep (for text invocations in the first half)
+    original_embedding_ids = []
+    text_invocation_count = 0
+    embeddings = list_embeddings(db_session)
+    for emb in embeddings:
+        # Get the invocation for this embedding
+        invocation = db_session.get(Invocation, emb.invocation_id)
+        if invocation.sequence_number < config.max_length // 2:
+            if invocation.type == InvocationType.TEXT:
+                text_invocation_count += 1
+            original_embedding_ids.append(emb.id)
+
+    # Verify we have at least 2 text invocations with embeddings in first half
+    assert text_invocation_count >= 2, "Need at least 2 text invocations with embeddings for persistence diagram"
+
+    # Delete all invocations with sequence_number >= max_length/2
+    invocations_to_delete = db_session.exec(
+        select(Invocation)
+        .where(
+            Invocation.run_id == run_id,
+            Invocation.sequence_number >= config.max_length // 2
+        )
+    ).all()
+
+    for inv in invocations_to_delete:
+        db_session.delete(inv)
+    db_session.commit()
+
+    # Delete persistence diagrams (will be recreated)
+    pds_to_delete = db_session.exec(
+        select(PersistenceDiagram)
+        .where(PersistenceDiagram.run_id == run_id)
+    ).all()
+
+    for pd in pds_to_delete:
+        db_session.delete(pd)
+    db_session.commit()
+
+    # Verify that only the first half of invocations remain
+    remaining_invocations = list_invocations(db_session)
+    assert len(remaining_invocations) == config.max_length // 2
+
+    # Reset the experiment's completed_at to simulate an interrupted experiment
+    experiment.completed_at = None
+    db_session.add(experiment)
+    db_session.commit()
+
+    # Call perform_experiment again to complete the experiment
+    perform_experiment(experiment_id, db_url)
+
+    # Refresh the session to see all changes
+    db_session.expire_all()
+
+    # Check that the experiment was completed correctly
+    experiment = db_session.get(ExperimentConfig, UUID(experiment_id))
+    assert experiment.started_at is not None
+    assert experiment.completed_at is not None
+
+    # We should still have just 1 run
+    runs = list_runs(db_session)
+    assert len(runs) == 1
+    assert runs[0].id == run_id
+
+    # We should now have 10 invocations (the max_length)
+    invocations = list_invocations(db_session)
+    assert len(invocations) == 10
+
+    # Verify sequence numbers are complete
+    run_invocations = [inv for inv in invocations if inv.run_id == run_id]
+    sequence_numbers = [inv.sequence_number for inv in run_invocations]
+    assert set(sequence_numbers) == set(range(10))
+
+    # Verify our original invocations are still there
+    current_invocation_ids = [inv.id for inv in invocations]
+    for inv_id in original_invocation_ids:
+        assert inv_id in current_invocation_ids
+
+    # Verify our original embeddings are still there
+    current_embedding_ids = [emb.id for emb in list_embeddings(db_session)]
+    for embedding_id in original_embedding_ids:
+        assert embedding_id in current_embedding_ids
+
+    # We should have embeddings for all text invocations
+    embeddings = list_embeddings(db_session)
+    text_invocations = [inv for inv in run_invocations if inv.type == InvocationType.TEXT]
+    assert len(embeddings) == len(text_invocations)
+
+    # We should have 1 persistence diagram (1 run * 1 embedding model)
+    pds = list_persistence_diagrams(db_session)
+    assert len(pds) == 1
+
+    # Verify the persistence diagram has diagram data
+    pd = pds[0]
+    assert pd.diagram_data is not None
+    assert "dgms" in pd.diagram_data
+    assert len(pd.diagram_data["dgms"]) > 0
 
 
 @pytest.mark.slow
