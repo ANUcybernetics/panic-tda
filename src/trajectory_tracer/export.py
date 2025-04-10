@@ -190,7 +190,8 @@ def export_video(
 ) -> None:
     """
     Export a mosaic video of images from multiple runs, organized by prompt (rows)
-    and network (columns) with informative borders.
+    and network (columns) with informative borders. Each prompt can span multiple rows
+    to distribute networks evenly.
 
     Args:
         run_ids: List of run IDs to include in the mosaic
@@ -236,9 +237,10 @@ def export_video(
         # Default: sort prompts alphabetically
         ordered_prompts = sorted(prompt_to_runs.keys())
 
-    # For each prompt, group runs by network and sort
-    grid_layout = []
-    max_cols = 0
+    # Optimize grid layout for 16:9 aspect ratio
+    # First, gather all runs organized by prompt and network
+    all_sorted_runs = []
+    prompt_network_counts = {}  # For tracking networks per prompt
 
     for prompt in ordered_prompts:
         # Group the runs by network
@@ -249,23 +251,123 @@ def export_video(
                 network_to_runs[network_key] = []
             network_to_runs[network_key].append(run)
 
-        # Sort networks and then sort runs within each network by ID
+        # Sort networks
         networks = sorted(network_to_runs.keys())
-        row_runs = []
 
+        # Track networks per prompt for later layout calculation
+        prompt_network_counts[prompt] = len(networks)
+
+        # Add all runs from this prompt in network order
+        prompt_runs = []
         for network in networks:
             # Sort runs with same prompt and network by run_id
             sorted_runs = sorted(network_to_runs[network], key=lambda r: str(r.id))
-            row_runs.extend(sorted_runs)
+            prompt_runs.extend(sorted_runs)
 
-        grid_layout.append((prompt, row_runs))
-        max_cols = max(max_cols, len(row_runs))
+        all_sorted_runs.append((prompt, prompt_runs))
 
-    # Calculate grid dimensions
-    rows = len(ordered_prompts)
-    cols = max_cols
+    # Calculate total cells needed in the grid
+    total_cells = sum(len(runs) for _, runs in all_sorted_runs)
 
-    logger.info(f"Mosaic grid: {rows} rows × {cols} columns (plus borders)")
+    # Find all possible divisors for the total cells
+    divisors = [i for i in range(1, total_cells + 1) if total_cells % i == 0]
+
+    # Target aspect ratio is 16:9
+    target_ratio = 16 / 9
+
+    # Find the configuration closest to 16:9, considering borders
+    best_ratio_diff = float("inf")
+    best_cols = total_cells
+
+    for rows in divisors:
+        cols = total_cells // rows
+
+        # Account for borders in aspect ratio calculation (+2 for both dimensions)
+        # We also need to account for progress bar height
+        progress_bar_height = 30
+        width_with_borders = (cols + 2) * IMAGE_SIZE
+        height_with_borders = ((rows + 2) * IMAGE_SIZE) + progress_bar_height
+
+        ratio = width_with_borders / height_with_borders
+        ratio_diff = abs(ratio - target_ratio)
+
+        if ratio_diff < best_ratio_diff:
+            best_ratio_diff = ratio_diff
+            best_cols = cols
+
+    # Now create the grid layout based on the optimal dimensions
+    grid_layout = []
+
+    # Distribute runs across the grid while maintaining consistent prompts in rows
+    # and networks in columns as much as possible
+    remaining_cells = total_cells
+    run_index = 0
+
+    # Track which prompts have been completely processed
+    processed_prompts = set()
+
+    # Keep filling rows until we've placed all cells
+    while remaining_cells > 0:
+        current_row_cells = min(best_cols, remaining_cells)
+        row_runs = []
+
+        # Try to keep prompt consistency in rows
+        # Find the prompt that hasn't been fully processed with most runs
+        largest_remaining_prompt = None
+        largest_count = 0
+
+        for prompt, runs in all_sorted_runs:
+            remaining_runs = [r for r in runs if r.id not in processed_prompts]
+            if len(remaining_runs) > largest_count:
+                largest_remaining_prompt = prompt
+                largest_count = len(remaining_runs)
+
+        # If we found a prompt that fits in this row, use it
+        if largest_remaining_prompt and largest_count >= current_row_cells:
+            # Find all runs for this prompt
+            for prompt, runs in all_sorted_runs:
+                if prompt == largest_remaining_prompt:
+                    # Take the first current_row_cells runs that haven't been processed
+                    prompt_runs = [r for r in runs if r.id not in processed_prompts][
+                        :current_row_cells
+                    ]
+                    row_runs = prompt_runs
+
+                    # Mark these runs as processed
+                    for run in prompt_runs:
+                        processed_prompts.add(run.id)
+
+                    break
+        else:
+            # Fill from remaining runs in order
+            for i in range(current_row_cells):
+                if run_index < total_cells:
+                    # Find the next unprocessed run
+                    for prompt, runs in all_sorted_runs:
+                        for run in runs:
+                            if run not in processed_prompts:
+                                row_runs.append(run)
+                                processed_prompts.add(run.id)
+                                break
+                        if len(row_runs) > i:  # We found a run for this position
+                            break
+                run_index += 1
+
+        # Add this row to the grid layout
+        if row_runs:
+            # Use the prompt of the first run in the row for the entire row
+            prompt = row_runs[0].initial_prompt if row_runs else ""
+            grid_layout.append((prompt, row_runs))
+
+        remaining_cells -= current_row_cells
+
+    # Final grid dimensions
+    rows = len(grid_layout)
+    cols = best_cols  # The optimal column count we calculated
+
+    logger.info(
+        f"Optimized mosaic grid for 16:9 aspect ratio: {rows} rows × {cols} columns (plus borders)"
+    )
 
     # Create dimensions for the canvas
     # Adding 2 to rows and cols for the borders
