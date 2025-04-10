@@ -247,7 +247,9 @@ def export_video(
         # Use specified order, adding any missing prompts at the end
         ordered_prompts = [p for p in prompt_order if p in prompt_network_runs]
         # Add any prompts not in prompt_order
-        ordered_prompts.extend(sorted([p for p in prompt_network_runs if p not in ordered_prompts]))
+        ordered_prompts.extend(
+            sorted([p for p in prompt_network_runs if p not in ordered_prompts])
+        )
     else:
         # Default: sort prompts alphabetically
         ordered_prompts = sorted(prompt_network_runs.keys())
@@ -270,7 +272,9 @@ def export_video(
         if n_seeds is None:
             n_seeds = count
         elif n_seeds != count:
-            logger.error(f"Inconsistent number of seeds: {prompt} + {network} has {count} seeds, expected {n_seeds}")
+            logger.error(
+                f"Inconsistent number of seeds: {prompt} + {network} has {count} seeds, expected {n_seeds}"
+            )
             return
 
     if n_seeds is None or n_seeds == 0:
@@ -296,12 +300,12 @@ def export_video(
     target_ratio = 16 / 9
     best_ratio_diff = float("inf")
     best_seeds_per_row = n_seeds
-    best_rows = 0
-    best_cols = 0
 
     for seeds_per_row in possible_seeds_per_row:
         # For each prompt, we need (n_seeds / seeds_per_row) rows
-        rows_per_prompt = (n_seeds + seeds_per_row - 1) // seeds_per_row  # Ceiling division
+        rows_per_prompt = (
+            n_seeds + seeds_per_row - 1
+        ) // seeds_per_row  # Ceiling division
         total_rows = n_prompts * rows_per_prompt
 
         # Each row has n_networks * seeds_per_row columns
@@ -318,8 +322,6 @@ def export_video(
         if ratio_diff < best_ratio_diff:
             best_ratio_diff = ratio_diff
             best_seeds_per_row = seeds_per_row
-            best_rows = total_rows
-            best_cols = total_cols
 
     # Step 4: Create a mapping of run_id to grid position (r, c)
     seeds_per_row = best_seeds_per_row
@@ -336,7 +338,9 @@ def export_video(
         for network_idx, network in enumerate(all_networks):
             if network in prompt_network_runs[prompt]:
                 # Sort runs with same prompt and network by run_id
-                sorted_runs = sorted(prompt_network_runs[prompt][network], key=lambda r: str(r.id))
+                sorted_runs = sorted(
+                    prompt_network_runs[prompt][network], key=lambda r: str(r.id)
+                )
 
                 for seed_idx, run in enumerate(sorted_runs):
                     # Calculate position in grid
@@ -435,7 +439,9 @@ def export_video(
 
         for run in all_grid_runs:
             # Count image invocations for each run
-            image_count = sum(1 for inv in run.invocations if inv.type == InvocationType.IMAGE)
+            image_count = sum(
+                1 for inv in run.invocations if inv.type == InvocationType.IMAGE
+            )
             run_image_counts[str(run.id)] = image_count
             max_images = max(max_images, image_count)
 
@@ -457,7 +463,8 @@ def export_video(
 
                         # Get this run's invocations of type IMAGE
                         image_invocations = [
-                            inv for inv in run.invocations
+                            inv
+                            for inv in run.invocations
                             if inv.type == InvocationType.IMAGE
                         ]
 
@@ -465,7 +472,9 @@ def export_video(
                         image = None
                         if frame_idx < len(image_invocations):
                             image = image_invocations[frame_idx].output
-                        elif image_invocations:  # Use last available image if we've run out
+                        elif (
+                            image_invocations
+                        ):  # Use last available image if we've run out
                             image = image_invocations[-1].output
 
                         # Paste the image onto the canvas
