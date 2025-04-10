@@ -342,7 +342,7 @@ def export_video(
     canvas_width = base_width
     canvas_height = base_height + progress_bar_area_height
 
-    # Create the canvas
+    # Create the base canvas that will be reused for all frames
     base_canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
 
     # Set up font for border text
@@ -411,29 +411,26 @@ def export_video(
     os.makedirs(temp_dir, exist_ok=True)
 
     try:
-        # Collect all runs in grid order and their image lists
+        # Find the maximum number of frames (images) across all runs
+        max_images = 0
+        run_image_counts = {}
+
+        # Collect all runs in grid order and get their image counts
         all_grid_runs = []
         for _, row_runs in grid_layout:
             all_grid_runs.extend(row_runs)
 
-        # Get image lists for each run
-        run_image_lists = []
         for run in all_grid_runs:
-            image_list = [
-                inv.output
-                for inv in run.invocations
-                if inv.type == InvocationType.IMAGE
-            ]
-            run_image_lists.append(image_list)
-
-        # Find the maximum length of any image list
-        max_images = max([len(img_list) for img_list in run_image_lists], default=0)
+            # Count image invocations for each run
+            image_count = sum(1 for inv in run.invocations if inv.type == InvocationType.IMAGE)
+            run_image_counts[str(run.id)] = image_count
+            max_images = max(max_images, image_count)
 
         if max_images == 0:
             logger.warning("No images found in any run")
             return
 
-        # Now iterate through each image position
+        # Now iterate through each image position (frame)
         for frame_idx in range(max_images):
             # Start with a copy of the base canvas with borders
             mosaic = base_canvas.copy()
@@ -446,23 +443,28 @@ def export_video(
                     if col_idx >= cols:  # Skip if exceeds max columns
                         continue
 
-                    # Get image list for this run
-                    if run_idx < len(run_image_lists):
-                        image_list = run_image_lists[run_idx]
+                    # Find the appropriate image for this run at this frame index
+                    image = None
+                    run_id_str = str(run.id)
 
-                        # Get image for this position if it exists
-                        image = None
-                        if frame_idx < len(image_list):
-                            image = image_list[frame_idx]
-                        elif image_list:  # Use last available image if we've run out
-                            image = image_list[-1]
+                    # Get this run's invocations of type IMAGE
+                    image_invocations = [
+                        inv for inv in run.invocations
+                        if inv.type == InvocationType.IMAGE
+                    ]
 
-                        # Paste the image onto the canvas
-                        if image is not None:
-                            # Account for borders (+1 to both row and column)
-                            x_offset = (col_idx + 1) * IMAGE_SIZE
-                            y_offset = (row_idx + 1) * IMAGE_SIZE
-                            mosaic.paste(image, (x_offset, y_offset))
+                    # Get the specific image for this frame if it exists
+                    if frame_idx < len(image_invocations):
+                        image = image_invocations[frame_idx].output
+                    elif image_invocations:  # Use last available image if we've run out
+                        image = image_invocations[-1].output
+
+                    # Paste the image onto the canvas
+                    if image is not None:
+                        # Account for borders (+1 to both row and column)
+                        x_offset = (col_idx + 1) * IMAGE_SIZE
+                        y_offset = (row_idx + 1) * IMAGE_SIZE
+                        mosaic.paste(image, (x_offset, y_offset))
 
                     run_idx += 1
 
@@ -497,6 +499,10 @@ def export_video(
             # Save frame
             output_path = os.path.join(temp_dir, f"{frame_idx:05d}.jpg")
             mosaic.save(output_path, format="JPEG", quality=95)
+
+            # Allow mosaic and other objects to be garbage collected
+            del mosaic
+            del draw
 
             if (
                 frame_idx % (max(1, max_images // 20)) == 0
