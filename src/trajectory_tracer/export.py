@@ -347,7 +347,7 @@ def export_video(
 
     # Set up font for border text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    base_font_size = int(IMAGE_SIZE * 0.08)
+    base_font_size = int(IMAGE_SIZE * 0.1)
 
     # Draw the border tiles with prompt and network information
     draw = ImageDraw.Draw(base_canvas)
