@@ -112,52 +112,48 @@ def perform_experiment(
     # Load configuration
     logger.info(f"Loading configuration from {config_file}")
 
-    try:
-        with open(config_file, "r") as f:
-            config_data = json.load(f)
+    with open(config_file, "r") as f:
+        config_data = json.load(f)
 
-        # Handle seed_count if present
-        if "seed_count" in config_data:
-            seed_count = config_data.pop("seed_count")
-            config_data["seeds"] = [-1] * seed_count
-            logger.info(
-                f"Using seed_count={seed_count}, generated {seed_count} seeds with value -1"
-            )
+    # Handle seed_count if present
+    if "seed_count" in config_data:
+        seed_count = config_data.pop("seed_count")
+        config_data["seeds"] = [-1] * seed_count
+        logger.info(
+            f"Using seed_count={seed_count}, generated {seed_count} seeds with value -1"
+        )
 
-        # Create database engine and tables
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Creating/connecting to database at {db_path}")
+    # Create database engine and tables
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Creating/connecting to database at {db_path}")
 
-        # Call the create_db_and_tables function
-        create_db_and_tables(db_str)
+    # Call the create_db_and_tables function
+    create_db_and_tables(db_str)
 
-        # Create experiment config from JSON and save to database
-        with get_session_from_connection_string(db_str) as session:
-            config = ExperimentConfig(**config_data)
-            session.add(config)
-            session.commit()
-            session.refresh(config)
+    # Create experiment config from JSON and save to database
+    with get_session_from_connection_string(db_str) as session:
+        config = ExperimentConfig(**config_data)
+        session.add(config)
+        session.commit()
+        session.refresh(config)
 
-            # Calculate total number of runs that will be generated
-            total_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
+        # Calculate total number of runs that will be generated
+        total_runs = len(config.networks) * len(config.seeds) * len(config.prompts)
 
-            logger.info(
-                f"Configuration loaded successfully: {len(config.networks)} networks, "
-                f"{len(config.seeds)} seeds, {len(config.prompts)} prompts, "
-                f"for a total of {total_runs} runs"
-            )
+        logger.info(
+            f"Configuration loaded successfully: {len(config.networks)} networks, "
+            f"{len(config.seeds)} seeds, {len(config.prompts)} prompts, "
+            f"for a total of {total_runs} runs"
+        )
 
-            # Get the config ID to pass to the engine
-            config_id = str(config.id)
+        # Get the config ID to pass to the engine
+        config_id = str(config.id)
 
-        # Run the experiment
-        logger.info(f"Starting experiment with config ID: {config_id}")
-        engine.perform_experiment(config_id, db_str)
+    # Run the experiment
+    logger.info(f"Starting experiment with config ID: {config_id}")
+    engine.perform_experiment(config_id, db_str)
 
-        logger.info(f"Experiment completed successfully. Results saved to {db_path}")
-    except Exception as e:
-        logger.error(f"Early termination of experiment: {e}")
-        raise typer.Exit(code=1)
+    logger.info(f"Experiment completed successfully. Results saved to {db_path}")
 
 
 @app.command("resume-experiment")
@@ -186,39 +182,31 @@ def resume_experiment(
     if verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    try:
-        # Create database engine and tables
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
+    # Create database engine and tables
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
 
-        # Validate experiment exists
-        with get_session_from_connection_string(db_str) as session:
-            try:
-                experiment = session.get(ExperimentConfig, UUID(experiment_id))
-                if not experiment:
-                    logger.error(f"Experiment with ID {experiment_id} not found")
-                    raise typer.Exit(code=1)
-            except ValueError as e:
-                logger.error(f"Invalid experiment ID format: {e}")
-                raise typer.Exit(code=1)
+    # Validate experiment exists
+    with get_session_from_connection_string(db_str) as session:
+        experiment = session.get(ExperimentConfig, UUID(experiment_id))
+        if not experiment:
+            logger.error(f"Experiment with ID {experiment_id} not found")
+            raise typer.Exit(code=1)
 
-            # Calculate total number of runs
-            total_runs = len(experiment.networks) * len(experiment.seeds) * len(experiment.prompts)
+        # Calculate total number of runs
+        total_runs = len(experiment.networks) * len(experiment.seeds) * len(experiment.prompts)
 
-            logger.info(
-                f"Found experiment with ID {experiment_id}: {len(experiment.networks)} networks, "
-                f"{len(experiment.seeds)} seeds, {len(experiment.prompts)} prompts, "
-                f"for a total of {total_runs} runs"
-            )
+        logger.info(
+            f"Found experiment with ID {experiment_id}: {len(experiment.networks)} networks, "
+            f"{len(experiment.seeds)} seeds, {len(experiment.prompts)} prompts, "
+            f"for a total of {total_runs} runs"
+        )
 
-        # Run the experiment
-        logger.info(f"Resuming experiment with ID: {experiment_id}")
-        engine.perform_experiment(experiment_id, db_str)
+    # Run the experiment
+    logger.info(f"Resuming experiment with ID: {experiment_id}")
+    engine.perform_experiment(experiment_id, db_str)
 
-        logger.info(f"Experiment resumeed successfully. Results saved to {db_path}")
-    except Exception as e:
-        logger.error(f"Early termination of experiment: {e}")
-        raise typer.Exit(code=1)
+    logger.info(f"Experiment resumeed successfully. Results saved to {db_path}")
 
 
 @app.command("list-experiments")
@@ -336,48 +324,38 @@ def delete_experiment(
     This will permanently remove the experiment and all its runs, invocations,
     embeddings, and persistence diagrams.
     """
-    try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
 
-        # Get the experiment and confirm deletion
-        with get_session_from_connection_string(db_str) as session:
-            try:
-                experiment = session.get(ExperimentConfig, UUID(experiment_id))
-                if not experiment:
-                    logger.error(f"Experiment with ID {experiment_id} not found")
-                    raise typer.Exit(code=1)
-            except ValueError as e:
-                logger.error(f"Invalid experiment ID format: {e}")
-                raise typer.Exit(code=1)
-
-            # Show experiment details and confirm deletion
-            run_count = len(experiment.runs)
-            typer.echo(f"Experiment ID: {experiment.id}")
-            typer.echo(f"Started: {experiment.started_at}")
-            typer.echo(f"Runs: {run_count}")
-
-            if not force:
-                confirm = typer.confirm(
-                    f"Are you sure you want to delete this experiment and all its {run_count} runs?",
-                    default=False,
-                )
-                if not confirm:
-                    typer.echo("Deletion cancelled.")
-                    return
-
-            # Delete the experiment
-            result = db_delete_experiment(experiment.id, session)
-
-            if result:
-                typer.echo(f"Experiment {experiment_id} successfully deleted.")
-            else:
-                typer.echo(f"Failed to delete experiment {experiment_id}.")
-
-    except Exception as e:
-        logger.error(f"Error deleting experiment: {e}")
+    # Get the experiment and confirm deletion
+    experiment = session.get(ExperimentConfig, UUID(experiment_id))
+    if not experiment:
+        logger.error(f"Experiment with ID {experiment_id} not found")
         raise typer.Exit(code=1)
+
+    # Show experiment details and confirm deletion
+    run_count = len(experiment.runs)
+    typer.echo(f"Experiment ID: {experiment.id}")
+    typer.echo(f"Started: {experiment.started_at}")
+    typer.echo(f"Runs: {run_count}")
+
+    if not force:
+        confirm = typer.confirm(
+            f"Are you sure you want to delete this experiment and all its {run_count} runs?",
+            default=False,
+        )
+        if not confirm:
+            typer.echo("Deletion cancelled.")
+            return
+
+    # Delete the experiment
+    result = db_delete_experiment(experiment.id, session)
+
+    if result:
+        typer.echo(f"Experiment {experiment_id} successfully deleted.")
+    else:
+        typer.echo(f"Failed to delete experiment {experiment_id}.")
 
 
 @app.command("list-runs")
@@ -398,40 +376,35 @@ def list_runs_command(
     Displays run IDs and basic information about each run.
     Use --verbose for more detailed output.
     """
-    try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
 
-        # List all runs
-        with get_session_from_connection_string(db_str) as session:
-            runs = list_runs(session)
+    # List all runs
+    with get_session_from_connection_string(db_str) as session:
+        runs = list_runs(session)
 
-            if not runs:
-                typer.echo("No runs found in the database.")
-                return
+        if not runs:
+            typer.echo("No runs found in the database.")
+            return
 
-            for run in runs:
-                if verbose:
-                    # Detailed output
-                    typer.echo(f"\nRun ID: {run.id}")
-                    typer.echo(f"  Network: {run.network}")
-                    typer.echo(f"  Initial prompt: {run.initial_prompt}")
-                    typer.echo(f"  Seed: {run.seed}")
-                    typer.echo(f"  Length: {len(run.invocations)}")
-                    typer.echo(f"  Stop reason: {run.stop_reason}")
-                else:
-                    # Simple output
-                    typer.echo(
-                        f"{run.id} (seed {run.seed}) - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
-                    )
-            typer.echo(
-                f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):"
-            )
-
-    except Exception as e:
-        logger.error(f"Error listing runs: {e}")
-        raise typer.Exit(code=1)
+        for run in runs:
+            if verbose:
+                # Detailed output
+                typer.echo(f"\nRun ID: {run.id}")
+                typer.echo(f"  Network: {run.network}")
+                typer.echo(f"  Initial prompt: {run.initial_prompt}")
+                typer.echo(f"  Seed: {run.seed}")
+                typer.echo(f"  Length: {len(run.invocations)}")
+                typer.echo(f"  Stop reason: {run.stop_reason}")
+            else:
+                # Simple output
+                typer.echo(
+                    f"{run.id} (seed {run.seed}) - length: {len(run.invocations)}/{run.max_length}, stop reason: {run.stop_reason}"
+                )
+        typer.echo(
+            f"Found {len(runs)} runs ({count_invocations(session)} invocations in total):"
+        )
 
 
 @app.command("list-models")
@@ -504,81 +477,73 @@ def export_video_command(
     and renders them as a video file named 'mosaic.mp4' in a subdirectory named
     after the first experiment ID within the specified output directory.
     """
-    try:
-        # Create database connection
-        db_str = f"sqlite:///{db_path}"
-        logger.info(f"Connecting to database at {db_path}")
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
 
-        all_runs = []
-        valid_experiment_ids = []
+    all_runs = []
+    valid_experiment_ids = []
 
-        # Get the experiments and collect runs
-        with get_session_from_connection_string(db_str) as session:
-            for experiment_id_str in experiment_ids:
-                # Validate UUID format
-                try:
-                    experiment_uuid = UUID(experiment_id_str)
-                except ValueError:
-                    logger.error(
-                        f"Invalid experiment ID format: '{experiment_id_str}'. Please provide a valid UUID."
-                    )
-                    raise typer.Exit(code=1)
-
-                # Fetch experiment
-                experiment = session.get(ExperimentConfig, experiment_uuid)
-                if not experiment:
-                    logger.warning(
-                        f"Experiment with ID {experiment_id_str} not found. Skipping."
-                    )
-                    continue  # Skip to the next experiment ID
-
-                # Check for runs
-                if not experiment.runs:
-                    logger.warning(
-                        f"No runs found for experiment {experiment_id_str}. Skipping."
-                    )
-                    continue  # Skip to the next experiment ID
-
-                # Collect runs and valid ID
-                all_runs.extend(experiment.runs)
-                valid_experiment_ids.append(experiment_id_str)
-                logger.info(
-                    f"Added {len(experiment.runs)} runs from experiment {experiment_id_str}"
-                )
-
-            # Check if any runs were collected at all
-            if not all_runs:
+    # Get the experiments and collect runs
+    with get_session_from_connection_string(db_str) as session:
+        for experiment_id_str in experiment_ids:
+            # Validate UUID format
+            try:
+                experiment_uuid = UUID(experiment_id_str)
+            except ValueError:
                 logger.error(
-                    "No valid runs found for any of the specified experiment IDs."
+                    f"Invalid experiment ID format: '{experiment_id_str}'. Please provide a valid UUID."
                 )
                 raise typer.Exit(code=1)
 
-            # Get run IDs as strings
-            run_ids = [str(run.id) for run in all_runs]
-            logger.info(f"Total runs collected for mosaic: {len(run_ids)}")
+            # Fetch experiment
+            experiment = session.get(ExperimentConfig, experiment_uuid)
+            if not experiment:
+                logger.warning(
+                    f"Experiment with ID {experiment_id_str} not found. Skipping."
+                )
+                continue  # Skip to the next experiment ID
 
-            # Sort them so they're in nice orders
-            run_ids = order_runs_for_mosaic(run_ids, session)
+            # Check for runs
+            if not experiment.runs:
+                logger.warning(
+                    f"No runs found for experiment {experiment_id_str}. Skipping."
+                )
+                continue  # Skip to the next experiment ID
 
-            logger.info(f"Preparing to export mosaic video to {output_file}")
-
-            # Create the mosaic video
-            export_video(
-                run_ids=run_ids,
-                session=session,
-                fps=fps,
-                resolution=resolution,
-                output_video=str(output_file),
+            # Collect runs and valid ID
+            all_runs.extend(experiment.runs)
+            valid_experiment_ids.append(experiment_id_str)
+            logger.info(
+                f"Added {len(experiment.runs)} runs from experiment {experiment_id_str}"
             )
 
-            logger.info(f"Mosaic video successfully created at {output_file}")
+        # Check if any runs were collected at all
+        if not all_runs:
+            logger.error(
+                "No valid runs found for any of the specified experiment IDs."
+            )
+            raise typer.Exit(code=1)
 
-    except Exception as e:
-        # Catch any other unexpected errors during the process
-        logger.error(
-            f"An error occurred during mosaic video creation: {e}", exc_info=True
+        # Get run IDs as strings
+        run_ids = [str(run.id) for run in all_runs]
+        logger.info(f"Total runs collected for mosaic: {len(run_ids)}")
+
+        # Sort them so they're in nice orders
+        run_ids = order_runs_for_mosaic(run_ids, session)
+
+        logger.info(f"Preparing to export mosaic video to {output_file}")
+
+        # Create the mosaic video
+        export_video(
+            run_ids=run_ids,
+            session=session,
+            fps=fps,
+            resolution=resolution,
+            output_video=str(output_file),
         )
-        raise typer.Exit(code=1)
+
+        logger.info(f"Mosaic video successfully created at {output_file}")
 
 
 @app.command("doctor")
