@@ -102,7 +102,8 @@ def mock_embeddings_df():
                 "initial_prompt": prompt,
                 "seed": seed,
                 "sequence_number": seq_num,
-                "semantic_drift": random.uniform(0, seq_num / 20),
+                "semantic_drift_instantaneous": random.uniform(0, seq_num / 20),
+                "semantic_drift_overall": 20 - random.uniform(0, seq_num / 20),
                 "experiment_id": 1,  # Dummy experiment ID
             })
 
@@ -176,7 +177,8 @@ def test_plot_persistence_diagram_by_run(mock_runs_df):
 def test_plot_semantic_drift(mock_embeddings_df):
     # Verify we have semantic dispersion data
     assert mock_embeddings_df.height > 0
-    assert "semantic_drift" in mock_embeddings_df.columns
+    assert "semantic_drift_instantaneous" in mock_embeddings_df.columns
+    assert "semantic_drift_overall" in mock_embeddings_df.columns
     assert "sequence_number" in mock_embeddings_df.columns
 
     # Define output file
