@@ -160,11 +160,11 @@ def perform_experiment(
         raise typer.Exit(code=1)
 
 
-@app.command("restart-experiment")
-def restart_experiment(
+@app.command("resume-experiment")
+def resume_experiment(
     experiment_id: str = typer.Argument(
         ...,
-        help="UUID of the experiment configuration to restart",
+        help="UUID of the experiment configuration to resume",
     ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -177,9 +177,9 @@ def restart_experiment(
     ),
 ):
     """
-    Restart a trajectory tracer experiment by its UUID.
+    Resume a trajectory tracer experiment by its UUID.
 
-    This will continue processing existing runs or restart runs that didn't complete
+    This will continue processing existing runs or resume runs that didn't complete
     successfully in the original experiment.
     """
     # Configure logging based on verbosity
@@ -212,10 +212,10 @@ def restart_experiment(
             )
 
         # Run the experiment
-        logger.info(f"Restarting experiment with ID: {experiment_id}")
+        logger.info(f"Resuming experiment with ID: {experiment_id}")
         engine.perform_experiment(experiment_id, db_str)
 
-        logger.info(f"Experiment restarted successfully. Results saved to {db_path}")
+        logger.info(f"Experiment resumeed successfully. Results saved to {db_path}")
     except Exception as e:
         logger.error(f"Early termination of experiment: {e}")
         raise typer.Exit(code=1)
