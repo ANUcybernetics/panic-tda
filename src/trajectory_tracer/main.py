@@ -429,11 +429,11 @@ def export_video_command(
         "-d",
         help="Path to the SQLite database file",
     ),
-    output_dir: Path = typer.Option(
-        "output/mosaic",
-        "--output-dir",
+    output_file: Path = typer.Option(
+        "output/videos/mosaic.mp4",
+        "--output-file",
         "-o",
-        help="Directory to save the mosaic video",
+        help="Filename to save the mosaic video",
     ),
 ):
     """
@@ -499,13 +499,7 @@ def export_video_command(
             # Sort them so they're in nice orders
             run_ids = order_runs_for_mosaic(run_ids, session)
 
-            # Define output path using the first valid experiment ID for the subdirectory name
-            first_experiment_id = valid_experiment_ids[0]
-            output_subdir = output_dir / first_experiment_id
-            output_subdir.mkdir(parents=True, exist_ok=True)
-            output_video_path = output_subdir / "mosaic.mp4"
-
-            logger.info(f"Preparing to export mosaic video to {output_video_path}")
+            logger.info(f"Preparing to export mosaic video to {output_file}")
 
             # Create the mosaic video
             export_video(
@@ -513,10 +507,10 @@ def export_video_command(
                 session=session,
                 fps=fps,
                 resolution=resolution,
-                output_video=str(output_video_path),
+                output_video=str(output_file),
             )
 
-            logger.info(f"Mosaic video successfully created at {output_video_path}")
+            logger.info(f"Mosaic video successfully created at {output_file}")
 
     except Exception as e:
         # Catch any other unexpected errors during the process
