@@ -4,13 +4,13 @@ import numpy as np
 import pytest
 import ray
 
-from trajectory_tracer.embeddings import (
+from panic_tda.embeddings import (
     Dummy,
     Dummy2,
     get_actor_class,
     list_models,
 )
-from trajectory_tracer.schemas import Embedding, Invocation, InvocationType, Run
+from panic_tda.schemas import Embedding, Invocation, InvocationType, Run
 
 
 def test_run_embeddings_by_model(db_session):

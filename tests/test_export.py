@@ -4,10 +4,10 @@ import os
 from PIL import Image
 from sqlmodel import Session
 
-from trajectory_tracer.engine import perform_experiment
-from trajectory_tracer.export import export_run_images, export_video
-from trajectory_tracer.genai_models import IMAGE_SIZE
-from trajectory_tracer.schemas import ExperimentConfig, Invocation, InvocationType, Run
+from panic_tda.engine import perform_experiment
+from panic_tda.export import export_run_images, export_video
+from panic_tda.genai_models import IMAGE_SIZE
+from panic_tda.schemas import ExperimentConfig, Invocation, InvocationType, Run
 
 
 def test_export_run_images(db_session: Session, tmp_path):

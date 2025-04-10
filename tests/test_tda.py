@@ -3,8 +3,8 @@ import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
 
-from trajectory_tracer.schemas import PersistenceDiagram, Run
-from trajectory_tracer.tda import giotto_phd
+from panic_tda.schemas import PersistenceDiagram, Run
+from panic_tda.tda import giotto_phd
 
 
 def test_giotto_phd():

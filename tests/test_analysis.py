@@ -1,15 +1,15 @@
 import numpy as np
 import polars as pl
 
-from trajectory_tracer.analysis import (
+from panic_tda.analysis import (
     load_embeddings_df,
     load_runs_df,
 )
-from trajectory_tracer.db import list_runs
-from trajectory_tracer.engine import (
+from panic_tda.db import list_runs
+from panic_tda.engine import (
     perform_experiment,
 )
-from trajectory_tracer.schemas import ExperimentConfig
+from panic_tda.schemas import ExperimentConfig
 
 
 def test_load_embeddings_df(db_session):

@@ -10,10 +10,10 @@ import torch
 from diffusers import AutoPipelineForText2Image, FluxPipeline
 from PIL import Image, ImageDraw
 
-from trajectory_tracer.embeddings import (
+from panic_tda.embeddings import (
     get_all_models_memory_usage as embeddings_memory_usage,
 )
-from trajectory_tracer.genai_models import (
+from panic_tda.genai_models import (
     IMAGE_SIZE,
     get_actor_class,
     get_output_type,
@@ -21,10 +21,10 @@ from trajectory_tracer.genai_models import (
 )
 
 # Import the function from both modules
-from trajectory_tracer.genai_models import (
+from panic_tda.genai_models import (
     get_all_models_memory_usage as genai_memory_usage,
 )
-from trajectory_tracer.schemas import InvocationType
+from panic_tda.schemas import InvocationType
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -11,15 +11,15 @@ import ray
 from PIL import Image
 from sqlmodel import select, Session, SQLModel, create_engine
 
-from trajectory_tracer.db import (
+from panic_tda.db import (
     create_db_and_tables,
     list_embeddings,
     list_invocations,
     list_persistence_diagrams,
     list_runs,
 )
-from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
-from trajectory_tracer.engine import (
+from panic_tda.embeddings import get_actor_class as get_embedding_actor_class
+from panic_tda.engine import (
     compute_embeddings,
     compute_persistence_diagram,
     experiment_doctor,
@@ -31,9 +31,9 @@ from trajectory_tracer.engine import (
     perform_runs_stage,
     run_generator,
 )
-from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
-from trajectory_tracer.genai_models import get_output_type, list_models
-from trajectory_tracer.schemas import (
+from panic_tda.genai_models import get_actor_class as get_genai_actor_class
+from panic_tda.genai_models import get_output_type, list_models
+from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,

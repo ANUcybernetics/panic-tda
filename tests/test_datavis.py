@@ -5,7 +5,7 @@ import random
 import polars as pl
 import pytest
 
-from trajectory_tracer.datavis import (
+from panic_tda.datavis import (
     plot_persistence_diagram,
     plot_persistence_diagram_by_run,
     plot_persistence_diagram_faceted,

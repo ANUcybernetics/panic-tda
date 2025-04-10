@@ -3,16 +3,16 @@ sqlite = "latest"
 uv = "latest"
 
 [tasks.status]
-run = "uv run trajectory-tracer experiment-status"
+run = "uv run panic-tda experiment-status"
 
 [tasks.script]
-run = "uv run trajectory-tracer script"
+run = "uv run panic-tda script"
 
 [tasks.charts]
-run = "uv run trajectory-tracer paper-charts"
+run = "uv run panic-tda paper-charts"
 
 [tasks.test]
 run = "uv run pytest"
 
 [tasks.list-experiments]
-run = "uv run trajectory-tracer list-experiments"
+run = "uv run panic-tda list-experiments"

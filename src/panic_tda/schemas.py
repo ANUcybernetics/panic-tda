@@ -711,8 +711,8 @@ class ExperimentConfig(SQLModel, table=True):
             raise ValueError("Run length must be greater than 0")
 
         # Import here to avoid circular imports
-        from trajectory_tracer.embeddings import list_models as list_embedding_models
-        from trajectory_tracer.genai_models import list_models as list_genai_models
+        from panic_tda.embeddings import list_models as list_embedding_models
+        from panic_tda.genai_models import list_models as list_genai_models
 
         # Validate genai models
         valid_genai_models = list_genai_models()

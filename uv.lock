@@ -2085,7 +2085,7 @@ wheels = [
 ]
 
 [[package]]
-name = "trajectory-tracer"
+name = "panic-tda"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

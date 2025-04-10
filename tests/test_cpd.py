@@ -3,8 +3,8 @@ import pytest
 import ray
 from PIL import Image
 
-from trajectory_tracer.cpd import find_breakpoints
-from trajectory_tracer.embeddings import Dummy, Dummy2
+from panic_tda.cpd import find_breakpoints
+from panic_tda.embeddings import Dummy, Dummy2
 
 
 # Fixture to create dummy embedding actors

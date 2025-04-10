@@ -6,9 +6,9 @@ from uuid import UUID
 
 import typer
 
-import trajectory_tracer.engine as engine
-from trajectory_tracer.datavis import paper_charts
-from trajectory_tracer.db import (
+import panic_tda.engine as engine
+from panic_tda.datavis import paper_charts
+from panic_tda.db import (
     count_invocations,
     create_db_and_tables,
     get_session_from_connection_string,
@@ -17,15 +17,15 @@ from trajectory_tracer.db import (
     list_runs,
     print_experiment_info,
 )
-from trajectory_tracer.db import delete_experiment as db_delete_experiment
-from trajectory_tracer.embeddings import list_models as list_embedding_models
-from trajectory_tracer.export import (
+from panic_tda.db import delete_experiment as db_delete_experiment
+from panic_tda.embeddings import list_models as list_embedding_models
+from panic_tda.export import (
     export_video,
     order_runs_for_mosaic,
 )
-from trajectory_tracer.genai_models import get_output_type
-from trajectory_tracer.genai_models import list_models as list_genai_models
-from trajectory_tracer.schemas import ExperimentConfig
+from panic_tda.genai_models import get_output_type
+from panic_tda.genai_models import list_models as list_genai_models
+from panic_tda.schemas import ExperimentConfig
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up

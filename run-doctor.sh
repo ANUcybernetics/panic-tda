@@ -20,7 +20,7 @@ echo "Starting doctor --fix with UUID: $UUID"
 echo "Output will be logged to: $LOG_FILE"
 
 # Run the doctor --fix command in background with nohup
-nohup uv run trajectory-tracer doctor --fix $UUID > "$LOG_FILE" 2>&1 &
+nohup uv run panic-tda doctor --fix $UUID > "$LOG_FILE" 2>&1 &
 
 # Print the background job PID
 echo "Started background job with PID: $!"

@@ -1,5 +1,5 @@
 [project]
-name = "trajectory-tracer"
+name = "panic-tda"
 version = "0.1.0"
 description = "A package to collect traces of different AI trajectories under different initial conditions"
 readme = "README.md"
@@ -43,7 +43,7 @@ dependencies = [
 dev = ["pytest>=8.3.5", "ruff>=0.11.0"]
 
 [project.scripts]
-trajectory-tracer = "trajectory_tracer.main:app"
+panic-tda = "panic_tda.main:app"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -51,7 +51,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["trajectory_tracer"]
+packages = ["panic_tda"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

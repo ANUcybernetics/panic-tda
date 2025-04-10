@@ -6,8 +6,8 @@ import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
 
-from trajectory_tracer.genai_models import estimated_time
-from trajectory_tracer.schemas import (
+from panic_tda.genai_models import estimated_time
+from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,

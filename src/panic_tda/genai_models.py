@@ -18,7 +18,7 @@ from transformers import (
     Blip2Processor,
 )
 
-from trajectory_tracer.schemas import InvocationType
+from panic_tda.schemas import InvocationType
 
 # Configure logging
 logger = logging.getLogger(__name__)

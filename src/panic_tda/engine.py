@@ -12,11 +12,11 @@ from PIL import Image
 from ray.util import ActorPool
 from sqlmodel import func, select
 
-from trajectory_tracer.db import get_session_from_connection_string
-from trajectory_tracer.embeddings import get_actor_class as get_embedding_actor_class
-from trajectory_tracer.genai_models import get_actor_class as get_genai_actor_class
-from trajectory_tracer.genai_models import get_output_type
-from trajectory_tracer.schemas import (
+from panic_tda.db import get_session_from_connection_string
+from panic_tda.embeddings import get_actor_class as get_embedding_actor_class
+from panic_tda.genai_models import get_actor_class as get_genai_actor_class
+from panic_tda.genai_models import get_output_type
+from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
@@ -24,7 +24,7 @@ from trajectory_tracer.schemas import (
     PersistenceDiagram,
     Run,
 )
-from trajectory_tracer.tda import giotto_phd
+from panic_tda.tda import giotto_phd
 
 # Set up logging
 logging.basicConfig(
@@ -647,7 +647,7 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             session.commit()
             logger.info(f"Started experiment with ID: {experiment_id}")
             logger.info(
-                f"To check on the status, run `trajectory-tracer experiment-status {experiment_id}`"
+                f"To check on the status, run `panic-tda experiment-status {experiment_id}`"
             )
 
             if not config.runs:

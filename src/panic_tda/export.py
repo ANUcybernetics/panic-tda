@@ -10,9 +10,9 @@ from uuid import UUID
 from PIL import Image, ImageDraw, ImageFont
 from sqlmodel import Session
 
-from trajectory_tracer.db import read_run
-from trajectory_tracer.genai_models import IMAGE_SIZE
-from trajectory_tracer.schemas import InvocationType, Run
+from panic_tda.db import read_run
+from panic_tda.genai_models import IMAGE_SIZE
+from panic_tda.schemas import InvocationType, Run
 
 logger = logging.getLogger(__name__)
 

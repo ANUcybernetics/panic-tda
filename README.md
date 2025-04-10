@@ -36,7 +36,7 @@ With [uv](https://docs.astral.sh/uv/), it's just:
 uv pip install -e .
 
 # run the main CLI
-uv run trajectory-tracer --help
+uv run panic-tda --help
 ```
 
 If you're the sort of person who has alternate (strong) opinions on how to
@@ -45,7 +45,7 @@ preferred way. Godspeed to you.
 
 ## Use
 
-The main CLI is `trajectory-tracer`. It has a few subcommands:
+The main CLI is `panic-tda`. It has a few subcommands:
 
 - `perform-experiment`: Run a trajectory tracer experiment defined in a
   configuration file
@@ -76,13 +76,13 @@ Then, to "run" the experiment:
 
 ```bash
 # Run an experiment with the above configuration
-trajectory-tracer perform-experiment my_config.json
+panic-tda perform-experiment my_config.json
 
 # List all runs in the database
-trajectory-tracer list-runs
+panic-tda list-runs
 
 # Export images from a specific run
-trajectory-tracer export-images 123e4567-e89b-12d3-a456-426614174000
+panic-tda export-images 123e4567-e89b-12d3-a456-426614174000
 ```
 
 If you're running it on a remote machine and kicking it off via ssh, you'll

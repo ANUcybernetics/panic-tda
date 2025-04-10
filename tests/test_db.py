@@ -9,7 +9,7 @@ from sqlalchemy import MetaData, inspect
 from sqlmodel import Session
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.db import (
+from panic_tda.db import (
     delete_invocation,
     get_engine_from_connection_string,
     incomplete_embeddings,
@@ -19,7 +19,7 @@ from trajectory_tracer.db import (
     read_invocation,
     read_run,
 )
-from trajectory_tracer.schemas import (
+from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,

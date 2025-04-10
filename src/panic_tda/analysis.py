@@ -5,9 +5,9 @@ import polars as pl
 from numpy.linalg import norm
 from sqlmodel import Session
 
-from trajectory_tracer.db import list_runs
-from trajectory_tracer.genai_models import get_output_type
-from trajectory_tracer.schemas import InvocationType
+from panic_tda.db import list_runs
+from panic_tda.genai_models import get_output_type
+from panic_tda.schemas import InvocationType
 
 ## load the DB objects into dataframes
 

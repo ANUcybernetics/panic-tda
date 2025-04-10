@@ -2,7 +2,7 @@ from uuid import UUID
 
 from PIL import Image
 
-from trajectory_tracer.schemas import Invocation, InvocationType, Run
+from panic_tda.schemas import Invocation, InvocationType, Run
 
 
 def test_create_initial_invocation():

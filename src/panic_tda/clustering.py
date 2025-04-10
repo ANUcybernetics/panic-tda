@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 from sklearn.cluster import HDBSCAN
 
-from trajectory_tracer.schemas import Embedding
+from panic_tda.schemas import Embedding
 
 
 def hdbscan(

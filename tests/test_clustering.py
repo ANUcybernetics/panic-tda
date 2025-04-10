@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.clustering import hdbscan
-from trajectory_tracer.embeddings import EMBEDDING_DIM
-from trajectory_tracer.schemas import Embedding
+from panic_tda.clustering import hdbscan
+from panic_tda.embeddings import EMBEDDING_DIM
+from panic_tda.schemas import Embedding
 
 
 def test_hdbscan_clustering():

@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 from uuid_v7.base import uuid7
 
-from trajectory_tracer.schemas import (
+from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
     Invocation,
