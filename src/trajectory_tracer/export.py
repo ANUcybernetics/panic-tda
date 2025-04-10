@@ -298,68 +298,33 @@ def export_video(
     # Now create the grid layout based on the optimal dimensions
     grid_layout = []
 
-    # Distribute runs across the grid while maintaining consistent prompts in rows
-    # and networks in columns as much as possible
-    remaining_cells = total_cells
-    run_index = 0
+    # Distribute runs across the grid while keeping prompts grouped together
+    cols_per_row = best_cols
+    remaining_runs = []
+    for prompt, runs in all_sorted_runs:
+        remaining_runs.extend([(prompt, run) for run in runs])
 
-    # Track which prompts have been completely processed
-    processed_prompts = set()
+    # Process runs in order, keeping prompts together
+    while remaining_runs:
+        current_prompt = remaining_runs[0][0]  # Get the current prompt
 
-    # Keep filling rows until we've placed all cells
-    while remaining_cells > 0:
-        current_row_cells = min(best_cols, remaining_cells)
-        row_runs = []
+        # Collect all runs with the current prompt
+        prompt_runs = []
+        i = 0
+        while i < len(remaining_runs) and remaining_runs[i][0] == current_prompt:
+            prompt_runs.append(remaining_runs[i][1])
+            i += 1
 
-        # Try to keep prompt consistency in rows
-        # Find the prompt that hasn't been fully processed with most runs
-        largest_remaining_prompt = None
-        largest_count = 0
+        # Remove the processed runs
+        remaining_runs = remaining_runs[i:]
 
-        for prompt, runs in all_sorted_runs:
-            remaining_runs = [r for r in runs if r.id not in processed_prompts]
-            if len(remaining_runs) > largest_count:
-                largest_remaining_prompt = prompt
-                largest_count = len(remaining_runs)
+        # Distribute runs for this prompt across rows
+        while prompt_runs:
+            row_runs = prompt_runs[:cols_per_row]
+            prompt_runs = prompt_runs[cols_per_row:]
 
-        # If we found a prompt that fits in this row, use it
-        if largest_remaining_prompt and largest_count >= current_row_cells:
-            # Find all runs for this prompt
-            for prompt, runs in all_sorted_runs:
-                if prompt == largest_remaining_prompt:
-                    # Take the first current_row_cells runs that haven't been processed
-                    prompt_runs = [r for r in runs if r.id not in processed_prompts][
-                        :current_row_cells
-                    ]
-                    row_runs = prompt_runs
-
-                    # Mark these runs as processed
-                    for run in prompt_runs:
-                        processed_prompts.add(run.id)
-
-                    break
-        else:
-            # Fill from remaining runs in order
-            for i in range(current_row_cells):
-                if run_index < total_cells:
-                    # Find the next unprocessed run
-                    for prompt, runs in all_sorted_runs:
-                        for run in runs:
-                            if run not in processed_prompts:
-                                row_runs.append(run)
-                                processed_prompts.add(run.id)
-                                break
-                        if len(row_runs) > i:  # We found a run for this position
-                            break
-                run_index += 1
-
-        # Add this row to the grid layout
-        if row_runs:
-            # Use the prompt of the first run in the row for the entire row
-            prompt = row_runs[0].initial_prompt if row_runs else ""
-            grid_layout.append((prompt, row_runs))
-
-        remaining_cells -= current_row_cells
+            if row_runs:  # Add the row to the grid layout
+                grid_layout.append((current_prompt, row_runs))
 
     # Final grid dimensions
     rows = len(grid_layout)
@@ -404,17 +369,21 @@ def export_video(
         right_border_y = left_border_y
         base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
 
-    # Draw network information in top and bottom borders
-    # Collect all networks in order they appear in the grid
-    all_networks = []
-    for _, row_runs in grid_layout:
-        for run in row_runs:
-            network_str = " → ".join(run.network)
-            if network_str not in all_networks:
-                all_networks.append(network_str)
+    # Get the network for each column position based on the actual grid layout
+    column_networks = []
+    for col_idx in range(cols):
+        # Use the network from the first row that has this column
+        for _, row_runs in grid_layout:
+            if col_idx < len(row_runs):
+                network_str = " → ".join(row_runs[col_idx].network)
+                column_networks.append(network_str)
+                break
+        else:
+            # If we couldn't find a network for this column, use empty string
+            column_networks.append("")
 
     # Draw network labels in the top and bottom borders
-    for col_idx, network_str in enumerate(all_networks[:cols]):  # Limit to max columns
+    for col_idx, network_str in enumerate(column_networks):
         # Top border
         top_border_x = (col_idx + 1) * IMAGE_SIZE
         top_border_y = 0
