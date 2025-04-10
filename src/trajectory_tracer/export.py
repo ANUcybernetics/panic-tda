@@ -370,12 +370,19 @@ def export_video(
         base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
 
     # Get the network for each column position based on the actual grid layout
+    # Define abbreviations for network names
+    abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
+
     column_networks = []
     for col_idx in range(cols):
         # Use the network from the first row that has this column
         for _, row_runs in grid_layout:
             if col_idx < len(row_runs):
-                network_str = " → ".join(row_runs[col_idx].network)
+                # Apply abbreviations to network names
+                abbreviated_network = [
+                    abbreviations.get(net, net) for net in row_runs[col_idx].network
+                ]
+                network_str = " → ".join(abbreviated_network)
                 column_networks.append(network_str)
                 break
         else:
