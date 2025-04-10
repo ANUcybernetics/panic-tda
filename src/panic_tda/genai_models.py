@@ -383,10 +383,10 @@ class DummyT2I(GenAIModel):
         if seed != -1:
             random.seed(seed)
 
-        # Generate random color
-        r = random.randint(0, 255)
-        g = random.randint(0, 255)
-        b = random.randint(0, 255)
+        # Generate random color (cyan bias)
+        r = random.randint(0, 100)
+        g = random.randint(200, 255)
+        b = random.randint(200, 255)
 
         # Create an image with the random color
         return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
@@ -418,15 +418,15 @@ class DummyT2I2(GenAIModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def invoke(self, prompt: str, seed: int) -> Image.Image:
-        """Return a dummy colored image (mostly purple-tinted)"""
+        """Return a dummy colored image (mostly magenta-tinted)"""
         # Set the random seed if specified
         if seed != -1:
             random.seed(seed)
 
-        # Generate random color (with purple bias)
-        r = random.randint(100, 255)
-        g = random.randint(0, 100)  # Lower green for purple tint
-        b = random.randint(100, 255)
+        # Generate random color (with magenta bias)
+        r = random.randint(200, 255)
+        g = random.randint(0, 100)
+        b = random.randint(200, 255)
 
         # Create an image with the random color
         return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
