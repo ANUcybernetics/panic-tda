@@ -40,6 +40,10 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
 
     # Process each run and its embeddings
     for run in runs:
+        # temporary hack to only look at 1k runs for SMC paper
+        if run.max_length != 1000:
+            continue
+
         # Get all embeddings for the run - embeddings is a property that returns a dict
         run_embeddings_dict = run.embeddings
         run_id = str(run.id)
@@ -174,6 +178,10 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
 
     data = []
     for run in runs:
+        # temporary hack to only look at 1k runs for SMC paper
+        if run.max_length != 1000:
+            continue
+
         # Skip runs with no invocations
         if not run.invocations:
             continue
