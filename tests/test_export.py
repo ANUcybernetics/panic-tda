@@ -164,3 +164,53 @@ def test_export_video(db_session: Session, tmp_path):
 
     # Check that the output video was created
     assert os.path.exists(output_file)
+
+
+def test_export_wrapped_video(db_session: Session, tmp_path):
+    """
+    Test that export_video correctly creates a mosaic grid from multiple runs.
+
+    This version tests that the wrapped video (multiple rows per initial_prompt)
+    is correctly created.
+    """
+
+    # Define output file
+    output_file = "output/test/mosaic-wrapped.mp4"
+
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    # Create a test configuration with dummy models
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
+        seeds=[-1] * 24,
+        prompts=["up", "down"],
+        embedding_models=["Dummy"],
+        max_length=10,  # Short sequences for testing
+    )
+
+    # Save experiment to database to get an ID
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
+
+    # Run the experiment to populate database with dummy model runs
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+    db_session.refresh(experiment)
+
+    # Get the run IDs from the database for this experiment
+    run_ids = [str(run.id) for run in experiment.runs]
+
+    # Call the export_video function with updated parameters
+    fps = 2
+    export_video(
+        run_ids,
+        db_session,
+        fps=fps,
+        resolution="HD",
+        output_video=output_file,
+    )
+
+    # Check that the output video was created
+    assert os.path.exists(output_file)
