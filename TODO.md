@@ -1,10 +1,8 @@
 # TODO
 
-- update README (inc. rename project)
+- complete the "resume-experiment" stuff and re-start the almost-finished experiment
 
-- re-start the almost-finished experiment
-
-- re-create the plots with the length 5000 runs excluded
+- write up the technical stuff for the README, including stuff for the paper
 
 - add visual indicator to mosaic videos for when there's a semantic "jump"
 
