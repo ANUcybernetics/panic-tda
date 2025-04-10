@@ -194,7 +194,9 @@ def resume_experiment(
             raise typer.Exit(code=1)
 
         # Calculate total number of runs
-        total_runs = len(experiment.networks) * len(experiment.seeds) * len(experiment.prompts)
+        total_runs = (
+            len(experiment.networks) * len(experiment.seeds) * len(experiment.prompts)
+        )
 
         logger.info(
             f"Found experiment with ID {experiment_id}: {len(experiment.networks)} networks, "
@@ -328,34 +330,35 @@ def delete_experiment(
     db_str = f"sqlite:///{db_path}"
     logger.info(f"Connecting to database at {db_path}")
 
-    # Get the experiment and confirm deletion
-    experiment = session.get(ExperimentConfig, UUID(experiment_id))
-    if not experiment:
-        logger.error(f"Experiment with ID {experiment_id} not found")
-        raise typer.Exit(code=1)
+    with get_session_from_connection_string(db_str) as session:
+        # Get the experiment and confirm deletion
+        experiment = session.get(ExperimentConfig, UUID(experiment_id))
+        if not experiment:
+            logger.error(f"Experiment with ID {experiment_id} not found")
+            raise typer.Exit(code=1)
 
-    # Show experiment details and confirm deletion
-    run_count = len(experiment.runs)
-    typer.echo(f"Experiment ID: {experiment.id}")
-    typer.echo(f"Started: {experiment.started_at}")
-    typer.echo(f"Runs: {run_count}")
+        # Show experiment details and confirm deletion
+        run_count = len(experiment.runs)
+        typer.echo(f"Experiment ID: {experiment.id}")
+        typer.echo(f"Started: {experiment.started_at}")
+        typer.echo(f"Runs: {run_count}")
 
-    if not force:
-        confirm = typer.confirm(
-            f"Are you sure you want to delete this experiment and all its {run_count} runs?",
-            default=False,
-        )
-        if not confirm:
-            typer.echo("Deletion cancelled.")
-            return
+        if not force:
+            confirm = typer.confirm(
+                f"Are you sure you want to delete this experiment and all its {run_count} runs?",
+                default=False,
+            )
+            if not confirm:
+                typer.echo("Deletion cancelled.")
+                return
 
-    # Delete the experiment
-    result = db_delete_experiment(experiment.id, session)
+        # Delete the experiment
+        result = db_delete_experiment(experiment.id, session)
 
-    if result:
-        typer.echo(f"Experiment {experiment_id} successfully deleted.")
-    else:
-        typer.echo(f"Failed to delete experiment {experiment_id}.")
+        if result:
+            typer.echo(f"Experiment {experiment_id} successfully deleted.")
+        else:
+            typer.echo(f"Failed to delete experiment {experiment_id}.")
 
 
 @app.command("list-runs")
@@ -520,9 +523,7 @@ def export_video_command(
 
         # Check if any runs were collected at all
         if not all_runs:
-            logger.error(
-                "No valid runs found for any of the specified experiment IDs."
-            )
+            logger.error("No valid runs found for any of the specified experiment IDs.")
             raise typer.Exit(code=1)
 
         # Get run IDs as strings
