@@ -217,180 +217,205 @@ def export_video(
         logger.error("No valid runs found for the provided IDs")
         return
 
-    # Group runs by prompt
-    prompt_to_runs = {}
+    # Group runs by prompt and network
+    prompt_network_runs = {}
+    all_prompts = set()
+    all_networks = []
+    network_to_idx = {}  # For ordered networks
+
     for run in runs:
         prompt = run.initial_prompt
-        if prompt not in prompt_to_runs:
-            prompt_to_runs[prompt] = []
-        prompt_to_runs[prompt].append(run)
+        network_tuple = tuple(run.network)  # Convert list to hashable tuple
+
+        if network_tuple not in network_to_idx:
+            network_to_idx[network_tuple] = len(all_networks)
+            all_networks.append(network_tuple)
+
+        all_prompts.add(prompt)
+
+        # Create nested dictionary structure for prompt -> network -> runs
+        if prompt not in prompt_network_runs:
+            prompt_network_runs[prompt] = {}
+
+        if network_tuple not in prompt_network_runs[prompt]:
+            prompt_network_runs[prompt][network_tuple] = []
+
+        prompt_network_runs[prompt][network_tuple].append(run)
 
     # Determine prompt order
     if prompt_order:
         # Use specified order, adding any missing prompts at the end
-        ordered_prompts = [p for p in prompt_order if p in prompt_to_runs]
+        ordered_prompts = [p for p in prompt_order if p in prompt_network_runs]
         # Add any prompts not in prompt_order
-        ordered_prompts.extend(
-            sorted([p for p in prompt_to_runs if p not in prompt_order])
-        )
+        ordered_prompts.extend(sorted([p for p in prompt_network_runs if p not in ordered_prompts]))
     else:
         # Default: sort prompts alphabetically
-        ordered_prompts = sorted(prompt_to_runs.keys())
+        ordered_prompts = sorted(prompt_network_runs.keys())
 
-    # Optimize grid layout for 16:9 aspect ratio
-    # First, gather all runs organized by prompt and network
-    all_sorted_runs = []
-    prompt_network_counts = {}  # For tracking networks per prompt
+    # Sort networks consistently
+    all_networks.sort()
 
+    # Step 1: Count seeds for each prompt-network combination and verify consistency
+    seeds_counts = {}
     for prompt in ordered_prompts:
-        # Group the runs by network
-        network_to_runs = {}
-        for run in prompt_to_runs[prompt]:
-            network_key = tuple(run.network)  # Convert list to hashable tuple
-            if network_key not in network_to_runs:
-                network_to_runs[network_key] = []
-            network_to_runs[network_key].append(run)
+        for network in all_networks:
+            if network in prompt_network_runs[prompt]:
+                seed_count = len(prompt_network_runs[prompt][network])
+                key = (prompt, network)
+                seeds_counts[key] = seed_count
 
-        # Sort networks
-        networks = sorted(network_to_runs.keys())
+    # Verify all prompt-network combinations have the same number of seeds
+    n_seeds = None
+    for (prompt, network), count in seeds_counts.items():
+        if n_seeds is None:
+            n_seeds = count
+        elif n_seeds != count:
+            logger.error(f"Inconsistent number of seeds: {prompt} + {network} has {count} seeds, expected {n_seeds}")
+            return
 
-        # Track networks per prompt for later layout calculation
-        prompt_network_counts[prompt] = len(networks)
+    if n_seeds is None or n_seeds == 0:
+        logger.error("No valid runs found with seeds")
+        return
 
-        # Add all runs from this prompt in network order
-        prompt_runs = []
-        for network in networks:
-            # Sort runs with same prompt and network by run_id
-            sorted_runs = sorted(network_to_runs[network], key=lambda r: str(r.id))
-            prompt_runs.extend(sorted_runs)
+    # Step 2: Calculate the grid dimensions
+    n_prompts = len(ordered_prompts)
+    n_networks = len(all_networks)
 
-        all_sorted_runs.append((prompt, prompt_runs))
+    # Calculate possible seeds_per_row values
+    # Start with all seeds in one row, then try dividing by 2 repeatedly
+    possible_seeds_per_row = []
+    seeds_per_row = n_seeds
+    while seeds_per_row >= 1:
+        possible_seeds_per_row.append(seeds_per_row)
+        if seeds_per_row % 2 == 0:
+            seeds_per_row = seeds_per_row // 2
+        else:
+            break
 
-    # Calculate total cells needed in the grid
-    total_cells = sum(len(runs) for _, runs in all_sorted_runs)
-
-    # Find all possible divisors for the total cells
-    divisors = [i for i in range(1, total_cells + 1) if total_cells % i == 0]
-
-    # Target aspect ratio is 16:9
+    # Step 3: Find the seeds_per_row that produces the aspect ratio closest to 16:9
     target_ratio = 16 / 9
-
-    # Find the configuration closest to 16:9, considering borders
     best_ratio_diff = float("inf")
-    best_cols = total_cells
+    best_seeds_per_row = n_seeds
+    best_rows = 0
+    best_cols = 0
 
-    for rows in divisors:
-        cols = total_cells // rows
+    for seeds_per_row in possible_seeds_per_row:
+        # For each prompt, we need (n_seeds / seeds_per_row) rows
+        rows_per_prompt = (n_seeds + seeds_per_row - 1) // seeds_per_row  # Ceiling division
+        total_rows = n_prompts * rows_per_prompt
 
-        # Account for borders in aspect ratio calculation (+2 for both dimensions)
-        # We also need to account for progress bar height
+        # Each row has n_networks * seeds_per_row columns
+        total_cols = n_networks * seeds_per_row
+
+        # Account for borders and progress bar in aspect ratio calculation
         progress_bar_height = 30
-        width_with_borders = (cols + 2) * IMAGE_SIZE
-        height_with_borders = ((rows + 2) * IMAGE_SIZE) + progress_bar_height
+        width_with_borders = (total_cols + 2) * IMAGE_SIZE
+        height_with_borders = ((total_rows + 2) * IMAGE_SIZE) + progress_bar_height
 
         ratio = width_with_borders / height_with_borders
         ratio_diff = abs(ratio - target_ratio)
 
         if ratio_diff < best_ratio_diff:
             best_ratio_diff = ratio_diff
-            best_cols = cols
+            best_seeds_per_row = seeds_per_row
+            best_rows = total_rows
+            best_cols = total_cols
 
-    # Now create the grid layout based on the optimal dimensions
-    grid_layout = []
-    cols_per_row = best_cols
+    # Step 4: Create a mapping of run_id to grid position (r, c)
+    seeds_per_row = best_seeds_per_row
+    rows_per_prompt = (n_seeds + seeds_per_row - 1) // seeds_per_row
+    run_grid_positions = {}
+    grid_cells = {}  # Maps (row, col) -> run
 
-    # Distribute runs across the grid while maintaining prompt order
-    # and ensuring that rows for the same prompt stay together
-    for prompt, prompt_runs in all_sorted_runs:
-        # Distribute runs for this prompt across rows
-        remaining_prompt_runs = prompt_runs.copy()  # Make a copy to avoid modifying the original
+    # Calculate the final grid dimensions
+    rows = n_prompts * rows_per_prompt
+    cols = n_networks * seeds_per_row
 
-        while remaining_prompt_runs:
-            row_runs = remaining_prompt_runs[:cols_per_row]
-            remaining_prompt_runs = remaining_prompt_runs[cols_per_row:]
+    # Assign positions for each run
+    for prompt_idx, prompt in enumerate(ordered_prompts):
+        for network_idx, network in enumerate(all_networks):
+            if network in prompt_network_runs[prompt]:
+                # Sort runs with same prompt and network by run_id
+                sorted_runs = sorted(prompt_network_runs[prompt][network], key=lambda r: str(r.id))
 
-            if row_runs:  # Add the row to the grid layout
-                grid_layout.append((prompt, row_runs))
+                for seed_idx, run in enumerate(sorted_runs):
+                    # Calculate position in grid
+                    row_within_prompt = seed_idx // seeds_per_row
+                    seed_within_row = seed_idx % seeds_per_row
 
-    # Final grid dimensions
-    rows = len(grid_layout)
-    cols = best_cols  # The optimal column count we calculated
+                    # Final grid position
+                    row = (prompt_idx * rows_per_prompt) + row_within_prompt
+                    col = (network_idx * seeds_per_row) + seed_within_row
+
+                    run_grid_positions[str(run.id)] = (row, col)
+                    grid_cells[(row, col)] = run
 
     logger.info(
-        f"Optimized mosaic grid for 16:9 aspect ratio: {rows} rows × {cols} columns (plus borders)"
+        f"Optimized mosaic grid for 16:9 aspect ratio: {rows} rows × {cols} columns "
+        f"({n_prompts} prompts, {n_networks} networks, {seeds_per_row} seeds per row)"
     )
 
-    # Create dimensions for the canvas
-    # Adding 2 to rows and cols for the borders
+    # Step 5: Create the canvas
     base_width = (cols + 2) * IMAGE_SIZE
     base_height = (rows + 2) * IMAGE_SIZE
     progress_bar_area_height = 30
     canvas_width = base_width
     canvas_height = base_height + progress_bar_area_height
 
-    # Create the base canvas that will be reused for all frames
     base_canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+    draw = ImageDraw.Draw(base_canvas)
 
     # Set up font for border text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     base_font_size = int(IMAGE_SIZE * 0.1)
 
-    # Draw the border tiles with prompt and network information
-    draw = ImageDraw.Draw(base_canvas)
+    # Step 6: Draw prompt information in left and right borders
+    for prompt_idx, prompt in enumerate(ordered_prompts):
+        for row_within_prompt in range(rows_per_prompt):
+            row_idx = (prompt_idx * rows_per_prompt) + row_within_prompt
 
-    # Draw prompt information in left and right borders
-    for row_idx, (prompt, _) in enumerate(grid_layout):
-        # Left border
-        left_border_x = 0
-        left_border_y = (row_idx + 1) * IMAGE_SIZE
+            # Left border
+            left_border_x = 0
+            left_border_y = (row_idx + 1) * IMAGE_SIZE
 
-        # Create and paste prompt tile
-        prompt_tile = create_prompt_title_card(
-            prompt, IMAGE_SIZE, font_path, base_font_size
-        )
-        base_canvas.paste(prompt_tile, (left_border_x, left_border_y))
+            # Create and paste prompt tile
+            prompt_tile = create_prompt_title_card(
+                prompt, IMAGE_SIZE, font_path, base_font_size
+            )
+            base_canvas.paste(prompt_tile, (left_border_x, left_border_y))
 
-        # Right border - same content as left
-        right_border_x = (cols + 1) * IMAGE_SIZE
-        right_border_y = left_border_y
-        base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
+            # Right border - same content as left
+            right_border_x = (cols + 1) * IMAGE_SIZE
+            right_border_y = left_border_y
+            base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
 
-    # Get the network for each column position based on the actual grid layout
     # Define abbreviations for network names
     abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
 
-    column_networks = []
-    for col_idx in range(cols):
-        # Use the network from the first row that has this column
-        for _, row_runs in grid_layout:
-            if col_idx < len(row_runs):
-                # Apply abbreviations to network names
-                abbreviated_network = [
-                    abbreviations.get(net, net) for net in row_runs[col_idx].network
-                ]
-                network_str = " → ".join(abbreviated_network)
-                column_networks.append(network_str)
-                break
-        else:
-            # If we couldn't find a network for this column, use empty string
-            column_networks.append("")
+    # Step 7: Draw network information in top and bottom borders
+    for network_idx, network in enumerate(all_networks):
+        # Create abbreviated network string
+        abbreviated_network = [abbreviations.get(net, net) for net in network]
+        network_str = " → ".join(abbreviated_network)
 
-    # Draw network labels in the top and bottom borders
-    for col_idx, network_str in enumerate(column_networks):
-        # Top border
-        top_border_x = (col_idx + 1) * IMAGE_SIZE
-        top_border_y = 0
+        # For each column in this network's group
+        for seed_within_row in range(seeds_per_row):
+            col_idx = (network_idx * seeds_per_row) + seed_within_row
 
-        # Create and paste network tile
-        network_tile = create_prompt_title_card(
-            network_str, IMAGE_SIZE, font_path, base_font_size
-        )
-        base_canvas.paste(network_tile, (top_border_x, top_border_y))
+            # Top border
+            top_border_x = (col_idx + 1) * IMAGE_SIZE
+            top_border_y = 0
 
-        # Bottom border - same content as top
-        bottom_border_x = top_border_x
-        bottom_border_y = (rows + 1) * IMAGE_SIZE
-        base_canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
+            # Create and paste network tile
+            network_tile = create_prompt_title_card(
+                network_str, IMAGE_SIZE, font_path, base_font_size
+            )
+            base_canvas.paste(network_tile, (top_border_x, top_border_y))
+
+            # Bottom border - same content as top
+            bottom_border_x = top_border_x
+            bottom_border_y = (rows + 1) * IMAGE_SIZE
+            base_canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
 
     # Create temporary directory for frame storage
     temp_dir = os.path.join(output_dir, "temp_frames")
@@ -401,10 +426,12 @@ def export_video(
         max_images = 0
         run_image_counts = {}
 
-        # Collect all runs in grid order and get their image counts
+        # Get all run IDs in grid order
         all_grid_runs = []
-        for _, row_runs in grid_layout:
-            all_grid_runs.extend(row_runs)
+        for r in range(rows):
+            for c in range(cols):
+                if (r, c) in grid_cells:
+                    all_grid_runs.append(grid_cells[(r, c)])
 
         for run in all_grid_runs:
             # Count image invocations for each run
@@ -423,36 +450,30 @@ def export_video(
             draw = ImageDraw.Draw(mosaic)
 
             # Paste each run's image at the current sequence position
-            run_idx = 0
-            for row_idx, (_, row_runs) in enumerate(grid_layout):
-                for col_idx, run in enumerate(row_runs):
-                    if col_idx >= cols:  # Skip if exceeds max columns
-                        continue
+            for row in range(rows):
+                for col in range(cols):
+                    if (row, col) in grid_cells:
+                        run = grid_cells[(row, col)]
 
-                    # Find the appropriate image for this run at this frame index
-                    image = None
-                    run_id_str = str(run.id)
+                        # Get this run's invocations of type IMAGE
+                        image_invocations = [
+                            inv for inv in run.invocations
+                            if inv.type == InvocationType.IMAGE
+                        ]
 
-                    # Get this run's invocations of type IMAGE
-                    image_invocations = [
-                        inv for inv in run.invocations
-                        if inv.type == InvocationType.IMAGE
-                    ]
+                        # Get the specific image for this frame if it exists
+                        image = None
+                        if frame_idx < len(image_invocations):
+                            image = image_invocations[frame_idx].output
+                        elif image_invocations:  # Use last available image if we've run out
+                            image = image_invocations[-1].output
 
-                    # Get the specific image for this frame if it exists
-                    if frame_idx < len(image_invocations):
-                        image = image_invocations[frame_idx].output
-                    elif image_invocations:  # Use last available image if we've run out
-                        image = image_invocations[-1].output
-
-                    # Paste the image onto the canvas
-                    if image is not None:
-                        # Account for borders (+1 to both row and column)
-                        x_offset = (col_idx + 1) * IMAGE_SIZE
-                        y_offset = (row_idx + 1) * IMAGE_SIZE
-                        mosaic.paste(image, (x_offset, y_offset))
-
-                    run_idx += 1
+                        # Paste the image onto the canvas
+                        if image is not None:
+                            # Account for borders (+1 to both row and column)
+                            x_offset = (col + 1) * IMAGE_SIZE
+                            y_offset = (row + 1) * IMAGE_SIZE
+                            mosaic.paste(image, (x_offset, y_offset))
 
             # Draw progress bar
             progress_percent = (
