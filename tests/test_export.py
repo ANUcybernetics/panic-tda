@@ -158,7 +158,7 @@ def test_export_video(db_session: Session, tmp_path):
         run_ids,
         db_session,
         fps=fps,
-        resolution="HD",
+        resolution="8K",
         output_video=output_file,
     )
 
@@ -182,8 +182,8 @@ def test_export_wrapped_video(db_session: Session, tmp_path):
 
     # Create a test configuration with dummy models
     experiment = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
-        seeds=[-1] * 24,
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I", "DummyI2T2"], ["DummyT2I2", "DummyI2T2"], ["DummyT2I2", "DummyI2T"]],
+        seeds=[-1] * 12,
         prompts=["up", "down"],
         embedding_models=["Dummy"],
         max_length=10,  # Short sequences for testing
@@ -208,7 +208,7 @@ def test_export_wrapped_video(db_session: Session, tmp_path):
         run_ids,
         db_session,
         fps=fps,
-        resolution="HD",
+        resolution="8K",
         output_video=output_file,
     )
 
