@@ -297,34 +297,20 @@ def export_video(
 
     # Now create the grid layout based on the optimal dimensions
     grid_layout = []
-
-    # Distribute runs across the grid while keeping prompts grouped together
     cols_per_row = best_cols
-    remaining_runs = []
-    for prompt, runs in all_sorted_runs:
-        remaining_runs.extend([(prompt, run) for run in runs])
 
-    # Process runs in order, keeping prompts together
-    while remaining_runs:
-        current_prompt = remaining_runs[0][0]  # Get the current prompt
-
-        # Collect all runs with the current prompt
-        prompt_runs = []
-        i = 0
-        while i < len(remaining_runs) and remaining_runs[i][0] == current_prompt:
-            prompt_runs.append(remaining_runs[i][1])
-            i += 1
-
-        # Remove the processed runs
-        remaining_runs = remaining_runs[i:]
-
+    # Distribute runs across the grid while maintaining prompt order
+    # and ensuring that rows for the same prompt stay together
+    for prompt, prompt_runs in all_sorted_runs:
         # Distribute runs for this prompt across rows
-        while prompt_runs:
-            row_runs = prompt_runs[:cols_per_row]
-            prompt_runs = prompt_runs[cols_per_row:]
+        remaining_prompt_runs = prompt_runs.copy()  # Make a copy to avoid modifying the original
+
+        while remaining_prompt_runs:
+            row_runs = remaining_prompt_runs[:cols_per_row]
+            remaining_prompt_runs = remaining_prompt_runs[cols_per_row:]
 
             if row_runs:  # Add the row to the grid layout
-                grid_layout.append((current_prompt, row_runs))
+                grid_layout.append((prompt, row_runs))
 
     # Final grid dimensions
     rows = len(grid_layout)
