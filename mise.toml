@@ -14,5 +14,5 @@ run = "uv run trajectory-tracer paper-charts"
 [tasks.test]
 run = "uv run pytest"
 
-[tasks.delete]
-run = "uv run trajectory-tracer delete-experiment ${@}"
+[tasks.list-experiments]
+run = "uv run trajectory-tracer list-experiments"
