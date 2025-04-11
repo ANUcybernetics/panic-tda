@@ -1,214 +1,169 @@
-import itertools
 import os
-import random
+import datetime as dt
 
 import polars as pl
 import pytest
 
+from panic_tda.analysis import load_embeddings_df, load_runs_df
 from panic_tda.datavis import (
+    plot_invocation_duration,
     plot_persistence_diagram,
     plot_persistence_diagram_by_run,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy,
     plot_semantic_drift,
 )
+from panic_tda.engine import perform_experiment
+from panic_tda.schemas import ExperimentConfig
 
 
 @pytest.fixture
-def mock_runs_df():
-    # Define real-world model names
-    text_models = ["DummyI2T", "DummyI2T2"]
-    image_models = ["DummyT2I", "DummyT2I2"]
-    embedding_models = ["Dummy", "Dummy2"]
-    prompts = ["one fish", "two fish", "red fish", "blue fish"]
-    seeds = [-1] * 16
-
-    # Generate combinations without embedding_model
-    base_combinations = list(
-        itertools.product(text_models, image_models, prompts, seeds)
+def mock_experiment_data(db_session):
+    experiment = ExperimentConfig(
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyT2I", "DummyI2T2"],
+            ["DummyT2I2", "DummyI2T2"],
+            ["DummyT2I2", "DummyI2T"],
+        ],
+        prompts=["one fish", "two fish", "red fish", "blue fish"],
+        seeds=[-1] * 4,
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=10,  # Short sequences for testing
     )
 
-    # Create run IDs for unique combinations excluding embedding_model
-    run_id_map = {combo: run_id for run_id, combo in enumerate(base_combinations, 1)}
+    # Save experiment to database to get an ID
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
 
-    # Prepare data
-    data = []
-    for text_model, image_model, embedding_model, prompt, seed in itertools.product(
-        text_models, image_models, embedding_models, prompts, seeds
-    ):
-        # Use the same run_id for different embedding models with same other factors
-        base_combo = (text_model, image_model, prompt, seed)
-        run_id = run_id_map[base_combo]
+    # Run the experiment to populate database with dummy model runs
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+    db_session.refresh(experiment)
+    # Run the actual experiment using the configuration
+    # The dummy models are efficient and won't take long
+    runs_df = load_runs_df(db_session, use_cache=False)
+    embeddings_df = load_embeddings_df(db_session, use_cache=False)
 
-        # Create multiple homology dimensions per run
-        for dim in [0, 1, 2]:
-            # Generate multiple persistence pairs for each dimension
-            num_points = random.randint(3, 10)
-            for _ in range(num_points):
-                birth = random.uniform(0, 0.5)
-                death = random.uniform(birth + 0.1, 1.0)
-
-                data.append({
-                    "run_id": run_id,
-                    "text_model": text_model,
-                    "image_model": image_model,
-                    "embedding_model": embedding_model,
-                    "initial_prompt": prompt,
-                    "seed": seed,
-                    "homology_dimension": dim,
-                    "birth": birth,
-                    "death": death,
-                    "persistence": death - birth,
-                    "entropy": random.uniform(0.1, 2.0),
-                    "experiment_id": 1,  # Dummy experiment ID
-                })
-
-    return pl.DataFrame(data)
+    return {
+        "runs_df": runs_df,
+        "embeddings_df": embeddings_df,
+    }
 
 
-@pytest.fixture
-def mock_embeddings_df():
-    # Define real-world model names
-    text_models = ["DummyI2T", "DummyI2T2"]
-    image_models = ["DummyT2I", "DummyT2I2"]
-    embedding_models = ["Dummy", "Dummy2"]
-    prompts = ["one fish", "two fish", "red fish", "blue fish"]
-    seeds = [-1] * 2
+def test_plot_persistence_diagram(mock_experiment_data):
+    runs_df = mock_experiment_data["runs_df"]
 
-    # Generate combinations without embedding_model
-    base_combinations = list(
-        itertools.product(text_models, image_models, prompts, seeds)
-    )
-
-    # Create run IDs for unique combinations excluding embedding_model
-    run_id_map = {combo: run_id for run_id, combo in enumerate(base_combinations, 1)}
-
-    # Prepare data
-    data = []
-    for text_model, image_model, embedding_model, prompt, seed in itertools.product(
-        text_models, image_models, embedding_models, prompts, seeds
-    ):
-        # Use the same run_id for different embedding models with same other factors
-        base_combo = (text_model, image_model, prompt, seed)
-        run_id = run_id_map[base_combo]
-
-        # Create sequence points for each run
-        for seq_num in range(100):
-            data.append({
-                "run_id": run_id,
-                "text_model": text_model,
-                "image_model": image_model,
-                "embedding_model": embedding_model,
-                "initial_prompt": prompt,
-                "seed": seed,
-                "sequence_number": seq_num,
-                "semantic_drift_instantaneous": random.uniform(0, seq_num / 20),
-                "semantic_drift_overall": 20 - random.uniform(0, seq_num / 20),
-                "experiment_id": 1,  # Dummy experiment ID
-            })
-
-    return pl.DataFrame(data)
-
-
-def test_plot_persistence_diagram(mock_runs_df):
     # Verify we have persistence diagram data
-    assert mock_runs_df.height > 0
-    assert "homology_dimension" in mock_runs_df.columns
-    assert "birth" in mock_runs_df.columns
-    assert "death" in mock_runs_df.columns
+    assert runs_df.height > 0
+    assert "homology_dimension" in runs_df.columns
+    assert "birth" in runs_df.columns
+    assert "death" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram.png"
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
     # Generate the plot
-    plot_persistence_diagram(mock_runs_df, output_file)
+    plot_persistence_diagram(runs_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_diagram_faceted(mock_runs_df):
+def test_plot_persistence_diagram_faceted(mock_experiment_data):
+    runs_df = mock_experiment_data["runs_df"]
+
     # Verify we have persistence diagram data
-    assert mock_runs_df.height > 0
-    assert "homology_dimension" in mock_runs_df.columns
-    assert "birth" in mock_runs_df.columns
-    assert "death" in mock_runs_df.columns
+    assert runs_df.height > 0
+    assert "homology_dimension" in runs_df.columns
+    assert "birth" in runs_df.columns
+    assert "death" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram_faceted.png"
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
     # Generate the plot
-    plot_persistence_diagram_faceted(mock_runs_df, output_file)
+    plot_persistence_diagram_faceted(runs_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_diagram_by_run(mock_runs_df):
+def test_plot_persistence_diagram_by_run(mock_experiment_data):
+    runs_df = mock_experiment_data["runs_df"]
+
     # Verify we have persistence diagram data
-    assert mock_runs_df.height > 0
-    assert "homology_dimension" in mock_runs_df.columns
-    assert "birth" in mock_runs_df.columns
-    assert "death" in mock_runs_df.columns
-    assert "run_id" in mock_runs_df.columns
+    assert runs_df.height > 0
+    assert "homology_dimension" in runs_df.columns
+    assert "birth" in runs_df.columns
+    assert "death" in runs_df.columns
+    assert "run_id" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram_by_run.png"
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-    # Get a sample run_id from the dataframe
-    sample_run_id = mock_runs_df["run_id"][0]
-
-    # Generate the plot
-    plot_persistence_diagram_by_run(mock_runs_df, sample_run_id, output_file)
+    plot_persistence_diagram_by_run(runs_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_semantic_drift(mock_embeddings_df):
+def test_plot_semantic_drift(mock_experiment_data):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
     # Verify we have semantic dispersion data
-    assert mock_embeddings_df.height > 0
-    assert "semantic_drift_instantaneous" in mock_embeddings_df.columns
-    assert "semantic_drift_overall" in mock_embeddings_df.columns
-    assert "sequence_number" in mock_embeddings_df.columns
+    assert embeddings_df.height > 0
+    assert "semantic_drift_instantaneous" in embeddings_df.columns
+    assert "semantic_drift_overall" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
 
     # Define output file
     output_file = "output/test/semantic_drift.png"
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
     # Generate the plot
-    plot_semantic_drift(mock_embeddings_df, output_file)
+    plot_semantic_drift(embeddings_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_entropy(mock_runs_df):
+def test_plot_persistence_entropy(mock_experiment_data):
+    runs_df = mock_experiment_data["runs_df"]
+
     # Verify we have persistence diagram data with entropy values
-    assert mock_runs_df.height > 0
-    assert "homology_dimension" in mock_runs_df.columns
-    assert "entropy" in mock_runs_df.columns
-    assert "run_id" in mock_runs_df.columns
+    assert runs_df.height > 0
+    assert "homology_dimension" in runs_df.columns
+    assert "entropy" in runs_df.columns
+    assert "run_id" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_entropy.png"
 
-    # Ensure directory exists
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    # Generate the plot
+    plot_persistence_entropy(runs_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_invocation_duration(mock_experiment_data):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
+    # Base time for calculations
+    base_time = dt.datetime.now()
+
+    # Verify we have the necessary columns
+    assert "invocation_started_at" in embeddings_df.columns
+    assert "invocation_completed_at" in embeddings_df.columns
+    assert "invocation_duration" in embeddings_df.columns
+    assert "model" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/invocation_duration.png"
 
     # Generate the plot
-    plot_persistence_entropy(mock_runs_df, output_file)
+    plot_invocation_duration(embeddings_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

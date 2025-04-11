@@ -263,6 +263,36 @@ def plot_semantic_drift(
     logging.info(f"Saved semantic drift plot to {saved_file}")
 
 
+def plot_invocation_duration(
+    df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.png"
+) -> None:
+    """
+    Create and save a visualization of invocation duration distribution,
+    with model on x-axis and duration on y-axis.
+
+    Args:
+        df: DataFrame containing embedding data with invocation_started_at and invocation_completed_at
+        output_file: Path to save the visualization
+    """
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = df.to_pandas()
+
+    # Create the plot with model on x-axis and duration on y-axis
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="model", y="invocation_duration"),
+        )
+        + geom_boxplot()
+        + labs(x="Model", y="Invocation Duration")
+        + theme(figure_size=(15, 8), axis_text_x=element_text(angle=45, hjust=1))
+    )
+
+    # Save plot with high resolution
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved invocation duration plot to {saved_file}")
+
+
 def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
