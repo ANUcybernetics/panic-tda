@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 import ray
 from PIL import Image
-from sqlmodel import select, Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 from panic_tda.db import (
     create_db_and_tables,
@@ -755,10 +755,10 @@ def test_perform_experiment(db_session: Session):
 
 def test_restart_experiment(db_session: Session):
     """Test that perform_experiment can restart and complete a partially executed experiment."""
-    # Create a test experiment config
+    # Create a test experiment config with two -1 seeds
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1],
+        seeds=[-1, -1],  # Two random seeds
         prompts=["Test prompt for restart"],
         embedding_models=["Dummy"],
         max_length=10,
@@ -770,7 +770,7 @@ def test_restart_experiment(db_session: Session):
     db_session.refresh(config)
     experiment_id = str(config.id)
 
-    # First, run perform_experiment to create a complete run
+    # First, run perform_experiment to create complete runs
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(experiment_id, db_url)
 
@@ -782,62 +782,98 @@ def test_restart_experiment(db_session: Session):
     assert experiment.started_at is not None
     assert experiment.completed_at is not None
 
-    # We should have 1 run
+    # We should have 2 runs now
     runs = list_runs(db_session)
-    assert len(runs) == 1
-    run_id = runs[0].id
+    assert len(runs) == 2
+    run_id_1 = runs[0].id
+    run_id_2 = runs[1].id
 
     # Get all invocations
     invocations = list_invocations(db_session)
-    assert len(invocations) == 10
+    assert len(invocations) == 20  # 2 runs * 10 invocations each
 
-    # Store the IDs of invocations to keep (first half)
-    original_invocation_ids = []
+    # Store the original invocation IDs we'll keep for each run (first half)
+    original_invocation_ids_1 = []
+    original_invocation_ids_2 = []
+
     for inv in invocations:
         if inv.sequence_number < config.max_length // 2:
-            original_invocation_ids.append(inv.id)
+            if inv.run_id == run_id_1:
+                original_invocation_ids_1.append(inv.id)
+            else:
+                original_invocation_ids_2.append(inv.id)
 
     # Store the IDs of embeddings to keep (for text invocations in the first half)
-    original_embedding_ids = []
-    text_invocation_count = 0
+    original_embedding_ids_1 = []
+    original_embedding_ids_2 = []
+    text_invocation_count_1 = 0
+    text_invocation_count_2 = 0
+
     embeddings = list_embeddings(db_session)
     for emb in embeddings:
         # Get the invocation for this embedding
         invocation = db_session.get(Invocation, emb.invocation_id)
         if invocation.sequence_number < config.max_length // 2:
-            if invocation.type == InvocationType.TEXT:
-                text_invocation_count += 1
-            original_embedding_ids.append(emb.id)
+            if invocation.run_id == run_id_1:
+                if invocation.type == InvocationType.TEXT:
+                    text_invocation_count_1 += 1
+                original_embedding_ids_1.append(emb.id)
+            else:
+                if invocation.type == InvocationType.TEXT:
+                    text_invocation_count_2 += 1
+                original_embedding_ids_2.append(emb.id)
 
-    # Verify we have at least 2 text invocations with embeddings in first half
-    assert text_invocation_count >= 2, "Need at least 2 text invocations with embeddings for persistence diagram"
+    # Verify we have at least 2 text invocations with embeddings in first half for each run
+    assert text_invocation_count_1 >= 2, (
+        "Need at least 2 text invocations with embeddings for persistence diagram in run 1"
+    )
+    assert text_invocation_count_2 >= 2, (
+        "Need at least 2 text invocations with embeddings for persistence diagram in run 2"
+    )
 
-    # Delete all invocations with sequence_number >= max_length/2
-    invocations_to_delete = db_session.exec(
+    # Delete all invocations with sequence_number >= max_length/2 for both runs
+    for run_id in [run_id_1, run_id_2]:
+        invocations_to_delete = db_session.exec(
+            select(Invocation).where(
+                Invocation.run_id == run_id,
+                Invocation.sequence_number >= config.max_length // 2,
+            )
+        ).all()
+
+        for inv in invocations_to_delete:
+            db_session.delete(inv)
+
+    db_session.commit()
+
+    # For the second run, get the most recent invocation and set its output to None
+    # This simulates an incomplete invocation
+    highest_seq_invocation = db_session.exec(
         select(Invocation)
-        .where(
-            Invocation.run_id == run_id,
-            Invocation.sequence_number >= config.max_length // 2
-        )
-    ).all()
+        .where(Invocation.run_id == run_id_2)
+        .order_by(Invocation.sequence_number.desc())
+    ).first()
 
-    for inv in invocations_to_delete:
-        db_session.delete(inv)
+    if highest_seq_invocation:
+        highest_seq_invocation.output = None
+        db_session.add(highest_seq_invocation)
+        db_session.commit()
+        incomplete_invocation_id = highest_seq_invocation.id
+
+    # Delete persistence diagrams for both runs (will be recreated)
+    for run_id in [run_id_1, run_id_2]:
+        pds_to_delete = db_session.exec(
+            select(PersistenceDiagram).where(PersistenceDiagram.run_id == run_id)
+        ).all()
+
+        for pd in pds_to_delete:
+            db_session.delete(pd)
+
     db_session.commit()
 
-    # Delete persistence diagrams (will be recreated)
-    pds_to_delete = db_session.exec(
-        select(PersistenceDiagram)
-        .where(PersistenceDiagram.run_id == run_id)
-    ).all()
-
-    for pd in pds_to_delete:
-        db_session.delete(pd)
-    db_session.commit()
-
-    # Verify that only the first half of invocations remain
+    # Verify that only the first half of invocations remain for each run
     remaining_invocations = list_invocations(db_session)
-    assert len(remaining_invocations) == config.max_length // 2
+    expected_count = config.max_length // 2 * 2  # Two runs
+    assert len(remaining_invocations) == expected_count
 
     # Reset the experiment's completed_at to simulate an interrupted experiment
     experiment.completed_at = None
@@ -855,46 +891,52 @@ def test_restart_experiment(db_session: Session):
     assert experiment.started_at is not None
     assert experiment.completed_at is not None
 
-    # We should still have just 1 run
+    # We should still have just 2 runs
     runs = list_runs(db_session)
-    assert len(runs) == 1
-    assert runs[0].id == run_id
+    assert len(runs) == 2
+    assert {runs[0].id, runs[1].id} == {run_id_1, run_id_2}
 
-    # We should now have 10 invocations (the max_length)
+    # We should now have 20 invocations (2 runs * max_length)
     invocations = list_invocations(db_session)
-    assert len(invocations) == 10
+    assert len(invocations) == 20
 
-    # Verify sequence numbers are complete
-    run_invocations = [inv for inv in invocations if inv.run_id == run_id]
-    sequence_numbers = [inv.sequence_number for inv in run_invocations]
-    assert set(sequence_numbers) == set(range(10))
+    # Verify sequence numbers are complete for each run
+    for run_id in [run_id_1, run_id_2]:
+        run_invocations = [inv for inv in invocations if inv.run_id == run_id]
+        sequence_numbers = [inv.sequence_number for inv in run_invocations]
+        assert set(sequence_numbers) == set(range(10))
 
-    # Verify our original invocations are still there, except the final one
-    # (final one will be re-done as part of the restart)
-    current_invocation_ids = [inv.id for inv in invocations]
-    for inv_id in original_invocation_ids[:-1]:
+    # Verify our original invocations for run 1 are still there, except the final one
+    current_invocation_ids = [inv.id for inv in invocations if inv.run_id == run_id_1]
+    for inv_id in original_invocation_ids_1[:-1]:
         assert inv_id in current_invocation_ids
 
-    # Verify our original embeddings are still there, except for embeddings from the final invocation
-    # (final one will be re-done as part of the restart)
+    # For run 2, the incomplete invocation should have been replaced
+    current_run2_invocations = [inv for inv in invocations if inv.run_id == run_id_2]
+    assert incomplete_invocation_id in [inv.id for inv in current_run2_invocations]
+
+    # Verify our original embeddings are still there, except for embeddings from the final invocations
     current_embedding_ids = [emb.id for emb in list_embeddings(db_session)]
-    for embedding_id in original_embedding_ids[:-1]:
+    for embedding_id in original_embedding_ids_1[:-1]:
+        assert embedding_id in current_embedding_ids
+
+    for embedding_id in original_embedding_ids_2[:-1]:
         assert embedding_id in current_embedding_ids
 
     # We should have embeddings for all text invocations
     embeddings = list_embeddings(db_session)
-    text_invocations = [inv for inv in run_invocations if inv.type == InvocationType.TEXT]
+    text_invocations = [inv for inv in invocations if inv.type == InvocationType.TEXT]
     assert len(embeddings) == len(text_invocations)
 
-    # We should have 1 persistence diagram (1 run * 1 embedding model)
+    # We should have 2 persistence diagrams (2 runs * 1 embedding model)
     pds = list_persistence_diagrams(db_session)
-    assert len(pds) == 1
+    assert len(pds) == 2
 
-    # Verify the persistence diagram has diagram data
-    pd = pds[0]
-    assert pd.diagram_data is not None
-    assert "dgms" in pd.diagram_data
-    assert len(pd.diagram_data["dgms"]) > 0
+    # Verify each persistence diagram has diagram data
+    for pd in pds:
+        assert pd.diagram_data is not None
+        assert "dgms" in pd.diagram_data
+        assert len(pd.diagram_data["dgms"]) > 0
 
 
 @pytest.mark.slow
