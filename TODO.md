@@ -1,10 +1,18 @@
 # TODO
 
-- complete the "resume-experiment" stuff and re-start the almost-finished experiment
-
 - write up the technical stuff for the README, including stuff for the paper
 
-- add visual indicator to mosaic videos for when there's a semantic "jump"
+- check that ExperimentConfig deletion cascades to all runs (and that there
+  are no invocations or embeddings that belong to a now-deleted experiment)
+
+- export video improvements:
+  - add visual indicator for when there's a semantic "jump"
+  - add colour coding to the different model names
+  - "one label per row" and "one label per column"
+  - re-add the `prompt_order` parameter
+
+- analysis: refactor into separate invocations_df and embeddings_df, and join
+  when appropriate
 
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
@@ -22,9 +30,6 @@
 - run the tests in GitHub actions
 
 - create similarity matrices for runs
-
-- check that ExperimentConfig deletion cascades to all runs (and therefore all
-  invocations & embeddings)
 
 - DB indexes
 
