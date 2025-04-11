@@ -98,7 +98,6 @@ def plot_persistence_diagram(
 def plot_persistence_diagram_faceted(
     df: pl.DataFrame,
     output_file: str = "output/vis/persistence_diagram.png",
-    num_cols: int = 2,
 ) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
@@ -107,7 +106,6 @@ def plot_persistence_diagram_faceted(
     Args:
         df: DataFrame containing run data with persistence homology information
         output_file: Path to save the visualization
-        num_cols: Number of columns in the grid layout
     """
     # Create the base plot using the existing function
     plot = create_persistence_diagram_chart(df)
@@ -126,9 +124,7 @@ def plot_persistence_diagram_faceted(
 
 def plot_persistence_diagram_by_run(
     df: pl.DataFrame,
-    cols: int,
     output_file: str = "output/vis/persistence_diagram.png",
-    num_cols: int = 2,
 ) -> None:
     """
     Create and save a visualization of persistence diagrams for runs in the DataFrame,
@@ -137,7 +133,6 @@ def plot_persistence_diagram_by_run(
     Args:
         df: DataFrame containing run data with persistence homology information
         output_file: Path to save the visualization
-        num_cols: Number of columns in the grid layout
     """
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
@@ -149,7 +144,7 @@ def plot_persistence_diagram_by_run(
         + scale_x_continuous(name="Feature Appearance")
         + scale_y_continuous(name="Feature Persistence")
         + labs(color="Dimension")
-        + facet_wrap("~ run_id", ncol=cols)
+        + facet_wrap("~ run_id")
         + theme(figure_size=(16, 10), strip_text=element_text(size=8))
     )
 
