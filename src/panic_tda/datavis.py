@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 
@@ -10,7 +9,6 @@ from plotnine import (
     facet_wrap,
     geom_bar,
     geom_boxplot,
-    geom_errorbar,
     geom_line,
     geom_point,
     ggplot,
@@ -270,47 +268,6 @@ def plot_semantic_drift(
     logging.info(f"Saved semantic drift plot to {saved_file}")
 
 
-def persistance_diagram_benchmark_vis(benchmark_file: str) -> None:
-    """
-    Visualize PD (Giotto PH) benchmark data from a JSON file using plotnine.
-
-    Args:
-        benchmark_file: Path to the JSON benchmark file
-    """
-    # Load the benchmark data
-    with open(benchmark_file, "r") as f:
-        data = json.load(f)
-
-    # Extract benchmark results
-    benchmark_data = []
-    for benchmark in data["benchmarks"]:
-        benchmark_data.append({
-            "n_points": benchmark["params"]["n_points"],
-            "mean": benchmark["stats"]["mean"],
-            "min": benchmark["stats"]["min"],
-            "max": benchmark["stats"]["max"],
-            "stddev": benchmark["stats"]["stddev"],
-        })
-
-    # Convert to DataFrame
-    df = pl.DataFrame(benchmark_data)
-    pandas_df = df.to_pandas()
-
-    # Create bar chart with error bars
-    plot = (
-        ggplot(pandas_df, aes(x="n_points", y="mean"))
-        + geom_bar(stat="identity")
-        + geom_errorbar(aes(ymin="min", ymax="max"), width=0.2)
-        + scale_x_discrete(name="Number of Points")
-        + labs(y="Time (seconds)", title="Giotto PH wall-clock time")
-        + theme(figure_size=(10, 6.67))
-    )
-
-    # Save the chart to a file
-    saved_file = save(plot, "output/vis/giotto_benchmark.png")
-    logging.info(f"Saved Giotto benchmark plot to {saved_file}")
-
-
 def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
@@ -319,6 +276,7 @@ def paper_charts(session: Session) -> None:
     # warm_caches(session)
 
     from panic_tda.analysis import load_embeddings_df
+
     embeddings_df = load_embeddings_df(session, use_cache=True)
     plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
