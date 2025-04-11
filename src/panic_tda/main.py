@@ -100,7 +100,7 @@ def perform_experiment(
     ),
 ):
     """
-    Run a trajectory tracer experiment defined in CONFIG_FILE.
+    Run a panic-tda experiment defined in CONFIG_FILE.
 
     The CONFIG_FILE should be a JSON file containing experiment parameters that can be
     parsed into an ExperimentConfig object.
@@ -173,7 +173,7 @@ def resume_experiment(
     ),
 ):
     """
-    Resume a trajectory tracer experiment by its UUID.
+    Resume a panic-tda experiment by its UUID.
 
     This will continue processing existing runs or resume runs that didn't complete
     successfully in the original experiment.
@@ -278,7 +278,7 @@ def experiment_status(
     ),
 ):
     """
-    Get the status of a trajectory tracer experiment.
+    Get the status of a panic-tda experiment.
 
     Shows the progress of the experiment, including invocation, embedding, and
     persistence diagram completion percentages.

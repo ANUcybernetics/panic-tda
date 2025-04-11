@@ -646,7 +646,7 @@ class PersistenceDiagram(SQLModel, table=True):
 
 class ExperimentConfig(SQLModel, table=True):
     """
-    Configuration for a trajectory tracer experiment.
+    Configuration for a panic-tda experiment.
 
     This class defines all the parameters needed to run a complete experiment,
     including which model networks to use, initial prompts, random seeds, and

@@ -1,31 +1,41 @@
-# Generative AI Trajectory Tracer
+# PANIC-TDA
 
-This repo is a command-line tool:
+A python software tool for computing "runs" of text->image and image->text
+models (with outputs fed recursively back in as inputs) and analysing the
+resulting text-image-text-image trajectories using
+[topological data analysis](https://en.wikipedia.org/wiki/Topological_data_analysis).
 
-1. connecting up text->image and image->text generative AI models in various
-   "network topologies"
-2. starting from a specified initial prompt & random seed, recursively passing
+If you've got a [sufficiently capable rig](#requirements) you can use this tool
+to:
+
+1. speficy text->image and image->text generative AI models in various "network
+   topologies"
+2. starting from a specified initial prompt & random seed, recursively iterate
    the output of one model in as the input of the next to create a "run" of
    model invocations
-3. embedding each output (text or image) into a joint embedding space using a
-   multimodal embedding model
-4. storing everything (genAI model outputs & embedding outputs) in a local
-   sqlite database
-5. using
-   [Topological Data Analysis](https://en.wikipedia.org/wiki/Topological_data_analysis)
-   to answer questions like [the ones below](#why)
+3. embed each (text) output into a joint embedding space using a semantic
+   embedding model
 
-This work design of this tool was initially motivated by the
-[PANIC! art installation](https://cybernetics.anu.edu.au/news/2022/11/22/panic-a-serendipity-engine/)
+The results of all the above computations will be stored in a local sqlite
+database for further analysis (see the `datavis` module for existing
+visualizations, or write your own).
+
+This This work design of this tool was initially motivated by the
+[**PANIC!** art installation](https://cybernetics.anu.edu.au/news/2022/11/22/panic-a-serendipity-engine/)
 (first exhibited 2022). Watching PANIC! in action, there is clearly some
-structure to the trajectories that the model outputs "trace out". This tool is
-an attempt to quantify and understand that structure.
+structure to the trajectories that the genAI model outputs "trace out". This
+tool is an attempt to quantify and understand that structure (see
+[_why?_](#why?) below).
 
 ## Requirements
 
-- python 3.12+
+- python 3.12 (the
+  [giotto-ph](https://giotto-ai.github.io/giotto-ph/build/html/installation.html)
+  dependency doesn't have wheels for 3.13)
+- a GPU which supports CUDA 12.7 (earlier version maybe earlier ok, but
+  untested)
 - sqlite3
-- GPU which supports CUDA 12.7 (earlier version maybe earlier ok, but untested)
+- ffmpeg (for generating the output videos)
 
 ## Installation
 
@@ -45,16 +55,44 @@ preferred way. Godspeed to you.
 
 ## Use
 
-The main CLI is `panic-tda`. It has a few subcommands:
+The main CLI is `panic-tda`.
 
-- `perform-experiment`: Run a trajectory tracer experiment defined in a
-  configuration file
-- `list-runs`: List all runs stored in the database, with options for detailed
-  output
+```bash
+$ uv run panic-tda --help
+
+ Usage: panic-tda [OPTIONS] COMMAND [ARGS]...
+
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ --install-completion          Install completion for the current shell.                                             │
+│ --show-completion             Show completion for the current shell, to copy it or customize the installation.      │
+│ --help                        Show this message and exit.                                                           │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ perform-experiment   Run a panic-tda experiment defined in CONFIG_FILE.                                     │
+│ resume-experiment    Resume a panic-tda experiment by its UUID.                                             │
+│ list-experiments     List all experiments stored in the database.                                                   │
+│ experiment-status    Get the status of a panic-tda experiment.                                              │
+│ delete-experiment    Delete an experiment and all associated data from the database.                                │
+│ list-runs            List all runs stored in the database.                                                          │
+│ list-models          List all available genAI and embedding models with their output types.                         │
+│ export-video         Generate a mosaic video from all runs in one or more specified experiments.                    │
+│ doctor               Diagnose and optionally fix issues with an experiment's data.                                  │
+│ paper-charts         Generate charts for publication using data from specific experiments.                          │
+│ script                                                                                                              │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+The most useful subcommands are:
+
+- `perform-experiment`: Run a panic-tda experiment defined in a configuration
+  file
+- `experiment-status`: Get the status of an experiment (% complete, broken down
+  by stage: invocation/embedding/persistence diagram)
+- `list-experiments`: List all experiments stored in the database, with options
+  for detailed output
 - `list-models`: List all the supported models (both genAI t2i/i2t and embedding
   models)
-- `export-images`: Export images from one or all runs to JPEG files with
-  embedded metadata
+- `export-video`: Export a "mosaic" from all the runs in a given experiment
 
 To run an experiment, you'll need to create a configuration file. Here's an
 example:
@@ -79,26 +117,17 @@ Then, to "run" the experiment:
 panic-tda perform-experiment my_config.json
 
 # List all runs in the database
-panic-tda list-runs
+panic-tda list-experi
 
 # Export images from a specific run
-panic-tda export-images 123e4567-e89b-12d3-a456-426614174000
+panic-tda export-video 123e4567-e89b-12d3-a456-426614174000
 ```
 
 If you're running it on a remote machine and kicking it off via ssh, you'll
 probably want to use `nohup` or `tmux` or something to keep it running after you
-log out (see `perform-experiment.sh` for an example).
+log out (look at the `perform-experiment.sh` file for ideas on how to do this).
 
-## Repo structure
-
-This repo uses [Pydantic](https://pydantic.dev) for data modelling and
-validation and the related [sqlmodel](https://sqlmodel.tiangolo.com) for
-persisting data to a sqlite database. The data model is described in the
-`schema` module.
-
-The code for performing the experiments is done by the `engine` module. All
-other modules do what they say on the tin. For parallelizing the experiments, we
-use [ray](https://docs.ray.io/en/latest/).
+## Testing
 
 There are (relatively) comprehensive tests in the `tests` directory. They can be
 run with pytest:
@@ -115,6 +144,10 @@ If you'd like to add a new genAI or embedding model, have a look in
 implements the desired interface. Look at the existing models and work from
 there - and don't forget to add a new test to `tests/test_genai_models.py` or
 `tests/test_embeddings.py`.
+
+## Further technical details
+
+See the [technical report](./technical-report.md).
 
 ## Why?
 
@@ -152,7 +185,7 @@ truths about the process).
 
 ### which parts of the system have the biggest impact on what happens?
 
-- does a certain GenAI model "dominate" the behaviour of the network? or is the
+- does a certain genAI model "dominate" the behaviour of the network? or is the
   prompt more important? or the random seed? or is it an emergent property of
   the interactions between all models in the network?
 
