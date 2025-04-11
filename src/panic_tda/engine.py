@@ -730,6 +730,17 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
             config = session.get(ExperimentConfig, experiment_id)
             embedding_models = config.embedding_models
 
+            # Get all invocation IDs for all runs
+            # pull from the DB in case it was a "resumed" run
+            all_invocation_ids = []
+            for run_id in all_run_ids:
+                invocations = session.exec(
+                    select(Invocation.id).where(Invocation.run_id == UUID(run_id))
+                ).all()
+                all_invocation_ids.extend([str(inv_id) for inv_id in invocations])
+
+        logger.info(f"Found {len(all_invocation_ids)} total invocations to process")
+
         # Compute embeddings for all invocations
         embedding_ids = perform_embeddings_stage(
             all_invocation_ids, embedding_models, db_str
