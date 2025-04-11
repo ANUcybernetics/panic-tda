@@ -48,6 +48,7 @@ def test_load_embeddings_df(db_session):
         "embedding_completed_at",
         "invocation_started_at",
         "invocation_completed_at",
+        "invocation_duration",
         "run_id",
         "experiment_id",
         "initial_prompt",
