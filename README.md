@@ -98,6 +98,7 @@ To run an experiment, you'll need to create a configuration file. Here's an
 example:
 
 ```json
+// experiment1.json
 {
   "networks": [["FluxDev", "Moondream"]],
   "seeds": [42, 56, 545654, 6545],
@@ -114,13 +115,16 @@ Then, to "run" the experiment:
 
 ```bash
 # Run an experiment with the above configuration
-panic-tda perform-experiment my_config.json
+uv run panic-tda perform-experiment experiment1.json
 
-# List all runs in the database
-panic-tda list-experi
+# check the status of the experiment
+uv run panic-tda experiment-status
 
-# Export images from a specific run
-panic-tda export-video 123e4567-e89b-12d3-a456-426614174000
+# List all expeiments in the database
+uv run panic-tda list-experiments
+
+# Export images from a specific experiment
+uv run panic-tda export-video 123e4567-e89b-12d3-a456-426614174000
 ```
 
 If you're running it on a remote machine and kicking it off via ssh, you'll
