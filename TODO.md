@@ -1,11 +1,13 @@
 # TODO
 
-- write up the technical stuff for the README, including stuff for the paper
+- add some subsections to the design doc about the GenAIModel and EmbeddingModel
+  superclasses (and why we chose the models and params we've currently chosen)
 
-- check that ExperimentConfig deletion cascades to all runs (and that there
-  are no invocations or embeddings that belong to a now-deleted experiment)
+- check that ExperimentConfig deletion cascades to all runs (and that there are
+  no invocations or embeddings that belong to a now-deleted experiment)
 
 - export video improvements:
+
   - add visual indicator for when there's a semantic "jump"
   - add colour coding to the different model names
   - "one label per row" and "one label per column"

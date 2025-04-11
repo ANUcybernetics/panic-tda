@@ -149,9 +149,7 @@ implements the desired interface. Look at the existing models and work from
 there - and don't forget to add a new test to `tests/test_genai_models.py` or
 `tests/test_embeddings.py`.
 
-## Further technical details
-
-See the [technical report](./technical-report.md).
+For further info, see the [design doc](./DESIGN.md).
 
 ## Why?
 

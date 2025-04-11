@@ -1,5 +1,5 @@
 ---
-title: PANICxTDA Technical Report
+title: PANICxTDA SoftwareDesign Document
 author: Ben Swift
 ---
 
@@ -173,7 +173,7 @@ would be relatively "thin" nodes with multiple GPUs attached and actor pools to
 manage the genAI and embedding model actors to maximise hardware utilisation.
 The persistence diagram stage is slightly different, and could benefit from
 "fat" nodes with beefier CPU and RAM resources (especially as the `max_length`
-parameter gets up past 10k).
+parameter gets up past 10k)
 
 Since this project is fundamentally about looking at statistical patterns in the
 genAI & embedding outputs, this tool does not need the high-bandwidth
