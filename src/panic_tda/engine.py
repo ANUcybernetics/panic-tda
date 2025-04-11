@@ -74,70 +74,65 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
         network_length = len(run.network)
         logger.debug(f"Starting run generator for run {run_id} with seed {run.seed}")
 
-        # Get all existing invocations for this run
-        existing_invocations = session.exec(
+        # Find the existing invocation with max sequence number (if any)
+        current_invocation = session.exec(
             select(Invocation)
             .where(Invocation.run_id == run_uuid)
-            .order_by(Invocation.sequence_number)
-        ).all()
-
-        # Initialize the basic state
-        if existing_invocations:
-            # Find the highest sequence number
-            last_sequence = max(inv.sequence_number for inv in existing_invocations)
-
-            # We'll restart from this sequence number (redoing the last invocation)
-            sequence_number = last_sequence
-
-            # Get the previous sequence number's output to use as input
-            if sequence_number > 0:
-                # Find the previous invocation to get its output
-                prev_sequence = sequence_number - 1
-                prev_invocation = next(
-                    (inv for inv in existing_invocations if inv.sequence_number == prev_sequence),
-                    None
-                )
-                current_input = prev_invocation.output if prev_invocation else run.initial_prompt
-                previous_invocation_uuid = prev_invocation.id if prev_invocation else None
-            else:
-                # This is the first invocation in the sequence
-                current_input = run.initial_prompt
-                previous_invocation_uuid = None
-
-            # Delete the last invocation as we'll recreate it
-            last_invocation = next(inv for inv in existing_invocations if inv.sequence_number == last_sequence)
-            session.delete(last_invocation)
-            session.commit()
-
-            # Initialize the seen outputs set from all existing invocations except the last one
-            seen_outputs = set()
-            if run.seed != -1:  # Only track duplicates for deterministic runs
-                for inv in existing_invocations:
-                    if inv.sequence_number < last_sequence and inv.output is not None:
-                        seen_outputs.add(get_output_hash(inv.output))
-        else:
-            # Initialize with the first prompt
-            sequence_number = 0
-            current_input = run.initial_prompt
-            previous_invocation_uuid = None
-            seen_outputs = set()
+            .order_by(Invocation.sequence_number.desc())
+            .limit(1)
+        ).first()
 
         # Track outputs to detect loops (only if seed is not -1)
         track_duplicates = run.seed != -1
+        seen_outputs = set()
 
-        # Process each invocation in the run
-        while sequence_number < run.max_length:
-            # Safety check for null input
-            if current_input is None:
-                logger.warning(f"Null input detected at sequence {sequence_number}. Using default prompt.")
-                current_input = "Continue from the previous point."
+        if current_invocation:
+            # Found an existing invocation, set up state based on it
+            sequence_number = current_invocation.sequence_number
 
-            # Get the model for this sequence number
-            model_index = sequence_number % network_length
+            # Get previous invocation for input
+            if sequence_number > 0:
+                previous_invocation = session.exec(
+                    select(Invocation).where(
+                        Invocation.run_id == run_uuid,
+                        Invocation.sequence_number == sequence_number - 1,
+                    )
+                ).first()
+                current_input = (
+                    previous_invocation.output
+                    if previous_invocation
+                    else run.initial_prompt
+                )
+                previous_invocation_uuid = (
+                    previous_invocation.id if previous_invocation else None
+                )
+            else:
+                current_input = run.initial_prompt
+                previous_invocation_uuid = None
+
+            # Collect hashes of all previous outputs to detect duplicates
+            if track_duplicates:
+                previous_invocations = session.exec(
+                    select(Invocation).where(
+                        Invocation.run_id == run_uuid,
+                        Invocation.sequence_number < sequence_number,
+                    )
+                ).all()
+
+                for inv in previous_invocations:
+                    if inv.output is not None:
+                        seen_outputs.add(get_output_hash(inv.output))
+        else:
+            # No existing invocations, start fresh
+            sequence_number = 0
+            current_input = run.initial_prompt
+            previous_invocation_uuid = None
+
+            # Create the first invocation
+            model_index = 0
             model_name = run.network[model_index]
 
-            # Create invocation
-            invocation = Invocation(
+            current_invocation = Invocation(
                 model=model_name,
                 type=get_output_type(model_name),
                 run_id=run_uuid,
@@ -146,13 +141,26 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
                 seed=run.seed,
             )
 
-            # Save to database
-            session.add(invocation)
+            session.add(current_invocation)
             session.commit()
-            session.refresh(invocation)
+            session.refresh(current_invocation)
 
+        # Process each invocation in the run
+        while sequence_number < run.max_length:
+            # Safety check for null input
+            if current_input is None:
+                logger.warning(
+                    f"Null input detected at sequence {sequence_number}. Using default prompt."
+                )
+                current_input = "Continue from the previous point."
+
+            # Get the model for this sequence number
+            model_index = sequence_number % network_length
+            model_name = run.network[model_index]
+
+            invocation = current_invocation
             invocation_id = str(invocation.id)
-            logger.debug(f"Created invocation with ID: {invocation_id}")
+            logger.debug(f"Working with invocation ID: {invocation_id}")
 
             # Execute the invocation using the appropriate actor from model_actors
             logger.debug(
@@ -195,6 +203,24 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
             current_input = invocation.output
             previous_invocation_uuid = invocation.id
             sequence_number += 1
+
+            if sequence_number < run.max_length:
+                # Create next invocation
+                next_model_index = sequence_number % network_length
+                next_model_name = run.network[next_model_index]
+
+                current_invocation = Invocation(
+                    model=next_model_name,
+                    type=get_output_type(next_model_name),
+                    run_id=run_uuid,
+                    sequence_number=sequence_number,
+                    input_invocation_id=previous_invocation_uuid,
+                    seed=run.seed,
+                )
+
+                session.add(current_invocation)
+                session.commit()
+                session.refresh(current_invocation)
 
             logger.debug(
                 f"Completed invocation {sequence_number - 1}/{run.max_length}: {model_name}"
