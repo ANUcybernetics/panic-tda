@@ -1,7 +1,5 @@
 import os
-import datetime as dt
 
-import polars as pl
 import pytest
 
 from panic_tda.analysis import load_embeddings_df, load_runs_df
@@ -149,9 +147,6 @@ def test_plot_persistence_entropy(mock_experiment_data):
 
 def test_plot_invocation_duration(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
-
-    # Base time for calculations
-    base_time = dt.datetime.now()
 
     # Verify we have the necessary columns
     assert "invocation_started_at" in embeddings_df.columns
