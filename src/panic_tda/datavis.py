@@ -297,21 +297,27 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
+    pass
     # from panic_tda.analysis import warm_caches
     # warm_caches(session)
 
-    from panic_tda.analysis import load_embeddings_df
+    # EMBEDDINGS
+    #
+    # from panic_tda.analysis import load_embeddings_df
+    #
+    # embeddings_df = load_embeddings_df(session, use_cache=True)
+    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
+    # plot_invocation_duration(embeddings_df, "output/vis/invocation_duration.png")
 
-    embeddings_df = load_embeddings_df(session, use_cache=True)
-    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
-
-    from panic_tda.analysis import load_runs_df
-
-    runs_df = load_runs_df(session, use_cache=True)
-    plot_persistence_diagram_faceted(
-        runs_df, "output/vis/persistence_diagram_faceted.png"
-    )
-    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    # RUNS
+    #
+    # from panic_tda.analysis import load_runs_df
+    #
+    # runs_df = load_runs_df(session, use_cache=True)
+    # plot_persistence_diagram_faceted(
+    #     runs_df, "output/vis/persistence_diagram_faceted.png"
+    # )
+    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
     # plot_persistence_diagram_by_run(
     #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
     # )
