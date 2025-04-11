@@ -281,7 +281,7 @@ def plot_invocation_duration(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="model", y="invocation_duration"),
+            aes(x="model", y="invocation_duration", color="model"),
         )
         + geom_boxplot()
         + labs(x="Model", y="Invocation Duration")
