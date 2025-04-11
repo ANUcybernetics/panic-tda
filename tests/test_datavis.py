@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from panic_tda.analysis import load_embeddings_df, load_runs_df
+from panic_tda.analysis import load_invocations_df, load_embeddings_df, load_runs_df
 from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,
@@ -43,10 +43,12 @@ def mock_experiment_data(db_session):
     # The dummy models are efficient and won't take long
     runs_df = load_runs_df(db_session, use_cache=False)
     embeddings_df = load_embeddings_df(db_session, use_cache=False)
+    invocations_df = load_invocations_df(db_session, use_cache=False)
 
     return {
         "runs_df": runs_df,
         "embeddings_df": embeddings_df,
+        "invocations_df": invocations_df,
     }
 
 
@@ -57,7 +59,7 @@ def test_plot_persistence_diagram(mock_experiment_data):
     assert runs_df.height > 0
     assert "homology_dimension" in runs_df.columns
     assert "birth" in runs_df.columns
-    assert "death" in runs_df.columns
+    assert "persistence" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram.png"
@@ -76,7 +78,9 @@ def test_plot_persistence_diagram_faceted(mock_experiment_data):
     assert runs_df.height > 0
     assert "homology_dimension" in runs_df.columns
     assert "birth" in runs_df.columns
-    assert "death" in runs_df.columns
+    assert "persistence" in runs_df.columns
+    assert "text_model" in runs_df.columns
+    assert "image_model" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram_faceted.png"
@@ -95,7 +99,7 @@ def test_plot_persistence_diagram_by_run(mock_experiment_data):
     assert runs_df.height > 0
     assert "homology_dimension" in runs_df.columns
     assert "birth" in runs_df.columns
-    assert "death" in runs_df.columns
+    assert "persistence" in runs_df.columns
     assert "run_id" in runs_df.columns
 
     # Define output file
@@ -113,8 +117,10 @@ def test_plot_semantic_drift(mock_experiment_data):
     # Verify we have semantic dispersion data
     assert embeddings_df.height > 0
     assert "semantic_drift_instantaneous" in embeddings_df.columns
-    assert "semantic_drift_overall" in embeddings_df.columns
     assert "sequence_number" in embeddings_df.columns
+    assert "run_id" in embeddings_df.columns
+    assert "initial_prompt" in embeddings_df.columns
+    assert "embedding_model" in embeddings_df.columns
 
     # Define output file
     output_file = "output/test/semantic_drift.png"
@@ -133,7 +139,9 @@ def test_plot_persistence_entropy(mock_experiment_data):
     assert runs_df.height > 0
     assert "homology_dimension" in runs_df.columns
     assert "entropy" in runs_df.columns
-    assert "run_id" in runs_df.columns
+    assert "embedding_model" in runs_df.columns
+    assert "text_model" in runs_df.columns
+    assert "image_model" in runs_df.columns
 
     # Define output file
     output_file = "output/test/persistence_entropy.png"
@@ -146,19 +154,18 @@ def test_plot_persistence_entropy(mock_experiment_data):
 
 
 def test_plot_invocation_duration(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+    invocations_df = mock_experiment_data["invocations_df"]
 
     # Verify we have the necessary columns
-    assert "invocation_started_at" in embeddings_df.columns
-    assert "invocation_completed_at" in embeddings_df.columns
-    assert "invocation_duration" in embeddings_df.columns
-    assert "model" in embeddings_df.columns
+    assert invocations_df.height > 0
+    assert "duration" in invocations_df.columns
+    assert "model" in invocations_df.columns
 
     # Define output file
     output_file = "output/test/invocation_duration.png"
 
     # Generate the plot
-    plot_invocation_duration(embeddings_df, output_file)
+    plot_invocation_duration(invocations_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

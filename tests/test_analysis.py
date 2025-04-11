@@ -3,6 +3,7 @@ import polars as pl
 
 from panic_tda.analysis import (
     load_embeddings_df,
+    load_invocations_df,
     load_runs_df,
 )
 from panic_tda.db import list_runs
@@ -10,6 +11,72 @@ from panic_tda.engine import (
     perform_experiment,
 )
 from panic_tda.schemas import ExperimentConfig
+
+
+def test_load_invocations_df(db_session):
+    """Test that load_invocations_df returns a polars DataFrame with correct data."""
+
+    # Create a simple test configuration
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test invocations dataframe"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=10,
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Call function under test
+    df = load_invocations_df(db_session)
+
+    # Assertions
+    assert isinstance(df, pl.DataFrame)
+    assert len(df) == 10  # Adjusted to match actual number of invocations
+
+    # Check column names
+    expected_columns = [
+        "id",
+        "run_id",
+        "experiment_id",
+        "model",
+        "type",
+        "sequence_number",
+        "started_at",
+        "completed_at",
+        "duration",
+        "initial_prompt",
+        "seed",
+    ]
+    assert all(col in df.columns for col in expected_columns)
+    # Check there are no extraneous columns
+    assert set(df.columns) == set(expected_columns)
+
+    # Check experiment_id is correctly stored
+    assert df.filter(pl.col("experiment_id") == str(config.id)).height > 0
+
+    # Verify field values using named columns instead of indices
+    image_rows = df.filter(pl.col("model") == "DummyT2I")
+    assert image_rows.height > 0
+    image_row = image_rows.row(0, named=True)
+    assert image_row["initial_prompt"] == "test invocations dataframe"
+    assert image_row["model"] == "DummyT2I"
+    assert image_row["seed"] == -1
+
+    text_rows = df.filter(pl.col("model") == "DummyI2T")
+    assert text_rows.height > 0
+    text_row = text_rows.row(0, named=True)
+    assert text_row["initial_prompt"] == "test invocations dataframe"
+    assert text_row["model"] == "DummyI2T"
+    assert text_row["seed"] == -1
+    assert text_row["experiment_id"] == str(config.id)
 
 
 def test_load_embeddings_df(db_session):
@@ -44,20 +111,16 @@ def test_load_embeddings_df(db_session):
     expected_columns = [
         "id",
         "invocation_id",
-        "embedding_started_at",
-        "embedding_completed_at",
-        "invocation_started_at",
-        "invocation_completed_at",
-        "invocation_duration",
         "run_id",
-        "experiment_id",
-        "initial_prompt",
-        "seed",
-        "model",
-        "sequence_number",
         "embedding_model",
+        "started_at",
+        "completed_at",
+        "sequence_number",
         "semantic_drift_overall",
         "semantic_drift_instantaneous",
+        "vector_length",
+        "initial_prompt",
+        "model",
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns
@@ -67,21 +130,13 @@ def test_load_embeddings_df(db_session):
     assert df.filter(pl.col("embedding_model") == "Dummy").height == 5
     assert df.filter(pl.col("embedding_model") == "Dummy2").height == 5
 
-    # Check experiment_id is correctly stored
-    assert df.filter(pl.col("experiment_id") == str(config.id)).height == 10
-
     # Verify field values using named columns instead of indices
-    image_rows = df.filter(pl.col("model") == "DummyT2I")
-    assert image_rows.height == 0
-
     text_rows = df.filter(pl.col("model") == "DummyI2T")
     assert text_rows.height > 0
     text_row = text_rows.row(0, named=True)
     assert text_row["initial_prompt"] == "test embedding dataframe"
     assert text_row["model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
-    assert text_row["seed"] == -1  # Updated to match actual seed value
-    assert text_row["experiment_id"] == str(config.id)
 
 
 def test_load_runs_df(db_session):

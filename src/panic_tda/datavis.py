@@ -194,33 +194,6 @@ def plot_persistence_entropy(
     logging.info(f"Saved persistence entropy plot to {saved_file}")
 
 
-def plot_loop_length_by_prompt(df: pl.DataFrame, output_file: str) -> None:
-    """
-    Create a faceted histogram of loop length by initial prompt.
-
-    Args:
-        df: a Polars DataFrame
-        output_file: Path to save the visualization
-    """
-    # Filter to only include rows with loop_length
-    df_filtered = df.filter(pl.col("loop_length").is_not_null())
-    pandas_df = df_filtered.to_pandas()
-
-    # Create faceted histogram chart
-    plot = (
-        ggplot(pandas_df, aes(x="loop_length"))
-        + geom_bar()
-        + facet_grid("initial_prompt ~ .")
-        + scale_x_continuous(name="Loop Length")
-        + labs(y=None)
-        + theme(figure_size=(8, 5))
-    )
-
-    # Save the plot
-    saved_file = save(plot, output_file)
-    logging.info(f"Saved loop length plot to {saved_file}")
-
-
 def plot_semantic_drift(
     df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.png"
 ) -> None:
@@ -271,7 +244,7 @@ def plot_invocation_duration(
     with model on x-axis and duration on y-axis.
 
     Args:
-        df: DataFrame containing embedding data with invocation_started_at and invocation_completed_at
+        df: DataFrame containing embedding data with duration
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
@@ -281,7 +254,7 @@ def plot_invocation_duration(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="model", y="invocation_duration", fill="model"),
+            aes(x="model", y="duration", fill="model"),
         )
         + geom_boxplot()
         + labs(x="Model", y="Invocation Duration")
@@ -298,8 +271,12 @@ def paper_charts(session: Session) -> None:
     Generate charts for paper publications.
     """
     pass
-    # from panic_tda.analysis import warm_caches
-    # warm_caches(session)
+    from panic_tda.analysis import warm_caches
+    warm_caches(session, runs=True, embeddings=True, invocations=True)
+
+    # INVOCATIONS
+    from panic_tda.analysis import load_invocations_df
+    plot_invocation_duration(embeddings_df, "output/vis/invocation_duration.png")
 
     # EMBEDDINGS
     #
@@ -307,7 +284,6 @@ def paper_charts(session: Session) -> None:
     #
     # embeddings_df = load_embeddings_df(session, use_cache=True)
     # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
-    # plot_invocation_duration(embeddings_df, "output/vis/invocation_duration.png")
 
     # RUNS
     #
@@ -319,5 +295,5 @@ def paper_charts(session: Session) -> None:
     # )
     # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
     # plot_persistence_diagram_by_run(
-    #     runs_df, 16, "output/vis/persistence_diagram_by_run.png"
+    #     runs_df, "output/vis/persistence_diagram_by_run.png"
     # )

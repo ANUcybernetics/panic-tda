@@ -13,9 +13,6 @@
   - "one label per row" and "one label per column"
   - re-add the `prompt_order` parameter
 
-- analysis: refactor into separate invocations_df and embeddings_df, and join
-  when appropriate
-
 - tSNE chart would be cool/helpful (to see whether the different runs get
   clustered together)
 

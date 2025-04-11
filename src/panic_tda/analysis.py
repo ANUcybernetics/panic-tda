@@ -1,20 +1,75 @@
 import os
-
 import numpy as np
 import polars as pl
 from numpy.linalg import norm
 from sqlmodel import Session
+from typing import Optional, Tuple
 
 from panic_tda.db import list_runs
 from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
 
-## load the DB objects into dataframes
+
+def load_invocations_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
+    """
+    Load all invocations from the database into a tidy polars DataFrame.
+
+    Args:
+        session: SQLModel database session
+        use_cache: Whether to use cached dataframe if available
+
+    Returns:
+        A polars DataFrame containing all invocation data
+    """
+    cache_path = "output/cache/invocations.parquet"
+
+    # Check if cache exists and should be used
+    if use_cache and os.path.exists(cache_path):
+        print(f"Loading invocations from cache: {cache_path}")
+        return pl.read_parquet(cache_path)
+
+    print("Loading invocations from database...")
+    runs = list_runs(session)
+
+    data = []
+    for run in runs:
+        # temporary hack to only look at 1k runs for SMC paper
+        if run.max_length > 1000:
+            continue
+
+        run_id = str(run.id)
+
+        for invocation in run.invocations:
+            row = {
+                "id": str(invocation.id),
+                "run_id": run_id,
+                "experiment_id": str(run.experiment_id) if run.experiment_id else None,
+                "model": invocation.model,
+                "type": invocation.type.value,
+                "sequence_number": invocation.sequence_number,
+                "started_at": invocation.started_at,
+                "completed_at": invocation.completed_at,
+                "duration": invocation.completed_at - invocation.started_at,
+                "initial_prompt": run.initial_prompt,
+                "seed": run.seed,
+            }
+            data.append(row)
+
+    # Create a polars DataFrame
+    df = pl.DataFrame(data)
+
+    # Save to cache if requested
+    if not use_cache:
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        df.write_parquet(cache_path)
+        print(f"Saved invocations to cache: {cache_path}")
+
+    return df
 
 
 def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     """
-    Load all embeddings from the database and flatten them into a polars DataFrame.
+    Load all embeddings from the database into a tidy polars DataFrame.
     Only includes embeddings for text invocations.
 
     Args:
@@ -44,9 +99,10 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
         if run.max_length > 1000:
             continue
 
-        # Get all embeddings for the run - embeddings is a property that returns a dict
+        # Get all embeddings for the run
         run_embeddings_dict = run.embeddings
         run_id = str(run.id)
+
         # Process embeddings for each model
         for embedding_model, embeddings_list in run_embeddings_dict.items():
             # Track first text embedding for each model
@@ -57,7 +113,6 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
             for embedding in embeddings_list:
                 if embedding.invocation.type == InvocationType.TEXT:
                     text_embeddings.append(embedding)
-                    # Identify first text embedding for this embedding model
                     if first_text_embedding is None:
                         first_text_embedding = embedding
 
@@ -70,11 +125,9 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
             for i, embedding in enumerate(text_embeddings):
                 invocation = embedding.invocation
 
-                # Calculate semantic drift (distance from first embedding)
+                # Calculate semantic drift metrics
                 semantic_drift_overall = None
-                semantic_drift_instantaneous = (
-                    None  # New variable for embedding-to-embedding drift
-                )
+                semantic_drift_instantaneous = None
                 key = (run_id, embedding_model)
                 first_embedding = first_embeddings.get(key)
                 current_vector = np.array(embedding.vector)
@@ -82,75 +135,52 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                 # Calculate drift from first embedding (origin)
                 if first_embedding:
                     first_vector = np.array(first_embedding.vector)
-
-                    # Calculate cosine similarity properly, handling non-normalized vectors
-                    norm_first = norm(first_vector)
-                    norm_current = norm(current_vector)
-
-                    # Avoid division by zero
-                    if norm_first > 0 and norm_current > 0:
-                        cosine_similarity = np.dot(first_vector, current_vector) / (
-                            norm_first * norm_current
-                        )
-                        semantic_drift_overall = float(1.0 - cosine_similarity)
-                    else:
-                        semantic_drift_overall = (
-                            0.0 if np.array_equal(first_vector, current_vector) else 1.0
-                        )
+                    semantic_drift_overall = calculate_cosine_distance(first_vector, current_vector)
 
                 # Calculate drift from previous embedding
                 if i > 0 and text_embeddings[i - 1]:
                     prev_vector = np.array(text_embeddings[i - 1].vector)
-
-                    # Calculate cosine similarity properly, handling non-normalized vectors
-                    norm_prev = norm(prev_vector)
-                    norm_current = norm(current_vector)
-
-                    # Avoid division by zero
-                    if norm_prev > 0 and norm_current > 0:
-                        sequential_cosine_similarity = np.dot(
-                            prev_vector, current_vector
-                        ) / (norm_prev * norm_current)
-                        semantic_drift_instantaneous = float(
-                            1.0 - sequential_cosine_similarity
-                        )
-                    else:
-                        semantic_drift_instantaneous = (
-                            0.0 if np.array_equal(prev_vector, current_vector) else 1.0
-                        )
+                    semantic_drift_instantaneous = calculate_cosine_distance(prev_vector, current_vector)
 
                 row = {
                     "id": str(embedding.id),
                     "invocation_id": str(invocation.id),
-                    "embedding_model": embedding_model,
-                    "embedding_started_at": embedding.started_at,
-                    "embedding_completed_at": embedding.completed_at,
-                    "invocation_started_at": invocation.started_at,
-                    "invocation_completed_at": invocation.completed_at,
-                    "invocation_duration": invocation.completed_at - invocation.started_at,
                     "run_id": run_id,
-                    "experiment_id": str(run.experiment_id)
-                    if run.experiment_id
-                    else None,
-                    "initial_prompt": run.initial_prompt,
-                    "seed": run.seed,
-                    "model": invocation.model,
-                    "sequence_number": invocation.sequence_number,
+                    "embedding_model": embedding_model,
+                    "started_at": embedding.started_at,
+                    "completed_at": embedding.completed_at,
+                    "sequence_number": invocation.sequence_number,  # Include sequence_number for easier analysis
                     "semantic_drift_overall": semantic_drift_overall,
-                    "semantic_drift_instantaneous": semantic_drift_instantaneous,  # Add the new drift metric
+                    "semantic_drift_instantaneous": semantic_drift_instantaneous,
+                    "vector_length": len(embedding.vector),
+                    "initial_prompt": run.initial_prompt,  # Added initial_prompt from run
+                    "model": invocation.model,  # Added model from invocation
                 }
                 data.append(row)
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
 
-    # Only save to cache if use_cache is False
+    # Save to cache if requested
     if not use_cache:
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         df.write_parquet(cache_path)
         print(f"Saved embeddings to cache: {cache_path}")
 
     return df
+
+
+def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
+    """Calculate cosine distance between two vectors."""
+    norm_vec1 = norm(vec1)
+    norm_vec2 = norm(vec2)
+
+    # Avoid division by zero
+    if norm_vec1 > 0 and norm_vec2 > 0:
+        cosine_similarity = np.dot(vec1, vec2) / (norm_vec1 * norm_vec2)
+        return float(1.0 - cosine_similarity)
+    else:
+        return 0.0 if np.array_equal(vec1, vec2) else 1.0
 
 
 def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
@@ -285,12 +315,20 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     return df
 
 
-def warm_caches(session: Session, runs: bool = True, embeddings: bool = True) -> None:
+def warm_caches(
+    session: Session,
+    runs: bool = True,
+    embeddings: bool = True,
+    invocations: bool = True
+) -> None:
     """
-    Preload and cache both runs and embeddings dataframes.
+    Preload and cache dataframes.
 
     Args:
         session: SQLModel database session
+        runs: Whether to cache runs dataframe
+        embeddings: Whether to cache embeddings dataframe
+        invocations: Whether to cache invocations dataframe
 
     Returns:
         None
@@ -302,5 +340,9 @@ def warm_caches(session: Session, runs: bool = True, embeddings: bool = True) ->
     if embeddings:
         print("Warming cache for embeddings dataframe...")
         load_embeddings_df(session, use_cache=False)
+
+    if invocations:
+        print("Warming cache for invocations dataframe...")
+        load_invocations_df(session, use_cache=False)
 
     print("Cache warming complete.")
