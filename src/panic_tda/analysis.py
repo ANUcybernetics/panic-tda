@@ -127,6 +127,7 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                     "embedding_completed_at": embedding.completed_at,
                     "invocation_started_at": invocation.started_at,
                     "invocation_completed_at": invocation.completed_at,
+                    "invocation_duration": invocation.completed_at - invocation.started_at,
                     "run_id": run_id,
                     "experiment_id": str(run.experiment_id)
                     if run.experiment_id
