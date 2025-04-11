@@ -1,6 +1,7 @@
 [tools]
 sqlite = "latest"
 uv = "latest"
+node = "latest"
 
 [tasks.status]
 run = "uv run panic-tda experiment-status"
