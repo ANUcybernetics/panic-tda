@@ -5,8 +5,17 @@
         ["SDXLTurbo", "BLIP2"],
         ["SDXLTurbo", "Moondream"]
     ],
-    "seed_count": 4,
-    "prompts": ["red", "orange", "yellow", "green", "blue", "indigo", "violet"],
+    "seed_count": 8,
+    "prompts": [
+        "a cat",
+        "a dog",
+        "a rabbit",
+        "an elephant",
+        "a lion",
+        "a goldfish",
+        "a giraffe",
+        "a hamster"
+    ],
     "embedding_models": ["STSBMpnet", "STSBRoberta", "Nomic"],
     "max_length": 1000
 }
