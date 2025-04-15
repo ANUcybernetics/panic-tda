@@ -7,7 +7,6 @@ from plotnine import (
     element_text,
     facet_grid,
     facet_wrap,
-    geom_bar,
     geom_boxplot,
     geom_line,
     geom_point,
@@ -270,13 +269,16 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    pass
     from panic_tda.analysis import warm_caches
+
     warm_caches(session, runs=True, embeddings=True, invocations=True)
 
     # INVOCATIONS
-    from panic_tda.analysis import load_invocations_df
-    plot_invocation_duration(embeddings_df, "output/vis/invocation_duration.png")
+    #
+    # from panic_tda.analysis import load_invocations_df
+
+    # invocations_df = load_invocations_df(session, use_cache=True)
+    # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
 
     # EMBEDDINGS
     #
