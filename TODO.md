@@ -3,8 +3,13 @@
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
   superclasses (and why we chose the models and params we've currently chosen)
 
+- populate the estimated_time function (for genai and embedding models) with
+  real values
+
 - check that ExperimentConfig deletion cascades to all runs (and that there are
   no invocations or embeddings that belong to a now-deleted experiment)
+
+- revisit the "load df directly from sqlite" approach (for performance reasons)
 
 - export video improvements:
 
