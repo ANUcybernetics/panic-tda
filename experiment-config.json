@@ -5,16 +5,20 @@
         ["SDXLTurbo", "BLIP2"],
         ["SDXLTurbo", "Moondream"]
     ],
-    "seed_count": 8,
+    "seed_count": 32,
     "prompts": [
-        "a cat",
-        "a dog",
-        "a rabbit",
-        "an elephant",
-        "a lion",
-        "a goldfish",
-        "a giraffe",
-        "a hamster"
+        "a picture of a man",
+        "a picture of a woman",
+        "a picture of a child",
+        "a photorealistic portrait of a man",
+        "a photorealistic portrait of a woman",
+        "a photorealistic portrait of a child",
+        "a photo of a man",
+        "a photo of a woman",
+        "a photo of a child",
+        "a painting of a man",
+        "a painting of a woman",
+        "a painting of a child"
     ],
     "embedding_models": ["STSBMpnet", "STSBRoberta", "Nomic"],
     "max_length": 1000
