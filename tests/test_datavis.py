@@ -6,7 +6,7 @@ from panic_tda.analysis import load_invocations_df, load_embeddings_df, load_run
 from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,
-    plot_persistence_diagram_by_run,
+    plot_persistence_diagram_by_prompt,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy,
     plot_semantic_drift,
@@ -103,9 +103,9 @@ def test_plot_persistence_diagram_by_run(mock_experiment_data):
     assert "run_id" in runs_df.columns
 
     # Define output file
-    output_file = "output/test/persistence_diagram_by_run.png"
+    output_file = "output/test/persistence_diagram_by_prompt.png"
 
-    plot_persistence_diagram_by_run(runs_df, output_file)
+    plot_persistence_diagram_by_prompt(runs_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

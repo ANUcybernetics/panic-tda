@@ -121,13 +121,13 @@ def plot_persistence_diagram_faceted(
     logging.info(f"Saved persistence diagrams to {saved_file}")
 
 
-def plot_persistence_diagram_by_run(
+def plot_persistence_diagram_by_prompt(
     df: pl.DataFrame,
     output_file: str = "output/vis/persistence_diagram.png",
 ) -> None:
     """
-    Create and save a visualization of persistence diagrams for runs in the DataFrame,
-    creating a grid of charts (one per run).
+    Create and save a visualization of persistence diagrams by prompt,
+    creating a grid of charts (one per prompt).
 
     Args:
         df: DataFrame containing run data with persistence homology information
@@ -143,7 +143,7 @@ def plot_persistence_diagram_by_run(
         + scale_x_continuous(name="Feature Appearance")
         + scale_y_continuous(name="Feature Persistence")
         + labs(color="Dimension")
-        + facet_wrap("~ run_id")
+        + facet_wrap("~ initial_prompt")
         + theme(figure_size=(16, 10), strip_text=element_text(size=8))
     )
 

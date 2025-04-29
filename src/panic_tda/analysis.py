@@ -3,7 +3,7 @@ import numpy as np
 import polars as pl
 from numpy.linalg import norm
 from sqlmodel import Session
-from typing import Optional, Tuple
+
 
 from panic_tda.db import list_runs
 from panic_tda.genai_models import get_output_type
