@@ -193,6 +193,47 @@ def plot_persistence_entropy(
     logging.info(f"Saved persistence entropy plot to {saved_file}")
 
 
+def plot_persistence_entropy_by_prompt(
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_by_prompt.png"
+) -> None:
+    """
+    Create and save a visualization of entropy distributions faceted by prompt and models.
+    - entropy on x axis
+    - homology_dimension on y axis (treated as a factor)
+    - embedding_model as color
+    - faceted by initial_prompt (rows) and text_model + image_model (columns)
+
+    Args:
+        df: DataFrame containing runs data with homology_dimension and entropy
+        output_file: Path to save the visualization
+    """
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = df.to_pandas()
+
+    # Create the plot with faceting
+    # Define subscript translator for x-axis labels
+    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="factor(homology_dimension)", y="entropy", fill="embedding_model"),
+        )
+        # + geom_violin(alpha=0.7, width=0.7)
+        + geom_boxplot()
+        + labs(x="homology dimension", y="entropy", fill="embedding model")
+        + scale_x_discrete(
+            labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
+        )
+        + facet_grid("initial_prompt ~ image_model + text_model", labeller="label_both")
+        + theme(figure_size=(15, 40), strip_text=element_text(size=8)) # Adjust size as needed
+    )
+
+    # Save plot with high resolution
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved persistence entropy by prompt plot to {saved_file}")
+
+
 def plot_semantic_drift(
     df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.png"
 ) -> None:
