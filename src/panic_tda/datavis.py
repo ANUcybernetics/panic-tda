@@ -208,7 +208,8 @@ def plot_persistence_entropy_by_prompt(
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
+    # pandas_df = df.to_pandas()
+    pandas_df = df.filter(pl.col("embedding_model") == "Nomic").to_pandas()
 
     # Create the plot with faceting
     # Define subscript translator for x-axis labels
