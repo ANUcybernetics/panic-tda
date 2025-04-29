@@ -92,7 +92,7 @@ def test_plot_persistence_diagram_faceted(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_diagram_by_run(mock_experiment_data):
+def test_plot_persistence_diagram_by_prompt(mock_experiment_data):
     runs_df = mock_experiment_data["runs_df"]
 
     # Verify we have persistence diagram data
