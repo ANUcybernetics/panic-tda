@@ -1,6 +1,6 @@
 # TODO
 
-- generate the latest videos
+- group the prompts by (human-labelled) category
 
 - order embeddings by "longest stable runs", and sample something from the
   longest ones for each network
