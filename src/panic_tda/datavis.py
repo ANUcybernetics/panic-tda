@@ -4,6 +4,7 @@ import os
 import polars as pl
 from plotnine import (
     aes,
+    coord_flip,
     element_text,
     facet_grid,
     facet_wrap,
@@ -208,8 +209,8 @@ def plot_persistence_entropy_by_prompt(
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    # pandas_df = df.to_pandas()
-    pandas_df = df.filter(pl.col("embedding_model") == "Nomic").to_pandas()
+    pandas_df = df.to_pandas()
+    # pandas_df = df.filter(pl.col("embedding_model") == "Nomic").to_pandas()
 
     # Create the plot with faceting
     # Define subscript translator for x-axis labels
@@ -218,16 +219,14 @@ def plot_persistence_entropy_by_prompt(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="factor(homology_dimension)", y="entropy", fill="embedding_model"),
+            aes(x="initial_prompt", y="entropy", fill="embedding_model"),
         )
         # + geom_violin(alpha=0.7, width=0.7)
         + geom_boxplot()
-        + labs(x="homology dimension", y="entropy", fill="embedding model")
-        + scale_x_discrete(
-            labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
-        )
-        + facet_grid("image_model + text_model ~ initial_prompt")
-        + theme(figure_size=(200, 40), strip_text=element_text(size=8)) # Adjust size as needed
+        + labs(x="initial prompt", y="entropy", fill="embedding model")
+        + coord_flip()
+        + facet_grid("~ homology_dimension + image_model + text_model")
+        + theme(figure_size=(30, 20), strip_text=element_text(size=8)) # Adjust size as needed
     )
 
     # Save plot with high resolution
