@@ -7,6 +7,7 @@ from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,
     plot_persistence_diagram_by_prompt,
+    plot_persistence_entropy_by_prompt,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy,
     plot_semantic_drift,
@@ -106,6 +107,25 @@ def test_plot_persistence_diagram_by_prompt(mock_experiment_data):
     output_file = "output/test/persistence_diagram_by_prompt.png"
 
     plot_persistence_diagram_by_prompt(runs_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
+    runs_df = mock_experiment_data["runs_df"]
+
+    # Verify we have persistence diagram data
+    assert runs_df.height > 0
+    assert "homology_dimension" in runs_df.columns
+    assert "birth" in runs_df.columns
+    assert "persistence" in runs_df.columns
+    assert "run_id" in runs_df.columns
+
+    # Define output file
+    output_file = "output/test/persistence_entropy_by_prompt.png"
+
+    plot_persistence_entropy_by_prompt(runs_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
