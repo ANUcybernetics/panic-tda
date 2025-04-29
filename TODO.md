@@ -1,5 +1,10 @@
 # TODO
 
+- generate the latest videos
+
+- order embeddings by "longest stable runs", and sample something from the
+  longest ones for each network
+
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
   superclasses (and why we chose the models and params we've currently chosen)
 
