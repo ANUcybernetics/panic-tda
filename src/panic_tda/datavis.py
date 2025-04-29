@@ -225,8 +225,8 @@ def plot_persistence_entropy_by_prompt(
         + scale_x_discrete(
             labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
         )
-        + facet_grid("initial_prompt ~ image_model + text_model")
-        + theme(figure_size=(15, 40), strip_text=element_text(size=8)) # Adjust size as needed
+        + facet_grid("image_model + text_model ~ initial_prompt")
+        + theme(figure_size=(200, 40), strip_text=element_text(size=8)) # Adjust size as needed
     )
 
     # Save plot with high resolution
