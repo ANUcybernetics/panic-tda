@@ -1,5 +1,11 @@
 # TODO
 
+- violin plots
+
+- check normality
+
+- autoregressive parameter (time column)
+
 - group the prompts by (human-labelled) category
 
 - order embeddings by "longest stable runs", and sample something from the
