@@ -58,12 +58,6 @@ def load_invocations_df(session: Session, use_cache: bool = False) -> pl.DataFra
     # Create a polars DataFrame
     df = pl.DataFrame(data)
 
-    # Save to cache if requested
-    if not use_cache:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-        df.write_parquet(cache_path)
-        print(f"Saved invocations to cache: {cache_path}")
-
     return df
 
 
@@ -160,12 +154,6 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
-
-    # Save to cache if requested
-    if not use_cache:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-        df.write_parquet(cache_path)
-        print(f"Saved embeddings to cache: {cache_path}")
 
     return df
 
@@ -306,12 +294,6 @@ def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
     # Only create DataFrame if we have data
     df = pl.DataFrame(data, schema_overrides=schema_overrides)
 
-    # Only save to cache if use_cache is False
-    if not use_cache:
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-        df.write_parquet(cache_path)
-        print(f"Saved runs to cache: {cache_path}")
-
     return df
 
 
@@ -335,14 +317,29 @@ def warm_caches(
     """
     if runs:
         print("Warming cache for runs dataframe...")
-        load_runs_df(session, use_cache=False)
+        runs_df = load_runs_df(session, use_cache=False)
+        # Save to cache
+        cache_path = "output/cache/runs.parquet"
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        runs_df.write_parquet(cache_path)
+        print(f"Saved runs to cache: {cache_path}")
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
-        load_embeddings_df(session, use_cache=False)
+        embeddings_df = load_embeddings_df(session, use_cache=False)
+        # Save to cache
+        cache_path = "output/cache/embeddings.parquet"
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        embeddings_df.write_parquet(cache_path)
+        print(f"Saved embeddings to cache: {cache_path}")
 
     if invocations:
         print("Warming cache for invocations dataframe...")
-        load_invocations_df(session, use_cache=False)
+        invocations_df = load_invocations_df(session, use_cache=False)
+        # Save to cache
+        cache_path = "output/cache/invocations.parquet"
+        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+        invocations_df.write_parquet(cache_path)
+        print(f"Saved invocations to cache: {cache_path}")
 
     print("Cache warming complete.")
