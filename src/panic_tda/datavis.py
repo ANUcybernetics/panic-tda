@@ -214,7 +214,7 @@ def plot_persistence_entropy_by_prompt(
 
     # Create the plot with faceting
     # Define subscript translator for x-axis labels
-    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+    # subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
     plot = (
         ggplot(
