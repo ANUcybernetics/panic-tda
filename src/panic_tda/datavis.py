@@ -226,7 +226,9 @@ def plot_persistence_entropy_by_prompt(
         + labs(x="initial prompt", y="entropy", fill="embedding model")
         + coord_flip()
         + facet_grid("~ homology_dimension + image_model + text_model")
-        + theme(figure_size=(30, 20), strip_text=element_text(size=8)) # Adjust size as needed
+        + theme(
+            figure_size=(30, 20), strip_text=element_text(size=8)
+        )  # Adjust size as needed
     )
 
     # Save plot with high resolution
