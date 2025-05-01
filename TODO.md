@@ -1,8 +1,14 @@
 # TODO
 
-- violin plots
+- violin plots for entropy
+
+- do clustering, and then RLE for clusters, and also distribution of clusters vs
+  prompt/networks
 
 - check normality
+
+- generate pdf/svg plots by default (and png only for the heaps-overplotted
+  ones)
 
 - autoregressive parameter (time column)
 
