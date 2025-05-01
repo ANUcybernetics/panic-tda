@@ -1,10 +1,11 @@
 import os
+
 import numpy as np
 import polars as pl
 from numpy.linalg import norm
 from sqlmodel import Session
 
-
+from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs
 from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
@@ -87,6 +88,9 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
     first_embeddings = {}
     data = []
 
+    # Dictionary to collect embeddings by model for clustering
+    embeddings_by_model = {}
+
     # Process each run and its embeddings
     for run in runs:
         # temporary hack to only look at 1k runs for SMC paper
@@ -110,6 +114,13 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                     if first_text_embedding is None:
                         first_text_embedding = embedding
 
+                    # Initialize the model's list in the dictionary if it doesn't exist
+                    if embedding_model not in embeddings_by_model:
+                        embeddings_by_model[embedding_model] = []
+
+                    # Save the embedding for clustering later
+                    embeddings_by_model[embedding_model].append(embedding)
+
             # Store the first text embedding for drift calculations
             if first_text_embedding:
                 key = (run_id, embedding_model)
@@ -129,12 +140,16 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
                 # Calculate drift from first embedding (origin)
                 if first_embedding:
                     first_vector = np.array(first_embedding.vector)
-                    semantic_drift_overall = calculate_cosine_distance(first_vector, current_vector)
+                    semantic_drift_overall = calculate_cosine_distance(
+                        first_vector, current_vector
+                    )
 
                 # Calculate drift from previous embedding
                 if i > 0 and text_embeddings[i - 1]:
                     prev_vector = np.array(text_embeddings[i - 1].vector)
-                    semantic_drift_instantaneous = calculate_cosine_distance(prev_vector, current_vector)
+                    semantic_drift_instantaneous = calculate_cosine_distance(
+                        prev_vector, current_vector
+                    )
 
                 row = {
                     "id": str(embedding.id),
@@ -154,6 +169,28 @@ def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFram
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
+
+    # Perform clustering using polars group_by and aggregation
+    clustering_results = []
+
+    for embedding_model, embeddings_list in embeddings_by_model.items():
+        # Get cluster labels using hdbscan
+        cluster_labels = hdbscan(embeddings_list)
+
+        # Create a list of dictionaries for the cluster results
+        model_clusters = [
+            {"id": str(embedding.id), "cluster_label": label}
+            for embedding, label in zip(embeddings_list, cluster_labels)
+        ]
+
+        # Add to clustering results
+        clustering_results.extend(model_clusters)
+
+    # Convert clustering results to a polars DataFrame
+    clusters_df = pl.DataFrame(clustering_results)
+
+    # Join the main DataFrame with the clusters DataFrame
+    df = df.join(clusters_df, on="id", how="left")
 
     return df
 
@@ -301,7 +338,7 @@ def warm_caches(
     session: Session,
     runs: bool = True,
     embeddings: bool = True,
-    invocations: bool = True
+    invocations: bool = True,
 ) -> None:
     """
     Preload and cache dataframes.

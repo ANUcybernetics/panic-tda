@@ -121,6 +121,7 @@ def test_load_embeddings_df(db_session):
         "vector_length",
         "initial_prompt",
         "model",
+        "cluster_label",  # Ensure cluster_label column is present
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns
@@ -137,6 +138,31 @@ def test_load_embeddings_df(db_session):
     assert text_row["initial_prompt"] == "test embedding dataframe"
     assert text_row["model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
+
+    # Check that each embedding has a cluster label assigned
+    assert df.filter(pl.col("cluster_label").is_null()).height == 0
+
+    # Check that cluster labels are integers
+    assert df.filter(~pl.col("cluster_label").cast(pl.Int64).is_null()).height == len(
+        df
+    )
+
+    # Check that each embedding model has its own set of clusters
+    dummy_clusters = (
+        df.filter(pl.col("embedding_model") == "Dummy").select("cluster_label").unique()
+    )
+    dummy2_clusters = (
+        df.filter(pl.col("embedding_model") == "Dummy2")
+        .select("cluster_label")
+        .unique()
+    )
+
+    # Verify that both models have at least one cluster
+    assert dummy_clusters.height > 0
+    assert dummy2_clusters.height > 0
+
+    # It's expected that cluster labels can be reused across different embedding models
+    # So we don't need to check for disjoint cluster labels between different models
 
 
 def test_load_runs_df(db_session):
