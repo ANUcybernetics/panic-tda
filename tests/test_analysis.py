@@ -121,7 +121,7 @@ def test_load_embeddings_df(db_session):
         "vector_length",
         "initial_prompt",
         "model",
-        "cluster_label",  # Ensure cluster_label column is present
+        "vector",  # Vector is included for later clustering
     ]
     assert all(col in df.columns for col in expected_columns)
     # Check there are no extraneous columns
@@ -139,20 +139,52 @@ def test_load_embeddings_df(db_session):
     assert text_row["model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
 
+
+def test_add_cluster_labels(db_session):
+    """Test that add_cluster_labels properly adds clustering to embeddings."""
+    from panic_tda.analysis import add_cluster_labels
+
+    # Create a simple test configuration
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test embedding clustering"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=10,
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load embeddings
+    df = load_embeddings_df(db_session)
+
+    # Add cluster labels
+    df_with_clusters = add_cluster_labels(df)
+
+    # Check that the cluster_label column was added
+    assert "cluster_label" in df_with_clusters.columns
+
     # Check that each embedding has a cluster label assigned
-    assert df.filter(pl.col("cluster_label").is_null()).height == 0
+    assert df_with_clusters.filter(pl.col("cluster_label").is_null()).height == 0
 
     # Check that cluster labels are integers
-    assert df.filter(~pl.col("cluster_label").cast(pl.Int64).is_null()).height == len(
-        df
+    assert df_with_clusters.filter(~pl.col("cluster_label").cast(pl.Int64).is_null()).height == len(
+        df_with_clusters
     )
 
     # Check that each embedding model has its own set of clusters
     dummy_clusters = (
-        df.filter(pl.col("embedding_model") == "Dummy").select("cluster_label").unique()
+        df_with_clusters.filter(pl.col("embedding_model") == "Dummy").select("cluster_label").unique()
     )
     dummy2_clusters = (
-        df.filter(pl.col("embedding_model") == "Dummy2")
+        df_with_clusters.filter(pl.col("embedding_model") == "Dummy2")
         .select("cluster_label")
         .unique()
     )
@@ -163,7 +195,6 @@ def test_load_embeddings_df(db_session):
 
     # It's expected that cluster labels can be reused across different embedding models
     # So we don't need to check for disjoint cluster labels between different models
-
 
 def test_load_runs_df(db_session):
     """Test that load_runs_df returns a polars DataFrame with correct data."""

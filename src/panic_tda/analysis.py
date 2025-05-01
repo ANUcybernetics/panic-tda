@@ -86,9 +86,6 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     first_embeddings = {}
     data = []
 
-    # Dictionary to collect embeddings by model for clustering
-    embeddings_by_model = {}
-
     # Process each run and its embeddings
     for run in runs:
         # temporary hack to only look at 1k runs for SMC paper
@@ -111,13 +108,6 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
                     text_embeddings.append(embedding)
                     if first_text_embedding is None:
                         first_text_embedding = embedding
-
-                    # Initialize the model's list in the dictionary if it doesn't exist
-                    if embedding_model not in embeddings_by_model:
-                        embeddings_by_model[embedding_model] = []
-
-                    # Save the embedding for clustering later
-                    embeddings_by_model[embedding_model].append(embedding)
 
             # Store the first text embedding for drift calculations
             if first_text_embedding:
@@ -162,36 +152,71 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
                     "vector_length": len(embedding.vector),
                     "initial_prompt": run.initial_prompt,  # Added initial_prompt from run
                     "model": invocation.model,  # Added model from invocation
+                    "vector": embedding.vector,  # Include raw vector for later clustering
                 }
                 data.append(row)
 
     # Create a polars DataFrame
     df = pl.DataFrame(data)
+    return df
 
-    # Perform clustering using polars group_by and aggregation
-    clustering_results = []
 
-    for embedding_model, embeddings_list in embeddings_by_model.items():
+def add_cluster_labels(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Add cluster labels to the embeddings DataFrame.
+
+    Args:
+        df: DataFrame containing embedding data with vectors
+
+    Returns:
+        DataFrame with cluster labels added
+    """
+    print("Starting clustering process...")
+
+    # Group embeddings by model
+    embedding_models = df["embedding_model"].unique().to_list()
+
+    all_clusters = []
+
+    # Process each embedding model separately
+    for i, embedding_model in enumerate(embedding_models):
+        model_df = df.filter(pl.col("embedding_model") == embedding_model)
+        embeddings_list = model_df.select(["id", "vector"]).to_dicts()
+
+        print(f"Clustering model {i+1}/{len(embedding_models)}: {embedding_model} with {len(embeddings_list)} embeddings")
+
         # Get cluster labels using hdbscan
-        cluster_labels = hdbscan(embeddings_list)
+        embeddings_objects = [
+            type('obj', (object,), {'id': e['id'], 'vector': e['vector']})
+            for e in embeddings_list
+        ]
+
+        cluster_labels = hdbscan(embeddings_objects)
+
+        # Count the number of points in each cluster
+        unique_labels = set(cluster_labels)
+        print(f"  Found {len(unique_labels)} clusters (including noise)")
 
         # Create a list of dictionaries for the cluster results
         model_clusters = [
-            {"id": str(embedding.id), "cluster_label": label}
-            for embedding, label in zip(embeddings_list, cluster_labels)
+            {"id": embedding_obj.id, "cluster_label": label}
+            for embedding_obj, label in zip(embeddings_objects, cluster_labels)
         ]
 
         # Add to clustering results
-        clustering_results.extend(model_clusters)
+        all_clusters.extend(model_clusters)
+        print(f"  Added {len(model_clusters)} labeled embeddings to results")
 
     # Convert clustering results to a polars DataFrame
-    clusters_df = pl.DataFrame(clustering_results)
+    print("Creating clusters DataFrame...")
+    clusters_df = pl.DataFrame(all_clusters)
 
     # Join the main DataFrame with the clusters DataFrame
-    df = df.join(clusters_df, on="id", how="left")
+    print("Joining cluster labels with main DataFrame...")
+    result_df = df.join(clusters_df, on="id", how="left")
+    print(f"Clustering complete. DataFrame now has {result_df.shape[0]} rows and {result_df.shape[1]} columns.")
 
-    return df
-
+    return result_df
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculate cosine distance between two vectors."""
