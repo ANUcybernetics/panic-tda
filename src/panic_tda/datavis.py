@@ -314,18 +314,18 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.analysis import warm_caches
 
-    warm_caches(session, runs=False, embeddings=False, invocations=False)
+    warm_caches(session, runs=False, embeddings=True, invocations=False)
     ### INVOCATIONS
     #
     # from panic_tda.analysis import load_invocations_df
-    # invocations_df = load_invocations_df(session, use_cache=True).filter(pl.col("embedding_model") == "Nomic")
+    # invocations_df = load_invocations_df(session).filter(pl.col("embedding_model") == "Nomic")
     # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
     #
     ### EMBEDDINGS
     #
     # from panic_tda.analysis import load_embeddings_df
 
-    # embeddings_df = load_embeddings_df(session, use_cache=True).filter(
+    # embeddings_df = load_embeddings_df(session).filter(
     #     pl.col("embedding_model") == "Nomic"
     # )
     # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
@@ -334,7 +334,7 @@ def paper_charts(session: Session) -> None:
     #
     # from panic_tda.analysis import load_runs_df
     #
-    # runs_df = load_runs_df(session, use_cache=True)
+    # runs_df = load_runs_df(session)
     #
     # plot_persistence_diagram_faceted(
     #     runs_df, "output/vis/persistence_diagram_faceted.png"

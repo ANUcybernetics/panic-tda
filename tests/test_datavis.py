@@ -2,14 +2,14 @@ import os
 
 import pytest
 
-from panic_tda.analysis import load_invocations_df, load_embeddings_df, load_runs_df
+from panic_tda.analysis import load_embeddings_df, load_invocations_df, load_runs_df
 from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,
     plot_persistence_diagram_by_prompt,
-    plot_persistence_entropy_by_prompt,
     plot_persistence_diagram_faceted,
     plot_persistence_entropy,
+    plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
 )
 from panic_tda.engine import perform_experiment
@@ -42,9 +42,9 @@ def mock_experiment_data(db_session):
     db_session.refresh(experiment)
     # Run the actual experiment using the configuration
     # The dummy models are efficient and won't take long
-    runs_df = load_runs_df(db_session, use_cache=False)
-    embeddings_df = load_embeddings_df(db_session, use_cache=False)
-    invocations_df = load_invocations_df(db_session, use_cache=False)
+    runs_df = load_runs_df(db_session)
+    embeddings_df = load_embeddings_df(db_session)
+    invocations_df = load_invocations_df(db_session)
 
     return {
         "runs_df": runs_df,

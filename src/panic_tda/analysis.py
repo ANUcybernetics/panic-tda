@@ -11,21 +11,20 @@ from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
 
 
-def load_invocations_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
+def load_invocations_df(session: Session) -> pl.DataFrame:
     """
     Load all invocations from the database into a tidy polars DataFrame.
 
     Args:
         session: SQLModel database session
-        use_cache: Whether to use cached dataframe if available
 
     Returns:
         A polars DataFrame containing all invocation data
     """
     cache_path = "output/cache/invocations.parquet"
 
-    # Check if cache exists and should be used
-    if use_cache and os.path.exists(cache_path):
+    # Check if cache exists
+    if os.path.exists(cache_path):
         print(f"Loading invocations from cache: {cache_path}")
         return pl.read_parquet(cache_path)
 
@@ -62,22 +61,21 @@ def load_invocations_df(session: Session, use_cache: bool = False) -> pl.DataFra
     return df
 
 
-def load_embeddings_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
+def load_embeddings_df(session: Session) -> pl.DataFrame:
     """
     Load all embeddings from the database into a tidy polars DataFrame.
     Only includes embeddings for text invocations.
 
     Args:
         session: SQLModel database session
-        use_cache: Whether to use cached dataframe if available
 
     Returns:
         A polars DataFrame containing all embedding data for text invocations
     """
     cache_path = "output/cache/embeddings.parquet"
 
-    # Check if cache exists and should be used
-    if use_cache and os.path.exists(cache_path):
+    # Check if cache exists
+    if os.path.exists(cache_path):
         print(f"Loading embeddings from cache: {cache_path}")
         return pl.read_parquet(cache_path)
 
@@ -208,22 +206,21 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         return 0.0 if np.array_equal(vec1, vec2) else 1.0
 
 
-def load_runs_df(session: Session, use_cache: bool = False) -> pl.DataFrame:
+def load_runs_df(session: Session) -> pl.DataFrame:
     """
     Load all runs from the database and flatten them into a polars DataFrame.
     Includes persistence diagrams with birth/death pairs for each run.
 
     Args:
         session: SQLModel database session
-        use_cache: Whether to use cached dataframe if available
 
     Returns:
         A polars DataFrame containing all run data with persistence diagrams
     """
     cache_path = "output/cache/runs.parquet"
 
-    # Check if cache exists and should be used
-    if use_cache and os.path.exists(cache_path):
+    # Check if cache exists
+    if os.path.exists(cache_path):
         print(f"Loading runs from cache: {cache_path}")
         return pl.read_parquet(cache_path)
 
@@ -354,27 +351,36 @@ def warm_caches(
     """
     if runs:
         print("Warming cache for runs dataframe...")
-        runs_df = load_runs_df(session, use_cache=False)
-        # Save to cache
         cache_path = "output/cache/runs.parquet"
+        # Remove existing cache file if it exists
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+        runs_df = load_runs_df(session)
+        # Save to cache
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         runs_df.write_parquet(cache_path)
         print(f"Saved runs to cache: {cache_path}")
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
-        embeddings_df = load_embeddings_df(session, use_cache=False)
-        # Save to cache
         cache_path = "output/cache/embeddings.parquet"
+        # Remove existing cache file if it exists
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+        embeddings_df = load_embeddings_df(session)
+        # Save to cache
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         embeddings_df.write_parquet(cache_path)
         print(f"Saved embeddings to cache: {cache_path}")
 
     if invocations:
         print("Warming cache for invocations dataframe...")
-        invocations_df = load_invocations_df(session, use_cache=False)
-        # Save to cache
         cache_path = "output/cache/invocations.parquet"
+        # Remove existing cache file if it exists
+        if os.path.exists(cache_path):
+            os.remove(cache_path)
+        invocations_df = load_invocations_df(session)
+        # Save to cache
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         invocations_df.write_parquet(cache_path)
         print(f"Saved invocations to cache: {cache_path}")
