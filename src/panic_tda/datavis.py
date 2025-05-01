@@ -314,31 +314,34 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.analysis import warm_caches
 
-    warm_caches(session, runs=True, embeddings=True, invocations=True)
-
-    # INVOCATIONS
+    warm_caches(session, runs=False, embeddings=False, invocations=False)
+    ### INVOCATIONS
     #
     # from panic_tda.analysis import load_invocations_df
-
-    # invocations_df = load_invocations_df(session, use_cache=True)
+    # invocations_df = load_invocations_df(session, use_cache=True).filter(pl.col("embedding_model") == "Nomic")
     # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
-
-    # EMBEDDINGS
+    #
+    ### EMBEDDINGS
     #
     # from panic_tda.analysis import load_embeddings_df
-    #
-    # embeddings_df = load_embeddings_df(session, use_cache=True)
-    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
 
-    # RUNS
+    # embeddings_df = load_embeddings_df(session, use_cache=True).filter(
+    #     pl.col("embedding_model") == "Nomic"
+    # )
+    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
+    #
+    ### RUNS
     #
     # from panic_tda.analysis import load_runs_df
     #
     # runs_df = load_runs_df(session, use_cache=True)
+    #
     # plot_persistence_diagram_faceted(
     #     runs_df, "output/vis/persistence_diagram_faceted.png"
     # )
+    #
     # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
-    # plot_persistence_diagram_by_run(
-    #     runs_df, "output/vis/persistence_diagram_by_run.png"
+    #
+    # plot_persistence_entropy_by_prompt(
+    #     nruns_df.filter(pl.col("embedding_model") == "Nomic"), "output/vis/persistence_entropy_by_prompt.png"
     # )
