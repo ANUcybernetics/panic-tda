@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from uuid_v7.base import uuid7
 
-from panic_tda.clustering import hdbscan
+from panic_tda.clustering import hdbscan, optics
 from panic_tda.embeddings import EMBEDDING_DIM
 from panic_tda.schemas import Embedding
 
@@ -228,7 +228,6 @@ def test_hdbscan_outlier_detection():
 
 def test_optics_clustering():
     """Test that OPTICS clustering correctly identifies clusters in well-separated data."""
-    from panic_tda.clustering import optics
 
     # Create well-defined clusters using numpy
     embeddings_arr = []
