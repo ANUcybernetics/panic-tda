@@ -1,4 +1,5 @@
 import os
+import time
 
 import numpy as np
 import polars as pl
@@ -490,10 +491,19 @@ def cache_dfs(
         # Remove existing cache file if it exists
         if os.path.exists(cache_path):
             os.remove(cache_path)
+
+        start_time = time.time()
         runs_df = load_runs_df(session)
+        df_memory_size = runs_df.estimated_size() / (1024 * 1024)  # Convert to MB
+
         # Save to cache
         runs_df.write_parquet(cache_path)
+        elapsed_time = time.time() - start_time
+
+        cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
         print(f"Saved runs ({runs_df.shape[0]} rows, {runs_df.shape[1]} columns) to cache: {cache_path}")
+        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
@@ -501,10 +511,19 @@ def cache_dfs(
         # Remove existing cache file if it exists
         if os.path.exists(cache_path):
             os.remove(cache_path)
+
+        start_time = time.time()
         embeddings_df = load_embeddings_df(session)
+        df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
+
         # Save to cache
         embeddings_df.write_parquet(cache_path)
+        elapsed_time = time.time() - start_time
+
+        cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
         print(f"Saved embeddings ({embeddings_df.shape[0]} rows, {embeddings_df.shape[1]} columns) to cache: {cache_path}")
+        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     if invocations:
         print("Warming cache for invocations dataframe...")
@@ -512,9 +531,18 @@ def cache_dfs(
         # Remove existing cache file if it exists
         if os.path.exists(cache_path):
             os.remove(cache_path)
+
+        start_time = time.time()
         invocations_df = load_invocations_df(session)
+        df_memory_size = invocations_df.estimated_size() / (1024 * 1024)  # Convert to MB
+
         # Save to cache
         invocations_df.write_parquet(cache_path)
+        elapsed_time = time.time() - start_time
+
+        cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
         print(f"Saved invocations ({invocations_df.shape[0]} rows, {invocations_df.shape[1]} columns) to cache: {cache_path}")
+        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     print("Cache warming complete.")
