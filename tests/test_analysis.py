@@ -219,6 +219,7 @@ def test_load_runs_df(db_session):
 
     # Call function under test
     df = load_runs_df(db_session)
+    print(df.head())
 
     # Assertions
     assert isinstance(df, pl.DataFrame)

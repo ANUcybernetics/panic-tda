@@ -11,6 +11,36 @@ from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
 
 
+def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
+    """
+    Format UUID columns in a polars DataFrame to standard UUID format with hyphens.
+
+    Args:
+        df: DataFrame containing UUID columns
+        columns: List of column names containing UUIDs to format
+
+    Returns:
+        DataFrame with formatted UUID columns
+    """
+    return df.with_columns([
+        pl.col(columns)
+        .cast(pl.Utf8)
+        .str.slice(0, 8) + "-" +
+        pl.col(columns)
+        .cast(pl.Utf8)
+        .str.slice(8, 4) + "-" +
+        pl.col(columns)
+        .cast(pl.Utf8)
+        .str.slice(12, 4) + "-" +
+        pl.col(columns)
+        .cast(pl.Utf8)
+        .str.slice(16, 4) + "-" +
+        pl.col(columns)
+        .cast(pl.Utf8)
+        .str.slice(20, None)
+    ])
+
+
 def load_invocations_df(session: Session) -> pl.DataFrame:
     """
     Load all invocations from the database into a tidy polars DataFrame.
@@ -29,34 +59,31 @@ def load_invocations_df(session: Session) -> pl.DataFrame:
         return pl.read_parquet(cache_path)
 
     print("Loading invocations from database...")
-    runs = list_runs(session)
 
-    data = []
-    for run in runs:
-        # temporary hack to only look at 1k runs for SMC paper
-        if run.max_length > 1000:
-            continue
+    # SQL query to join invocations with runs to get the required data
+    query = """
+    SELECT
+        invocation.id as id,
+        invocation.run_id as run_id,
+        run.experiment_id as experiment_id,
+        invocation.model as model,
+        invocation.type as type,
+        invocation.sequence_number as sequence_number,
+        invocation.started_at as started_at,
+        invocation.completed_at as completed_at,
+        (invocation.completed_at - invocation.started_at) as duration,
+        run.initial_prompt as initial_prompt,
+        run.seed as seed
+    FROM invocation
+    JOIN run ON invocation.run_id = run.id
+    """
 
-        run_id = str(run.id)
+    # Use polars to read directly from the database
+    db_url = str(session.get_bind().engine.url)
+    df = pl.read_database_uri(query=query, uri=db_url)
 
-        for invocation in run.invocations:
-            row = {
-                "id": str(invocation.id),
-                "run_id": run_id,
-                "experiment_id": str(run.experiment_id) if run.experiment_id else None,
-                "model": invocation.model,
-                "type": invocation.type.value,
-                "sequence_number": invocation.sequence_number,
-                "started_at": invocation.started_at,
-                "completed_at": invocation.completed_at,
-                "duration": invocation.completed_at - invocation.started_at,
-                "initial_prompt": run.initial_prompt,
-                "seed": run.seed,
-            }
-            data.append(row)
-
-    # Create a polars DataFrame
-    df = pl.DataFrame(data)
+    # Format UUID columns using the dedicated function
+    df = format_uuid_columns(df, ["id", "run_id", "experiment_id"])
 
     return df
 
