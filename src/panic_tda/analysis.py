@@ -126,7 +126,7 @@ def load_embeddings_from_cache() -> pl.DataFrame:
     Load embeddings from the cache file.
 
     Returns:
-        A polars DataFrame containing all embedding data from cache
+        A polars DataFrame containing all embedding metadata from cache (without vector data)
     """
     cache_path = "output/cache/embeddings.parquet"
     print(f"Loading embeddings from cache: {cache_path}")
@@ -135,18 +135,18 @@ def load_embeddings_from_cache() -> pl.DataFrame:
 
 def load_embeddings_df(session: Session) -> pl.DataFrame:
     """
-    Load all embeddings from the database into a tidy polars DataFrame.
-    Only includes embeddings for text invocations.
+    Load all embeddings metadata from the database into a tidy polars DataFrame.
+    Only includes embeddings for text invocations, excludes the actual vector data.
 
     Args:
         session: SQLModel database session
 
     Returns:
-        A polars DataFrame containing all embedding data for text invocations
+        A polars DataFrame containing embedding metadata for text invocations
     """
-    print("Loading embeddings from database...")
+    print("Loading embeddings metadata from database...")
 
-    # SQL query to join embeddings with invocations and runs
+    # Modified SQL query to exclude the vector data column
     query = """
     SELECT
         embedding.id AS id,
@@ -154,7 +154,6 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         embedding.embedding_model AS embedding_model,
         embedding.started_at AS started_at,
         embedding.completed_at AS completed_at,
-        embedding.vector AS vector,
         invocation.run_id AS run_id,
         invocation.sequence_number AS sequence_number,
         invocation.model AS model,
@@ -166,78 +165,116 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     ORDER BY run_id, embedding_model, sequence_number
     """
 
-    # Use polars to read directly from the database, getting the correct URI format
+    # Use polars to read directly from the database
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
 
-    # Process the vector column to ensure proper hydration using NumpyArrayType
-    # Convert the serialized vector data back to numpy arrays
-    numpy_type = NumpyArrayType()
-
-    # Use map_elements to convert each vector value using the NumpyArrayType processor
-    df = df.with_columns([
-        pl.col("vector").map_elements(
-            lambda x: numpy_type.process_result_value(x, None),
-            return_dtype=pl.Object
-        )
-    ])
-
     return df
 
 
-def add_cluster_labels(df: pl.DataFrame) -> pl.DataFrame:
+def fetch_embedding_vectors(session: Session, embedding_ids: list[str]) -> dict[str, np.ndarray]:
     """
-    Add cluster labels to the embeddings DataFrame.
+    Fetch embedding vectors from the database for specified embedding IDs.
 
     Args:
-        df: DataFrame containing embedding data with vectors
+        session: SQLModel database session
+        embedding_ids: List of embedding IDs to fetch vectors for
+
+    Returns:
+        Dictionary mapping embedding IDs to their vector data
+    """
+    print(f"Fetching {len(embedding_ids)} embedding vectors from database...")
+
+    # Convert the list of embedding IDs to a comma-separated string for SQL query
+    embedding_ids_str = "', '".join(embedding_ids)
+
+    query = f"""
+    SELECT id, vector
+    FROM embedding
+    WHERE id IN ('{embedding_ids_str}')
+    """
+
+    db_url = _get_polars_db_uri(session)
+    vectors_df = pl.read_database_uri(query=query, uri=db_url)
+
+    # Format UUID columns
+    vectors_df = format_uuid_columns(vectors_df, ["id"])
+
+    # Convert the vector column to numpy arrays
+    numpy_type = NumpyArrayType()
+    vector_dict = {}
+
+    for row in vectors_df.iter_rows(named=True):
+        embedding_id = row["id"]
+        vector_data = row["vector"]
+        vector = numpy_type.process_result_value(vector_data, None)
+        vector_dict[embedding_id] = vector
+
+    return vector_dict
+
+
+def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+    """
+    Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
+
+    Args:
+        df: DataFrame containing embedding metadata (without vectors)
+        session: SQLModel database session for fetching vectors
 
     Returns:
         DataFrame with cluster labels added
     """
     print("Starting clustering process...")
 
-    # Create an empty DataFrame to store cluster results
-    clusters_df = None
+    # Create a list to store cluster results
+    cluster_results_list = []
 
-    # Process each embedding model using group_by aggregation
-    cluster_results = (
-        df.group_by("embedding_model")
-        .map_groups(lambda group_df: process_embedding_model(group_df))
-    )
+    # Process each embedding model group
+    for embedding_model in df["embedding_model"].unique():
+        # Filter DataFrame for the current embedding model
+        model_df = df.filter(pl.col("embedding_model") == embedding_model)
+        print(f"Clustering model: {embedding_model} with {model_df.shape[0]} embeddings")
 
-    # Join the cluster results with the original DataFrame
-    print("Joining cluster labels with main DataFrame...")
-    result_df = df.join(cluster_results, on="id", how="left")
-    print(f"Clustering complete. DataFrame now has {result_df.shape[0]} rows and {result_df.shape[1]} columns.")
+        # Get embedding IDs for this model
+        embedding_ids = model_df["id"].to_list()
 
-    return result_df
+        # Fetch vectors for these embeddings
+        vector_dict = fetch_embedding_vectors(session, embedding_ids)
 
+        # Ensure we have vectors in the same order as the DataFrame rows
+        embeddings = np.array([vector_dict[embedding_id] for embedding_id in embedding_ids])
 
-def process_embedding_model(model_df: pl.DataFrame) -> pl.DataFrame:
-    """Helper function to process a single embedding model group"""
-    embedding_model = model_df["embedding_model"][0]
-    print(f"Clustering model: {embedding_model} with {model_df.shape[0]} embeddings")
+        # Get cluster labels - they are returned in the same order as the input embeddings
+        cluster_labels = hdbscan(embeddings)
 
-    # Extract the vector from each embedding to create the ndarray
-    # We access the raw vectors directly from the dataframe
-    embeddings = np.array([embedding for embedding in model_df["vector"]])
+        # Count unique clusters
+        unique_labels = set(cluster_labels)
+        print(f"  Found {len(unique_labels)} clusters (including noise)")
 
-    # Get cluster labels - they are returned in the same order as the input embeddings
-    cluster_labels = hdbscan(embeddings)
+        # Create a new dataframe with id and cluster label
+        model_clusters = pl.DataFrame({
+            "id": embedding_ids,
+            "cluster_label": cluster_labels
+        })
 
-    # Count unique clusters
-    unique_labels = set(cluster_labels)
-    print(f"  Found {len(unique_labels)} clusters (including noise)")
+        # Add to results list
+        cluster_results_list.append(model_clusters)
 
-    # Create a new dataframe with id and cluster label
-    return pl.DataFrame({
-        "id": model_df["id"],
-        "cluster_label": cluster_labels
-    })
+    # Combine all cluster results
+    if cluster_results_list:
+        cluster_results = pl.concat(cluster_results_list)
+
+        # Join the cluster results with the original DataFrame
+        print("Joining cluster labels with main DataFrame...")
+        result_df = df.join(cluster_results, on="id", how="left")
+        print(f"Clustering complete. DataFrame now has {result_df.shape[0]} rows and {result_df.shape[1]} columns.")
+        return result_df
+    else:
+        # If no clusters were created, just return the original DataFrame
+        return df
 
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
@@ -423,7 +460,6 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
             pl.lit(None).cast(pl.Float64).alias("persistence"),
             pl.lit(None).cast(pl.Float64).alias("entropy"),
         ])
-
 
     return result_df
 

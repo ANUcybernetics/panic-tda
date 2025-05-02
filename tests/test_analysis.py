@@ -112,7 +112,7 @@ def test_load_embeddings_df(db_session):
     assert len(df) == 10  # Adjusted to match actual number of embeddings
 
     # Check column names
-    expected_columns = [
+    expected_columns = {
         "id",
         "invocation_id",
         "run_id",
@@ -122,9 +122,16 @@ def test_load_embeddings_df(db_session):
         "sequence_number",
         "initial_prompt",
         "model",
-        "vector",  # Vector is included for later clustering
-    ]
-    assert all(col in df.columns for col in expected_columns)
+    }
+    # Check for missing columns using set difference
+    missing_columns = expected_columns - set(df.columns)
+    if missing_columns:
+        raise AssertionError(f"Missing columns in DataFrame: {missing_columns}")
+
+    # Check for extra columns
+    unexpected_columns = set(df.columns) - expected_columns
+    if unexpected_columns:
+        raise AssertionError(f"Unexpected columns in DataFrame: {unexpected_columns}")
     # Check there are no extraneous columns
     assert set(df.columns) == set(expected_columns)
 
