@@ -457,7 +457,7 @@ def cache_dfs(
         runs_df = load_runs_df(session)
         # Save to cache
         runs_df.write_parquet(cache_path)
-        print(f"Saved runs to cache: {cache_path}")
+        print(f"Saved runs ({runs_df.shape[0]} rows, {runs_df.shape[1]} columns) to cache: {cache_path}")
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
@@ -468,7 +468,7 @@ def cache_dfs(
         embeddings_df = load_embeddings_df(session)
         # Save to cache
         embeddings_df.write_parquet(cache_path)
-        print(f"Saved embeddings to cache: {cache_path}")
+        print(f"Saved embeddings ({embeddings_df.shape[0]} rows, {embeddings_df.shape[1]} columns) to cache: {cache_path}")
 
     if invocations:
         print("Warming cache for invocations dataframe...")
@@ -479,6 +479,6 @@ def cache_dfs(
         invocations_df = load_invocations_df(session)
         # Save to cache
         invocations_df.write_parquet(cache_path)
-        print(f"Saved invocations to cache: {cache_path}")
+        print(f"Saved invocations ({invocations_df.shape[0]} rows, {invocations_df.shape[1]} columns) to cache: {cache_path}")
 
     print("Cache warming complete.")
