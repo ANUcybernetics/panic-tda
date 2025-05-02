@@ -29,8 +29,6 @@
 - check that ExperimentConfig deletion cascades to all runs (and that there are
   no invocations or embeddings that belong to a now-deleted experiment)
 
-- revisit the "load df directly from sqlite" approach (for performance reasons)
-
 - export video improvements:
 
   - add a black separator between each "region" (same prompt & network)
