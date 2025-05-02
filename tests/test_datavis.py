@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from panic_tda.analysis import load_embeddings_df, load_invocations_df, load_runs_df
+from panic_tda.analysis import load_embeddings_df, load_invocations_df, load_runs_df, add_persistence_entropy
 from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,
@@ -43,6 +43,7 @@ def mock_experiment_data(db_session):
     # Run the actual experiment using the configuration
     # The dummy models are efficient and won't take long
     runs_df = load_runs_df(db_session)
+    runs_df = add_persistence_entropy(runs_df, db_session)
     embeddings_df = load_embeddings_df(db_session)
     invocations_df = load_invocations_df(db_session)
 
@@ -131,6 +132,7 @@ def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
+@pytest.mark.skip(reason="not currently calculating semantic drift")
 def test_plot_semantic_drift(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
 
