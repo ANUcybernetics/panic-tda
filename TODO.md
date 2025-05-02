@@ -1,14 +1,17 @@
 # TODO
 
-- violin plots for entropy
-
 - do clustering, and then RLE for clusters, and also distribution of clusters vs
   prompt/networks
 
 - check normality
 
+- violin plots for entropy
+
 - generate pdf/svg plots by default (and png only for the heaps-overplotted
   ones)
+
+- add semantic drift metrics back in (create a new polars expr-based helper
+  function)
 
 - autoregressive parameter (time column)
 
@@ -30,6 +33,7 @@
 
 - export video improvements:
 
+  - add a black separator between each "region" (same prompt & network)
   - add visual indicator for when there's a semantic "jump"
   - add colour coding to the different model names
   - "one label per row" and "one label per column"

@@ -107,84 +107,34 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         return pl.read_parquet(cache_path)
 
     print("Loading embeddings from database...")
-    runs = list_runs(session)
 
-    # Create a mapping of first embeddings by run_id and embedding_model
-    first_embeddings = {}
-    data = []
+    # SQL query to join embeddings with invocations and runs
+    query = """
+    SELECT
+        embedding.id AS id,
+        embedding.invocation_id AS invocation_id,
+        embedding.embedding_model AS embedding_model,
+        embedding.started_at AS started_at,
+        embedding.completed_at AS completed_at,
+        embedding.vector AS vector,
+        invocation.run_id AS run_id,
+        invocation.sequence_number AS sequence_number,
+        invocation.model AS model,
+        run.initial_prompt AS initial_prompt
+    FROM embedding
+    JOIN invocation ON embedding.invocation_id = invocation.id
+    JOIN run ON invocation.run_id = run.id
+    WHERE invocation.type = 'TEXT'
+    ORDER BY run_id, embedding_model, sequence_number
+    """
 
-    # Process each run and its embeddings
-    for run in runs:
-        # temporary hack to only look at 1k runs for SMC paper
-        if run.max_length > 1000:
-            continue
+    # Use polars to read directly from the database
+    db_url = str(session.get_bind().engine.url)
+    df = pl.read_database_uri(query=query, uri=db_url)
 
-        # Get all embeddings for the run
-        run_embeddings_dict = run.embeddings
-        run_id = str(run.id)
+    # Format UUID columns
+    df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
 
-        # Process embeddings for each model
-        for embedding_model, embeddings_list in run_embeddings_dict.items():
-            # Track first text embedding for each model
-            first_text_embedding = None
-
-            # Filter to only keep text invocations
-            text_embeddings = []
-            for embedding in embeddings_list:
-                if embedding.invocation.type == InvocationType.TEXT:
-                    text_embeddings.append(embedding)
-                    if first_text_embedding is None:
-                        first_text_embedding = embedding
-
-            # Store the first text embedding for drift calculations
-            if first_text_embedding:
-                key = (run_id, embedding_model)
-                first_embeddings[key] = first_text_embedding
-
-            # Process all text embeddings for this model
-            for i, embedding in enumerate(text_embeddings):
-                invocation = embedding.invocation
-
-                # Calculate semantic drift metrics
-                semantic_drift_overall = None
-                semantic_drift_instantaneous = None
-                key = (run_id, embedding_model)
-                first_embedding = first_embeddings.get(key)
-                current_vector = np.array(embedding.vector)
-
-                # Calculate drift from first embedding (origin)
-                if first_embedding:
-                    first_vector = np.array(first_embedding.vector)
-                    semantic_drift_overall = calculate_cosine_distance(
-                        first_vector, current_vector
-                    )
-
-                # Calculate drift from previous embedding
-                if i > 0 and text_embeddings[i - 1]:
-                    prev_vector = np.array(text_embeddings[i - 1].vector)
-                    semantic_drift_instantaneous = calculate_cosine_distance(
-                        prev_vector, current_vector
-                    )
-
-                row = {
-                    "id": str(embedding.id),
-                    "invocation_id": str(invocation.id),
-                    "run_id": run_id,
-                    "embedding_model": embedding_model,
-                    "started_at": embedding.started_at,
-                    "completed_at": embedding.completed_at,
-                    "sequence_number": invocation.sequence_number,  # Include sequence_number for easier analysis
-                    "semantic_drift_overall": semantic_drift_overall,
-                    "semantic_drift_instantaneous": semantic_drift_instantaneous,
-                    "vector_length": len(embedding.vector),
-                    "initial_prompt": run.initial_prompt,  # Added initial_prompt from run
-                    "model": invocation.model,  # Added model from invocation
-                    "vector": embedding.vector,  # Include raw vector for later clustering
-                }
-                data.append(row)
-
-    # Create a polars DataFrame
-    df = pl.DataFrame(data)
     return df
 
 

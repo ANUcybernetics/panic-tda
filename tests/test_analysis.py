@@ -116,9 +116,6 @@ def test_load_embeddings_df(db_session):
         "started_at",
         "completed_at",
         "sequence_number",
-        "semantic_drift_overall",
-        "semantic_drift_instantaneous",
-        "vector_length",
         "initial_prompt",
         "model",
         "vector",  # Vector is included for later clustering
