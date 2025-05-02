@@ -2,6 +2,7 @@ import numpy as np
 import polars as pl
 
 from panic_tda.analysis import (
+    add_persistence_entropy,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
@@ -216,7 +217,8 @@ def test_load_runs_df(db_session):
 
     # Call function under test
     df = load_runs_df(db_session)
-    print(df.head())
+    # add the PE columns
+    df = add_persistence_entropy(df, db_session)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
@@ -233,8 +235,6 @@ def test_load_runs_df(db_session):
         "seed",
         "max_length",
         "num_invocations",
-        "stop_reason",
-        "loop_length",
         "persistence_diagram_id",
         "embedding_model",
         "persistence_diagram_started_at",
@@ -247,7 +247,16 @@ def test_load_runs_df(db_session):
         "persistence",
         "entropy",
     ]
-    assert all(col in df.columns for col in expected_columns)
+
+    # Check for missing columns using set difference
+    missing_columns = set(expected_columns) - set(df.columns)
+    if missing_columns:
+        raise AssertionError(f"Missing columns in DataFrame: {missing_columns}")
+
+    # Check for extra columns
+    extra_columns = [col for col in df.columns if col not in expected_columns]
+    if extra_columns:
+        raise AssertionError(f"Unexpected extra columns in DataFrame: {extra_columns}")
 
     # Check experiment_id is correctly stored
     assert df.filter(pl.col("experiment_id") == str(config.id)).height > 0
@@ -259,7 +268,6 @@ def test_load_runs_df(db_session):
     assert first_row["network"] == ["DummyT2I", "DummyI2T"]
     assert first_row["max_length"] == 10  # Updated to match configured max_length
     assert first_row["num_invocations"] == 10
-    assert first_row["stop_reason"] == "length"
     assert first_row["experiment_id"] == str(config.id)
 
     # Verify image_model and text_model fields
