@@ -312,9 +312,9 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    from panic_tda.analysis import warm_caches
+    from panic_tda.analysis import cache_dfs
 
-    warm_caches(session, runs=False, embeddings=True, invocations=False)
+    cache_dfs(session, runs=True, embeddings=True, invocations=True)
     ### INVOCATIONS
     #
     # from panic_tda.analysis import load_invocations_df
@@ -323,11 +323,13 @@ def paper_charts(session: Session) -> None:
     #
     ### EMBEDDINGS
     #
-    # from panic_tda.analysis import load_embeddings_df
-
+    # from panic_tda.analysis import add_cluster_labels, load_embeddings_df
+    #
     # embeddings_df = load_embeddings_df(session).filter(
     #     pl.col("embedding_model") == "Nomic"
     # )
+    # embeddings_df = add_cluster_labels(embeddings_df)
+    # print(embeddings_df.head(100))
     # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
     #
     ### RUNS
