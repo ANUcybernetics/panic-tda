@@ -8,7 +8,7 @@ from sqlmodel import Session
 from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs
 from panic_tda.genai_models import get_output_type
-from panic_tda.schemas import InvocationType
+from panic_tda.schemas import InvocationType, NumpyArrayType
 
 
 def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
@@ -135,6 +135,18 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
 
+    # Process the vector column to ensure proper hydration using NumpyArrayType
+    # Convert the serialized vector data back to numpy arrays
+    numpy_type = NumpyArrayType()
+
+    # Use map_elements to convert each vector value using the NumpyArrayType processor
+    df = df.with_columns([
+        pl.col("vector").map_elements(
+            lambda x: numpy_type.process_result_value(x, None),
+            return_dtype=pl.Object
+        )
+    ])
+
     return df
 
 
@@ -150,50 +162,56 @@ def add_cluster_labels(df: pl.DataFrame) -> pl.DataFrame:
     """
     print("Starting clustering process...")
 
-    # Group embeddings by model
-    embedding_models = df["embedding_model"].unique().to_list()
+    # Create an empty DataFrame to store cluster results
+    clusters_df = None
 
-    all_clusters = []
+    # Process each embedding model using group_by aggregation
+    cluster_results = (
+        df.group_by("embedding_model")
+        .map_groups(lambda group_df: process_embedding_model(group_df))
+    )
 
-    # Process each embedding model separately
-    for i, embedding_model in enumerate(embedding_models):
-        model_df = df.filter(pl.col("embedding_model") == embedding_model)
-        embeddings_list = model_df.select(["id", "vector"]).to_dicts()
-
-        print(f"Clustering model {i+1}/{len(embedding_models)}: {embedding_model} with {len(embeddings_list)} embeddings")
-
-        # Get cluster labels using hdbscan
-        embeddings_objects = [
-            type('obj', (object,), {'id': e['id'], 'vector': e['vector']})
-            for e in embeddings_list
-        ]
-
-        cluster_labels = hdbscan(embeddings_objects)
-
-        # Count the number of points in each cluster
-        unique_labels = set(cluster_labels)
-        print(f"  Found {len(unique_labels)} clusters (including noise)")
-
-        # Create a list of dictionaries for the cluster results
-        model_clusters = [
-            {"id": embedding_obj.id, "cluster_label": label}
-            for embedding_obj, label in zip(embeddings_objects, cluster_labels)
-        ]
-
-        # Add to clustering results
-        all_clusters.extend(model_clusters)
-        print(f"  Added {len(model_clusters)} labeled embeddings to results")
-
-    # Convert clustering results to a polars DataFrame
-    print("Creating clusters DataFrame...")
-    clusters_df = pl.DataFrame(all_clusters)
-
-    # Join the main DataFrame with the clusters DataFrame
+    # Join the cluster results with the original DataFrame
     print("Joining cluster labels with main DataFrame...")
-    result_df = df.join(clusters_df, on="id", how="left")
+    result_df = df.join(cluster_results, on="id", how="left")
     print(f"Clustering complete. DataFrame now has {result_df.shape[0]} rows and {result_df.shape[1]} columns.")
 
     return result_df
+
+
+def process_embedding_model(model_df: pl.DataFrame) -> pl.DataFrame:
+    """Helper function to process a single embedding model group"""
+    embedding_model = model_df["embedding_model"][0]
+    print(f"Clustering model: {embedding_model} with {model_df.shape[0]} embeddings")
+
+    # Extract id and vector columns for clustering
+    ids = model_df["id"]
+    vectors = model_df["vector"]
+
+    # Create objects required by hdbscan
+    embeddings_objects = [
+        type('obj', (object,), {'id': id, 'vector': vector})
+        for id, vector in zip(ids, vectors)
+    ]
+
+    # Get cluster labels - they are returned in the same order as the input embeddings
+    cluster_labels = hdbscan(embeddings_objects)
+
+    # Count unique clusters
+    unique_labels = set(cluster_labels)
+    print(f"  Found {len(unique_labels)} clusters (including noise)")
+
+    # Create a DataFrame with the clustering results
+    # Since hdbscan returns labels in the same order as embeddings, we can directly pair them
+    model_clusters = pl.DataFrame({
+        "id": ids,
+        "cluster_label": cluster_labels
+    })
+
+    print(f"  Added {model_clusters.shape[0]} labeled embeddings to results")
+
+    return model_clusters
+
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculate cosine distance between two vectors."""
