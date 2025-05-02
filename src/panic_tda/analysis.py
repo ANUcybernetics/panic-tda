@@ -41,6 +41,34 @@ def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
     ])
 
 
+def _get_polars_db_uri(session: Session) -> str:
+    """
+    Get a database URI suitable for pl.read_database_uri.
+
+    Handles the case where a relative path is given for a file-based SQLite
+    database, converting it to an absolute path required by the underlying
+    connector (e.g., ADBC, ConnectorX).
+
+    Args:
+        session: SQLModel database session.
+
+    Returns:
+        A database URI string compatible with pl.read_database_uri.
+    """
+    engine = session.get_bind().engine
+    url = engine.url
+
+    # Check if it's a file-based SQLite database
+    if url.drivername == "sqlite" and url.database and url.database != ":memory:":
+        # Convert relative path to absolute path for Polars
+        absolute_path = os.path.abspath(url.database)
+        # Polars (or its connector) expects 'sqlite:///<absolute_path>'
+        return f"sqlite:///{absolute_path}"
+    else:
+        # For in-memory SQLite or other databases, the standard URL is fine
+        return str(url)
+
+
 def load_invocations_from_cache() -> pl.DataFrame:
     """
     Load invocations from the cache file.
@@ -83,8 +111,8 @@ def load_invocations_df(session: Session) -> pl.DataFrame:
     JOIN run ON invocation.run_id = run.id
     """
 
-    # Use polars to read directly from the database
-    db_url = str(session.get_bind().engine.url)
+    # Use polars to read directly from the database, getting the correct URI format
+    db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
     # Format UUID columns using the dedicated function
@@ -138,8 +166,8 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     ORDER BY run_id, embedding_model, sequence_number
     """
 
-    # Use polars to read directly from the database
-    db_url = str(session.get_bind().engine.url)
+    # Use polars to read directly from the database, getting the correct URI format
+    db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
     # Format UUID columns
@@ -264,8 +292,8 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     WHERE EXISTS (SELECT 1 FROM invocation WHERE invocation.run_id = run.id)
     """
 
-    # Use polars to read directly from the database
-    db_url = str(session.get_bind().engine.url)
+    # Use polars to read directly from the database, getting the correct URI format
+    db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
     # Format UUID columns
@@ -375,10 +403,27 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     }
 
     # Only create DataFrame if we have data
-    pd_df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    if data:
+        pd_df = pl.DataFrame(data, schema_overrides=schema_overrides)
+        # Join with the original runs DataFrame
+        result_df = df.join(pd_df, on="run_id", how="left")
+    else:
+        # If no PD data, return the original df to avoid join errors
+        # Optionally add empty columns if needed downstream
+        result_df = df.with_columns([
+            pl.lit(None).cast(pl.String).alias("persistence_diagram_id"),
+            pl.lit(None).cast(pl.String).alias("embedding_model"),
+            pl.lit(None).cast(pl.Datetime).alias("persistence_diagram_started_at"),
+            pl.lit(None).cast(pl.Datetime).alias("persistence_diagram_completed_at"),
+            pl.lit(None).cast(pl.Duration).alias("persistence_diagram_duration"),
+            pl.lit(None).cast(pl.Int64).alias("homology_dimension"),
+            pl.lit(None).cast(pl.Int64).alias("feature_id"),
+            pl.lit(None).cast(pl.Float64).alias("birth"),
+            pl.lit(None).cast(pl.Float64).alias("death"),
+            pl.lit(None).cast(pl.Float64).alias("persistence"),
+            pl.lit(None).cast(pl.Float64).alias("entropy"),
+        ])
 
-    # Join with the original runs DataFrame
-    result_df = df.join(pd_df, on="run_id", how="left")
 
     return result_df
 
@@ -401,6 +446,8 @@ def cache_dfs(
     Returns:
         None
     """
+    os.makedirs("output/cache", exist_ok=True) # Ensure cache directory exists
+
     if runs:
         print("Warming cache for runs dataframe...")
         cache_path = "output/cache/runs.parquet"
@@ -409,7 +456,6 @@ def cache_dfs(
             os.remove(cache_path)
         runs_df = load_runs_df(session)
         # Save to cache
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         runs_df.write_parquet(cache_path)
         print(f"Saved runs to cache: {cache_path}")
 
@@ -421,7 +467,6 @@ def cache_dfs(
             os.remove(cache_path)
         embeddings_df = load_embeddings_df(session)
         # Save to cache
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         embeddings_df.write_parquet(cache_path)
         print(f"Saved embeddings to cache: {cache_path}")
 
@@ -433,7 +478,6 @@ def cache_dfs(
             os.remove(cache_path)
         invocations_df = load_invocations_df(session)
         # Save to cache
-        os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         invocations_df.write_parquet(cache_path)
         print(f"Saved invocations to cache: {cache_path}")
 
