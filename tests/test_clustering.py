@@ -9,7 +9,8 @@ from panic_tda.schemas import Embedding
 
 def test_hdbscan_clustering():
     # Create well-defined clusters using numpy
-    embeddings = []
+    embeddings_obj = []
+    embeddings_arr = []
 
     # Generate three distinct clusters with clear separation
     # Cluster 1: centered around [0.1, 0.1, ..., 0.1]
@@ -22,7 +23,8 @@ def test_hdbscan_clustering():
             embedding_model="TestModel",
             vector=vector.astype(np.float32),
         )
-        embeddings.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector.astype(np.float32))
 
     # Cluster 2: centered around [0.9, 0.9, ..., 0.9]
     for i in range(7):
@@ -34,7 +36,8 @@ def test_hdbscan_clustering():
             embedding_model="TestModel",
             vector=vector.astype(np.float32),
         )
-        embeddings.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector.astype(np.float32))
 
     # Cluster 3: centered around [0.5, 0.5, ..., 0.5]
     for i in range(5):
@@ -46,7 +49,8 @@ def test_hdbscan_clustering():
             embedding_model="TestModel",
             vector=vector.astype(np.float32),
         )
-        embeddings.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector.astype(np.float32))
 
     # Add some noise points that should not belong to any cluster
     for i in range(3):
@@ -58,14 +62,18 @@ def test_hdbscan_clustering():
             embedding_model="TestModel",
             vector=vector,
         )
-        embeddings.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector)
+
+    # Convert to numpy array
+    embeddings_arr = np.array(embeddings_arr)
 
     # Test with default parameters
-    labels = hdbscan(embeddings)
+    labels = hdbscan(embeddings_arr)
 
     # Check that we get the expected result type
     assert isinstance(labels, list)
-    assert len(labels) == len(embeddings)
+    assert len(labels) == len(embeddings_arr)
     assert all(isinstance(label, int) for label in labels)
 
     # Check that we have at least 2 clusters (might have some noise points)
@@ -89,14 +97,15 @@ def test_hdbscan_clustering():
     assert all(label == second_cluster_label for label in labels[7:13])
 
     # Check with custom parameters
-    labels_custom = hdbscan(embeddings, min_cluster_size=3, min_samples=2)
-    assert len(labels_custom) == len(embeddings)
+    labels_custom = hdbscan(embeddings_arr, min_cluster_size=3, min_samples=2)
+    assert len(labels_custom) == len(embeddings_arr)
 
 
 @pytest.mark.skip(reason="This is flaky, and the whole approach needs to be rethought")
 def test_hdbscan_outlier_detection():
     """Test that HDBSCAN correctly identifies outliers as noise points."""
-    embeddings = []
+    embeddings_obj = []
+    embeddings_arr = []
     np.random.seed(42)  # Set seed for reproducibility
 
     # Create a single well-defined cluster with stronger cohesion
@@ -112,17 +121,18 @@ def test_hdbscan_outlier_detection():
             embedding_model="TestModel",
             vector=vector.astype(np.float32),
         )
-        embeddings.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector.astype(np.float32))
 
     # Add several clear outliers at very distant points
-    outliers = []
+    outlier_indices = []
     outlier_positions = [
         np.ones(EMBEDDING_DIM) * 0.9,  # Far away
         np.zeros(EMBEDDING_DIM),  # At origin
         np.ones(EMBEDDING_DIM) * (-0.9),  # Very negative space
     ]
 
-    for pos in outlier_positions:
+    for i, pos in enumerate(outlier_positions):
         vector = pos + np.random.normal(0, 0.005, EMBEDDING_DIM)  # Smaller variation
         e = Embedding(
             id=uuid7(),
@@ -130,16 +140,17 @@ def test_hdbscan_outlier_detection():
             embedding_model="TestModel",
             vector=vector.astype(np.float32),
         )
-        embeddings.append(e)
-        outliers.append(e)
+        embeddings_obj.append(e)
+        embeddings_arr.append(vector.astype(np.float32))
+        outlier_indices.append(10 + i)  # Calculate index in the array
+
+    # Convert to numpy array
+    embeddings_arr = np.array(embeddings_arr)
 
     # Run clustering with parameters better suited for test data
     labels = hdbscan(
-        embeddings, min_cluster_size=3, min_samples=2
+        embeddings_arr, min_cluster_size=3, min_samples=2
     )  # More relaxed parameters
-
-    # Get indices of outliers in the full embedding list
-    outlier_indices = [embeddings.index(o) for o in outliers]
 
     # Verify that the outliers are labeled as noise (-1)
     for idx in outlier_indices:
@@ -156,7 +167,7 @@ def test_hdbscan_outlier_detection():
     )
 
     # Test with more lenient parameters - should still identify outliers
-    lenient_labels = hdbscan(embeddings, min_cluster_size=2, min_samples=1)
+    lenient_labels = hdbscan(embeddings_arr, min_cluster_size=2, min_samples=1)
     for idx in outlier_indices:
         assert lenient_labels[idx] == -1, (
             "Outlier should be noise even with lenient parameters"

@@ -184,33 +184,22 @@ def process_embedding_model(model_df: pl.DataFrame) -> pl.DataFrame:
     embedding_model = model_df["embedding_model"][0]
     print(f"Clustering model: {embedding_model} with {model_df.shape[0]} embeddings")
 
-    # Extract id and vector columns for clustering
-    ids = model_df["id"]
-    vectors = model_df["vector"]
-
-    # Create objects required by hdbscan
-    embeddings_objects = [
-        type('obj', (object,), {'id': id, 'vector': vector})
-        for id, vector in zip(ids, vectors)
-    ]
+    # Extract the vector from each embedding to create the ndarray
+    # We access the raw vectors directly from the dataframe
+    embeddings = np.array([embedding for embedding in model_df["vector"]])
 
     # Get cluster labels - they are returned in the same order as the input embeddings
-    cluster_labels = hdbscan(embeddings_objects)
+    cluster_labels = hdbscan(embeddings)
 
     # Count unique clusters
     unique_labels = set(cluster_labels)
     print(f"  Found {len(unique_labels)} clusters (including noise)")
 
-    # Create a DataFrame with the clustering results
-    # Since hdbscan returns labels in the same order as embeddings, we can directly pair them
-    model_clusters = pl.DataFrame({
-        "id": ids,
+    # Create a new dataframe with id and cluster label
+    return pl.DataFrame({
+        "id": model_df["id"],
         "cluster_label": cluster_labels
     })
-
-    print(f"  Added {model_clusters.shape[0]} labeled embeddings to results")
-
-    return model_clusters
 
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
