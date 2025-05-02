@@ -217,12 +217,10 @@ def test_load_runs_df(db_session):
 
     # Call function under test
     df = load_runs_df(db_session)
-    # add the PE columns
-    df = add_persistence_entropy(df, db_session)
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
-    assert df.height > 0  # Should have at least one row for birth/death pairs
+    assert df.height > 0  # Should have at least one row
 
     # Check column names
     expected_columns = [
@@ -235,17 +233,6 @@ def test_load_runs_df(db_session):
         "seed",
         "max_length",
         "num_invocations",
-        "persistence_diagram_id",
-        "embedding_model",
-        "persistence_diagram_started_at",
-        "persistence_diagram_completed_at",
-        "persistence_diagram_duration",
-        "homology_dimension",
-        "feature_id",
-        "birth",
-        "death",
-        "persistence",
-        "entropy",
     ]
 
     # Check for missing columns using set difference
@@ -261,7 +248,7 @@ def test_load_runs_df(db_session):
     # Check experiment_id is correctly stored
     assert df.filter(pl.col("experiment_id") == str(config.id)).height > 0
 
-    # Verify field values that are the same for all features
+    # Verify field values
     first_row = df.row(0, named=True)
     assert first_row["initial_prompt"] == "test runs dataframe"
     assert first_row["seed"] == -1  # Updated to match actual seed value
@@ -274,43 +261,9 @@ def test_load_runs_df(db_session):
     assert first_row["image_model"] == "DummyT2I"
     assert first_row["text_model"] == "DummyI2T"
 
-    # Verify persistence diagram related fields
-    assert first_row["embedding_model"] == "Dummy"
-    assert first_row["persistence_diagram_id"] is not None
 
-    # Check for null values in persistence diagram-related columns
-    persistence_diagram_columns = [
-        "persistence_diagram_id",
-        "embedding_model",
-        "persistence_diagram_started_at",
-        "persistence_diagram_completed_at",
-        "persistence_diagram_duration",
-        "homology_dimension",
-        "feature_id",
-        "birth",
-        "death",
-        "persistence",
-    ]
-    for column in persistence_diagram_columns:
-        assert df.filter(pl.col(column).is_null()).height == 0, (
-            f"Found null values in {column} column"
-        )
-
-    # Verify birth/death pair and homology dimension fields with proper types
-    assert "homology_dimension" in first_row
-    assert isinstance(first_row["homology_dimension"], int)
-    assert isinstance(first_row["feature_id"], int)
-    assert isinstance(first_row["birth"], float)
-    assert isinstance(first_row["death"], float)
-    assert isinstance(first_row["persistence"], float)
-
-    # Check entropy field if available
-    if "entropy" in first_row and first_row["entropy"] is not None:
-        assert isinstance(first_row["entropy"], float)
-
-
-def test_load_runs_df_persistence_data(db_session):
-    """Test that load_runs_df correctly loads all persistence diagram data."""
+def test_add_persistence_entropy(db_session):
+    """Test that add_persistence_entropy correctly adds persistence diagram data to runs DataFrame."""
 
     # Create a test configuration with a longer run length
     config = ExperimentConfig(
@@ -333,11 +286,33 @@ def test_load_runs_df_persistence_data(db_session):
     # Get the runs DataFrame
     df = load_runs_df(db_session)
 
-    # Filter for just this experiment
-    exp_df = df.filter(pl.col("experiment_id") == str(config.id))
+    # Apply the add_persistence_entropy function
+    df_with_persistence = add_persistence_entropy(df, db_session)
 
     # Verify we have rows in the DataFrame
-    assert exp_df.height > 0
+    assert df_with_persistence.height > 0
+
+    # Check column names for persistence-related columns
+    persistence_columns = [
+        "persistence_diagram_id",
+        "embedding_model",
+        "persistence_diagram_started_at",
+        "persistence_diagram_completed_at",
+        "persistence_diagram_duration",
+        "homology_dimension",
+        "feature_id",
+        "birth",
+        "death",
+        "persistence",
+        "entropy",
+    ]
+
+    # Check that all persistence columns exist
+    for column in persistence_columns:
+        assert column in df_with_persistence.columns, f"Column {column} missing from result"
+
+    # Filter for just this experiment
+    exp_df = df_with_persistence.filter(pl.col("experiment_id") == str(config.id))
 
     # Get all runs associated with this experiment
     runs = list_runs(db_session)
@@ -389,8 +364,6 @@ def test_load_runs_df_persistence_data(db_session):
                     found = False
                     for feature_id, row in rows_dict.items():
                         # Compare birth-death values with some tolerance for floating point
-                        # Debug print to help diagnose comparison issues
-                        # print(f"Comparing row: birth={row['birth']}, death={row['death']}, hom_dim={row['homology_dimension']} with pair: {bd_pair}, dim={dim}")
                         if (
                             abs(row["birth"] - bd_pair[0]) < 1e-6
                             and abs(row["death"] - bd_pair[1]) < 1e-6
