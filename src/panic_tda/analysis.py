@@ -41,6 +41,18 @@ def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
     ])
 
 
+def load_invocations_from_cache() -> pl.DataFrame:
+    """
+    Load invocations from the cache file.
+
+    Returns:
+        A polars DataFrame containing all invocation data from cache
+    """
+    cache_path = "output/cache/invocations.parquet"
+    print(f"Loading invocations from cache: {cache_path}")
+    return pl.read_parquet(cache_path)
+
+
 def load_invocations_df(session: Session) -> pl.DataFrame:
     """
     Load all invocations from the database into a tidy polars DataFrame.
@@ -51,13 +63,6 @@ def load_invocations_df(session: Session) -> pl.DataFrame:
     Returns:
         A polars DataFrame containing all invocation data
     """
-    cache_path = "output/cache/invocations.parquet"
-
-    # Check if cache exists
-    if os.path.exists(cache_path):
-        print(f"Loading invocations from cache: {cache_path}")
-        return pl.read_parquet(cache_path)
-
     print("Loading invocations from database...")
 
     # SQL query to join invocations with runs to get the required data
@@ -88,6 +93,18 @@ def load_invocations_df(session: Session) -> pl.DataFrame:
     return df
 
 
+def load_embeddings_from_cache() -> pl.DataFrame:
+    """
+    Load embeddings from the cache file.
+
+    Returns:
+        A polars DataFrame containing all embedding data from cache
+    """
+    cache_path = "output/cache/embeddings.parquet"
+    print(f"Loading embeddings from cache: {cache_path}")
+    return pl.read_parquet(cache_path)
+
+
 def load_embeddings_df(session: Session) -> pl.DataFrame:
     """
     Load all embeddings from the database into a tidy polars DataFrame.
@@ -99,13 +116,6 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     Returns:
         A polars DataFrame containing all embedding data for text invocations
     """
-    cache_path = "output/cache/embeddings.parquet"
-
-    # Check if cache exists
-    if os.path.exists(cache_path):
-        print(f"Loading embeddings from cache: {cache_path}")
-        return pl.read_parquet(cache_path)
-
     print("Loading embeddings from database...")
 
     # SQL query to join embeddings with invocations and runs
@@ -215,6 +225,18 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         return 0.0 if np.array_equal(vec1, vec2) else 1.0
 
 
+def load_runs_from_cache() -> pl.DataFrame:
+    """
+    Load runs from the cache file.
+
+    Returns:
+        A polars DataFrame containing basic run data from cache
+    """
+    cache_path = "output/cache/runs.parquet"
+    print(f"Loading runs from cache: {cache_path}")
+    return pl.read_parquet(cache_path)
+
+
 def load_runs_df(session: Session) -> pl.DataFrame:
     """
     Load all runs from the database into a tidy polars DataFrame.
@@ -226,13 +248,6 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     Returns:
         A polars DataFrame containing basic run data
     """
-    cache_path = "output/cache/runs.parquet"
-
-    # Check if cache exists
-    if os.path.exists(cache_path):
-        print(f"Loading runs from cache: {cache_path}")
-        return pl.read_parquet(cache_path)
-
     print("Loading runs from database...")
 
     # SQL query to get run data
