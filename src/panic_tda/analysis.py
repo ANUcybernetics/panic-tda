@@ -241,16 +241,6 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         if not run.invocations:
             continue
 
-        # Process stop_reason to separate into reason and loop_length
-        stop_reason_value = run.stop_reason
-        loop_length = None
-
-        if isinstance(stop_reason_value, tuple) and stop_reason_value[0] == "duplicate":
-            stop_reason = "duplicate"
-            loop_length = stop_reason_value[1]
-        else:
-            stop_reason = stop_reason_value
-
         # Extract image_model and text_model from network
         image_model = None
         text_model = None
@@ -276,8 +266,6 @@ def load_runs_df(session: Session) -> pl.DataFrame:
             "seed": run.seed,
             "max_length": run.max_length,
             "num_invocations": len(run.invocations),
-            "stop_reason": stop_reason,
-            "loop_length": loop_length,
         }
 
         # Only include runs with persistence diagrams
@@ -318,7 +306,6 @@ def load_runs_df(session: Session) -> pl.DataFrame:
 
     # Create a polars DataFrame with explicit schema for numeric fields
     schema_overrides = {
-        "loop_length": pl.Int64,
         "homology_dimension": pl.Int64,
         "feature_id": pl.Int64,
         "birth": pl.Float64,
