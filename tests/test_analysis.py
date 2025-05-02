@@ -1,9 +1,11 @@
+from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
 
 from panic_tda.analysis import (
     add_persistence_entropy,
+    cache_dfs,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
@@ -408,3 +410,31 @@ def test_add_persistence_entropy(db_session):
                                 )
                                 < 1e-6
                             )
+
+
+
+def test_cache_dfs(db_session):
+    """Test that cache_dfs successfully writes DataFrames to Parquet files."""
+
+    # 1. Setup: Create config, run experiment
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test caching dataframes"],
+        embedding_models=["Dummy"],
+        max_length=5,  # Keep it small for testing
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    cache_dfs(db_session)
+    # Check that cache directory exists
+    cache_dir = Path("output/cache")
+
+    # Check that all expected cache files exist
+    assert (cache_dir / "runs.parquet").exists(), "Runs cache file not found"
+    assert (cache_dir / "invocations.parquet").exists(), "Invocations cache file not found"
+    assert (cache_dir / "embeddings.parquet").exists(), "Embeddings cache file not found"
