@@ -383,7 +383,7 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     return result_df
 
 
-def warm_caches(
+def cache_dfs(
     session: Session,
     runs: bool = True,
     embeddings: bool = True,
