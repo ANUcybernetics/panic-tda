@@ -101,6 +101,58 @@ def test_hdbscan_clustering():
     assert len(labels_custom) == len(embeddings_arr)
 
 
+@pytest.mark.parametrize(
+    "n_samples",
+    [10, 100, 1000, 5000]
+)
+def test_hdbscan_scalability(n_samples):
+    """Test that hdbscan can handle increasingly large input arrays."""
+    # Create random data with some structure for clustering
+    np.random.seed(42)
+
+    # Generate data with 3 clusters
+    cluster_centers = [
+        np.ones(EMBEDDING_DIM) * 0.1,  # Cluster 1
+        np.ones(EMBEDDING_DIM) * 0.5,  # Cluster 2
+        np.ones(EMBEDDING_DIM) * 0.9   # Cluster 3
+    ]
+
+    embeddings = []
+    for i in range(n_samples):
+        # Assign to one of 3 clusters randomly
+        cluster_idx = i % 3
+        # Create a vector with small random variations around the center
+        # Use smaller standard deviation for better separation
+        vector = cluster_centers[cluster_idx] + np.random.normal(0, 0.03, EMBEDDING_DIM)
+        embeddings.append(vector.astype(np.float32))
+
+    embeddings_arr = np.array(embeddings)
+
+    # Skip cluster number assertion for small sample sizes
+    if n_samples <= 10:
+        # For small sample sizes, just test that the function runs without error
+        labels = hdbscan(embeddings_arr, min_cluster_size=2, min_samples=1)
+
+        # Basic checks
+        assert isinstance(labels, list)
+        assert len(labels) == n_samples
+        assert all(isinstance(label, int) for label in labels)
+    else:
+        # For larger sample sizes, use parameters appropriate for the sample size
+        # and validate clustering quality
+        min_cluster_size = max(5, n_samples // 50)
+        labels = hdbscan(embeddings_arr, min_cluster_size=min_cluster_size)
+
+        # Basic checks
+        assert isinstance(labels, list)
+        assert len(labels) == n_samples
+        assert all(isinstance(label, int) for label in labels)
+
+        # Should identify at least 2 clusters (plus possibly noise)
+        unique_clusters = set(labels) - {-1}  # Remove noise label
+        assert len(unique_clusters) >= 2
+
+
 @pytest.mark.skip(reason="This is flaky, and the whole approach needs to be rethought")
 def test_hdbscan_outlier_detection():
     """Test that HDBSCAN correctly identifies outliers as noise points."""
@@ -172,3 +224,66 @@ def test_hdbscan_outlier_detection():
         assert lenient_labels[idx] == -1, (
             "Outlier should be noise even with lenient parameters"
         )
+
+
+def test_optics_clustering():
+    """Test that OPTICS clustering correctly identifies clusters in well-separated data."""
+    from panic_tda.clustering import optics
+
+    # Create well-defined clusters using numpy
+    embeddings_arr = []
+    np.random.seed(42)
+
+    # Generate three distinct clusters with clear separation
+    # Cluster 1: centered around [0.1, 0.1, ..., 0.1]
+    for i in range(6):
+        vector = np.ones(EMBEDDING_DIM) * 0.1 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        embeddings_arr.append(vector.astype(np.float32))
+
+    # Cluster 2: centered around [0.9, 0.9, ..., 0.9]
+    for i in range(7):
+        vector = np.ones(EMBEDDING_DIM) * 0.9 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        embeddings_arr.append(vector.astype(np.float32))
+
+    # Cluster 3: centered around [0.5, 0.5, ..., 0.5]
+    for i in range(5):
+        vector = np.ones(EMBEDDING_DIM) * 0.5 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        embeddings_arr.append(vector.astype(np.float32))
+
+    # Add some noise points
+    for i in range(3):
+        vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+        embeddings_arr.append(vector)
+
+    # Convert to numpy array
+    embeddings_arr = np.array(embeddings_arr)
+
+    # Test with default parameters
+    labels = optics(embeddings_arr)
+
+    # Check that we get the expected result type
+    assert isinstance(labels, list)
+    assert len(labels) == len(embeddings_arr)
+    assert all(isinstance(label, int) for label in labels)
+
+    # Check that we have at least 2 clusters (might have some noise points)
+    unique_labels = set(labels)
+    # Remove noise points (labeled as -1) when counting clusters
+    if -1 in unique_labels:
+        unique_labels.remove(-1)
+    assert len(unique_labels) >= 2
+
+    # Test with custom parameters
+    labels_custom = optics(
+        embeddings_arr,
+        min_samples=3,
+        max_eps=0.5,
+        xi=0.05,
+        min_cluster_size=2
+    )
+    assert len(labels_custom) == len(embeddings_arr)
+
+    # Test different parameters should produce different clustering results
+    labels_different = optics(embeddings_arr, min_samples=10, xi=0.1)
+    # The clustering should be different with these parameters
+    assert labels != labels_different or len(set(labels)) != len(set(labels_different))

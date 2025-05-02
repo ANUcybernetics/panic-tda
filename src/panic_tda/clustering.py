@@ -31,6 +31,42 @@ def hdbscan(
     # Fit the model and return the cluster labels
     labels = hdbscan.fit_predict(embeddings)
 
-    print(labels)
+    return labels.tolist()
+
+
+def optics(
+    embeddings: np.ndarray, min_samples: int = 5, max_eps: float = np.inf,
+    xi: float = 0.05, min_cluster_size: int = None
+) -> List[int]:
+    """
+    Perform OPTICS clustering on a list of embeddings.
+
+    Args:
+        embeddings: ndarray of shape (n_samples, n_features)
+        min_samples: The number of samples in a neighborhood for a point to be considered a core point
+        max_eps: The maximum distance between two samples for one to be considered as in the neighborhood of the other
+                (defaults to infinity)
+        xi: Determines the minimum steepness on the reachability plot that constitutes a cluster boundary
+        min_cluster_size: The minimum size of clusters (defaults to min_samples if None)
+
+    Returns:
+        List of cluster labels (integers) corresponding to each embedding in the input list
+    """
+    from sklearn.cluster import OPTICS
+
+    # Set default min_cluster_size if not provided
+    if min_cluster_size is None:
+        min_cluster_size = min_samples
+
+    # Configure and run OPTICS
+    optics = OPTICS(
+        min_samples=min_samples,
+        max_eps=max_eps,
+        xi=xi,
+        min_cluster_size=min_cluster_size
+    )
+
+    # Fit the model and return the cluster labels
+    labels = optics.fit_predict(embeddings)
 
     return labels.tolist()
