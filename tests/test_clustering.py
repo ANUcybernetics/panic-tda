@@ -286,3 +286,55 @@ def test_optics_clustering():
     labels_different = optics(embeddings_arr, min_samples=10, xi=0.1)
     # The clustering should be different with these parameters
     assert labels != labels_different or len(set(labels)) != len(set(labels_different))
+
+
+@pytest.mark.parametrize(
+    "n_samples",
+    [10, 100, 1000, 5000]
+)
+def test_optics_scalability(n_samples):
+    """Test that optics can handle increasingly large input arrays."""
+    # Create random data with some structure for clustering
+    np.random.seed(42)
+
+    # Generate data with 3 clusters
+    cluster_centers = [
+        np.ones(EMBEDDING_DIM) * 0.1,  # Cluster 1
+        np.ones(EMBEDDING_DIM) * 0.5,  # Cluster 2
+        np.ones(EMBEDDING_DIM) * 0.9   # Cluster 3
+    ]
+
+    embeddings = []
+    for i in range(n_samples):
+        # Assign to one of 3 clusters randomly
+        cluster_idx = i % 3
+        # Create a vector with small random variations around the center
+        # Use smaller standard deviation for better separation
+        vector = cluster_centers[cluster_idx] + np.random.normal(0, 0.03, EMBEDDING_DIM)
+        embeddings.append(vector.astype(np.float32))
+
+    embeddings_arr = np.array(embeddings)
+
+    # Skip cluster number assertion for small sample sizes
+    if n_samples <= 10:
+        # For small sample sizes, just test that the function runs without error
+        labels = optics(embeddings_arr, min_samples=2, min_cluster_size=2)
+
+        # Basic checks
+        assert isinstance(labels, list)
+        assert len(labels) == n_samples
+        assert all(isinstance(label, int) for label in labels)
+    else:
+        # For larger sample sizes, use parameters appropriate for the sample size
+        min_samples = max(3, n_samples // 50)
+        min_cluster_size = max(3, n_samples // 50)
+        labels = optics(embeddings_arr, min_samples=min_samples, min_cluster_size=min_cluster_size)
+
+        # Basic checks
+        assert isinstance(labels, list)
+        assert len(labels) == n_samples
+        assert all(isinstance(label, int) for label in labels)
+
+        # Should identify at least 2 clusters (plus possibly noise)
+        unique_clusters = set(labels) - {-1}  # Remove noise label
+        assert len(unique_clusters) >= 2
