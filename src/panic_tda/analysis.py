@@ -1,5 +1,6 @@
 import os
 import time
+from uuid import UUID
 
 import numpy as np
 import polars as pl
@@ -7,9 +8,9 @@ from numpy.linalg import norm
 from sqlmodel import Session
 
 from panic_tda.clustering import optics
-from panic_tda.db import list_runs
+from panic_tda.db import list_runs, read_embedding_vector
 from panic_tda.genai_models import get_output_type
-from panic_tda.schemas import InvocationType, NumpyArrayType
+from panic_tda.schemas import InvocationType
 
 
 def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
@@ -181,45 +182,13 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     Returns:
         A Series of cluster labels corresponding to the input embedding IDs
     """
-    # Extract IDs from the batch
-    ids = embedding_ids.to_list()
-
-    # Convert the list of IDs to a comma-separated string of quoted IDs
-    id_list = ", ".join(f"'{id}'" for id in ids)
-
-    query = f"""
-    SELECT id, vector
-    FROM embedding
-    WHERE id IN ({id_list})
-    ORDER BY id
-    """
-
-    db_url = _get_polars_db_uri(session)
-    vectors_df = pl.read_database_uri(query=query, uri=db_url)
-
-    # Process vectors to numpy arrays
-    numpy_type = NumpyArrayType()
-    vectors = []
-
-    for row in vectors_df.iter_rows(named=True):
-        vector_data = row["vector"]
-        vector = numpy_type.process_result_value(vector_data, None)
-        vectors.append(vector)
-
-    # Convert list of vectors to a single numpy array and perform clustering
-    if vectors:
-        vectors_array = np.vstack(vectors)
-        # Get cluster labels using optics
-        cluster_labels = optics(vectors_array)
-
-        # Count unique clusters
-        unique_labels = set(cluster_labels)
-        print(f"  Found {len(unique_labels)} clusters (including noise)")
-
-        return pl.Series(cluster_labels)
-    else:
-        # Return empty series if no vectors found
-        return pl.Series([], dtype=pl.Int64)
+    vectors = [
+        read_embedding_vector(UUID(embedding_id), session)
+        for embedding_id in embedding_ids
+    ]
+    vectors_array = np.vstack(vectors)
+    cluster_labels = optics(vectors_array)
+    return pl.Series(cluster_labels)
 
 
 def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
@@ -235,29 +204,16 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     print("Starting clustering process...")
 
-    # Process each embedding model group separately
-    def process_model_group(group_df):
-        model_name = group_df["embedding_model"][0]
-        print(f"Clustering model: {model_name} with {len(group_df)} embeddings")
-
-        # Extract IDs and fetch vectors + generate cluster labels in one function
-        return fetch_and_cluster_vectors(group_df["id"], session)
-
-    # Apply clustering to each embedding model group
-    result_df = df.clone()
-
-    # Group by embedding model and apply clustering to each group
-    grouped_clusters = df.group_by("embedding_model").map_groups(
-        lambda group: group.with_columns(cluster_label=process_model_group(group))
+    # Add vectors column using map_elements
+    df = df.with_columns(
+        pl.col("id")
+        .map_batches(
+            lambda embedding_ids: fetch_and_cluster_vectors(embedding_ids, session),
+        )
+        .alias("cluster_label")
     )
 
-    # Replace original dataframe with the one containing cluster labels
-    result_df = grouped_clusters
-
-    print(
-        f"Clustering complete. DataFrame now has {result_df.shape[0]} rows and {result_df.shape[1]} columns."
-    )
-    return result_df
+    return df
 
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
