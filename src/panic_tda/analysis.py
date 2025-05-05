@@ -24,21 +24,15 @@ def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
         DataFrame with formatted UUID columns
     """
     return df.with_columns([
-        pl.col(columns)
-        .cast(pl.String)
-        .str.slice(0, 8) + "-" +
-        pl.col(columns)
-        .cast(pl.String)
-        .str.slice(8, 4) + "-" +
-        pl.col(columns)
-        .cast(pl.String)
-        .str.slice(12, 4) + "-" +
-        pl.col(columns)
-        .cast(pl.String)
-        .str.slice(16, 4) + "-" +
-        pl.col(columns)
-        .cast(pl.String)
-        .str.slice(20, None)
+        pl.col(columns).cast(pl.String).str.slice(0, 8)
+        + "-"
+        + pl.col(columns).cast(pl.String).str.slice(8, 4)
+        + "-"
+        + pl.col(columns).cast(pl.String).str.slice(12, 4)
+        + "-"
+        + pl.col(columns).cast(pl.String).str.slice(16, 4)
+        + "-"
+        + pl.col(columns).cast(pl.String).str.slice(20, None)
     ])
 
 
