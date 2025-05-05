@@ -101,10 +101,7 @@ def test_hdbscan_clustering():
     assert len(labels_custom) == len(embeddings_arr)
 
 
-@pytest.mark.parametrize(
-    "n_samples",
-    [10, 100, 1000, 5000]
-)
+@pytest.mark.parametrize("n_samples", [10, 100, 1000, 5000])
 def test_hdbscan_scalability(n_samples):
     """Test that hdbscan can handle increasingly large input arrays."""
     # Create random data with some structure for clustering
@@ -114,7 +111,7 @@ def test_hdbscan_scalability(n_samples):
     cluster_centers = [
         np.ones(EMBEDDING_DIM) * 0.1,  # Cluster 1
         np.ones(EMBEDDING_DIM) * 0.5,  # Cluster 2
-        np.ones(EMBEDDING_DIM) * 0.9   # Cluster 3
+        np.ones(EMBEDDING_DIM) * 0.9,  # Cluster 3
     ]
 
     embeddings = []
@@ -274,11 +271,7 @@ def test_optics_clustering():
 
     # Test with custom parameters
     labels_custom = optics(
-        embeddings_arr,
-        min_samples=3,
-        max_eps=0.5,
-        xi=0.05,
-        min_cluster_size=2
+        embeddings_arr, min_samples=3, max_eps=0.5, xi=0.05, min_cluster_size=2
     )
     assert len(labels_custom) == len(embeddings_arr)
 
@@ -288,10 +281,7 @@ def test_optics_clustering():
     assert labels != labels_different or len(set(labels)) != len(set(labels_different))
 
 
-@pytest.mark.parametrize(
-    "n_samples",
-    [10, 100, 1000, 5000]
-)
+@pytest.mark.parametrize("n_samples", [10, 100, 1000, 5000])
 def test_optics_scalability(n_samples):
     """Test that optics can handle increasingly large input arrays."""
     # Create random data with some structure for clustering
@@ -301,7 +291,7 @@ def test_optics_scalability(n_samples):
     cluster_centers = [
         np.ones(EMBEDDING_DIM) * 0.1,  # Cluster 1
         np.ones(EMBEDDING_DIM) * 0.5,  # Cluster 2
-        np.ones(EMBEDDING_DIM) * 0.9   # Cluster 3
+        np.ones(EMBEDDING_DIM) * 0.9,  # Cluster 3
     ]
 
     embeddings = []
@@ -328,7 +318,9 @@ def test_optics_scalability(n_samples):
         # For larger sample sizes, use parameters appropriate for the sample size
         min_samples = max(3, n_samples // 50)
         min_cluster_size = max(3, n_samples // 50)
-        labels = optics(embeddings_arr, min_samples=min_samples, min_cluster_size=min_cluster_size)
+        labels = optics(
+            embeddings_arr, min_samples=min_samples, min_cluster_size=min_cluster_size
+        )
 
         # Basic checks
         assert isinstance(labels, list)

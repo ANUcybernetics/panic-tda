@@ -2,7 +2,12 @@ import os
 
 import pytest
 
-from panic_tda.analysis import load_embeddings_df, load_invocations_df, load_runs_df, add_persistence_entropy
+from panic_tda.analysis import (
+    load_embeddings_df,
+    load_invocations_df,
+    load_runs_df,
+    add_persistence_entropy,
+)
 from panic_tda.datavis import (
     plot_invocation_duration,
     plot_persistence_diagram,

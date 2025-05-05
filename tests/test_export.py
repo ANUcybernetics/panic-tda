@@ -182,7 +182,12 @@ def test_export_wrapped_video(db_session: Session, tmp_path):
 
     # Create a test configuration with dummy models
     experiment = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I", "DummyI2T2"], ["DummyT2I2", "DummyI2T2"], ["DummyT2I2", "DummyI2T"]],
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyT2I", "DummyI2T2"],
+            ["DummyT2I2", "DummyI2T2"],
+            ["DummyT2I2", "DummyI2T"],
+        ],
         seeds=[-1] * 12,
         prompts=["up", "down"],
         embedding_models=["Dummy"],

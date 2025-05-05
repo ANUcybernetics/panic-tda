@@ -535,7 +535,7 @@ def test_sdxlturbo_inference_steps_grid():
         "stabilityai/sdxl-turbo",
         torch_dtype=torch.float16,
         variant="fp16",
-        use_fast=True
+        use_fast=True,
     ).to("cuda")
 
     # Multiple prompts
