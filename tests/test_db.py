@@ -16,6 +16,7 @@ from panic_tda.db import (
     latest_experiment,
     list_embeddings,
     list_invocations,
+    read_embedding_vector,
     read_invocation,
     read_run,
 )
@@ -229,6 +230,51 @@ def test_embedding(db_session: Session):
     assert isinstance(retrieved.vector, np.ndarray)
     assert retrieved.vector.shape == (3,)
     assert np.allclose(retrieved.vector, np.array([0.1, 0.2, 0.3], dtype=np.float32))
+
+
+def test_read_embedding_vector(db_session: Session):
+    """Test reading a specific embedding vector by ID."""
+    # Create a sample run and invocation
+    sample_run = Run(
+        initial_prompt="test read embedding vector",
+        network=["model1"],
+        seed=42,
+        max_length=1,
+    )
+    sample_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=0,
+        output_text="Test",
+    )
+
+    # Create a sample embedding
+    original_vector = np.array([0.5, 1.0, 1.5], dtype=np.float32)
+    sample_embedding = Embedding(
+        invocation_id=sample_invocation.id, embedding_model="test-model"
+    )
+    sample_embedding.vector = original_vector
+
+    db_session.add(sample_run)
+    db_session.add(sample_invocation)
+    db_session.add(sample_embedding)
+    db_session.commit()
+
+    # Test reading the vector with a valid ID
+    retrieved_vector = read_embedding_vector(sample_embedding.id, db_session)
+
+    assert isinstance(retrieved_vector, np.ndarray)
+    assert retrieved_vector.shape == (3,)
+    assert np.allclose(retrieved_vector, original_vector)
+
+    # Test reading with a non-existent ID
+    nonexistent_id = uuid7()
+    with pytest.raises(
+        ValueError, match=f"No embedding found with ID {nonexistent_id}"
+    ):
+        read_embedding_vector(nonexistent_id, db_session)
 
 
 def test_engine_initialization():

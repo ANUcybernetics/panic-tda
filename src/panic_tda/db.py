@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from uuid import UUID
 
+import numpy as np
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
@@ -287,6 +288,32 @@ def incomplete_embeddings(session: Session):
         .order_by(Embedding.embedding_model)
     )
     return session.exec(statement).all()
+
+
+def read_embedding_vector(embedding_id: UUID, session: Session) -> np.ndarray:
+    """
+    Read a specific embedding vector from the database by ID.
+
+    Args:
+        embedding_id: ID of the embedding to load
+        session: SQLModel database session
+
+    Returns:
+        A numpy array containing the embedding vector
+    """
+    # Create a SELECT statement for the embedding with the given ID
+    statement = select(Embedding).where(Embedding.id == embedding_id)
+
+    # Execute the query
+    result = session.exec(statement).first()
+
+    # Check if we got a result
+    if result is None:
+        raise ValueError(f"No embedding found with ID {embedding_id}")
+
+    # The vector is already stored in the vector attribute of the Embedding object
+    # No need to use process_result_value as SQLModel handles the type conversion
+    return result.vector
 
 
 def count_invocations(session: Session) -> int:
