@@ -22,8 +22,7 @@ def hdbscan(
 
     # Configure and run HDBSCAN
     hdbscan = HDBSCAN(
-        min_cluster_size=min_cluster_size,
-        min_samples=min_samples,
+        min_cluster_size=min_cluster_size, min_samples=min_samples, n_jobs=-1
     )
 
     # Fit the model and return the cluster labels
@@ -38,6 +37,7 @@ def optics(
     max_eps: float = np.inf,
     xi: float = 0.05,
     min_cluster_size: int = None,
+    n_jobs=-1,
 ) -> List[int]:
     """
     Perform OPTICS clustering on a list of embeddings.
