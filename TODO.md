@@ -1,7 +1,12 @@
 # TODO
 
-- do clustering, and then RLE for clusters, and also distribution of clusters vs
-  prompt/networks
+- clustering charts:
+
+  - % of outliers vs cluster members
+  - cluster count histograms, faceted by text/image model and also by prompt
+  - mosaic grids (stills) for different clusters
+  - cluster bigrams (inc. pictures)
+  - t-SNE picture (with different facetings)
 
 - check normality
 
