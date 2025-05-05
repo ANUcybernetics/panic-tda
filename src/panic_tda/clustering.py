@@ -1,9 +1,7 @@
 from typing import List
 
 import numpy as np
-from sklearn.cluster import HDBSCAN
-
-from panic_tda.schemas import Embedding
+from sklearn.cluster import HDBSCAN, OPTICS
 
 
 def hdbscan(
@@ -35,8 +33,11 @@ def hdbscan(
 
 
 def optics(
-    embeddings: np.ndarray, min_samples: int = 5, max_eps: float = np.inf,
-    xi: float = 0.05, min_cluster_size: int = None
+    embeddings: np.ndarray,
+    min_samples: int = 5,
+    max_eps: float = np.inf,
+    xi: float = 0.05,
+    min_cluster_size: int = None,
 ) -> List[int]:
     """
     Perform OPTICS clustering on a list of embeddings.
@@ -52,7 +53,6 @@ def optics(
     Returns:
         List of cluster labels (integers) corresponding to each embedding in the input list
     """
-    from sklearn.cluster import OPTICS
 
     # Set default min_cluster_size if not provided
     if min_cluster_size is None:
@@ -63,7 +63,7 @@ def optics(
         min_samples=min_samples,
         max_eps=max_eps,
         xi=xi,
-        min_cluster_size=min_cluster_size
+        min_cluster_size=min_cluster_size,
     )
 
     # Fit the model and return the cluster labels

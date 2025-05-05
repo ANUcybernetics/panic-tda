@@ -332,9 +332,7 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     df = format_uuid_columns(df, ["run_id", "experiment_id"])
 
     # Parse network from JSON string to List[str]
-    df = df.with_columns([
-        pl.col("network").str.json_decode().alias("network")
-    ])
+    df = df.with_columns([pl.col("network").str.json_decode().alias("network")])
 
     # Extract image_model and text_model from network
     def extract_models(network):
@@ -351,12 +349,14 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         return pl.Series([image_model, text_model])
 
     df = df.with_columns([
-        pl.col("network").map_elements(extract_models, return_dtype=pl.List(pl.String)).alias("models")
+        pl.col("network")
+        .map_elements(extract_models, return_dtype=pl.List(pl.String))
+        .alias("models")
     ])
 
     df = df.with_columns([
         pl.col("models").list.get(0).alias("image_model"),
-        pl.col("models").list.get(1).alias("text_model")
+        pl.col("models").list.get(1).alias("text_model"),
     ]).drop("models")
 
     return df
@@ -477,7 +477,7 @@ def cache_dfs(
     Returns:
         None
     """
-    os.makedirs("output/cache", exist_ok=True) # Ensure cache directory exists
+    os.makedirs("output/cache", exist_ok=True)  # Ensure cache directory exists
 
     if runs:
         print("Warming cache for runs dataframe...")
@@ -495,8 +495,12 @@ def cache_dfs(
         elapsed_time = time.time() - start_time
 
         cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
-        print(f"Saved runs ({runs_df.shape[0]} rows, {runs_df.shape[1]} columns) to cache: {cache_path}")
-        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(
+            f"Saved runs ({runs_df.shape[0]} rows, {runs_df.shape[1]} columns) to cache: {cache_path}"
+        )
+        print(
+            f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
+        )
         print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     if embeddings:
@@ -515,8 +519,12 @@ def cache_dfs(
         elapsed_time = time.time() - start_time
 
         cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
-        print(f"Saved embeddings ({embeddings_df.shape[0]} rows, {embeddings_df.shape[1]} columns) to cache: {cache_path}")
-        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(
+            f"Saved embeddings ({embeddings_df.shape[0]} rows, {embeddings_df.shape[1]} columns) to cache: {cache_path}"
+        )
+        print(
+            f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
+        )
         print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     if invocations:
@@ -528,15 +536,21 @@ def cache_dfs(
 
         start_time = time.time()
         invocations_df = load_invocations_df(session)
-        df_memory_size = invocations_df.estimated_size() / (1024 * 1024)  # Convert to MB
+        df_memory_size = invocations_df.estimated_size() / (
+            1024 * 1024
+        )  # Convert to MB
 
         # Save to cache
         invocations_df.write_parquet(cache_path)
         elapsed_time = time.time() - start_time
 
         cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
-        print(f"Saved invocations ({invocations_df.shape[0]} rows, {invocations_df.shape[1]} columns) to cache: {cache_path}")
-        print(f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB")
+        print(
+            f"Saved invocations ({invocations_df.shape[0]} rows, {invocations_df.shape[1]} columns) to cache: {cache_path}"
+        )
+        print(
+            f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
+        )
         print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     print("Cache warming complete.")

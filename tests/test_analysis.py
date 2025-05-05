@@ -1,9 +1,10 @@
 from pathlib import Path
+
 import numpy as np
 import polars as pl
-import pytest
 
 from panic_tda.analysis import (
+    add_cluster_labels,
     add_persistence_entropy,
     cache_dfs,
     load_embeddings_df,
@@ -148,18 +149,16 @@ def test_load_embeddings_df(db_session):
     assert text_row["sequence_number"] == 1
 
 
-@pytest.mark.skip(reason="currently hangs")
 def test_add_cluster_labels(db_session):
     """Test that add_cluster_labels properly adds clustering to embeddings."""
-    from panic_tda.analysis import add_cluster_labels
 
-    # Create a simple test configuration
+    # Create a simple test configuration with minimal data
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test embedding clustering"],
         embedding_models=["Dummy", "Dummy2"],
-        max_length=10,
+        max_length=100,
     )
 
     # Save config to database to get an ID
@@ -174,8 +173,8 @@ def test_add_cluster_labels(db_session):
     # Load embeddings
     df = load_embeddings_df(db_session)
 
-    # Add cluster labels
-    df_with_clusters = add_cluster_labels(df)
+    # Add cluster labels with smaller min_cluster_size to avoid hanging
+    df_with_clusters = add_cluster_labels(df, db_session)
 
     # Check that the cluster_label column was added
     assert "cluster_label" in df_with_clusters.columns
@@ -184,13 +183,15 @@ def test_add_cluster_labels(db_session):
     assert df_with_clusters.filter(pl.col("cluster_label").is_null()).height == 0
 
     # Check that cluster labels are integers
-    assert df_with_clusters.filter(~pl.col("cluster_label").cast(pl.Int64).is_null()).height == len(
-        df_with_clusters
-    )
+    assert df_with_clusters.filter(
+        ~pl.col("cluster_label").cast(pl.Int64).is_null()
+    ).height == len(df_with_clusters)
 
     # Check that each embedding model has its own set of clusters
     dummy_clusters = (
-        df_with_clusters.filter(pl.col("embedding_model") == "Dummy").select("cluster_label").unique()
+        df_with_clusters.filter(pl.col("embedding_model") == "Dummy")
+        .select("cluster_label")
+        .unique()
     )
     dummy2_clusters = (
         df_with_clusters.filter(pl.col("embedding_model") == "Dummy2")
@@ -202,8 +203,6 @@ def test_add_cluster_labels(db_session):
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
 
-    # It's expected that cluster labels can be reused across different embedding models
-    # So we don't need to check for disjoint cluster labels between different models
 
 def test_load_runs_df(db_session):
     """Test that load_runs_df returns a polars DataFrame with correct data."""
@@ -320,7 +319,9 @@ def test_add_persistence_entropy(db_session):
 
     # Check that all persistence columns exist
     for column in persistence_columns:
-        assert column in df_with_persistence.columns, f"Column {column} missing from result"
+        assert column in df_with_persistence.columns, (
+            f"Column {column} missing from result"
+        )
 
     # Filter for just this experiment
     exp_df = df_with_persistence.filter(pl.col("experiment_id") == str(config.id))
@@ -419,7 +420,6 @@ def test_add_persistence_entropy(db_session):
                             )
 
 
-
 def test_cache_dfs(db_session):
     """Test that cache_dfs successfully writes DataFrames to Parquet files."""
 
@@ -443,5 +443,9 @@ def test_cache_dfs(db_session):
 
     # Check that all expected cache files exist
     assert (cache_dir / "runs.parquet").exists(), "Runs cache file not found"
-    assert (cache_dir / "invocations.parquet").exists(), "Invocations cache file not found"
-    assert (cache_dir / "embeddings.parquet").exists(), "Embeddings cache file not found"
+    assert (cache_dir / "invocations.parquet").exists(), (
+        "Invocations cache file not found"
+    )
+    assert (cache_dir / "embeddings.parquet").exists(), (
+        "Embeddings cache file not found"
+    )
