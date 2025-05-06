@@ -6,7 +6,6 @@ import polars as pl
 from panic_tda.analysis import (
     add_cluster_labels,
     add_persistence_entropy,
-    add_semantic_drift,
     cache_dfs,
     load_embeddings_df,
     load_invocations_df,
@@ -226,11 +225,8 @@ def test_add_semantic_drift(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load embeddings
+    # Load embeddings (inc. semantic drift)
     df = load_embeddings_df(db_session)
-
-    # Add semantic drift metrics
-    df = add_semantic_drift(df, db_session)
 
     # Check that the drift columns were added
     assert "semantic_drift" in df.columns

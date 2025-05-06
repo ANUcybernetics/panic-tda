@@ -77,46 +77,6 @@ def load_invocations_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def load_invocations_df(session: Session) -> pl.DataFrame:
-    """
-    Load all invocations from the database into a tidy polars DataFrame.
-
-    Args:
-        session: SQLModel database session
-
-    Returns:
-        A polars DataFrame containing all invocation data
-    """
-    print("Loading invocations from database...")
-
-    # SQL query to join invocations with runs to get the required data
-    query = """
-    SELECT
-        invocation.id as id,
-        invocation.run_id as run_id,
-        run.experiment_id as experiment_id,
-        invocation.model as model,
-        invocation.type as type,
-        invocation.sequence_number as sequence_number,
-        invocation.started_at as started_at,
-        invocation.completed_at as completed_at,
-        (invocation.completed_at - invocation.started_at) as duration,
-        run.initial_prompt as initial_prompt,
-        run.seed as seed
-    FROM invocation
-    JOIN run ON invocation.run_id = run.id
-    """
-
-    # Use polars to read directly from the database, getting the correct URI format
-    db_url = _get_polars_db_uri(session)
-    df = pl.read_database_uri(query=query, uri=db_url)
-
-    # Format UUID columns using the dedicated function
-    df = format_uuid_columns(df, ["id", "run_id", "experiment_id"])
-
-    return df
-
-
 def load_embeddings_from_cache() -> pl.DataFrame:
     """
     Load embeddings from the cache file.
@@ -127,48 +87,6 @@ def load_embeddings_from_cache() -> pl.DataFrame:
     cache_path = "output/cache/embeddings.parquet"
     print(f"Loading embeddings from cache: {cache_path}")
     return pl.read_parquet(cache_path)
-
-
-def load_embeddings_df(session: Session) -> pl.DataFrame:
-    """
-    Load all embeddings metadata from the database into a tidy polars DataFrame.
-    Only includes embeddings for text invocations, excludes the actual vector data.
-
-    Args:
-        session: SQLModel database session
-
-    Returns:
-        A polars DataFrame containing embedding metadata for text invocations
-    """
-    print("Loading embeddings metadata from database...")
-
-    # Modified SQL query to exclude the vector data column
-    query = """
-    SELECT
-        embedding.id AS id,
-        embedding.invocation_id AS invocation_id,
-        embedding.embedding_model AS embedding_model,
-        embedding.started_at AS started_at,
-        embedding.completed_at AS completed_at,
-        invocation.run_id AS run_id,
-        invocation.sequence_number AS sequence_number,
-        invocation.model AS text_model,
-        run.initial_prompt AS initial_prompt
-    FROM embedding
-    JOIN invocation ON embedding.invocation_id = invocation.id
-    JOIN run ON invocation.run_id = run.id
-    WHERE invocation.type = 'TEXT'
-    ORDER BY run_id, embedding_model, sequence_number
-    """
-
-    # Use polars to read directly from the database
-    db_url = _get_polars_db_uri(session)
-    df = pl.read_database_uri(query=query, uri=db_url)
-
-    # Format UUID columns
-    df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
-
-    return df
 
 
 def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.Series:
@@ -284,71 +202,6 @@ def load_runs_from_cache() -> pl.DataFrame:
     cache_path = "output/cache/runs.parquet"
     print(f"Loading runs from cache: {cache_path}")
     return pl.read_parquet(cache_path)
-
-
-def load_runs_df(session: Session) -> pl.DataFrame:
-    """
-    Load all runs from the database into a tidy polars DataFrame.
-    Basic run information without persistence diagrams.
-
-    Args:
-        session: SQLModel database session
-
-    Returns:
-        A polars DataFrame containing basic run data
-    """
-    print("Loading runs from database...")
-
-    # SQL query to get run data
-    query = """
-    SELECT
-        run.id as run_id,
-        run.experiment_id as experiment_id,
-        run.network as network,
-        run.initial_prompt as initial_prompt,
-        run.seed as seed,
-        run.max_length as max_length,
-        (SELECT COUNT(*) FROM invocation WHERE invocation.run_id = run.id) as num_invocations
-    FROM run
-    WHERE EXISTS (SELECT 1 FROM invocation WHERE invocation.run_id = run.id)
-    """
-
-    # Use polars to read directly from the database, getting the correct URI format
-    db_url = _get_polars_db_uri(session)
-    df = pl.read_database_uri(query=query, uri=db_url)
-
-    # Format UUID columns
-    df = format_uuid_columns(df, ["run_id", "experiment_id"])
-
-    # Parse network from JSON string to List[str]
-    df = df.with_columns([pl.col("network").str.json_decode().alias("network")])
-
-    # Extract image_model and text_model from network
-    def extract_models(network):
-        image_model = None
-        text_model = None
-        for model in network:
-            output_type = get_output_type(model)
-            if output_type == InvocationType.IMAGE and image_model is None:
-                image_model = model
-            elif output_type == InvocationType.TEXT and text_model is None:
-                text_model = model
-            if image_model is not None and text_model is not None:
-                break
-        return pl.Series([image_model, text_model])
-
-    df = df.with_columns([
-        pl.col("network")
-        .map_elements(extract_models, return_dtype=pl.List(pl.String))
-        .alias("models")
-    ])
-
-    df = df.with_columns([
-        pl.col("models").list.get(0).alias("image_model"),
-        pl.col("models").list.get(1).alias("text_model"),
-    ]).drop("models")
-
-    return df
 
 
 def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
@@ -544,3 +397,151 @@ def cache_dfs(
         print(f"  Time taken: {elapsed_time:.2f} seconds")
 
     print("Cache warming complete.")
+
+
+def load_invocations_df(session: Session) -> pl.DataFrame:
+    """
+    Load all invocations from the database into a tidy polars DataFrame.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        A polars DataFrame containing all invocation data
+    """
+    print("Loading invocations from database...")
+
+    # SQL query to join invocations with runs to get the required data
+    query = """
+    SELECT
+        invocation.id as id,
+        invocation.run_id as run_id,
+        run.experiment_id as experiment_id,
+        invocation.model as model,
+        invocation.type as type,
+        invocation.sequence_number as sequence_number,
+        invocation.started_at as started_at,
+        invocation.completed_at as completed_at,
+        (invocation.completed_at - invocation.started_at) as duration,
+        run.initial_prompt as initial_prompt,
+        run.seed as seed
+    FROM invocation
+    JOIN run ON invocation.run_id = run.id
+    """
+
+    # Use polars to read directly from the database, getting the correct URI format
+    db_url = _get_polars_db_uri(session)
+    df = pl.read_database_uri(query=query, uri=db_url)
+
+    # Format UUID columns using the dedicated function
+    df = format_uuid_columns(df, ["id", "run_id", "experiment_id"])
+
+    return df
+
+
+def load_embeddings_df(session: Session) -> pl.DataFrame:
+    """
+    Load all embeddings metadata from the database into a tidy polars DataFrame.
+    Only includes embeddings for text invocations, excludes the actual vector data.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        A polars DataFrame containing embedding metadata for text invocations
+    """
+    print("Loading embeddings metadata from database...")
+
+    # Modified SQL query to exclude the vector data column
+    query = """
+    SELECT
+        embedding.id AS id,
+        embedding.invocation_id AS invocation_id,
+        embedding.embedding_model AS embedding_model,
+        embedding.started_at AS started_at,
+        embedding.completed_at AS completed_at,
+        invocation.run_id AS run_id,
+        invocation.sequence_number AS sequence_number,
+        invocation.model AS text_model,
+        run.initial_prompt AS initial_prompt
+    FROM embedding
+    JOIN invocation ON embedding.invocation_id = invocation.id
+    JOIN run ON invocation.run_id = run.id
+    WHERE invocation.type = 'TEXT'
+    ORDER BY run_id, embedding_model, sequence_number
+    """
+
+    # Use polars to read directly from the database
+    db_url = _get_polars_db_uri(session)
+    df = pl.read_database_uri(query=query, uri=db_url)
+
+    # Format UUID columns
+    df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
+    df = add_semantic_drift(df, session)
+
+    return df
+
+
+def load_runs_df(session: Session) -> pl.DataFrame:
+    """
+    Load all runs from the database into a tidy polars DataFrame.
+    Basic run information without persistence diagrams.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        A polars DataFrame containing basic run data
+    """
+    print("Loading runs from database...")
+
+    # SQL query to get run data
+    query = """
+    SELECT
+        run.id as run_id,
+        run.experiment_id as experiment_id,
+        run.network as network,
+        run.initial_prompt as initial_prompt,
+        run.seed as seed,
+        run.max_length as max_length,
+        (SELECT COUNT(*) FROM invocation WHERE invocation.run_id = run.id) as num_invocations
+    FROM run
+    WHERE EXISTS (SELECT 1 FROM invocation WHERE invocation.run_id = run.id)
+    """
+
+    # Use polars to read directly from the database, getting the correct URI format
+    db_url = _get_polars_db_uri(session)
+    df = pl.read_database_uri(query=query, uri=db_url)
+
+    # Format UUID columns
+    df = format_uuid_columns(df, ["run_id", "experiment_id"])
+
+    # Parse network from JSON string to List[str]
+    df = df.with_columns([pl.col("network").str.json_decode().alias("network")])
+
+    # Extract image_model and text_model from network
+    def extract_models(network):
+        image_model = None
+        text_model = None
+        for model in network:
+            output_type = get_output_type(model)
+            if output_type == InvocationType.IMAGE and image_model is None:
+                image_model = model
+            elif output_type == InvocationType.TEXT and text_model is None:
+                text_model = model
+            if image_model is not None and text_model is not None:
+                break
+        return pl.Series([image_model, text_model])
+
+    df = df.with_columns([
+        pl.col("network")
+        .map_elements(extract_models, return_dtype=pl.List(pl.String))
+        .alias("models")
+    ])
+
+    df = df.with_columns([
+        pl.col("models").list.get(0).alias("image_model"),
+        pl.col("models").list.get(1).alias("text_model"),
+    ]).drop("models")
+
+    return df
