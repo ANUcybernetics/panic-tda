@@ -37,7 +37,6 @@ def optics(
     max_eps: float = np.inf,
     xi: float = 0.05,
     min_cluster_size: int = None,
-    n_jobs=-1,
 ) -> List[int]:
     """
     Perform OPTICS clustering on a list of embeddings.
@@ -64,6 +63,7 @@ def optics(
         max_eps=max_eps,
         xi=xi,
         min_cluster_size=min_cluster_size,
+        n_jobs=-1,
     )
 
     # Fit the model and return the cluster labels
