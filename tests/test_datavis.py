@@ -4,7 +4,6 @@ import pytest
 
 from panic_tda.analysis import (
     add_persistence_entropy,
-    add_semantic_drift,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
@@ -51,7 +50,6 @@ def mock_experiment_data(db_session):
     runs_df = load_runs_df(db_session)
     runs_df = add_persistence_entropy(runs_df, db_session)
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_semantic_drift(embeddings_df, db_session)
     invocations_df = load_invocations_df(db_session)
 
     return {
