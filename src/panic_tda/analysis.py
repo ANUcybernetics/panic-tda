@@ -109,7 +109,9 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     return pl.Series(cluster_labels)
 
 
-def fetch_and_calculate_drift(embedding_ids: pl.Series, session: Session) -> pl.Series:
+def fetch_and_calculate_drift_euclid(
+    embedding_ids: pl.Series, session: Session
+) -> pl.Series:
     """
     Fetch embedding vectors from the database and calculate drift from the first vector.
 
@@ -156,7 +158,7 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     return df
 
 
-def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     Add semantic drift values to the embeddings DataFrame by fetching vectors on demand
     and calculating drift from the first vector in each run sequence.
@@ -172,9 +174,11 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     df = df.with_columns(
         pl.col("id")
         .map_batches(
-            lambda embedding_ids: fetch_and_calculate_drift(embedding_ids, session),
+            lambda embedding_ids: fetch_and_calculate_drift_euclid(
+                embedding_ids, session
+            ),
         )
-        .alias("semantic_drift")
+        .alias("drift_euclid")
     )
     return df
 
@@ -190,6 +194,58 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         return float(1.0 - cosine_similarity)
     else:
         return 0.0 if np.array_equal(vec1, vec2) else 1.0
+
+
+def fetch_and_calculate_drift_cosine(
+    embedding_ids: pl.Series, session: Session
+) -> pl.Series:
+    """
+    Fetch embedding vectors from the database and calculate cosine drift from the first vector.
+
+    Args:
+        embedding_ids: A Series containing embedding IDs
+        session: SQLModel database session
+
+    Returns:
+        A Series of cosine distances between each vector and the first vector
+    """
+    vectors = [
+        read_embedding_vector(UUID(embedding_id), session)
+        for embedding_id in embedding_ids
+    ]
+
+    # Get the first vector as the reference point
+    first_vector = vectors[0]
+
+    # Calculate cosine distance from each vector to the first one
+    distances = [calculate_cosine_distance(vector, first_vector) for vector in vectors]
+
+    return pl.Series(distances)
+
+
+def add_semantic_drift_cosine(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+    """
+    Add semantic drift values using cosine distance to the embeddings DataFrame by fetching
+    vectors on demand and calculating drift from the first vector in each run sequence.
+
+    Args:
+        df: DataFrame containing embedding metadata (without vectors)
+        session: SQLModel database session for fetching vectors
+
+    Returns:
+        DataFrame with semantic drift values added using cosine distance
+    """
+    # Add vectors column using map_elements
+    df = df.with_columns(
+        pl.col("id")
+        .map_batches(
+            lambda embedding_ids: fetch_and_calculate_drift_cosine(
+                embedding_ids, session
+            ),
+        )
+        .alias("drift_cosine")
+    )
+    return df
 
 
 def load_runs_from_cache() -> pl.DataFrame:
@@ -477,7 +533,8 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
-    df = add_semantic_drift(df, session)
+    df = add_semantic_drift_euclid(df, session)
+    df = add_semantic_drift_cosine(df, session)
 
     return df
 

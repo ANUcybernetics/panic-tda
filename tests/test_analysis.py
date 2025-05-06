@@ -123,7 +123,8 @@ def test_load_embeddings_df(db_session):
         "sequence_number",
         "initial_prompt",
         "text_model",
-        "semantic_drift",
+        "drift_euclid",
+        "drift_cosine",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
@@ -226,22 +227,25 @@ def test_add_semantic_drift(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load embeddings (inc. semantic drift)
+    # Load embeddings (inc. semantic drift measures)
     df = load_embeddings_df(db_session)
 
     # Check that the drift columns were added
-    assert "semantic_drift" in df.columns
+    assert "drift_euclid" in df.columns
+    assert "drift_cosine" in df.columns
 
     # Check that drift values are calculated properly
     # First item should have 0 drift since it's the starting point
     first_item = df.filter(pl.col("sequence_number") == 1)
     assert first_item.height > 0
-    assert (first_item["semantic_drift"] == 0.0).all()
+    assert (first_item["drift_euclid"] == 0.0).all()
+    assert (first_item["drift_cosine"] == 0.0).all()
 
     # Later items should have non-zero drift
     later_items = df.filter(pl.col("sequence_number") > 1)
     assert later_items.height > 0
-    assert (later_items["semantic_drift"] >= 0.0).all()
+    assert (later_items["drift_euclid"] >= 0.0).all()
+    assert (later_items["drift_cosine"] >= 0.0).all()
 
 
 def test_load_runs_df(db_session):
