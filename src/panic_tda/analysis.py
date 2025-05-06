@@ -152,7 +152,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         embedding.completed_at AS completed_at,
         invocation.run_id AS run_id,
         invocation.sequence_number AS sequence_number,
-        invocation.model AS model,
+        invocation.model AS text_model,
         run.initial_prompt AS initial_prompt
     FROM embedding
     JOIN invocation ON embedding.invocation_id = invocation.id
