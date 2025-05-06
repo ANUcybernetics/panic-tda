@@ -131,7 +131,7 @@ def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
     assert "run_id" in runs_df.columns
 
     # Define output file
-    output_file = "output/test/persistence_entropy_by_prompt.png"
+    output_file = "output/test/persistence_entropy_by_prompt.pdf"
 
     plot_persistence_entropy_by_prompt(runs_df, output_file)
 
@@ -150,7 +150,7 @@ def test_plot_semantic_drift(mock_experiment_data):
     assert "embedding_model" in embeddings_df.columns
 
     # Define output file
-    output_file = "output/test/semantic_drift.png"
+    output_file = "output/test/semantic_drift.pdf"
 
     # Generate the plot
     plot_semantic_drift(embeddings_df, output_file)
@@ -171,7 +171,7 @@ def test_plot_persistence_entropy(mock_experiment_data):
     assert "image_model" in runs_df.columns
 
     # Define output file
-    output_file = "output/test/persistence_entropy.png"
+    output_file = "output/test/persistence_entropy.pdf"
 
     # Generate the plot
     plot_persistence_entropy(runs_df, output_file)
@@ -189,7 +189,7 @@ def test_plot_invocation_duration(mock_experiment_data):
     assert "model" in invocations_df.columns
 
     # Define output file
-    output_file = "output/test/invocation_duration.png"
+    output_file = "output/test/invocation_duration.pdf"
 
     # Generate the plot
     plot_invocation_duration(invocations_df, output_file)

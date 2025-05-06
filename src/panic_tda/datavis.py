@@ -152,7 +152,7 @@ def plot_persistence_diagram_by_prompt(
 
 
 def plot_persistence_entropy(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.png"
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy.pdf"
 ) -> None:
     """
     Create and save a visualization of entropy distributions with:
@@ -193,7 +193,7 @@ def plot_persistence_entropy(
 
 
 def plot_persistence_entropy_by_prompt(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_by_prompt.png"
+    df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_by_prompt.pdf"
 ) -> None:
     """
     Create and save a visualization of entropy distributions faceted by prompt and models.
@@ -235,7 +235,7 @@ def plot_persistence_entropy_by_prompt(
 
 
 def plot_semantic_drift(
-    df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.png"
+    df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.pdf"
 ) -> None:
     """
     Create a line plot showing semantic drift over sequence number,
@@ -275,7 +275,7 @@ def plot_semantic_drift(
 
 
 def plot_invocation_duration(
-    df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.png"
+    df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.pdf"
 ) -> None:
     """
     Create and save a visualization of invocation duration distribution,
