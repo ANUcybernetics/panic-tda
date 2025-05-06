@@ -10,10 +10,11 @@ from plotnine import (
     facet_wrap,
     geom_boxplot,
     geom_point,
+    geom_violin,
     ggplot,
+    guides,
     labs,
     scale_x_continuous,
-    scale_x_discrete,
     scale_y_continuous,
     theme,
 )
@@ -168,22 +169,16 @@ def plot_persistence_entropy(
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
 
-    # Create the plot with faceting
-    # Define subscript translator for x-axis labels
-    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-
     plot = (
         ggplot(
             pandas_df,
-            aes(x="factor(homology_dimension)", y="entropy", fill="embedding_model"),
+            aes(x="embedding_model", y="entropy", fill="text_model"),
         )
-        # + geom_violin(alpha=0.7, width=0.7)
+        + geom_violin()
         + geom_boxplot()
-        + labs(x="homology dimension", y="entropy", fill="embedding model")
-        + scale_x_discrete(
-            labels=lambda x: [f"h{str(val).translate(subscripts)}" for val in x]
-        )
-        + facet_grid("text_model ~ image_model", labeller="label_both")
+        + labs(x="embedding model", y="entropy", fill="text model")
+        + guides(fill=None)
+        + facet_grid("homology_dimension ~ image_model + text_model")
         + theme(figure_size=(10, 6), strip_text=element_text(size=10))
     )
 
