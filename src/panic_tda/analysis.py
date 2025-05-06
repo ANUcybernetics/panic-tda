@@ -185,6 +185,11 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculate cosine distance between two vectors."""
+    # First check if vectors are equal
+    if np.array_equal(vec1, vec2):
+        return 0.0
+
+    # Then calculate norms
     norm_vec1 = norm(vec1)
     norm_vec2 = norm(vec2)
 
@@ -193,7 +198,8 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         cosine_similarity = np.dot(vec1, vec2) / (norm_vec1 * norm_vec2)
         return float(1.0 - cosine_similarity)
     else:
-        return 0.0 if np.array_equal(vec1, vec2) else 1.0
+        # Vectors aren't equal but at least one has zero norm
+        return 1.0
 
 
 def fetch_and_calculate_drift_cosine(
