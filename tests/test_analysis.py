@@ -472,7 +472,7 @@ def test_cache_dfs(db_session):
         seeds=[-1],
         prompts=["test caching dataframes"],
         embedding_models=["Dummy"],
-        max_length=5,  # Keep it small for testing
+        max_length=100,  # Keep it small for testing
     )
     db_session.add(config)
     db_session.commit()
