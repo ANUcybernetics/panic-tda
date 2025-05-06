@@ -12,6 +12,8 @@
 
 - violin plots for entropy
 
+- idea: downsample before clustering (for computational reasons)
+
 - generate pdf/svg plots by default (and png only for the heaps-overplotted
   ones)
 
