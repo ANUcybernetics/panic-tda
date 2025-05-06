@@ -191,6 +191,31 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     return pl.Series(cluster_labels)
 
 
+def fetch_and_calculate_drift(embedding_ids: pl.Series, session: Session) -> pl.Series:
+    """
+    Fetch embedding vectors from the database and calculate drift from the first vector.
+
+    Args:
+        embedding_ids: A Series containing embedding IDs
+        session: SQLModel database session
+
+    Returns:
+        A Series of euclidean distances between each vector and the first vector
+    """
+    vectors = [
+        read_embedding_vector(UUID(embedding_id), session)
+        for embedding_id in embedding_ids
+    ]
+
+    # Get the first vector as the reference point
+    first_vector = vectors[0]
+
+    # Calculate euclidean distance from each vector to the first one
+    distances = [np.linalg.norm(vector - first_vector) for vector in vectors]
+
+    return pl.Series(distances)
+
+
 def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
@@ -202,8 +227,6 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     Returns:
         DataFrame with cluster labels added
     """
-    print("Starting clustering process...")
-
     # Add vectors column using map_elements
     df = df.with_columns(
         pl.col("id")
@@ -212,7 +235,29 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
         )
         .alias("cluster_label")
     )
+    return df
 
+
+def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+    """
+    Add semantic drift values to the embeddings DataFrame by fetching vectors on demand
+    and calculating drift from the first vector in each run sequence.
+
+    Args:
+        df: DataFrame containing embedding metadata (without vectors)
+        session: SQLModel database session for fetching vectors
+
+    Returns:
+        DataFrame with semantic drift values added
+    """
+    # Add vectors column using map_elements
+    df = df.with_columns(
+        pl.col("id")
+        .map_batches(
+            lambda embedding_ids: fetch_and_calculate_drift(embedding_ids, session),
+        )
+        .alias("semantic_drift")
+    )
     return df
 
 

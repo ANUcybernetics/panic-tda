@@ -6,6 +6,7 @@ import polars as pl
 from panic_tda.analysis import (
     add_cluster_labels,
     add_persistence_entropy,
+    add_semantic_drift,
     cache_dfs,
     load_embeddings_df,
     load_invocations_df,
@@ -202,6 +203,48 @@ def test_add_cluster_labels(db_session):
     # Verify that both models have at least one cluster
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
+
+
+def test_add_semantic_drift(db_session):
+    """Test that add_semantic_drift correctly adds semantic drift measurements to embeddings."""
+
+    # Create a simple test configuration with minimal data
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test semantic drift"],
+        embedding_models=["Dummy"],
+        max_length=10,
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load embeddings
+    df = load_embeddings_df(db_session)
+
+    # Add semantic drift metrics
+    df = add_semantic_drift(df, db_session)
+
+    # Check that the drift columns were added
+    assert "semantic_drift" in df.columns
+
+    # Check that drift values are calculated properly
+    # First item should have 0 drift since it's the starting point
+    first_item = df.filter(pl.col("sequence_number") == 1)
+    assert first_item.height > 0
+    assert (first_item["semantic_drift"] == 0.0).all()
+
+    # Later items should have non-zero drift
+    later_items = df.filter(pl.col("sequence_number") > 1)
+    assert later_items.height > 0
+    assert (later_items["semantic_drift"] >= 0.0).all()
 
 
 def test_load_runs_df(db_session):
