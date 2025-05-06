@@ -3,10 +3,11 @@ import os
 import pytest
 
 from panic_tda.analysis import (
+    add_persistence_entropy,
+    add_semantic_drift,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
-    add_persistence_entropy,
 )
 from panic_tda.datavis import (
     plot_invocation_duration,
@@ -50,6 +51,7 @@ def mock_experiment_data(db_session):
     runs_df = load_runs_df(db_session)
     runs_df = add_persistence_entropy(runs_df, db_session)
     embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_semantic_drift(embeddings_df, db_session)
     invocations_df = load_invocations_df(db_session)
 
     return {
@@ -137,13 +139,11 @@ def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-@pytest.mark.skip(reason="not currently calculating semantic drift")
 def test_plot_semantic_drift(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
 
     # Verify we have semantic dispersion data
     assert embeddings_df.height > 0
-    assert "semantic_drift_instantaneous" in embeddings_df.columns
     assert "sequence_number" in embeddings_df.columns
     assert "run_id" in embeddings_df.columns
     assert "initial_prompt" in embeddings_df.columns

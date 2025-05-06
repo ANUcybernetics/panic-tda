@@ -9,11 +9,9 @@ from plotnine import (
     facet_grid,
     facet_wrap,
     geom_boxplot,
-    geom_line,
     geom_point,
     ggplot,
     labs,
-    scale_color_manual,
     scale_x_continuous,
     scale_x_discrete,
     scale_y_continuous,
@@ -255,21 +253,19 @@ def plot_semantic_drift(
             pandas_df,
             aes(
                 x="sequence_number",
-                y="semantic_drift_instantaneous",
-                color="semantic_drift_instantaneous > 0.5",
+                y="run_id",
+                size="semantic_drift",
+                color="text_model",
             ),
         )
-        + geom_line(
-            aes(group="run_id"), color="black"
-        )  # Add black line connecting points by run_id
+        + geom_point(aes(), color="black")
         + geom_point(alpha=0.8)
-        + scale_color_manual(values=["black", "red"])
-        + labs(x="sequence number", y="semantic drift")
-        + facet_grid("initial_prompt ~ embedding_model")
+        # + scale_color_manual(values=["black", "red"])
+        + labs(x="sequence number", y="run")
         + theme(
             figure_size=(30, 80),
             strip_text=element_text(size=10),
-            legend_position="none",
+            # legend_position="none",
         )
     )
 
