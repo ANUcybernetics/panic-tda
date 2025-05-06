@@ -123,6 +123,7 @@ def test_load_embeddings_df(db_session):
         "sequence_number",
         "initial_prompt",
         "text_model",
+        "semantic_drift",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
