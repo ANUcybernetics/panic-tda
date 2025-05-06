@@ -482,6 +482,18 @@ def export_video(
                             # Account for borders (+1 to both row and column)
                             x_offset = (col + 1) * IMAGE_SIZE
                             y_offset = (row + 1) * IMAGE_SIZE
+
+                            # Add gaps where there are prompt or network changes
+                            # Add 10px gap for every prompt change before current row
+                            prompt_changes = row // rows_per_prompt
+                            if prompt_changes > 0:
+                                y_offset += 10 * prompt_changes
+
+                            # Add 10px gap for every network change before current column
+                            network_changes = col // seeds_per_row
+                            if network_changes > 0:
+                                x_offset += 10 * network_changes
+
                             mosaic.paste(image, (x_offset, y_offset))
 
             # Draw progress bar
