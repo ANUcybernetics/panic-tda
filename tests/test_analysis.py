@@ -123,7 +123,7 @@ def test_load_embeddings_df(db_session):
         "completed_at",
         "sequence_number",
         "initial_prompt",
-        "model",
+        "text_model",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
@@ -142,11 +142,11 @@ def test_load_embeddings_df(db_session):
     assert df.filter(pl.col("embedding_model") == "Dummy2").height == 5
 
     # Verify field values using named columns instead of indices
-    text_rows = df.filter(pl.col("model") == "DummyI2T")
+    text_rows = df.filter(pl.col("text_model") == "DummyI2T")
     assert text_rows.height > 0
     text_row = text_rows.row(0, named=True)
     assert text_row["initial_prompt"] == "test embedding dataframe"
-    assert text_row["model"] == "DummyI2T"
+    assert text_row["text_model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
 
 
