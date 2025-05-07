@@ -178,7 +178,7 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
     embedding_model_class = get_actor_class(df["embedding_model"].first())
     embedding_model = embedding_model_class.remote()
     initial_prompt_vector = ray.get(
-        embedding_model.embed.remote(df["initial_prompt"].first())
+        embedding_model.embed.remote([df["initial_prompt"].first()])
     )[0]
 
     # Add vectors column using map_elements
@@ -260,7 +260,7 @@ def add_semantic_drift_cosine(df: pl.DataFrame, session: Session) -> pl.DataFram
     embedding_model_class = get_actor_class(df["embedding_model"].first())
     embedding_model = embedding_model_class.remote()
     initial_prompt_vector = ray.get(
-        embedding_model.embed.remote(df["initial_prompt"].first())
+        embedding_model.embed.remote([df["initial_prompt"].first()])
     )[0]
 
     # Add vectors column using map_elements
