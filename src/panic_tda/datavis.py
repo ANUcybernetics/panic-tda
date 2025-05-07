@@ -6,6 +6,7 @@ from plotnine import (
     aes,
     coord_flip,
     element_text,
+    element_blank,
     facet_grid,
     facet_wrap,
     geom_boxplot,
@@ -166,6 +167,16 @@ def plot_persistence_entropy(
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
+    # Convert homology_dimension to h with subscripts
+    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+    # Transform homology_dimension column to use h with subscripts
+    df = df.with_columns(
+        pl.col("homology_dimension").map_elements(
+            lambda x: f"h{str(x).translate(subscripts)}"
+        ).alias("homology_dimension")
+    )
+
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
 
@@ -175,11 +186,15 @@ def plot_persistence_entropy(
             aes(x="embedding_model", y="entropy", fill="embedding_model"),
         )
         + geom_violin()
-        + geom_boxplot(fill="white")
-        + labs(x="embedding model", y="entropy")
-        + guides(fill=None)
+        + geom_boxplot(fill="white", width=0.5, alpha=0.5)
+        + labs(x="embedding model", y="distribution of persistence entropy")
         + facet_grid("homology_dimension ~ image_model + text_model")
-        + theme(figure_size=(10, 6), strip_text=element_text(size=10))
+        + theme(
+            figure_size=(10, 6),
+            strip_text=element_text(size=10),
+            axis_ticks_major_x=element_blank(),
+            axis_text_x=element_blank()
+        )
     )
 
     # Save plot with high resolution
