@@ -708,9 +708,9 @@ def export_timeline(
     timeline_width = images_per_run * IMAGE_SIZE
 
     # Calculate the canvas dimensions
-    # +2 rows for top/bottom borders and +2 cols for left/right borders
-    canvas_width = (cols * timeline_width) + (IMAGE_SIZE * 2)
-    canvas_height = (rows + 2) * IMAGE_SIZE
+    # Only +1 row for top border and +1 col for left border
+    canvas_width = (cols * timeline_width) + IMAGE_SIZE
+    canvas_height = (rows + 1) * IMAGE_SIZE
 
     # Add spacing between network columns
     network_spacing = 20
@@ -749,7 +749,7 @@ def export_timeline(
 
         return img
 
-    # Draw prompt information in left and right borders
+    # Draw prompt information in left border only
     for prompt_idx, prompt in enumerate(ordered_prompts):
         for seed_idx in range(max_seeds):
             # Calculate row position with prompt spacing
@@ -769,15 +769,10 @@ def export_timeline(
             )
             canvas.paste(prompt_tile, (left_border_x, left_border_y))
 
-            # Right border - same content as left
-            right_border_x = canvas_width - IMAGE_SIZE
-            right_border_y = left_border_y
-            canvas.paste(prompt_tile, (right_border_x, right_border_y))
-
     # Define abbreviations for network names
     abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
 
-    # Draw network information in top and bottom borders
+    # Draw network information in top border only
     for network_idx, network in enumerate(all_networks):
         # Create abbreviated network string
         abbreviated_network = [abbreviations.get(net, net) for net in network]
@@ -795,12 +790,6 @@ def export_timeline(
             network_str, IMAGE_SIZE, font_path, base_font_size
         )
         canvas.paste(network_tile, (top_border_x, top_border_y))
-
-        # Bottom border - same content as top
-        bottom_border_x = top_border_x
-        # Adjust bottom border position to account for prompt spacing
-        bottom_border_y = canvas_height - IMAGE_SIZE
-        canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
 
     # Now place evenly-spaced images from each run in its timeline
     for prompt_idx, prompt in enumerate(ordered_prompts):
