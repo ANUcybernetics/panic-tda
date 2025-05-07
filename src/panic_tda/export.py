@@ -716,6 +716,10 @@ def export_timeline(
     network_spacing = 20
     canvas_width += (cols - 1) * network_spacing if cols > 1 else 0
 
+    # Add spacing between prompt rows
+    prompt_spacing = 20
+    canvas_height += (n_prompts - 1) * prompt_spacing if n_prompts > 1 else 0
+
     # Create the canvas
     canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
     draw = ImageDraw.Draw(canvas)
@@ -727,12 +731,16 @@ def export_timeline(
     # Draw prompt information in left and right borders
     for prompt_idx, prompt in enumerate(ordered_prompts):
         for seed_idx in range(max_seeds):
-            # Row position for this prompt and seed
-            row_idx = (prompt_idx * max_seeds) + seed_idx
+            # Calculate row position with prompt spacing
+            base_row = prompt_idx * max_seeds + seed_idx
+            # Add prompt spacing for each prompt after the first
+            y_offset = (base_row + 1) * IMAGE_SIZE
+            if prompt_idx > 0:
+                y_offset += prompt_idx * prompt_spacing
 
             # Left border
             left_border_x = 0
-            left_border_y = (row_idx + 1) * IMAGE_SIZE
+            left_border_y = y_offset
 
             # Create and paste prompt tile
             prompt_tile = create_prompt_title_card(
@@ -769,7 +777,8 @@ def export_timeline(
 
         # Bottom border - same content as top
         bottom_border_x = top_border_x
-        bottom_border_y = (rows + 1) * IMAGE_SIZE
+        # Adjust bottom border position to account for prompt spacing
+        bottom_border_y = canvas_height - IMAGE_SIZE
         canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
 
     # Now place evenly-spaced images from each run in its timeline
@@ -807,15 +816,19 @@ def export_timeline(
                             idx = min(int(i * step), len(image_invocations) - 1)
                             selected_images.append(image_invocations[idx])
 
-                    # Position in the grid
-                    row = (prompt_idx * max_seeds) + seed_idx + 1  # +1 for top border
+                    # Calculate the y position with prompt spacing
+                    base_row = prompt_idx * max_seeds + seed_idx
+                    y_offset = (base_row + 1) * IMAGE_SIZE  # +1 for top border
+                    if prompt_idx > 0:
+                        y_offset += prompt_idx * prompt_spacing
+
+                    # Calculate horizontal position
                     col_start = network_idx * (timeline_width + network_spacing) + IMAGE_SIZE  # +IMAGE_SIZE for left border
 
                     # Paste the selected images
                     for img_idx, invocation in enumerate(selected_images):
                         if invocation.output is not None:
                             x_offset = col_start + img_idx * IMAGE_SIZE
-                            y_offset = row * IMAGE_SIZE
                             canvas.paste(invocation.output, (x_offset, y_offset))
 
     # Save the final image
