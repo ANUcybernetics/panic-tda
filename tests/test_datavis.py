@@ -33,7 +33,7 @@ def mock_experiment_data(db_session):
         prompts=["one fish", "two fish", "red fish", "blue fish"],
         seeds=[-1] * 4,
         embedding_models=["Dummy", "Dummy2"],
-        max_length=10,  # Short sequences for testing
+        max_length=100,  # Short sequences for testing
     )
 
     # Save experiment to database to get an ID

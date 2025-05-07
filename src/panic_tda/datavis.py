@@ -240,7 +240,13 @@ def plot_semantic_drift(
         df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
-    pandas_df = df.to_pandas()
+    # Unpivot the drift columns
+    pandas_df = df.unpivot(
+        ["drift_euclid", "drift_cosine"],
+        index=list(set(df.columns) - set(["drift_euclid", "drift_cosine"])),
+        variable_name="drift_metric",
+        value_name="drift_value",
+    ).to_pandas()
 
     # Create a single chart with faceting
     plot = (
@@ -249,18 +255,21 @@ def plot_semantic_drift(
             aes(
                 x="sequence_number",
                 y="run_id",
-                size="semantic_drift",
-                color="text_model",
+                size="drift_value",
+                color="embedding_model",
             ),
         )
-        + geom_point(aes(), color="black")
         + geom_point(alpha=0.8)
         # + scale_color_manual(values=["black", "red"])
-        + labs(x="sequence number", y="run")
+        + labs(x="sequence number")
+        + facet_grid(
+            "initial_prompt ~ embedding_model + drift_metric",
+            space="free_y",
+            labeller="label_context",
+        )
         + theme(
-            figure_size=(30, 80),
+            figure_size=(40, 40),
             strip_text=element_text(size=10),
-            # legend_position="none",
         )
     )
 
@@ -325,15 +334,15 @@ def paper_charts(session: Session) -> None:
     #
     ### RUNS
     #
-    from panic_tda.analysis import load_runs_df
+    # from panic_tda.analysis import load_runs_df
 
-    runs_df = load_runs_df(session)
+    # runs_df = load_runs_df(session)
     #
     # plot_persistence_diagram_faceted(
     #     runs_df, "output/vis/persistence_diagram_faceted.png"
     # )
     #
-    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
     #
     # plot_persistence_entropy_by_prompt(
     #     nruns_df.filter(pl.col("embedding_model") == "Nomic"), "output/vis/persistence_entropy_by_prompt.png"
