@@ -1,5 +1,13 @@
 # TODO
 
+- pick the "exemplar" prompts
+
+- try timeline export on real data, create figure for paper
+
+- calculate semantic drift for real data, generate the drift vs seq_no charts
+
+- get h_n subscripting for charts (maybe even using an enum at the polars level)
+
 - clustering charts:
 
   - % of outliers vs cluster members
@@ -10,15 +18,7 @@
 
 - check normality
 
-- violin plots for entropy
-
 - idea: downsample before clustering (for computational reasons)
-
-- generate pdf/svg plots by default (and png only for the heaps-overplotted
-  ones)
-
-- add semantic drift metrics back in (create a new polars expr-based helper
-  function)
 
 - autoregressive parameter (time column)
 
@@ -30,6 +30,9 @@
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
   superclasses (and why we chose the models and params we've currently chosen)
 
+- (maybe) add the vector embedding of the initial prompt to the Run object (to
+  save having to re-calculate it later)
+
 - populate the estimated_time function (for genai and embedding models) with
   real values
 
@@ -38,7 +41,6 @@
 
 - export video improvements:
 
-  - add a black separator between each "region" (same prompt & network)
   - add visual indicator for when there's a semantic "jump"
   - add colour coding to the different model names
   - "one label per row" and "one label per column"
@@ -62,18 +64,6 @@
 - create similarity matrices for runs
 
 - DB indexes
-
-- chart ideas:
-
-  - [this one](https://altair-viz.github.io/gallery/select_detail.html) with PE
-    on left, and PD on the right
-  - add [strips](https://altair-viz.github.io/gallery/dot_dash_plot.html) to the
-    new PD plots
-  - maybe use a
-    [minimap](https://altair-viz.github.io/gallery/scatter_with_minimap.html)
-  - [wrapped facets](https://altair-viz.github.io/gallery/us_population_over_time_facet.html)
-  - plot the
-    [images in a tooltip](https://altair-viz.github.io/case_studies/numpy-tooltip-images.html)
 
 ## Int8 quantization for Flux.1-schnell
 
