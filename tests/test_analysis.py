@@ -345,11 +345,8 @@ def test_add_persistence_entropy(db_session):
     # Get the runs DataFrame
     df = load_runs_df(db_session)
 
-    # Apply the add_persistence_entropy function
-    df_with_persistence = add_persistence_entropy(df, db_session)
-
     # Verify we have rows in the DataFrame
-    assert df_with_persistence.height > 0
+    assert df.height > 0
 
     # Check column names for persistence-related columns
     persistence_columns = [
@@ -368,12 +365,12 @@ def test_add_persistence_entropy(db_session):
 
     # Check that all persistence columns exist
     for column in persistence_columns:
-        assert column in df_with_persistence.columns, (
+        assert column in df.columns, (
             f"Column {column} missing from result"
         )
 
     # Filter for just this experiment
-    exp_df = df_with_persistence.filter(pl.col("experiment_id") == str(config.id))
+    exp_df = df.filter(pl.col("experiment_id") == str(config.id))
 
     # Get all runs associated with this experiment
     runs = list_runs(db_session)
