@@ -722,7 +722,6 @@ def export_timeline(
 
     # Create the canvas
     canvas = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
-    draw = ImageDraw.Draw(canvas)
 
     # Set up font for border text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
