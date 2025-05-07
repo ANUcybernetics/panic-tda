@@ -707,92 +707,127 @@ def export_timeline(
     # Calculate the total width of the timeline for each run
     timeline_width = images_per_run * IMAGE_SIZE
 
-    # Calculate the canvas dimensions
-    # Only +1 row for top border and +1 col for left border
-    canvas_width = (cols * timeline_width) + IMAGE_SIZE
-    canvas_height = (rows + 1) * IMAGE_SIZE
-
     # Add spacing between network columns
     network_spacing = 20
-    canvas_width += (cols - 1) * network_spacing if cols > 1 else 0
+    timeline_total_width = cols * timeline_width
+    if cols > 1:
+        timeline_total_width += (cols - 1) * network_spacing
 
-    # Add spacing between prompt rows
-    prompt_spacing = 20
-    canvas_height += (n_prompts - 1) * prompt_spacing if n_prompts > 1 else 0
+    # Calculate canvas width without left border (since we're removing it)
+    canvas_width = timeline_total_width
+
+    # Increase spacing between prompt rows to accommodate text
+    prompt_text_height = 60  # Increased height for prompt text area (was 40)
+    prompt_spacing = prompt_text_height + 20  # Add extra spacing around the text
+
+    # Add height for network banner at the top
+    network_banner_height = 50
+
+    # Calculate canvas height (now without left border)
+    # Network banner + all rows of images + spacing between prompt blocks
+    canvas_height = (
+        network_banner_height
+        + (rows * IMAGE_SIZE)
+        + ((n_prompts - 1) * prompt_spacing if n_prompts > 1 else 0)
+    )
 
     # Create the canvas
     canvas = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
 
-    # Set up font for border text
+    # Set up font for text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    base_font_size = int(IMAGE_SIZE * 0.1)
+    base_font_size = int(IMAGE_SIZE * 0.12)  # Increased from 0.1
+    prompt_font_size = max(
+        18, int(base_font_size * 1.2)
+    )  # Increased font size for prompts
+    network_font_size = max(
+        16, int(base_font_size * 1.1)
+    )  # Increased font size for networks
+    prompt_font = ImageFont.truetype(font_path, prompt_font_size)
+    network_font = ImageFont.truetype(font_path, network_font_size)
 
-    # Helper function to create white title cards with black text
-    def create_white_title_card(
-        prompt_text: str, size: int, font_path: str, base_font_size: int
-    ) -> Image.Image:
-        """Creates a square white image with black wrapped text, centered vertically and horizontally."""
-        img = Image.new("RGB", (size, size), color="white")
-        draw = ImageDraw.Draw(img)
+    # Helper function to create a horizontal text banner for prompts
+    def create_prompt_banner(text, width, height, font):
+        """Creates a horizontal banner with centered text"""
+        banner = Image.new(
+            "RGB", (width, height), color=(240, 240, 240)
+        )  # Light gray background
+        draw = ImageDraw.Draw(banner)
 
-        title_font_size = max(12, int(base_font_size * 0.8))
-        font = ImageFont.truetype(font_path, title_font_size)
+        # Center text horizontally and vertically
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except AttributeError:
+            text_width = draw.textlength(text, font=font)
+            text_height = font.size
 
-        # Calculate max width allowing for padding
-        padding = size * 0.1
-        max_text_width = size - (2 * padding)
+        x = (width - text_width) / 2
+        y = (height - text_height) / 2
 
-        # Use the wrapping helper with black text
-        draw_text_wrapped(
-            draw, prompt_text, (padding, padding), max_text_width, font, fill=(0, 0, 0)
-        )
-
-        return img
-
-    # Draw prompt information in left border only
-    for prompt_idx, prompt in enumerate(ordered_prompts):
-        for seed_idx in range(max_seeds):
-            # Calculate row position with prompt spacing
-            base_row = prompt_idx * max_seeds + seed_idx
-            # Add prompt spacing for each prompt after the first
-            y_offset = (base_row + 1) * IMAGE_SIZE
-            if prompt_idx > 0:
-                y_offset += prompt_idx * prompt_spacing
-
-            # Left border
-            left_border_x = 0
-            left_border_y = y_offset
-
-            # Create and paste prompt tile
-            prompt_tile = create_white_title_card(
-                prompt, IMAGE_SIZE, font_path, base_font_size
-            )
-            canvas.paste(prompt_tile, (left_border_x, left_border_y))
+        draw.text((x, y), text, font=font, fill=(0, 0, 0))
+        return banner
 
     # Define abbreviations for network names
     abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
 
-    # Draw network information in top border only
+    # Create single network banner for the top
+    network_banner = Image.new(
+        "RGB", (canvas_width, network_banner_height), color="white"
+    )
+    draw = ImageDraw.Draw(network_banner)
+
+    # Create network labels with positions
     for network_idx, network in enumerate(all_networks):
         # Create abbreviated network string
         abbreviated_network = [abbreviations.get(net, net) for net in network]
         network_str = " → ".join(abbreviated_network)
 
         # Calculate position for this network
-        col_start = IMAGE_SIZE + network_idx * (timeline_width + network_spacing)
+        col_start = network_idx * (timeline_width + network_spacing)
+        col_center = col_start + (timeline_width / 2)
 
-        # Top border
-        top_border_x = col_start
-        top_border_y = 0
+        # Draw network text centered in its column
+        try:
+            bbox = draw.textbbox((0, 0), network_str, font=network_font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except AttributeError:
+            text_width = draw.textlength(network_str, font=network_font)
+            text_height = network_font.size
 
-        # Create and paste network tile
-        network_tile = create_white_title_card(
-            network_str, IMAGE_SIZE, font_path, base_font_size
-        )
-        canvas.paste(network_tile, (top_border_x, top_border_y))
+        x = col_center - (text_width / 2)
+        y = (network_banner_height - text_height) / 2
 
-    # Now place evenly-spaced images from each run in its timeline
+        draw.text((x, y), network_str, font=network_font, fill=(0, 0, 0))
+
+    # Paste the network banner at the top
+    canvas.paste(network_banner, (0, 0))
+
+    # Calculate the starting Y position for placing images (after network banner)
+    content_start_y = network_banner_height
+
+    # Now place prompt headers and images
     for prompt_idx, prompt in enumerate(ordered_prompts):
+        # Calculate Y position for this prompt's block
+        block_start_y = content_start_y
+        if prompt_idx > 0:
+            # Add height of previous blocks + prompt spacing
+            previous_blocks_height = prompt_idx * max_seeds * IMAGE_SIZE
+            previous_spacing = prompt_idx * prompt_spacing
+            block_start_y += previous_blocks_height + previous_spacing
+
+        # Create and place the prompt banner above this block
+        prompt_banner = create_prompt_banner(
+            prompt, canvas_width, prompt_text_height, prompt_font
+        )
+        prompt_banner_y = (
+            block_start_y - prompt_text_height if prompt_idx > 0 else content_start_y
+        )
+        canvas.paste(prompt_banner, (0, prompt_banner_y))
+
+        # Place images for each run with this prompt
         for network_idx, network in enumerate(all_networks):
             if network in prompt_network_runs[prompt]:
                 # Sort runs with same prompt and network by run_id
@@ -832,16 +867,17 @@ def export_timeline(
                             idx = min(int(i * step), len(image_invocations) - 1)
                             selected_images.append(image_invocations[idx])
 
-                    # Calculate the y position with prompt spacing
-                    base_row = prompt_idx * max_seeds + seed_idx
-                    y_offset = (base_row + 1) * IMAGE_SIZE  # +1 for top border
-                    if prompt_idx > 0:
-                        y_offset += prompt_idx * prompt_spacing
+                    # Calculate row position within this prompt block
+                    if prompt_idx == 0:
+                        # For first prompt, start after the prompt banner
+                        y_offset = (
+                            block_start_y + prompt_text_height + (seed_idx * IMAGE_SIZE)
+                        )
+                    else:
+                        y_offset = block_start_y + (seed_idx * IMAGE_SIZE)
 
                     # Calculate horizontal position
-                    col_start = (
-                        network_idx * (timeline_width + network_spacing) + IMAGE_SIZE
-                    )  # +IMAGE_SIZE for left border
+                    col_start = network_idx * (timeline_width + network_spacing)
 
                     # Paste the selected images
                     for img_idx, invocation in enumerate(selected_images):
