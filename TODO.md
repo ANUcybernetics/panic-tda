@@ -1,8 +1,6 @@
 # TODO
 
-- pick the "exemplar" prompts
-
-- try timeline export on real data, create figure for paper
+- add sequence number indicators for the timeline grid
 
 - calculate semantic drift for real data, generate the drift vs seq_no charts
 
