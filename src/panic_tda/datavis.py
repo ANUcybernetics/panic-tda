@@ -172,11 +172,11 @@ def plot_persistence_entropy(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="embedding_model", y="entropy", fill="text_model"),
+            aes(x="embedding_model", y="entropy", fill="embedding_model"),
         )
         + geom_violin()
-        + geom_boxplot()
-        + labs(x="embedding model", y="entropy", fill="text model")
+        + geom_boxplot(fill="white")
+        + labs(x="embedding model", y="entropy")
         + guides(fill=None)
         + facet_grid("homology_dimension ~ image_model + text_model")
         + theme(figure_size=(10, 6), strip_text=element_text(size=10))
@@ -305,7 +305,7 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.analysis import cache_dfs
 
-    cache_dfs(session, runs=True, embeddings=True, invocations=True)
+    cache_dfs(session, runs=True, embeddings=True, invocations=False)
     ### INVOCATIONS
     #
     # from panic_tda.analysis import load_invocations_df
@@ -325,15 +325,15 @@ def paper_charts(session: Session) -> None:
     #
     ### RUNS
     #
-    # from panic_tda.analysis import load_runs_df
-    #
-    # runs_df = load_runs_df(session)
+    from panic_tda.analysis import load_runs_df
+
+    runs_df = load_runs_df(session)
     #
     # plot_persistence_diagram_faceted(
     #     runs_df, "output/vis/persistence_diagram_faceted.png"
     # )
     #
-    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
     #
     # plot_persistence_entropy_by_prompt(
     #     nruns_df.filter(pl.col("embedding_model") == "Nomic"), "output/vis/persistence_entropy_by_prompt.png"
