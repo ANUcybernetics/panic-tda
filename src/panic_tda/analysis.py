@@ -109,6 +109,28 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     return pl.Series(cluster_labels)
 
 
+def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+    """
+    Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
+
+    Args:
+        df: DataFrame containing embedding metadata (without vectors)
+        session: SQLModel database session for fetching vectors
+
+    Returns:
+        DataFrame with cluster labels added
+    """
+    # Add vectors column using map_elements
+    df = df.with_columns(
+        pl.col("id")
+        .map_batches(
+            lambda embedding_ids: fetch_and_cluster_vectors(embedding_ids, session),
+        )
+        .alias("cluster_label")
+    )
+    return df
+
+
 def fetch_and_calculate_drift_euclid(
     embedding_ids: pl.Series, session: Session
 ) -> pl.Series:
@@ -134,28 +156,6 @@ def fetch_and_calculate_drift_euclid(
     distances = [np.linalg.norm(vector - first_vector) for vector in vectors]
 
     return pl.Series(distances)
-
-
-def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
-    """
-    Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
-
-    Args:
-        df: DataFrame containing embedding metadata (without vectors)
-        session: SQLModel database session for fetching vectors
-
-    Returns:
-        DataFrame with cluster labels added
-    """
-    # Add vectors column using map_elements
-    df = df.with_columns(
-        pl.col("id")
-        .map_batches(
-            lambda embedding_ids: fetch_and_cluster_vectors(embedding_ids, session),
-        )
-        .alias("cluster_label")
-    )
-    return df
 
 
 def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFrame:
