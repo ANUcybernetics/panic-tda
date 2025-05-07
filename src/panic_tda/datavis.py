@@ -329,6 +329,56 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
+    selected_prompts = [
+        "a picture of a man",
+        "a picture of a woman",
+        "a picture of a child",
+        "a cat",
+        "a dog",
+        "a rabbit",
+    ]
+    selected_networks = [
+        ["FluxSchnell", "BLIP2"],
+        ["FluxSchnell", "Moondream"],
+        ["SDXLTurbo", "BLIP2"],
+        ["SDXLTurbo", "Moondream"],
+    ]
+    # Initialize empty list for selected IDs
+    selected_ids = []
+
+    # Import Run model
+    from panic_tda.schemas import Run
+
+    # Loop through each prompt in selected_prompts
+    for prompt in selected_prompts:
+        # For each network pair, get 2 runs
+        for network in selected_networks:
+            # Query the database for runs matching prompt and models
+            matching_runs = (
+                session.query(Run)
+                .filter(
+                    Run.initial_prompt == prompt,
+                    Run.network == network,
+                )
+                .limit(2)
+                .all()
+            )
+
+            # Extract run IDs and add to selected_ids
+            run_ids = [str(run.id) for run in matching_runs]
+            selected_ids.extend(run_ids)
+
+    # Export timeline image for selected IDs
+    logging.info(f"Exporting timeline for {len(selected_ids)} selected runs")
+    from panic_tda.export import export_timeline
+
+    # Export the timeline image
+    export_timeline(
+        run_ids=selected_ids,
+        session=session,
+        images_per_run=5,
+        output_image="output/vis/selected_prompts_timeline.png",
+    )
     # from panic_tda.analysis import cache_dfs
 
     # cache_dfs(session, runs=True, embeddings=True, invocations=True)
