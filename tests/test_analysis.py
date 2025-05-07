@@ -235,17 +235,10 @@ def test_add_semantic_drift(db_session):
     assert "drift_cosine" in df.columns
 
     # Check that drift values are calculated properly
-    # First item should have 0 drift since it's the starting point
-    first_item = df.filter(pl.col("sequence_number") == 1)
-    assert first_item.height > 0
-    assert (first_item["drift_euclid"] == 0.0).all()
-    assert (first_item["drift_cosine"] == 0.0).all()
-
-    # Later items should have non-zero drift
-    later_items = df.filter(pl.col("sequence_number") > 1)
-    assert later_items.height > 0
-    assert (later_items["drift_euclid"] >= 0.0).all()
-    assert (later_items["drift_cosine"] >= 0.0).all()
+    # All drift values should be non-negative
+    assert df.height > 0
+    assert (df["drift_euclid"] >= 0.0).all()
+    assert (df["drift_cosine"] >= 0.0).all()
 
 
 def test_load_runs_df(db_session):

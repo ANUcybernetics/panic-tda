@@ -1,8 +1,5 @@
 # TODO
 
-- create an embedding of the initial prompts as well (useful for semantic drift
-  calculations)
-
 - clustering charts:
 
   - % of outliers vs cluster members
