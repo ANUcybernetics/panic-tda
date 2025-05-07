@@ -782,7 +782,7 @@ def export_timeline(
     for network_idx, network in enumerate(all_networks):
         # Create abbreviated network string
         abbreviated_network = [abbreviations.get(net, net) for net in network]
-        network_str = " → ".join(abbreviated_network)
+        network_str = "network: " + " → ".join(abbreviated_network)
 
         # Calculate position for this network
         col_start = network_idx * (timeline_width + network_spacing)
@@ -820,7 +820,7 @@ def export_timeline(
 
         # Create and place the prompt banner above this block
         prompt_banner = create_prompt_banner(
-            prompt, canvas_width, prompt_text_height, prompt_font
+            "prompt: " + prompt, canvas_width, prompt_text_height, prompt_font
         )
         prompt_banner_y = (
             block_start_y - prompt_text_height if prompt_idx > 0 else content_start_y
