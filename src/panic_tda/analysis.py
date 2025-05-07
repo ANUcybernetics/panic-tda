@@ -625,7 +625,7 @@ def prompt_category_mapper(initial_prompt: str) -> str:
         "red": "colours",
         "blue": "colours",
         "indigo": "colours",
-        "violet": "colours"
+        "violet": "colours",
     }
 
     return prompt_to_category.get(initial_prompt)

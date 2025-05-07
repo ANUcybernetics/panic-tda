@@ -729,7 +729,9 @@ def export_timeline(
     base_font_size = int(IMAGE_SIZE * 0.1)
 
     # Helper function to create white title cards with black text
-    def create_white_title_card(prompt_text: str, size: int, font_path: str, base_font_size: int) -> Image.Image:
+    def create_white_title_card(
+        prompt_text: str, size: int, font_path: str, base_font_size: int
+    ) -> Image.Image:
         """Creates a square white image with black wrapped text, centered vertically and horizontally."""
         img = Image.new("RGB", (size, size), color="white")
         draw = ImageDraw.Draw(img)
@@ -742,7 +744,9 @@ def export_timeline(
         max_text_width = size - (2 * padding)
 
         # Use the wrapping helper with black text
-        draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font, fill=(0, 0, 0))
+        draw_text_wrapped(
+            draw, prompt_text, (padding, padding), max_text_width, font, fill=(0, 0, 0)
+        )
 
         return img
 
@@ -814,7 +818,9 @@ def export_timeline(
 
                     # Get all image invocations
                     image_invocations = [
-                        inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+                        inv
+                        for inv in run.invocations
+                        if inv.type == InvocationType.IMAGE
                     ]
                     image_invocations.sort(key=lambda inv: inv.sequence_number)
 
@@ -829,7 +835,11 @@ def export_timeline(
                         selected_images = image_invocations
                     else:
                         # Select evenly-spaced images
-                        step = (len(image_invocations) - 1) / (images_per_run - 1) if images_per_run > 1 else 0
+                        step = (
+                            (len(image_invocations) - 1) / (images_per_run - 1)
+                            if images_per_run > 1
+                            else 0
+                        )
                         for i in range(images_per_run):
                             idx = min(int(i * step), len(image_invocations) - 1)
                             selected_images.append(image_invocations[idx])
@@ -841,7 +851,9 @@ def export_timeline(
                         y_offset += prompt_idx * prompt_spacing
 
                     # Calculate horizontal position
-                    col_start = network_idx * (timeline_width + network_spacing) + IMAGE_SIZE  # +IMAGE_SIZE for left border
+                    col_start = (
+                        network_idx * (timeline_width + network_spacing) + IMAGE_SIZE
+                    )  # +IMAGE_SIZE for left border
 
                     # Paste the selected images
                     for img_idx, invocation in enumerate(selected_images):

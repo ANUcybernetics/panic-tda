@@ -5,7 +5,6 @@ import polars as pl
 
 from panic_tda.analysis import (
     add_cluster_labels,
-    add_persistence_entropy,
     cache_dfs,
     load_embeddings_df,
     load_invocations_df,

@@ -331,7 +331,7 @@ def paper_charts(session: Session) -> None:
     """
     # from panic_tda.analysis import cache_dfs
 
-    # cache_dfs(session, runs=True, embeddings=True, invocations=False)
+    # cache_dfs(session, runs=True, embeddings=True, invocations=True)
     ### INVOCATIONS
     #
     # from panic_tda.analysis import load_invocations_from_cache
@@ -340,11 +340,11 @@ def paper_charts(session: Session) -> None:
     #
     ### EMBEDDINGS
     #
-    from panic_tda.analysis import load_embeddings_from_cache
+    # from panic_tda.analysis import load_embeddings_from_cache
 
-    embeddings_df = load_embeddings_from_cache()
-    print(embeddings_df.head())
-    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.pdf")
+    # embeddings_df = load_embeddings_from_cache()
+    # print(embeddings_df.head())
+    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.pdf")
     #
     ### RUNS
     #
