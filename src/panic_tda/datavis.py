@@ -5,15 +5,14 @@ import polars as pl
 from plotnine import (
     aes,
     coord_flip,
-    element_text,
     element_blank,
+    element_text,
     facet_grid,
     facet_wrap,
     geom_boxplot,
     geom_point,
     geom_violin,
     ggplot,
-    guides,
     labs,
     scale_x_continuous,
     scale_y_continuous,
@@ -196,7 +195,7 @@ def plot_persistence_entropy(
             figure_size=(10, 6),
             strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
-            axis_text_x=element_blank()
+            axis_text_x=element_blank(),
         )
     )
 
@@ -330,37 +329,34 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    from panic_tda.analysis import cache_dfs
+    # from panic_tda.analysis import cache_dfs
 
-    cache_dfs(session, runs=True, embeddings=True, invocations=False)
+    # cache_dfs(session, runs=True, embeddings=True, invocations=False)
     ### INVOCATIONS
     #
-    # from panic_tda.analysis import load_invocations_df
-    # invocations_df = load_invocations_df(session).filter(pl.col("embedding_model") == "Nomic")
+    # from panic_tda.analysis import load_invocations_from_cache
+    # invocations_df = load_invocations_from_cache().filter(pl.col("embedding_model") == "Nomic")
     # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
     #
     ### EMBEDDINGS
     #
-    # from panic_tda.analysis import add_cluster_labels, load_embeddings_df
-    #
-    # embeddings_df = load_embeddings_df(session).filter(
-    #     pl.col("embedding_model") == "Nomic"
-    # )
-    # embeddings_df = add_cluster_labels(embeddings_df)
-    # print(embeddings_df.head(100))
-    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.png")
+    from panic_tda.analysis import load_embeddings_from_cache
+
+    embeddings_df = load_embeddings_from_cache()
+    print(embeddings_df.head())
+    plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.pdf")
     #
     ### RUNS
     #
-    # from panic_tda.analysis import load_runs_df
+    # from panic_tda.analysis import load_runs_from_cache
 
-    # runs_df = load_runs_df(session)
+    # runs_df = load_runs_from_cache()
     #
     # plot_persistence_diagram_faceted(
     #     runs_df, "output/vis/persistence_diagram_faceted.png"
     # )
     #
-    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.png")
+    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.pdf")
     #
     # plot_persistence_entropy_by_prompt(
     #     nruns_df.filter(pl.col("embedding_model") == "Nomic"), "output/vis/persistence_entropy_by_prompt.png"
