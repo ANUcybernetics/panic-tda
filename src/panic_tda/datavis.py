@@ -332,10 +332,10 @@ def paper_charts(session: Session) -> None:
     selected_prompts = [
         "a picture of a man",
         "a picture of a woman",
-        "a picture of a child",
+        # "a picture of a child",
         "a cat",
         "a dog",
-        "a rabbit",
+        # "a rabbit",
     ]
     selected_networks = [
         ["FluxSchnell", "BLIP2"],
@@ -360,7 +360,7 @@ def paper_charts(session: Session) -> None:
                     Run.initial_prompt == prompt,
                     Run.network == network,
                 )
-                .limit(2)
+                .limit(3)
                 .all()
             )
 
@@ -376,8 +376,8 @@ def paper_charts(session: Session) -> None:
     export_timeline(
         run_ids=selected_ids,
         session=session,
-        images_per_run=5,
-        output_image="output/vis/selected_prompts_timeline.png",
+        images_per_run=8,
+        output_image="output/vis/selected_prompts_timeline.jpg",
     )
     # from panic_tda.analysis import cache_dfs
 
