@@ -615,3 +615,209 @@ def export_video(
                 shutil.rmtree(temp_dir)
             except Exception as e:
                 logger.error(f"Error cleaning up temp dir: {e}")
+
+
+def export_timeline(
+    run_ids: list[str],
+    session: Session,
+    images_per_run: int,
+    output_image: str,
+    prompt_order: list[str] = None,
+) -> None:
+    """
+    Export a timeline image showing the progression of multiple runs, organized by
+    prompt (rows) and network (columns) with informative borders.
+
+    Args:
+        run_ids: List of run IDs to include in the timeline
+        session: SQLModel Session for database operations
+        images_per_run: Number of evenly-spaced images to show from each run
+        output_image: Path to save the output image
+        prompt_order: Optional custom ordering for prompts (default: alphabetical)
+    """
+    # Setup output directory
+    output_dir = os.path.dirname(output_image)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Load runs
+    runs = []
+    for run_id in run_ids:
+        run = read_run(UUID(run_id), session)
+        if run:
+            session.refresh(run)
+            runs.append(run)
+
+    if not runs:
+        logger.error("No valid runs found for the provided IDs")
+        return
+
+    # Group runs by prompt and network
+    prompt_network_runs = {}
+    all_prompts = set()
+    all_networks = []
+    network_to_idx = {}  # For ordered networks
+
+    for run in runs:
+        prompt = run.initial_prompt
+        network_tuple = tuple(run.network)  # Convert list to hashable tuple
+
+        if network_tuple not in network_to_idx:
+            network_to_idx[network_tuple] = len(all_networks)
+            all_networks.append(network_tuple)
+
+        all_prompts.add(prompt)
+
+        # Create nested dictionary structure for prompt -> network -> runs
+        if prompt not in prompt_network_runs:
+            prompt_network_runs[prompt] = {}
+
+        if network_tuple not in prompt_network_runs[prompt]:
+            prompt_network_runs[prompt][network_tuple] = []
+
+        prompt_network_runs[prompt][network_tuple].append(run)
+
+    # Determine prompt order
+    if prompt_order:
+        # Use specified order, adding any missing prompts at the end
+        ordered_prompts = [p for p in prompt_order if p in prompt_network_runs]
+        # Add any prompts not in prompt_order
+        ordered_prompts.extend(
+            sorted([p for p in prompt_network_runs if p not in ordered_prompts])
+        )
+    else:
+        # Default: sort prompts alphabetically
+        ordered_prompts = sorted(prompt_network_runs.keys())
+
+    # Sort networks consistently
+    all_networks.sort()
+
+    # Calculate seeds per row (runs per prompt-network combination)
+    max_seeds = 0
+    for prompt in ordered_prompts:
+        for network in all_networks:
+            if network in prompt_network_runs[prompt]:
+                max_seeds = max(max_seeds, len(prompt_network_runs[prompt][network]))
+
+    # Calculate grid dimensions
+    n_prompts = len(ordered_prompts)
+    n_networks = len(all_networks)
+    rows = n_prompts * max_seeds
+    cols = n_networks
+
+    # Calculate the total width of the timeline for each run
+    timeline_width = images_per_run * IMAGE_SIZE
+
+    # Calculate the canvas dimensions
+    # +2 rows for top/bottom borders and +2 cols for left/right borders
+    canvas_width = (cols * timeline_width) + (IMAGE_SIZE * 2)
+    canvas_height = (rows + 2) * IMAGE_SIZE
+
+    # Add spacing between network columns
+    network_spacing = 20
+    canvas_width += (cols - 1) * network_spacing if cols > 1 else 0
+
+    # Create the canvas
+    canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+
+    # Set up font for border text
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    base_font_size = int(IMAGE_SIZE * 0.1)
+
+    # Draw prompt information in left and right borders
+    for prompt_idx, prompt in enumerate(ordered_prompts):
+        for seed_idx in range(max_seeds):
+            # Row position for this prompt and seed
+            row_idx = (prompt_idx * max_seeds) + seed_idx
+
+            # Left border
+            left_border_x = 0
+            left_border_y = (row_idx + 1) * IMAGE_SIZE
+
+            # Create and paste prompt tile
+            prompt_tile = create_prompt_title_card(
+                prompt, IMAGE_SIZE, font_path, base_font_size
+            )
+            canvas.paste(prompt_tile, (left_border_x, left_border_y))
+
+            # Right border - same content as left
+            right_border_x = canvas_width - IMAGE_SIZE
+            right_border_y = left_border_y
+            canvas.paste(prompt_tile, (right_border_x, right_border_y))
+
+    # Define abbreviations for network names
+    abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
+
+    # Draw network information in top and bottom borders
+    for network_idx, network in enumerate(all_networks):
+        # Create abbreviated network string
+        abbreviated_network = [abbreviations.get(net, net) for net in network]
+        network_str = " → ".join(abbreviated_network)
+
+        # Calculate position for this network
+        col_start = IMAGE_SIZE + network_idx * (timeline_width + network_spacing)
+
+        # Top border
+        top_border_x = col_start
+        top_border_y = 0
+
+        # Create and paste network tile
+        network_tile = create_prompt_title_card(
+            network_str, IMAGE_SIZE, font_path, base_font_size
+        )
+        canvas.paste(network_tile, (top_border_x, top_border_y))
+
+        # Bottom border - same content as top
+        bottom_border_x = top_border_x
+        bottom_border_y = (rows + 1) * IMAGE_SIZE
+        canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
+
+    # Now place evenly-spaced images from each run in its timeline
+    for prompt_idx, prompt in enumerate(ordered_prompts):
+        for network_idx, network in enumerate(all_networks):
+            if network in prompt_network_runs[prompt]:
+                # Sort runs with same prompt and network by run_id
+                sorted_runs = sorted(
+                    prompt_network_runs[prompt][network], key=lambda r: str(r.id)
+                )
+
+                for seed_idx, run in enumerate(sorted_runs):
+                    if seed_idx >= max_seeds:
+                        continue  # Skip if we have more runs than max_seeds
+
+                    # Get all image invocations
+                    image_invocations = [
+                        inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+                    ]
+                    image_invocations.sort(key=lambda inv: inv.sequence_number)
+
+                    if not image_invocations:
+                        logger.warning(f"No images found for run {run.id}")
+                        continue
+
+                    # Select evenly-spaced images
+                    selected_images = []
+                    if len(image_invocations) <= images_per_run:
+                        # Use all available images if we have fewer than requested
+                        selected_images = image_invocations
+                    else:
+                        # Select evenly-spaced images
+                        step = (len(image_invocations) - 1) / (images_per_run - 1) if images_per_run > 1 else 0
+                        for i in range(images_per_run):
+                            idx = min(int(i * step), len(image_invocations) - 1)
+                            selected_images.append(image_invocations[idx])
+
+                    # Position in the grid
+                    row = (prompt_idx * max_seeds) + seed_idx + 1  # +1 for top border
+                    col_start = network_idx * (timeline_width + network_spacing) + IMAGE_SIZE  # +IMAGE_SIZE for left border
+
+                    # Paste the selected images
+                    for img_idx, invocation in enumerate(selected_images):
+                        if invocation.output is not None:
+                            x_offset = col_start + img_idx * IMAGE_SIZE
+                            y_offset = row * IMAGE_SIZE
+                            canvas.paste(invocation.output, (x_offset, y_offset))
+
+    # Save the final image
+    canvas.save(output_image, format="JPEG", quality=95)
+    logger.info(f"Timeline image saved to: {output_image}")
