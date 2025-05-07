@@ -200,7 +200,7 @@ class Nomic(EmbeddingModel):
                 contents,
                 convert_to_numpy=True,
                 normalize_embeddings=True,
-                prompt_name="passage",  # This adds the "search_document:" prefix automatically
+                prompt_name="passage",  # TODO should be "STS" for this task
             )
 
             # Return list of numpy arrays
