@@ -277,9 +277,21 @@ def test_load_runs_df(db_session):
         "image_model",
         "text_model",
         "initial_prompt",
+        "prompt_category",
         "seed",
         "max_length",
         "num_invocations",
+        "persistence_diagram_id",
+        "embedding_model",
+        "persistence_diagram_started_at",
+        "persistence_diagram_completed_at",
+        "persistence_diagram_duration",
+        "homology_dimension",
+        "feature_id",
+        "birth",
+        "death",
+        "persistence",
+        "entropy",
     ]
 
     # Check for missing columns using set difference

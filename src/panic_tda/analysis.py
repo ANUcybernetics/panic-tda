@@ -567,6 +567,70 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     return df
 
 
+def prompt_category_mapper(initial_prompt: str) -> str:
+    """
+    Map an initial prompt to its category based on the predefined mapping.
+
+    Args:
+        initial_prompt: The initial prompt to map
+
+    Returns:
+        The category of the prompt or None if not found
+    """
+    # Mapping from initial prompts to categories derived from prompt-counts.json
+    prompt_to_category = {
+        "a painting of a man": "people_portraits",
+        "a picture of a child": "people_portraits",
+        "a picture of a man": "people_portraits",
+        "a photorealistic portrait of a child": "people_portraits",
+        "a painting of a woman": "people_portraits",
+        "a painting of a child": "people_portraits",
+        "a photo of a child": "people_portraits",
+        "a photo of a man": "people_portraits",
+        "a photorealistic portrait of a woman": "people_portraits",
+        "a photo of a woman": "people_portraits",
+        "a photorealistic portrait of a man": "people_portraits",
+        "a picture of a woman": "people_portraits",
+        "a photorealistic portrait photo of a child": "people_portraits",
+        "a photorealistic portrait photo of a woman": "people_portraits",
+        "a photorealistic portrait photo of a man": "people_portraits",
+        "nah": "abstract",
+        "yeah": "abstract",
+        "a giraffe": "animals",
+        "a cat": "animals",
+        "an elephant": "animals",
+        "a hamster": "animals",
+        "a rabbit": "animals",
+        "a dog": "animals",
+        "a lion": "animals",
+        "a goldfish": "animals",
+        "a red circle on a black background": "geometric_shapes",
+        "a red circle on a yellow background": "geometric_shapes",
+        "a blue circle on a yellow background": "geometric_shapes",
+        "a yellow circle on a blue background": "geometric_shapes",
+        "a blue circle on a red background": "geometric_shapes",
+        "a yellow circle on a black background": "geometric_shapes",
+        "a blue circle on a black background": "geometric_shapes",
+        "a red circle on a blue background": "geometric_shapes",
+        "a yellow circle on a red background": "geometric_shapes",
+        "a pear": "food",
+        "a banana": "food",
+        "an apple": "food",
+        "a boat": "transportation",
+        "a train": "transportation",
+        "a car": "transportation",
+        "orange": "colours",
+        "green": "colours",
+        "yellow": "colours",
+        "red": "colours",
+        "blue": "colours",
+        "indigo": "colours",
+        "violet": "colours"
+    }
+
+    return prompt_to_category.get(initial_prompt)
+
+
 def load_runs_df(session: Session) -> pl.DataFrame:
     """
     Load all runs from the database into a tidy polars DataFrame.
@@ -628,6 +692,13 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         pl.col("models").list.get(0).alias("image_model"),
         pl.col("models").list.get(1).alias("text_model"),
     ]).drop("models")
+
+    # Add prompt category column
+    df = df.with_columns([
+        pl.col("initial_prompt")
+        .map_elements(prompt_category_mapper, return_dtype=pl.List(pl.String))
+        .alias("prompt_category")
+    ])
 
     df = add_persistence_entropy(df, session)
 
