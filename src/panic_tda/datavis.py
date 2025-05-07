@@ -368,17 +368,15 @@ def paper_charts(session: Session) -> None:
             run_ids = [str(run.id) for run in matching_runs]
             selected_ids.extend(run_ids)
 
-    # Export timeline image for selected IDs
-    logging.info(f"Exporting timeline for {len(selected_ids)} selected runs")
-    from panic_tda.export import export_timeline
+    # from panic_tda.export import export_timeline
 
     # Export the timeline image
-    export_timeline(
-        run_ids=selected_ids,
-        session=session,
-        images_per_run=8,
-        output_image="output/vis/selected_prompts_timeline.jpg",
-    )
+    # export_timeline(
+    #     run_ids=selected_ids,
+    #     session=session,
+    #     images_per_run=8,
+    #     output_image="output/vis/selected_prompts_timeline.jpg",
+    # )
     # from panic_tda.analysis import cache_dfs
 
     # cache_dfs(session, runs=True, embeddings=True, invocations=True)
@@ -393,8 +391,9 @@ def paper_charts(session: Session) -> None:
     # from panic_tda.analysis import load_embeddings_from_cache
 
     # embeddings_df = load_embeddings_from_cache()
-    # print(embeddings_df.head())
-    # plot_semantic_drift(embeddings_df, "output/vis/semantic_drift.pdf")
+
+    # selected_embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
+    # plot_semantic_drift(selected_embeddings_df, "output/vis/semantic_drift.pdf")
     #
     ### RUNS
     #
