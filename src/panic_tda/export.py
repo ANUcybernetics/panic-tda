@@ -721,12 +721,30 @@ def export_timeline(
     canvas_height += (n_prompts - 1) * prompt_spacing if n_prompts > 1 else 0
 
     # Create the canvas
-    canvas = Image.new("RGB", (canvas_width, canvas_height), (0, 0, 0))
+    canvas = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
     draw = ImageDraw.Draw(canvas)
 
     # Set up font for border text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     base_font_size = int(IMAGE_SIZE * 0.1)
+
+    # Helper function to create white title cards with black text
+    def create_white_title_card(prompt_text: str, size: int, font_path: str, base_font_size: int) -> Image.Image:
+        """Creates a square white image with black wrapped text, centered vertically and horizontally."""
+        img = Image.new("RGB", (size, size), color="white")
+        draw = ImageDraw.Draw(img)
+
+        title_font_size = max(12, int(base_font_size * 0.8))
+        font = ImageFont.truetype(font_path, title_font_size)
+
+        # Calculate max width allowing for padding
+        padding = size * 0.1
+        max_text_width = size - (2 * padding)
+
+        # Use the wrapping helper with black text
+        draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font, fill=(0, 0, 0))
+
+        return img
 
     # Draw prompt information in left and right borders
     for prompt_idx, prompt in enumerate(ordered_prompts):
@@ -743,7 +761,7 @@ def export_timeline(
             left_border_y = y_offset
 
             # Create and paste prompt tile
-            prompt_tile = create_prompt_title_card(
+            prompt_tile = create_white_title_card(
                 prompt, IMAGE_SIZE, font_path, base_font_size
             )
             canvas.paste(prompt_tile, (left_border_x, left_border_y))
@@ -770,7 +788,7 @@ def export_timeline(
         top_border_y = 0
 
         # Create and paste network tile
-        network_tile = create_prompt_title_card(
+        network_tile = create_white_title_card(
             network_str, IMAGE_SIZE, font_path, base_font_size
         )
         canvas.paste(network_tile, (top_border_x, top_border_y))
