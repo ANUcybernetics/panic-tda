@@ -167,15 +167,18 @@ def plot_persistence_entropy(
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
-    # Convert homology_dimension to h with subscripts
-    subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+    # # Convert homology_dimension to h with subscripts
+    # subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
 
-    # Transform homology_dimension column to use h with subscripts
-    df = df.with_columns(
-        pl.col("homology_dimension").map_elements(
-            lambda x: f"h{str(x).translate(subscripts)}"
-        ).alias("homology_dimension")
-    )
+    # # Transform homology_dimension column to use h with subscripts
+    # df = df.with_columns(
+    #     pl.concat_str(
+    #         pl.lit("h"),
+    #         pl.col("homology_dimension").cast(pl.Utf8).str.replace_all(
+    #             dict(zip("0123456789", "₀₁₂₃₄₅₆₇₈₉"))
+    #         )
+    #     ).alias("homology_dimension")
+    # )
 
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
