@@ -629,4 +629,6 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         pl.col("models").list.get(1).alias("text_model"),
     ]).drop("models")
 
+    df = add_persistence_entropy(df, session)
+
     return df
