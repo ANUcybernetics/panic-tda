@@ -136,3 +136,5 @@ class FluxSchnell(GenAIModel):
 ## paper notes
 
 - https://arxiv.org/abs/2401.17072
+- STS explained
+  https://dl.acm.org/doi/abs/10.1145/3440755?casa_token=b4hPhdIWOEMAAAAA:yQQeVE9NIVFz-DE7pjjI6F_yqM4kYr92t2O5o6qxT6kE2lPt3rPS674MnC9evHTPmiVaUYgHb_sPcjs
