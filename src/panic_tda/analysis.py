@@ -536,7 +536,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     """
     print("Loading embeddings metadata from database...")
 
-    # Modified SQL query to exclude the vector data column
+    # Modified SQL query to exclude the vector data column but include output_text
     query = """
     SELECT
         embedding.id AS id,
@@ -547,6 +547,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         invocation.run_id AS run_id,
         invocation.sequence_number AS sequence_number,
         invocation.model AS text_model,
+        invocation.output_text AS text,
         run.initial_prompt AS initial_prompt
     FROM embedding
     JOIN invocation ON embedding.invocation_id = invocation.id

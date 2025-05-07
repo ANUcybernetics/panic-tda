@@ -124,6 +124,7 @@ def test_load_embeddings_df(db_session):
         "text_model",
         "drift_euclid",
         "drift_cosine",
+        "text",  # Added output text to expected columns
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
@@ -148,6 +149,12 @@ def test_load_embeddings_df(db_session):
     assert text_row["initial_prompt"] == "test embedding dataframe"
     assert text_row["text_model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
+
+    # Check output text for text model (DummyI2T)
+    assert "text" in text_row
+    assert text_row["text"] is not None
+    assert isinstance(text_row["text"], str)
+    assert len(text_row["text"]) > 0
 
 
 def test_add_cluster_labels(db_session):
