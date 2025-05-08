@@ -1,3 +1,4 @@
+import math
 import json
 import logging
 import os
@@ -124,7 +125,9 @@ def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
 
 
 # Helper function for text wrapping on image
-def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255), max_height=None):
+def draw_text_wrapped(
+    draw, text, position, max_width, font, fill=(255, 255, 255), max_height=None
+):
     """Draws text on an image, wrapped to a max width."""
     # Estimate characters per line based on font size (adjust multiplier as needed)
     chars_per_line = int(max_width / (font.size * 0.6)) if font.size > 0 else 20
@@ -179,7 +182,14 @@ def create_prompt_title_card(
 
     # Use the wrapping helper, passing the top-left corner for positioning (padding, padding)
     # Pass the actual height (size) for proper vertical centering
-    draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font, max_height=size - 2*padding)
+    draw_text_wrapped(
+        draw,
+        prompt_text,
+        (padding, padding),
+        max_text_width,
+        font,
+        max_height=size - 2 * padding,
+    )
 
     return img
 
@@ -329,7 +339,7 @@ def export_video(
 
     # Define the gaps between network blocks and prompt blocks
     network_gap = 50  # 50px gap between network blocks
-    prompt_gap = 50   # 50px gap between prompt blocks
+    prompt_gap = 50  # 50px gap between prompt blocks
 
     # Step 3: Find the seeds_per_row that produces the aspect ratio closest to 16:9
     target_ratio = 16 / 9
@@ -350,14 +360,22 @@ def export_video(
         progress_bar_height = 30
 
         # Calculate width with borders and network gaps
-        width_with_borders = (total_cols * IMAGE_SIZE) + (2 * IMAGE_SIZE * 2)  # Add left and right borders (2x width)
+        width_with_borders = (total_cols * IMAGE_SIZE) + (
+            2 * IMAGE_SIZE * 2
+        )  # Add left and right borders (2x width)
         if n_networks > 1:
-            width_with_borders += (n_networks - 1) * network_gap  # Add gaps between networks
+            width_with_borders += (
+                n_networks - 1
+            ) * network_gap  # Add gaps between networks
 
         # Calculate height with borders and prompt gaps
-        height_with_borders = (total_rows * IMAGE_SIZE) + (2 * IMAGE_SIZE) + progress_bar_height  # Add top and bottom borders
+        height_with_borders = (
+            (total_rows * IMAGE_SIZE) + (2 * IMAGE_SIZE) + progress_bar_height
+        )  # Add top and bottom borders
         if n_prompts > 1:
-            height_with_borders += (n_prompts - 1) * prompt_gap  # Add gaps between prompts
+            height_with_borders += (
+                n_prompts - 1
+            ) * prompt_gap  # Add gaps between prompts
 
         ratio = width_with_borders / height_with_borders
         ratio_diff = abs(ratio - target_ratio)
@@ -407,7 +425,9 @@ def export_video(
     network_block_width = seeds_per_row * IMAGE_SIZE
 
     # Calculate total width including borders and gaps
-    base_width = (n_networks * network_block_width) + (2 * IMAGE_SIZE * 2)  # Add left and right borders (2x width)
+    base_width = (n_networks * network_block_width) + (
+        2 * IMAGE_SIZE * 2
+    )  # Add left and right borders (2x width)
     if n_networks > 1:
         base_width += (n_networks - 1) * network_gap  # Add gaps between networks
 
@@ -465,7 +485,9 @@ def export_video(
         network_width = seeds_per_row * IMAGE_SIZE
 
         # Calculate x-position accounting for network gaps
-        x_offset = IMAGE_SIZE * 2 + (network_idx * network_width)  # Adjust for 2x width prompt cards
+        x_offset = IMAGE_SIZE * 2 + (
+            network_idx * network_width
+        )  # Adjust for 2x width prompt cards
         if network_idx > 0:
             x_offset += network_idx * network_gap
 
@@ -514,7 +536,6 @@ def export_video(
         for frame_idx in range(max_images):
             # Calculate background color that oscillates between black and 5% grey (0.1Hz)
             # 0.1Hz means one complete cycle every 10 seconds, or every (10 * fps) frames
-            import math
 
             cycle_frames = 10 * fps  # Number of frames for one complete oscillation
             # Calculate value between 0 and 1 representing position in the cycle
@@ -558,8 +579,16 @@ def export_video(
                             network_idx = col // seeds_per_row
 
                             # Account for borders (+1 to both row and column)
-                            x_offset = (col % seeds_per_row) + (network_idx * seeds_per_row) + 2  # +2 for 2x width prompt cards
-                            y_offset = (row % rows_per_prompt) + (prompt_idx * rows_per_prompt) + 1
+                            x_offset = (
+                                (col % seeds_per_row)
+                                + (network_idx * seeds_per_row)
+                                + 2
+                            )  # +2 for 2x width prompt cards
+                            y_offset = (
+                                (row % rows_per_prompt)
+                                + (prompt_idx * rows_per_prompt)
+                                + 1
+                            )
 
                             # Convert to pixel coordinates
                             x_offset = x_offset * IMAGE_SIZE
@@ -693,6 +722,7 @@ def export_video(
                 shutil.rmtree(temp_dir)
             except Exception as e:
                 logger.error(f"Error cleaning up temp dir: {e}")
+
 
 def export_timeline(
     run_ids: list[str],
