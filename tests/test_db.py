@@ -16,7 +16,7 @@ from panic_tda.db import (
     latest_experiment,
     list_embeddings,
     list_invocations,
-    read_embedding_vector,
+    read_embedding,
     read_invocation,
     read_run,
 )
@@ -232,11 +232,11 @@ def test_embedding(db_session: Session):
     assert np.allclose(retrieved.vector, np.array([0.1, 0.2, 0.3], dtype=np.float32))
 
 
-def test_read_embedding_vector(db_session: Session):
-    """Test reading a specific embedding vector by ID."""
+def test_read_embedding(db_session: Session):
+    """Test reading a specific embedding by ID."""
     # Create a sample run and invocation
     sample_run = Run(
-        initial_prompt="test read embedding vector",
+        initial_prompt="test read embedding",
         network=["model1"],
         seed=42,
         max_length=1,
@@ -262,19 +262,20 @@ def test_read_embedding_vector(db_session: Session):
     db_session.add(sample_embedding)
     db_session.commit()
 
-    # Test reading the vector with a valid ID
-    retrieved_vector = read_embedding_vector(sample_embedding.id, db_session)
+    # Test reading the embedding with a valid ID
+    retrieved_embedding = read_embedding(sample_embedding.id, db_session)
 
-    assert isinstance(retrieved_vector, np.ndarray)
-    assert retrieved_vector.shape == (3,)
-    assert np.allclose(retrieved_vector, original_vector)
+    assert retrieved_embedding is not None
+    assert retrieved_embedding.id == sample_embedding.id
+    assert retrieved_embedding.embedding_model == "test-model"
+    assert isinstance(retrieved_embedding.vector, np.ndarray)
+    assert retrieved_embedding.vector.shape == (3,)
+    assert np.allclose(retrieved_embedding.vector, original_vector)
 
     # Test reading with a non-existent ID
     nonexistent_id = uuid7()
-    with pytest.raises(
-        ValueError, match=f"No embedding found with ID {nonexistent_id}"
-    ):
-        read_embedding_vector(nonexistent_id, db_session)
+    retrieved_embedding = read_embedding(nonexistent_id, db_session)
+    assert retrieved_embedding is None
 
 
 def test_engine_initialization():

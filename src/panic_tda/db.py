@@ -162,6 +162,20 @@ def read_run(run_id: UUID, session: Session):
     return session.get(Run, run_id)
 
 
+def read_embedding(embedding_id: UUID, session: Session):
+    """
+    Fetches a single Embedding by its UUID.
+
+    Args:
+        embedding_id: UUID string of the embedding to fetch
+        session: The database session
+
+    Returns:
+        An Embedding object or None if not found
+    """
+    return session.get(Embedding, embedding_id)
+
+
 def list_invocations(session: Session):
     """
     Returns all invocations.
@@ -288,32 +302,6 @@ def incomplete_embeddings(session: Session):
         .order_by(Embedding.embedding_model)
     )
     return session.exec(statement).all()
-
-
-def read_embedding_vector(embedding_id: UUID, session: Session) -> np.ndarray:
-    """
-    Read a specific embedding vector from the database by ID.
-
-    Args:
-        embedding_id: ID of the embedding to load
-        session: SQLModel database session
-
-    Returns:
-        A numpy array containing the embedding vector
-    """
-    # Create a SELECT statement for the embedding with the given ID
-    statement = select(Embedding).where(Embedding.id == embedding_id)
-
-    # Execute the query
-    result = session.exec(statement).first()
-
-    # Check if we got a result
-    if result is None:
-        raise ValueError(f"No embedding found with ID {embedding_id}")
-
-    # The vector is already stored in the vector attribute of the Embedding object
-    # No need to use process_result_value as SQLModel handles the type conversion
-    return result.vector
 
 
 def count_invocations(session: Session) -> int:

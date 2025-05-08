@@ -10,7 +10,7 @@ from numpy.linalg import norm
 from sqlmodel import Session
 
 from panic_tda.clustering import optics
-from panic_tda.db import list_runs, read_embedding_vector
+from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
@@ -107,7 +107,7 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
         A Series of cluster labels corresponding to the input embedding IDs
     """
     vectors = [
-        read_embedding_vector(UUID(embedding_id), session)
+        read_embedding(UUID(embedding_id), session).vector
         for embedding_id in embedding_ids
     ]
     vectors_array = np.vstack(vectors)
@@ -163,8 +163,6 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
-    print(f"Generating embeddings for {len(df)} unique prompt/model combinations...")
-
     # Create dictionaries to store embedding models and tasks
     embedding_models = {}
     tasks = {}
@@ -187,14 +185,12 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     # Wait for all tasks to complete and store the results
     embeddings_dict = {key: ray.get(task)[0] for key, task in tasks.items()}
 
-    print(f"Generated {len(embeddings_dict)} embeddings for unique prompt/model combinations")
-
     return embeddings_dict
 
 
 def fetch_and_calculate_drift_euclid(
     embedding_ids: pl.Series,
-    initial_prompt_vector: np.ndarray,
+    initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
     session: Session,
 ) -> pl.Series:
     """
@@ -210,13 +206,16 @@ def fetch_and_calculate_drift_euclid(
         A Series of euclidean distances between each vector and the embedded initial prompt
     """
     # Get vectors from database
-    vectors = [
-        read_embedding_vector(UUID(embedding_id), session)
+    embeddings = [
+        read_embedding(UUID(embedding_id), session)
         for embedding_id in embedding_ids
     ]
+    first_embedding = embeddings[0]
+    initial_vector = initial_prompt_vectors[(first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)]
 
     # Calculate euclidean distance from each vector to the embedded initial prompt
-    distances = [np.linalg.norm(vector - initial_prompt_vector) for vector in vectors]
+    # TODO there's probably a more efficient way to do it with ndarrays directly
+    distances = [np.linalg.norm(embedding.vector - initial_vector) for embedding in embeddings]
 
     return pl.Series(distances)
 
@@ -233,19 +232,14 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
     Returns:
         DataFrame with semantic drift values added
     """
-    # Embed the initial prompt using the same model
-    embedding_model_class = get_actor_class(df["embedding_model"].first())
-    embedding_model = embedding_model_class.remote()
-    initial_prompt_vector = ray.get(
-        embedding_model.embed.remote([df["initial_prompt"].first()])
-    )[0]
+    initial_prompt_vectors = embed_initial_prompts(session)
 
     # Add vectors column using map_elements
     df = df.with_columns(
         pl.col("id")
         .map_batches(
             lambda embedding_ids: fetch_and_calculate_drift_euclid(
-                embedding_ids, initial_prompt_vector, session
+                embedding_ids, initial_prompt_vectors, session
             ),
         )
         .alias("drift_euclid")
@@ -275,7 +269,7 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
 
 def fetch_and_calculate_drift_cosine(
     embedding_ids: pl.Series,
-    initial_prompt_vector: np.ndarray,
+    initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
     session: Session,
 ) -> pl.Series:
     """
@@ -283,22 +277,24 @@ def fetch_and_calculate_drift_cosine(
 
     Args:
         embedding_ids: A Series containing embedding IDs
+        initial_prompt_vectors: Dictionary mapping (initial_prompt, embedding_model) tuples to vectors
         session: SQLModel database session
-        initial_prompt: The initial prompt to use as reference
-        embedding_model_name: Name of the embedding model to use
 
     Returns:
         A Series of cosine distances between each vector and the embedded initial prompt
     """
     # Get vectors from database
-    vectors = [
-        read_embedding_vector(UUID(embedding_id), session)
+    embeddings = [
+        read_embedding(UUID(embedding_id), session)
         for embedding_id in embedding_ids
     ]
-    # Calculate cosine distance from each vector to the embedded initial prompt
-    distances = [
-        calculate_cosine_distance(vector, initial_prompt_vector) for vector in vectors
-    ]
+
+    distances = []
+    for embedding in embeddings:
+        initial_prompt = embedding.invocation.run.initial_prompt
+        embedding_model = embedding.embedding_model
+        initial_vector = initial_prompt_vectors[(initial_prompt, embedding_model)]
+        distances.append(calculate_cosine_distance(embedding.vector, initial_vector))
 
     return pl.Series(distances)
 
@@ -315,19 +311,14 @@ def add_semantic_drift_cosine(df: pl.DataFrame, session: Session) -> pl.DataFram
     Returns:
         DataFrame with semantic drift values added using cosine distance
     """
-    # Embed the initial prompt using the same model
-    embedding_model_class = get_actor_class(df["embedding_model"].first())
-    embedding_model = embedding_model_class.remote()
-    initial_prompt_vector = ray.get(
-        embedding_model.embed.remote([df["initial_prompt"].first()])
-    )[0]
+    initial_prompt_vectors = embed_initial_prompts(session)
 
     # Add vectors column using map_elements
     df = df.with_columns(
         pl.col("id")
         .map_batches(
             lambda embedding_ids: fetch_and_calculate_drift_cosine(
-                embedding_ids, initial_prompt_vector, session
+                embedding_ids, initial_prompt_vectors, session
             ),
         )
         .alias("drift_cosine")
