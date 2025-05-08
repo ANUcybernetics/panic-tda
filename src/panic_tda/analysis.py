@@ -216,10 +216,10 @@ def fetch_and_calculate_drift_euclid(
     first_embedding = embeddings[0]
     initial_vector = initial_prompt_vectors[(first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)]
 
-    # Calculate euclidean distance from each vector to the embedded initial prompt
-    # TODO there's probably a more efficient way to do it with ndarrays directly
-    distances = [np.linalg.norm(embedding.vector - initial_vector) for embedding in embeddings]
-
+    # Calculate euclidean distance from each vector to the embedded initial prompt using vectorized operations
+    vectors = np.vstack([embedding.vector for embedding in embeddings])
+    differences = vectors - initial_vector
+    distances = np.linalg.norm(differences, axis=1)
     return pl.Series(distances)
 
 
