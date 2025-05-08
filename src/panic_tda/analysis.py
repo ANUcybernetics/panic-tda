@@ -167,6 +167,9 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     embedding_models = {}
     tasks = {}
 
+    # TODO this could be accelerated by grouping by embedding model and using the fact that the embedding infrastructure
+    # already works in batch mode (pass a list of str, get a list of embeddings back)
+    #
     # Process each combination
     for row in df.iter_rows(named=True):
         initial_prompt = row['initial_prompt']
