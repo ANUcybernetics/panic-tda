@@ -6,7 +6,6 @@ from uuid import UUID
 import numpy as np
 import polars as pl
 import ray
-from numpy.linalg import norm
 from sqlmodel import Session
 
 from panic_tda.clustering import optics
@@ -269,22 +268,43 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
     return df
 
 
-def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
-    """Calculate cosine distance between two vectors."""
-    # Vectorized equality check
-    if np.array_equal(vec1, vec2):
-        return 0.0
+def calculate_cosine_distance(
+    vectors_array: np.ndarray, reference_vector: np.ndarray
+) -> np.ndarray:
+    """
+    Calculate cosine distances between each vector in an array and a reference vector.
 
-    # Calculate norms using vectorized operations
-    norm_vec1 = norm(vec1)
-    norm_vec2 = norm(vec2)
+    Args:
+        vectors_array: 2D array where each row is a vector
+        reference_vector: The reference vector to calculate distances from
 
-    # Avoid division by zero
-    if norm_vec1 > 0 and norm_vec2 > 0:
-        cosine_similarity = np.dot(vec1, vec2) / (norm_vec1 * norm_vec2)
-        return float(1.0 - cosine_similarity)
-    else:
-        return 1.0
+    Returns:
+        1D array of cosine distances
+    """
+    # Check for vector equality with the reference vector
+    equal_vectors = np.all(vectors_array == reference_vector, axis=1)
+
+    # Calculate norms
+    vector_norms = np.linalg.norm(vectors_array, axis=1)
+    reference_norm = np.linalg.norm(reference_vector)
+
+    # Calculate dot products with the reference vector
+    dot_products = np.sum(vectors_array * reference_vector, axis=1)
+
+    # Initialize distances array (default to 1.0 for vectors with zero norm)
+    distances = np.ones(vectors_array.shape[0])
+
+    # Calculate cosine similarity only for vectors with non-zero norms
+    valid_indices = (vector_norms > 0) & (reference_norm > 0)
+    if reference_norm > 0:
+        norm_products = vector_norms[valid_indices] * reference_norm
+        cosine_similarities = dot_products[valid_indices] / norm_products
+        distances[valid_indices] = 1.0 - cosine_similarities
+
+    # Set distance to 0 for identical vectors
+    distances[equal_vectors] = 0.0
+
+    return distances
 
 
 def fetch_and_calculate_drift_cosine(
@@ -303,7 +323,7 @@ def fetch_and_calculate_drift_cosine(
     Returns:
         A Series of cosine distances between each vector and the embedded initial prompt
     """
-    # Get embeddings from database
+    # Get vectors from database
     embeddings = [
         read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
     ]
@@ -314,31 +334,9 @@ def fetch_and_calculate_drift_cosine(
         (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
     ]
 
-    # Extract all vectors into a single array
+    # Stack the vectors and calculate distances
     vectors = np.vstack([embedding.vector for embedding in embeddings])
-
-    # Check for vector equality with the initial vector
-    equal_vectors = np.all(vectors == initial_vector, axis=1)
-
-    # Calculate norms
-    vector_norms = np.linalg.norm(vectors, axis=1)
-    initial_vector_norm = np.linalg.norm(initial_vector)
-
-    # Calculate dot products with the initial vector
-    dot_products = np.sum(vectors * initial_vector, axis=1)
-
-    # Calculate cosine similarities, avoiding division by zero
-    valid_indices = (vector_norms > 0) & (initial_vector_norm > 0)
-    cosine_similarities = np.ones(len(vectors))  # Default to 1, which means -1 distance
-
-    # Only calculate where norms are non-zero
-    if initial_vector_norm > 0:
-        norm_products = vector_norms[valid_indices] * initial_vector_norm
-        cosine_similarities[valid_indices] = dot_products[valid_indices] / norm_products
-
-    # Calculate distances: 1 - similarity, but force 0 where vectors are equal
-    distances = 1.0 - cosine_similarities
-    distances[equal_vectors] = 0.0
+    distances = calculate_cosine_distance(vectors, initial_vector)
 
     return pl.Series(distances)
 
