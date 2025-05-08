@@ -451,8 +451,21 @@ def export_video(
 
         # Now iterate through each image position (frame)
         for frame_idx in range(max_images):
-            # Start with a copy of the base canvas with borders
-            mosaic = base_canvas.copy()
+            # Calculate background color that oscillates between black and 5% grey (0.1Hz)
+            # 0.1Hz means one complete cycle every 10 seconds, or every (10 * fps) frames
+            import math
+
+            cycle_frames = 10 * fps  # Number of frames for one complete oscillation
+            # Calculate value between 0 and 1 representing position in the cycle
+            cycle_position = math.sin(2 * math.pi * frame_idx / cycle_frames)
+            # Convert to a value between 0 and 13 (5% grey is roughly RGB(13,13,13))
+            grey_value = int(6.5 + 6.5 * cycle_position)  # Oscillates between 0 and 13
+            background_color = (grey_value, grey_value, grey_value)
+
+            # Create a new canvas with the calculated background color
+            mosaic = Image.new("RGB", (canvas_width, canvas_height), background_color)
+            # Paste the base borders and titles onto the background
+            mosaic.paste(base_canvas, (0, 0), base_canvas.convert("RGBA"))
             draw = ImageDraw.Draw(mosaic)
 
             # Paste each run's image at the current sequence position
@@ -484,15 +497,15 @@ def export_video(
                             y_offset = (row + 1) * IMAGE_SIZE
 
                             # Add gaps where there are prompt or network changes
-                            # Add 10px gap for every prompt change before current row
+                            # Increased gap from 10px to 50px for prompt changes
                             prompt_changes = row // rows_per_prompt
                             if prompt_changes > 0:
-                                y_offset += 10 * prompt_changes
+                                y_offset += 50 * prompt_changes
 
-                            # Add 10px gap for every network change before current column
+                            # Increased gap from 10px to 50px for network changes
                             network_changes = col // seeds_per_row
                             if network_changes > 0:
-                                x_offset += 10 * network_changes
+                                x_offset += 50 * network_changes
 
                             mosaic.paste(image, (x_offset, y_offset))
 
