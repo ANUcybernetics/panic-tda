@@ -192,6 +192,24 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     return embeddings_dict
 
 
+def calculate_euclidean_distances(
+    vectors_array: np.ndarray, reference_vector: np.ndarray
+) -> np.ndarray:
+    """
+    Calculate Euclidean distances between each vector in an array and a reference vector.
+
+    Args:
+        vectors_array: 2D array where each row is a vector
+        reference_vector: The reference vector to calculate distances from
+
+    Returns:
+        1D array of Euclidean distances
+    """
+    differences = vectors_array - reference_vector
+    distances = np.linalg.norm(differences, axis=1)
+    return distances
+
+
 def fetch_and_calculate_drift_euclid(
     embedding_ids: pl.Series,
     initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
@@ -202,9 +220,8 @@ def fetch_and_calculate_drift_euclid(
 
     Args:
         embedding_ids: A Series containing embedding IDs
+        initial_prompt_vectors: Dictionary mapping (initial_prompt, embedding_model) tuples to vectors
         session: SQLModel database session
-        initial_prompt: The initial prompt to use as reference
-        embedding_model_name: Name of the embedding model to use
 
     Returns:
         A Series of euclidean distances between each vector and the embedded initial prompt
@@ -218,10 +235,9 @@ def fetch_and_calculate_drift_euclid(
         (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
     ]
 
-    # Calculate euclidean distance from each vector to the embedded initial prompt using vectorized operations
+    # Stack the vectors and calculate distances
     vectors = np.vstack([embedding.vector for embedding in embeddings])
-    differences = vectors - initial_vector
-    distances = np.linalg.norm(differences, axis=1)
+    distances = calculate_euclidean_distances(vectors, initial_vector)
     return pl.Series(distances)
 
 

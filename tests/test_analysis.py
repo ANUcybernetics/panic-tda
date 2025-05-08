@@ -6,6 +6,8 @@ import polars as pl
 from panic_tda.analysis import (
     add_cluster_labels,
     cache_dfs,
+    calculate_euclidean_distances,
+    embed_initial_prompts,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
@@ -215,8 +217,6 @@ def test_add_cluster_labels(db_session):
 
 def test_initial_prompt_embeddings(db_session):
     """Test that embed_initial_prompts correctly creates embeddings for initial prompts."""
-
-    from panic_tda.analysis import embed_initial_prompts
 
     # Create a simple test configuration with multiple prompts
     config = ExperimentConfig(
@@ -554,3 +554,61 @@ def test_cache_dfs(db_session):
     assert (cache_dir / "embeddings.parquet").exists(), (
         "Embeddings cache file not found"
     )
+
+
+def test_calculate_euclidean_distances():
+    """Test that calculate_euclidean_distances correctly computes Euclidean distances."""
+
+    # Create vectors with known distances
+    vectors = {
+        "v1": np.array([0, 0, 0], dtype=np.float32),  # Origin
+        "v2": np.array([1, 0, 0], dtype=np.float32),  # Unit distance along x-axis
+        "v3": np.array([0, 3, 0], dtype=np.float32),  # 3 units along y-axis
+        "v4": np.array([0, 0, 5], dtype=np.float32),  # 5 units along z-axis
+        "v5": np.array([1, 1, 1], dtype=np.float32),  # sqrt(3) from origin
+    }
+
+    # Expected distances from origin (v1)
+    expected_distances = {
+        "v1": 0.0,  # Distance to self should be 0
+        "v2": 1.0,  # Unit distance
+        "v3": 3.0,  # 3 units distance
+        "v4": 5.0,  # 5 units distance
+        "v5": np.sqrt(3),  # sqrt(1^2 + 1^2 + 1^2) = sqrt(3)
+    }
+
+    # Calculate distances using the function
+    computed_distances = calculate_euclidean_distances(
+        vectors["v1"],
+        [vectors["v1"], vectors["v2"], vectors["v3"], vectors["v4"], vectors["v5"]],
+    )
+
+    # Assert computed distances match expected with small tolerance for floating-point errors
+    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5"]):
+        assert abs(computed_distances[i] - expected_distances[key]) < 1e-6, (
+            f"Distance for {key} incorrect. Expected {expected_distances[key]}, got {computed_distances[i]}"
+        )
+
+    # Test with some other vector as reference
+    reference = vectors["v5"]  # [1, 1, 1]
+
+    # Calculate expected distances from v5 to others
+    expected_from_v5 = {
+        "v1": np.sqrt(3),  # sqrt((1-0)^2 + (1-0)^2 + (1-0)^2)
+        "v2": np.sqrt(2),  # sqrt((1-1)^2 + (1-0)^2 + (1-0)^2)
+        "v3": np.sqrt(6),  # sqrt((1-0)^2 + (1-3)^2 + (1-0)^2)
+        "v4": np.sqrt(18),  # sqrt((1-0)^2 + (1-0)^2 + (1-5)^2)
+        "v5": 0.0,  # Distance to self should be 0
+    }
+
+    # Calculate distances using the function
+    computed_from_v5 = calculate_euclidean_distances(
+        reference,
+        [vectors["v1"], vectors["v2"], vectors["v3"], vectors["v4"], vectors["v5"]],
+    )
+
+    # Assert computed distances match expected with small tolerance for floating-point errors
+    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5"]):
+        assert np.isclose(computed_from_v5[i], expected_from_v5[key]), (
+            f"Distance from v5 to {key} incorrect. Expected {expected_from_v5[key]}, got {computed_from_v5[i]}"
+        )
