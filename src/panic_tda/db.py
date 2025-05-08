@@ -2,7 +2,6 @@ from contextlib import contextmanager
 from datetime import datetime
 from uuid import UUID
 
-import numpy as np
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
