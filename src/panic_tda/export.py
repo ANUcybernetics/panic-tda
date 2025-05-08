@@ -124,7 +124,7 @@ def order_runs_for_mosaic(run_ids: list[str], session: Session) -> list[str]:
 
 
 # Helper function for text wrapping on image
-def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255)):
+def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255), max_height=None):
     """Draws text on an image, wrapped to a max width."""
     # Estimate characters per line based on font size (adjust multiplier as needed)
     chars_per_line = int(max_width / (font.size * 0.6)) if font.size > 0 else 20
@@ -138,10 +138,12 @@ def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255
     )  # Approximate line height
 
     total_text_height = len(lines) * (line_height + 2)
+
+    # Use max_height for vertical centering if provided, otherwise use max_width
+    height_for_centering = max_height if max_height is not None else max_width
+
     # Recalculate start_y to vertically center based on actual lines
-    start_y = (
-        y + (max_width - total_text_height) / 2
-    )  # Center vertically within the available space (using max_width assuming square)
+    start_y = y + (height_for_centering - total_text_height) / 2
 
     current_y = start_y
     for line in lines:
@@ -162,20 +164,22 @@ def draw_text_wrapped(draw, text, position, max_width, font, fill=(255, 255, 255
 def create_prompt_title_card(
     prompt_text: str, size: int, font_path: str, base_font_size: int
 ) -> Image.Image:
-    """Creates a square image with wrapped text, centered vertically and horizontally."""
-    img = Image.new("RGB", (size, size), color="black")
+    """Creates a rectangular image with wrapped text, centered vertically and horizontally."""
+    # Create rectangle with 2x width of height
+    img = Image.new("RGB", (size * 2, size), color="black")
     draw = ImageDraw.Draw(img)
 
-    title_font_size = max(12, int(base_font_size * 0.8))
+    # Use the same font size as network banners (no reduction)
+    title_font_size = base_font_size
     font = ImageFont.truetype(font_path, title_font_size)
 
     # Calculate max width allowing for padding
     padding = size * 0.1
-    max_text_width = size - (2 * padding)
+    max_text_width = (size * 2) - (2 * padding)  # Adjust for 2x width
 
     # Use the wrapping helper, passing the top-left corner for positioning (padding, padding)
-    # The helper function will handle the vertical centering within the drawing area
-    draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font)
+    # Pass the actual height (size) for proper vertical centering
+    draw_text_wrapped(draw, prompt_text, (padding, padding), max_text_width, font, max_height=size - 2*padding)
 
     return img
 
@@ -346,7 +350,7 @@ def export_video(
         progress_bar_height = 30
 
         # Calculate width with borders and network gaps
-        width_with_borders = (total_cols * IMAGE_SIZE) + (2 * IMAGE_SIZE)  # Add left and right borders
+        width_with_borders = (total_cols * IMAGE_SIZE) + (2 * IMAGE_SIZE * 2)  # Add left and right borders (2x width)
         if n_networks > 1:
             width_with_borders += (n_networks - 1) * network_gap  # Add gaps between networks
 
@@ -403,7 +407,7 @@ def export_video(
     network_block_width = seeds_per_row * IMAGE_SIZE
 
     # Calculate total width including borders and gaps
-    base_width = (n_networks * network_block_width) + (2 * IMAGE_SIZE)  # Add left and right borders
+    base_width = (n_networks * network_block_width) + (2 * IMAGE_SIZE * 2)  # Add left and right borders (2x width)
     if n_networks > 1:
         base_width += (n_networks - 1) * network_gap  # Add gaps between networks
 
@@ -437,14 +441,14 @@ def export_video(
             left_border_x = 0
             left_border_y = y_offset
 
-            # Create and paste prompt tile
+            # Create and paste prompt tile (now 2x width)
             prompt_tile = create_prompt_title_card(
                 prompt, IMAGE_SIZE, font_path, base_font_size
             )
             base_canvas.paste(prompt_tile, (left_border_x, left_border_y))
 
             # Right border - same content as left
-            right_border_x = base_width - IMAGE_SIZE
+            right_border_x = base_width - (IMAGE_SIZE * 2)  # Adjust for 2x width
             right_border_y = left_border_y
             base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
 
@@ -461,7 +465,7 @@ def export_video(
         network_width = seeds_per_row * IMAGE_SIZE
 
         # Calculate x-position accounting for network gaps
-        x_offset = IMAGE_SIZE + (network_idx * network_width)
+        x_offset = IMAGE_SIZE * 2 + (network_idx * network_width)  # Adjust for 2x width prompt cards
         if network_idx > 0:
             x_offset += network_idx * network_gap
 
@@ -554,7 +558,7 @@ def export_video(
                             network_idx = col // seeds_per_row
 
                             # Account for borders (+1 to both row and column)
-                            x_offset = (col % seeds_per_row) + (network_idx * seeds_per_row) + 1
+                            x_offset = (col % seeds_per_row) + (network_idx * seeds_per_row) + 2  # +2 for 2x width prompt cards
                             y_offset = (row % rows_per_prompt) + (prompt_idx * rows_per_prompt) + 1
 
                             # Convert to pixel coordinates
@@ -689,7 +693,6 @@ def export_video(
                 shutil.rmtree(temp_dir)
             except Exception as e:
                 logger.error(f"Error cleaning up temp dir: {e}")
-
 
 def export_timeline(
     run_ids: list[str],
