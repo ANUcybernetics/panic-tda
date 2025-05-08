@@ -14,6 +14,10 @@
   - cluster bigrams (inc. pictures)
   - t-SNE picture (with different facetings)
 
+- by creating synthetic data with known drift values, check that both the
+  euclidean and cosine "fetch and calculate" functions are returning the correct
+  results
+
 - check normality
 
 - idea: downsample before clustering (for computational reasons)
