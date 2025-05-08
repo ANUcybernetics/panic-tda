@@ -253,11 +253,11 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
 
 def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculate cosine distance between two vectors."""
-    # First check if vectors are equal
+    # Vectorized equality check
     if np.array_equal(vec1, vec2):
         return 0.0
 
-    # Then calculate norms
+    # Calculate norms using vectorized operations
     norm_vec1 = norm(vec1)
     norm_vec2 = norm(vec2)
 
@@ -266,7 +266,6 @@ def calculate_cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         cosine_similarity = np.dot(vec1, vec2) / (norm_vec1 * norm_vec2)
         return float(1.0 - cosine_similarity)
     else:
-        # Vectors aren't equal but at least one has zero norm
         return 1.0
 
 
@@ -286,18 +285,41 @@ def fetch_and_calculate_drift_cosine(
     Returns:
         A Series of cosine distances between each vector and the embedded initial prompt
     """
-    # Get vectors from database
+    # Get embeddings from database
     embeddings = [
         read_embedding(UUID(embedding_id), session)
         for embedding_id in embedding_ids
     ]
 
-    distances = []
-    for embedding in embeddings:
-        initial_prompt = embedding.invocation.run.initial_prompt
-        embedding_model = embedding.embedding_model
-        initial_vector = initial_prompt_vectors[(initial_prompt, embedding_model)]
-        distances.append(calculate_cosine_distance(embedding.vector, initial_vector))
+    # Get the initial vector once from the first embedding
+    first_embedding = embeddings[0]
+    initial_vector = initial_prompt_vectors[(first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)]
+
+    # Extract all vectors into a single array
+    vectors = np.vstack([embedding.vector for embedding in embeddings])
+
+    # Check for vector equality with the initial vector
+    equal_vectors = np.all(vectors == initial_vector, axis=1)
+
+    # Calculate norms
+    vector_norms = np.linalg.norm(vectors, axis=1)
+    initial_vector_norm = np.linalg.norm(initial_vector)
+
+    # Calculate dot products with the initial vector
+    dot_products = np.sum(vectors * initial_vector, axis=1)
+
+    # Calculate cosine similarities, avoiding division by zero
+    valid_indices = (vector_norms > 0) & (initial_vector_norm > 0)
+    cosine_similarities = np.ones(len(vectors))  # Default to 1, which means -1 distance
+
+    # Only calculate where norms are non-zero
+    if initial_vector_norm > 0:
+        norm_products = vector_norms[valid_indices] * initial_vector_norm
+        cosine_similarities[valid_indices] = dot_products[valid_indices] / norm_products
+
+    # Calculate distances: 1 - similarity, but force 0 where vectors are equal
+    distances = 1.0 - cosine_similarities
+    distances[equal_vectors] = 0.0
 
     return pl.Series(distances)
 
