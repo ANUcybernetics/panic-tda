@@ -252,13 +252,19 @@ def test_initial_prompt_embeddings(db_session):
     for prompt in prompts:
         for model in embedding_models:
             key = (prompt, model)
-            assert key in prompt_vectors, f"No embedding found for prompt '{prompt}' with model '{model}'"
+            assert key in prompt_vectors, (
+                f"No embedding found for prompt '{prompt}' with model '{model}'"
+            )
 
             # Check that each embedding is a numpy array with length EMBEDDING_DIM
             embedding = prompt_vectors[key]
             assert embedding is not None
-            assert isinstance(embedding, np.ndarray), f"Expected numpy array, got {type(embedding)}"
-            assert len(embedding) == EMBEDDING_DIM, f"Expected embedding dimension {EMBEDDING_DIM}, got {len(embedding)}"
+            assert isinstance(embedding, np.ndarray), (
+                f"Expected numpy array, got {type(embedding)}"
+            )
+            assert len(embedding) == EMBEDDING_DIM, (
+                f"Expected embedding dimension {EMBEDDING_DIM}, got {len(embedding)}"
+            )
 
 
 def test_add_semantic_drift(db_session):
@@ -420,9 +426,7 @@ def test_add_persistence_entropy(db_session):
 
     # Check that all persistence columns exist
     for column in persistence_columns:
-        assert column in df.columns, (
-            f"Column {column} missing from result"
-        )
+        assert column in df.columns, f"Column {column} missing from result"
 
     # Filter for just this experiment
     exp_df = df.filter(pl.col("experiment_id") == str(config.id))

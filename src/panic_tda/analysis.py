@@ -19,6 +19,7 @@ from panic_tda.schemas import InvocationType
 # because I like to see the data
 pl.Config.set_tbl_rows(1000)
 
+
 def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
     """
     Format UUID columns in a polars DataFrame to standard UUID format with hyphens.
@@ -172,8 +173,8 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     #
     # Process each combination
     for row in df.iter_rows(named=True):
-        initial_prompt = row['initial_prompt']
-        embedding_model_name = row['embedding_model']
+        initial_prompt = row["initial_prompt"]
+        embedding_model_name = row["embedding_model"]
         key = (initial_prompt, embedding_model_name)
 
         # Get or create the remote embedding model
@@ -210,11 +211,12 @@ def fetch_and_calculate_drift_euclid(
     """
     # Get vectors from database
     embeddings = [
-        read_embedding(UUID(embedding_id), session)
-        for embedding_id in embedding_ids
+        read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
     ]
     first_embedding = embeddings[0]
-    initial_vector = initial_prompt_vectors[(first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)]
+    initial_vector = initial_prompt_vectors[
+        (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
+    ]
 
     # Calculate euclidean distance from each vector to the embedded initial prompt using vectorized operations
     vectors = np.vstack([embedding.vector for embedding in embeddings])
@@ -287,13 +289,14 @@ def fetch_and_calculate_drift_cosine(
     """
     # Get embeddings from database
     embeddings = [
-        read_embedding(UUID(embedding_id), session)
-        for embedding_id in embedding_ids
+        read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
     ]
 
     # Get the initial vector once from the first embedding
     first_embedding = embeddings[0]
-    initial_vector = initial_prompt_vectors[(first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)]
+    initial_vector = initial_prompt_vectors[
+        (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
+    ]
 
     # Extract all vectors into a single array
     vectors = np.vstack([embedding.vector for embedding in embeddings])
