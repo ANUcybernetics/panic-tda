@@ -291,15 +291,10 @@ def calculate_cosine_distance(
     # Calculate dot products with the reference vector
     dot_products = np.sum(vectors_array * reference_vector, axis=1)
 
-    # Initialize distances array (default to 1.0 for vectors with zero norm)
-    distances = np.ones(vectors_array.shape[0])
-
-    # Calculate cosine similarity only for vectors with non-zero norms
-    valid_indices = (vector_norms > 0) & (reference_norm > 0)
-    if reference_norm > 0:
-        norm_products = vector_norms[valid_indices] * reference_norm
-        cosine_similarities = dot_products[valid_indices] / norm_products
-        distances[valid_indices] = 1.0 - cosine_similarities
+    # Calculate cosine similarity directly for all vectors (no need to check for zero norms)
+    norm_products = vector_norms * reference_norm
+    cosine_similarities = dot_products / norm_products
+    distances = 1.0 - cosine_similarities
 
     # Set distance to 0 for identical vectors
     distances[equal_vectors] = 0.0
