@@ -11,6 +11,7 @@ from panic_tda.analysis import (
     load_runs_df,
 )
 from panic_tda.db import list_runs
+from panic_tda.embeddings import EMBEDDING_DIM
 from panic_tda.engine import (
     perform_experiment,
 )
@@ -210,6 +211,54 @@ def test_add_cluster_labels(db_session):
     # Verify that both models have at least one cluster
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
+
+
+def test_initial_prompt_embeddings(db_session):
+    """Test that embed_initial_prompts correctly creates embeddings for initial prompts."""
+
+    from panic_tda.analysis import embed_initial_prompts
+
+    # Create a simple test configuration with multiple prompts
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test prompt embeddings", "another test prompt"],
+        embedding_models=["Dummy"],
+        max_length=10,
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Call function under test
+    prompt_vectors = embed_initial_prompts(db_session)
+
+    # Assertions
+    #
+    # The dictionary is keyed by (initial_prompt, embedding_model) tuples
+    assert isinstance(prompt_vectors, dict)
+    assert len(prompt_vectors) > 0
+
+    # Check that embeddings exist for all the prompts and embedding models
+    prompts = config.prompts
+    embedding_models = config.embedding_models
+
+    for prompt in prompts:
+        for model in embedding_models:
+            key = (prompt, model)
+            assert key in prompt_vectors, f"No embedding found for prompt '{prompt}' with model '{model}'"
+
+            # Check that each embedding is a numpy array with length EMBEDDING_DIM
+            embedding = prompt_vectors[key]
+            assert embedding is not None
+            assert isinstance(embedding, np.ndarray), f"Expected numpy array, got {type(embedding)}"
+            assert len(embedding) == EMBEDDING_DIM, f"Expected embedding dimension {EMBEDDING_DIM}, got {len(embedding)}"
 
 
 def test_add_semantic_drift(db_session):

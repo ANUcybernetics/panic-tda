@@ -1,6 +1,7 @@
 import os
 import time
 from uuid import UUID
+from typing import Dict, Tuple
 
 import numpy as np
 import polars as pl
@@ -134,6 +135,61 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
         .alias("cluster_label")
     )
     return df
+
+
+def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]:
+    """
+    Generate embeddings for all unique combinations of initial prompts and embedding models.
+
+    Args:
+        session: SQLModel database session
+
+    Returns:
+        Dictionary mapping (initial_prompt, embedding_model) tuples to embedding vectors
+    """
+
+    # SQL query to get all unique combinations of initial_prompt and embedding_model
+    query = """
+    SELECT DISTINCT
+        run.initial_prompt as initial_prompt,
+        embedding.embedding_model as embedding_model
+    FROM run
+    JOIN invocation ON invocation.run_id = run.id
+    JOIN embedding ON embedding.invocation_id = invocation.id
+    WHERE run.initial_prompt IS NOT NULL
+    """
+
+    # Get the database URI and execute the query
+    db_url = _get_polars_db_uri(session)
+    df = pl.read_database_uri(query=query, uri=db_url)
+
+    print(f"Generating embeddings for {len(df)} unique prompt/model combinations...")
+
+    # Create dictionaries to store embedding models and tasks
+    embedding_models = {}
+    tasks = {}
+
+    # Process each combination
+    for row in df.iter_rows(named=True):
+        initial_prompt = row['initial_prompt']
+        embedding_model_name = row['embedding_model']
+        key = (initial_prompt, embedding_model_name)
+
+        # Get or create the remote embedding model
+        if embedding_model_name not in embedding_models:
+            model_class = get_actor_class(embedding_model_name)
+            embedding_models[embedding_model_name] = model_class.remote()
+
+        # Start the embedding task
+        embedding_model = embedding_models[embedding_model_name]
+        tasks[key] = embedding_model.embed.remote([initial_prompt])
+
+    # Wait for all tasks to complete and store the results
+    embeddings_dict = {key: ray.get(task)[0] for key, task in tasks.items()}
+
+    print(f"Generated {len(embeddings_dict)} embeddings for unique prompt/model combinations")
+
+    return embeddings_dict
 
 
 def fetch_and_calculate_drift_euclid(
