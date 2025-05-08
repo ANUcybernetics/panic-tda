@@ -180,6 +180,33 @@ def create_prompt_title_card(
     return img
 
 
+# New helper function to create a network title banner that spans multiple columns
+def create_network_title_banner(
+    network_str: str, width: int, height: int, font_path: str, font_size: int
+) -> Image.Image:
+    """Creates a wide banner with network text centered."""
+    img = Image.new("RGB", (width, height), color="black")
+    draw = ImageDraw.Draw(img)
+
+    font = ImageFont.truetype(font_path, font_size)
+
+    # Center text horizontally and vertically
+    try:
+        bbox = draw.textbbox((0, 0), network_str, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+    except AttributeError:  # Fallback for older PIL/Pillow
+        text_width = draw.textlength(network_str, font=font)
+        text_height = font.size
+
+    x = (width - text_width) / 2
+    y = (height - text_height) / 2
+
+    draw.text((x, y), network_str, font=font, fill=(255, 255, 255))
+
+    return img
+
+
 def export_video(
     run_ids: list[str],
     session: Session,
@@ -296,6 +323,10 @@ def export_video(
         else:
             break
 
+    # Define the gaps between network blocks and prompt blocks
+    network_gap = 50  # 50px gap between network blocks
+    prompt_gap = 50   # 50px gap between prompt blocks
+
     # Step 3: Find the seeds_per_row that produces the aspect ratio closest to 16:9
     target_ratio = 16 / 9
     best_ratio_diff = float("inf")
@@ -311,10 +342,18 @@ def export_video(
         # Each row has n_networks * seeds_per_row columns
         total_cols = n_networks * seeds_per_row
 
-        # Account for borders and progress bar in aspect ratio calculation
+        # Account for borders, gaps, and progress bar in aspect ratio calculation
         progress_bar_height = 30
-        width_with_borders = (total_cols + 2) * IMAGE_SIZE
-        height_with_borders = ((total_rows + 2) * IMAGE_SIZE) + progress_bar_height
+
+        # Calculate width with borders and network gaps
+        width_with_borders = (total_cols * IMAGE_SIZE) + (2 * IMAGE_SIZE)  # Add left and right borders
+        if n_networks > 1:
+            width_with_borders += (n_networks - 1) * network_gap  # Add gaps between networks
+
+        # Calculate height with borders and prompt gaps
+        height_with_borders = (total_rows * IMAGE_SIZE) + (2 * IMAGE_SIZE) + progress_bar_height  # Add top and bottom borders
+        if n_prompts > 1:
+            height_with_borders += (n_prompts - 1) * prompt_gap  # Add gaps between prompts
 
         ratio = width_with_borders / height_with_borders
         ratio_diff = abs(ratio - target_ratio)
@@ -359,9 +398,20 @@ def export_video(
         f"({n_prompts} prompts, {n_networks} networks, {seeds_per_row} seeds per row)"
     )
 
-    # Step 5: Create the canvas
-    base_width = (cols + 2) * IMAGE_SIZE
-    base_height = (rows + 2) * IMAGE_SIZE
+    # Step 5: Calculate the actual canvas dimensions including gaps
+    # Calculate the width of each network block (seeds_per_row * IMAGE_SIZE)
+    network_block_width = seeds_per_row * IMAGE_SIZE
+
+    # Calculate total width including borders and gaps
+    base_width = (n_networks * network_block_width) + (2 * IMAGE_SIZE)  # Add left and right borders
+    if n_networks > 1:
+        base_width += (n_networks - 1) * network_gap  # Add gaps between networks
+
+    # Calculate total height including borders, gaps, and progress bar
+    base_height = (rows * IMAGE_SIZE) + (2 * IMAGE_SIZE)  # Add top and bottom borders
+    if n_prompts > 1:
+        base_height += (n_prompts - 1) * prompt_gap  # Add gaps between prompts
+
     progress_bar_area_height = 30
     canvas_width = base_width
     canvas_height = base_height + progress_bar_area_height
@@ -378,9 +428,14 @@ def export_video(
         for row_within_prompt in range(rows_per_prompt):
             row_idx = (prompt_idx * rows_per_prompt) + row_within_prompt
 
+            # Calculate y-position accounting for prompt gaps
+            y_offset = (row_idx + 1) * IMAGE_SIZE
+            if prompt_idx > 0:
+                y_offset += prompt_idx * prompt_gap
+
             # Left border
             left_border_x = 0
-            left_border_y = (row_idx + 1) * IMAGE_SIZE
+            left_border_y = y_offset
 
             # Create and paste prompt tile
             prompt_tile = create_prompt_title_card(
@@ -389,37 +444,39 @@ def export_video(
             base_canvas.paste(prompt_tile, (left_border_x, left_border_y))
 
             # Right border - same content as left
-            right_border_x = (cols + 1) * IMAGE_SIZE
+            right_border_x = base_width - IMAGE_SIZE
             right_border_y = left_border_y
             base_canvas.paste(prompt_tile, (right_border_x, right_border_y))
 
     # Define abbreviations for network names
     abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
 
-    # Step 7: Draw network information in top and bottom borders
+    # Step 7: Draw network information in top and bottom borders - once per network block
     for network_idx, network in enumerate(all_networks):
         # Create abbreviated network string
         abbreviated_network = [abbreviations.get(net, net) for net in network]
         network_str = " → ".join(abbreviated_network)
 
-        # For each column in this network's group
-        for seed_within_row in range(seeds_per_row):
-            col_idx = (network_idx * seeds_per_row) + seed_within_row
+        # Calculate the width of this network's block
+        network_width = seeds_per_row * IMAGE_SIZE
 
-            # Top border
-            top_border_x = (col_idx + 1) * IMAGE_SIZE
-            top_border_y = 0
+        # Calculate x-position accounting for network gaps
+        x_offset = IMAGE_SIZE + (network_idx * network_width)
+        if network_idx > 0:
+            x_offset += network_idx * network_gap
 
-            # Create and paste network tile
-            network_tile = create_prompt_title_card(
-                network_str, IMAGE_SIZE, font_path, base_font_size
-            )
-            base_canvas.paste(network_tile, (top_border_x, top_border_y))
+        # Create a network banner that spans the entire network block
+        network_banner = create_network_title_banner(
+            network_str, network_width, IMAGE_SIZE, font_path, base_font_size
+        )
 
-            # Bottom border - same content as top
-            bottom_border_x = top_border_x
-            bottom_border_y = (rows + 1) * IMAGE_SIZE
-            base_canvas.paste(network_tile, (bottom_border_x, bottom_border_y))
+        # Top border
+        top_border_y = 0
+        base_canvas.paste(network_banner, (x_offset, top_border_y))
+
+        # Bottom border - same content as top
+        bottom_border_y = base_height - IMAGE_SIZE
+        base_canvas.paste(network_banner, (x_offset, bottom_border_y))
 
     # Create temporary directory for frame storage
     temp_dir = os.path.join(output_dir, "temp_frames")
@@ -492,20 +549,24 @@ def export_video(
 
                         # Paste the image onto the canvas
                         if image is not None:
+                            # Calculate prompt and network indexes for this cell
+                            prompt_idx = row // rows_per_prompt
+                            network_idx = col // seeds_per_row
+
                             # Account for borders (+1 to both row and column)
-                            x_offset = (col + 1) * IMAGE_SIZE
-                            y_offset = (row + 1) * IMAGE_SIZE
+                            x_offset = (col % seeds_per_row) + (network_idx * seeds_per_row) + 1
+                            y_offset = (row % rows_per_prompt) + (prompt_idx * rows_per_prompt) + 1
+
+                            # Convert to pixel coordinates
+                            x_offset = x_offset * IMAGE_SIZE
+                            y_offset = y_offset * IMAGE_SIZE
 
                             # Add gaps where there are prompt or network changes
-                            # Increased gap from 10px to 50px for prompt changes
-                            prompt_changes = row // rows_per_prompt
-                            if prompt_changes > 0:
-                                y_offset += 50 * prompt_changes
+                            if prompt_idx > 0:
+                                y_offset += prompt_idx * prompt_gap
 
-                            # Increased gap from 10px to 50px for network changes
-                            network_changes = col // seeds_per_row
-                            if network_changes > 0:
-                                x_offset += 50 * network_changes
+                            if network_idx > 0:
+                                x_offset += network_idx * network_gap
 
                             mosaic.paste(image, (x_offset, y_offset))
 
