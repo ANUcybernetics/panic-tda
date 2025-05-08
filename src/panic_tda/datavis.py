@@ -10,6 +10,7 @@ from plotnine import (
     facet_grid,
     facet_wrap,
     geom_boxplot,
+    geom_line,
     geom_point,
     geom_violin,
     ggplot,
@@ -257,6 +258,23 @@ def plot_semantic_drift(
         df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
+    # Scale drift columns between 1.0 and 10.0
+    df = df.with_columns(
+        (
+            1.0
+            + (pl.col("drift_euclid") - pl.col("drift_euclid").min())
+            * 9.0
+            / (pl.col("drift_euclid").max() - pl.col("drift_euclid").min())
+        ).alias("drift_euclid")
+    ).with_columns(
+        (
+            1.0
+            + (pl.col("drift_cosine") - pl.col("drift_cosine").min())
+            * 9.0
+            / (pl.col("drift_cosine").max() - pl.col("drift_cosine").min())
+        ).alias("drift_cosine")
+    )
+
     # Unpivot the drift columns
     pandas_df = df.unpivot(
         ["drift_euclid", "drift_cosine"],
@@ -276,7 +294,7 @@ def plot_semantic_drift(
                 color="embedding_model",
             ),
         )
-        + geom_point(alpha=0.8)
+        + geom_line(show_legend=False)
         # + scale_color_manual(values=["black", "red"])
         + labs(x="sequence number")
         + facet_grid(
@@ -329,45 +347,9 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    selected_prompts = [
-        "a picture of a man",
-        "a picture of a woman",
-        # "a picture of a child",
-        "a cat",
-        "a dog",
-        # "a rabbit",
-    ]
-    selected_networks = [
-        ["FluxSchnell", "BLIP2"],
-        ["FluxSchnell", "Moondream"],
-        ["SDXLTurbo", "BLIP2"],
-        ["SDXLTurbo", "Moondream"],
-    ]
-    # Initialize empty list for selected IDs
-    selected_ids = []
-
-    # Import Run model
-    from panic_tda.schemas import Run
-
-    # Loop through each prompt in selected_prompts
-    for prompt in selected_prompts:
-        # For each network pair, get 2 runs
-        for network in selected_networks:
-            # Query the database for runs matching prompt and models
-            matching_runs = (
-                session.query(Run)
-                .filter(
-                    Run.initial_prompt == prompt,
-                    Run.network == network,
-                )
-                .limit(3)
-                .all()
-            )
-
-            # Extract run IDs and add to selected_ids
-            run_ids = [str(run.id) for run in matching_runs]
-            selected_ids.extend(run_ids)
-
+    # from panic_tda.local import prompt_timeline_run_ids
+    #
+    # selected_ids = prompt_timeline_run_ids(session)
     # from panic_tda.export import export_timeline
 
     # Export the timeline image
@@ -377,13 +359,18 @@ def paper_charts(session: Session) -> None:
     #     images_per_run=8,
     #     output_image="output/vis/selected_prompts_timeline.jpg",
     # )
-    # from panic_tda.analysis import cache_dfs
+    #
+    ### CACHING
+    #
+    from panic_tda.analysis import cache_dfs
 
-    # cache_dfs(session, runs=True, embeddings=True, invocations=True)
+    cache_dfs(session, runs=False, embeddings=True, invocations=False)
     ### INVOCATIONS
     #
-    # from panic_tda.analysis import load_invocations_from_cache
-    # invocations_df = load_invocations_from_cache().filter(pl.col("embedding_model") == "Nomic")
+    from panic_tda.analysis import load_invocations_from_cache
+
+    invocations_df = load_invocations_from_cache()
+    print(invocations_df.select("run_id", "sequence_number", "type").head(50))
     # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
     #
     ### EMBEDDINGS
@@ -392,7 +379,9 @@ def paper_charts(session: Session) -> None:
 
     # embeddings_df = load_embeddings_from_cache()
 
+    # pl.Config.set_tbl_rows(1000)
     # selected_embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
+    # print(selected_embeddings_df.select("initial_prompt", "sequence_number", "text", "drift_cosine", "drift_euclid").head(50))
     # plot_semantic_drift(selected_embeddings_df, "output/vis/semantic_drift.pdf")
     #
     ### RUNS
