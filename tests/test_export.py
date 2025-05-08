@@ -159,7 +159,7 @@ def test_export_video(db_session: Session, tmp_path):
         db_session,
         fps=fps,
         resolution="8K",
-        output_video=output_file,
+        output_file=output_file,
     )
 
     # Check that the output video was created
@@ -214,7 +214,7 @@ def test_export_wrapped_video(db_session: Session, tmp_path):
         db_session,
         fps=fps,
         resolution="8K",
-        output_video=output_file,
+        output_file=output_file,
     )
 
     # Check that the output video was created

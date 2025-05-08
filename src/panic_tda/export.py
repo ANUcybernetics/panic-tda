@@ -185,7 +185,7 @@ def export_video(
     session: Session,
     fps: int,
     resolution: str,
-    output_video: str,
+    output_file: str,
     prompt_order: list[str] = None,
 ) -> None:
     """
@@ -198,11 +198,11 @@ def export_video(
         session: SQLModel Session for database operations
         fps: Frames per second for the output video
         resolution: Target resolution ("HD", "4K", or "8K")
-        output_video: Name of the output video file
+        output_file: Name of the output video file
         prompt_order: Optional custom ordering for prompts (default: alphabetical)
     """
     # Setup output directory
-    output_dir = os.path.dirname(output_video)
+    output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
 
     # Load runs
@@ -603,7 +603,7 @@ def export_video(
             "yuv420p",
             "-movflags",
             "+faststart",
-            output_video,
+            output_file,
         ]
 
         logger.info(f"Creating {resolution} video with ffmpeg")
@@ -616,7 +616,7 @@ def export_video(
                 encoding="utf-8",
                 errors="replace",
             )
-            logger.info(f"Video created successfully: {output_video}")
+            logger.info(f"Video created successfully: {output_file}")
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg failed: {e.returncode}")
             stderr_str = e.stderr if hasattr(e, "stderr") else "N/A"

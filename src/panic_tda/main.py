@@ -541,7 +541,7 @@ def export_video_command(
             session=session,
             fps=fps,
             resolution=resolution,
-            output_video=str(output_file),
+            output_file=str(output_file),
         )
 
         logger.info(f"Mosaic video successfully created at {output_file}")

@@ -178,7 +178,7 @@ def render_hallway_videos(session: Session) -> str:
                 fps=2,
                 resolution="8K",
                 run_ids=[str(run.id) for run in runs],
-                output_video=output_file,
+                output_file=output_file,
             )
             created_videos.append(output_file)
             print(f"Exported {len(runs)} runs to {output_file}")
