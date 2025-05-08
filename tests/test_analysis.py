@@ -6,6 +6,7 @@ import polars as pl
 from panic_tda.analysis import (
     add_cluster_labels,
     cache_dfs,
+    calculate_cosine_distance,
     calculate_euclidean_distances,
     embed_initial_prompts,
     load_embeddings_df,
@@ -611,4 +612,79 @@ def test_calculate_euclidean_distances():
     for i, key in enumerate(["v1", "v2", "v3", "v4", "v5"]):
         assert np.isclose(computed_from_v5[i], expected_from_v5[key]), (
             f"Distance from v5 to {key} incorrect. Expected {expected_from_v5[key]}, got {computed_from_v5[i]}"
+        )
+
+
+def test_calculate_cosine_distance():
+    """Test that calculate_cosine_distance correctly computes cosine distances."""
+
+    # Create vectors with known cosine distances
+    vectors = {
+        "v1": np.array([1, 0, 0], dtype=np.float32),  # Unit vector along x-axis
+        "v2": np.array([0, 1, 0], dtype=np.float32),  # Unit vector along y-axis
+        "v3": np.array([0, 0, 1], dtype=np.float32),  # Unit vector along z-axis
+        "v4": np.array([1, 1, 0], dtype=np.float32),  # Vector in xy-plane
+        "v5": np.array([-1, 0, 0], dtype=np.float32),  # Opposite to v1
+        "v6": np.array([1, 1, 1], dtype=np.float32),  # Equal components
+    }
+
+    # Expected cosine distances from v1 (normalized to unit length)
+    expected_distances = {
+        "v1": 0.0,  # Same direction, distance should be 0
+        "v2": 1.0,  # Orthogonal, distance should be 1
+        "v3": 1.0,  # Orthogonal, distance should be 1
+        "v4": 1 - 1 / np.sqrt(2),  # cosine distance = 1 - 0.7071 ≈ 0.2929
+        "v5": 2.0,  # Opposite direction, distance should be 2
+        "v6": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
+    }
+
+    # Calculate distances using the function
+    computed_distances = calculate_cosine_distance(
+        np.array([
+            vectors["v1"],
+            vectors["v2"],
+            vectors["v3"],
+            vectors["v4"],
+            vectors["v5"],
+            vectors["v6"],
+        ]),
+        vectors["v1"],
+    )
+
+    # Assert computed distances match expected with small tolerance for floating-point errors
+    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5", "v6"]):
+        assert np.isclose(computed_distances[i], expected_distances[key]), (
+            f"Cosine distance for {key} incorrect. Expected {expected_distances[key]}, got {computed_distances[i]}"
+        )
+
+    # Test with some other vector as reference
+    reference = vectors["v6"]  # [1, 1, 1]
+
+    # Calculate expected cosine distances from v6 to others
+    expected_from_v6 = {
+        "v1": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
+        "v2": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
+        "v3": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
+        "v4": 1 - 2 / np.sqrt(6),  # cosine distance = 1 - 0.8165 ≈ 0.1835
+        "v5": 1 - (-1) / np.sqrt(3),  # cosine distance = 1 - (-0.5774) ≈ 1.5774
+        "v6": 0.0,  # Distance to self should be 0
+    }
+
+    # Calculate distances using the function
+    computed_from_v6 = calculate_cosine_distance(
+        np.array([
+            vectors["v1"],
+            vectors["v2"],
+            vectors["v3"],
+            vectors["v4"],
+            vectors["v5"],
+            vectors["v6"],
+        ]),
+        reference,
+    )
+
+    # Assert computed distances match expected with small tolerance for floating-point errors
+    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5", "v6"]):
+        assert np.isclose(computed_from_v6[i], expected_from_v6[key]), (
+            f"Cosine distance from v6 to {key} incorrect. Expected {expected_from_v6[key]}, got {computed_from_v6[i]}"
         )
