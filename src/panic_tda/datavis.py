@@ -357,7 +357,7 @@ def paper_charts(session: Session) -> None:
     #     run_ids=selected_ids,
     #     session=session,
     #     images_per_run=8,
-    #     output_image="output/vis/selected_prompts_timeline.jpg",
+    #     output_file="output/vis/selected_prompts_timeline.jpg",
     # )
     #
     ### CACHING

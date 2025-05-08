@@ -257,7 +257,7 @@ def test_export_timeline(db_session: Session, tmp_path):
         run_ids,
         db_session,
         images_per_run=4,
-        output_image=output_file,
+        output_file=output_file,
     )
 
     # Check that the output video was created

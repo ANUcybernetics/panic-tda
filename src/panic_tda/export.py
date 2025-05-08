@@ -634,7 +634,7 @@ def export_timeline(
     run_ids: list[str],
     session: Session,
     images_per_run: int,
-    output_image: str,
+    output_file: str,
     prompt_order: list[str] = None,
 ) -> None:
     """
@@ -645,11 +645,11 @@ def export_timeline(
         run_ids: List of run IDs to include in the timeline
         session: SQLModel Session for database operations
         images_per_run: Number of evenly-spaced images to show from each run
-        output_image: Path to save the output image
+        output_file: Path to save the output image
         prompt_order: Optional custom ordering for prompts (default: alphabetical)
     """
     # Setup output directory
-    output_dir = os.path.dirname(output_image)
+    output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
 
     # Load runs
@@ -899,5 +899,5 @@ def export_timeline(
                             canvas.paste(invocation.output, (x_offset, y_offset))
 
     # Save the final image
-    canvas.save(output_image, format="JPEG", quality=95)
-    logger.info(f"Timeline image saved to: {output_image}")
+    canvas.save(output_file, format="JPEG", quality=95)
+    logger.info(f"Timeline image saved to: {output_file}")
