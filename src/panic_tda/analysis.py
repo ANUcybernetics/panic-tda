@@ -8,7 +8,7 @@ import polars as pl
 import ray
 from sqlmodel import Session
 
-from panic_tda.clustering import optics
+from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
@@ -130,7 +130,7 @@ def fetch_and_cluster_vectors(
 
         # Perform clustering on the selected vectors
         vectors_array = np.vstack(vectors)
-        cluster_labels = optics(vectors_array)
+        cluster_labels = hdbscan(vectors_array)
 
         # Assign cluster labels to the result array at the appropriate indices
         for i, idx in enumerate(indices_to_process):
