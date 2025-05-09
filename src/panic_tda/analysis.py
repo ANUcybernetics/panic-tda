@@ -95,32 +95,59 @@ def load_embeddings_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.Series:
+def fetch_and_cluster_vectors(
+    embedding_ids: pl.Series, downsample: int, session: Session
+) -> pl.Series:
     """
     Fetch embedding vectors from the database, stack them, and perform clustering.
+    Can downsample the embeddings to improve performance.
 
     Args:
         embedding_ids: A Series containing embedding IDs
         session: SQLModel database session
+        downsample: If > 1, only process every nth embedding (e.g., 2 means every other embedding)
 
     Returns:
-        A Series of cluster labels corresponding to the input embedding IDs
+        A Series of cluster labels corresponding to the input embedding IDs,
+        with None values for embeddings skipped due to downsampling
     """
-    vectors = [
-        read_embedding(UUID(embedding_id), session).vector
-        for embedding_id in embedding_ids
-    ]
-    vectors_array = np.vstack(vectors)
-    cluster_labels = optics(vectors_array)
-    return pl.Series(cluster_labels)
+    # Initialize result array with None values
+    result = [None] * len(embedding_ids)
+
+    # Select indices for embeddings to process
+    indices_to_process = list(range(0, len(embedding_ids), downsample))
+
+    # Only process selected embeddings
+    if indices_to_process:
+        # Get embedding IDs to process
+        ids_to_process = [embedding_ids[i] for i in indices_to_process]
+
+        # Fetch vectors for selected embeddings
+        vectors = [
+            read_embedding(UUID(embedding_id), session).vector
+            for embedding_id in ids_to_process
+        ]
+
+        # Perform clustering on the selected vectors
+        vectors_array = np.vstack(vectors)
+        cluster_labels = optics(vectors_array)
+
+        # Assign cluster labels to the result array at the appropriate indices
+        for i, idx in enumerate(indices_to_process):
+            result[idx] = cluster_labels[i]
+
+    return pl.Series(result)
 
 
-def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+def add_cluster_labels(
+    df: pl.DataFrame, downsample: int, session: Session
+) -> pl.DataFrame:
     """
     Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
 
     Args:
         df: DataFrame containing embedding metadata (without vectors)
+        downsample: If > 1, only process every nth embedding (e.g., 2 means every other embedding)
         session: SQLModel database session for fetching vectors
 
     Returns:
@@ -130,7 +157,9 @@ def add_cluster_labels(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     df = df.with_columns(
         pl.col("id")
         .map_batches(
-            lambda embedding_ids: fetch_and_cluster_vectors(embedding_ids, session),
+            lambda embedding_ids: fetch_and_cluster_vectors(
+                embedding_ids, downsample, session
+            ),
         )
         .alias("cluster_label")
     )

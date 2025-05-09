@@ -186,7 +186,7 @@ def test_add_cluster_labels(db_session):
     df = load_embeddings_df(db_session)
 
     # Add cluster labels with smaller min_cluster_size to avoid hanging
-    df_with_clusters = add_cluster_labels(df, db_session)
+    df_with_clusters = add_cluster_labels(df, 1, db_session)
 
     # Check that the cluster_label column was added
     assert "cluster_label" in df_with_clusters.columns
@@ -214,6 +214,86 @@ def test_add_cluster_labels(db_session):
     # Verify that both models have at least one cluster
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
+
+
+def test_add_cluster_labels_with_downsampling(db_session):
+    """Test that add_cluster_labels properly works with downsampling."""
+
+    # Create a test configuration with more data to demonstrate downsampling
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test embedding clustering with downsampling"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=200,  # More data points
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load embeddings
+    df = load_embeddings_df(db_session)
+
+    # Record original size
+    original_size = df.height
+
+    # Add cluster labels with downsampling factor of 2
+    downsample = 2
+    df_with_clusters = add_cluster_labels(df, downsample, db_session)
+
+    # Check that the cluster_label column was added
+    assert "cluster_label" in df_with_clusters.columns
+
+    # With downsample=2, approximately half of the entries should have null cluster labels
+    null_labels_count = df_with_clusters.filter(
+        pl.col("cluster_label").is_null()
+    ).height
+    assert null_labels_count > 0, "Expected some null cluster labels with downsampling"
+    assert abs(null_labels_count - original_size / 2) < original_size * 0.1, (
+        "Expected approximately half null labels"
+    )
+
+    # Check that the non-null cluster labels are integers
+    non_null_count = df_with_clusters.filter(~pl.col("cluster_label").is_null()).height
+    assert non_null_count > 0, "Expected some non-null cluster labels"
+    assert (
+        df_with_clusters.filter(
+            ~pl.col("cluster_label").is_null()
+            & ~pl.col("cluster_label").cast(pl.Int64).is_null()
+        ).height
+        == non_null_count
+    )
+
+    # Check that each embedding model has its own set of clusters (only considering non-null labels)
+    dummy_clusters = (
+        df_with_clusters.filter(
+            (pl.col("embedding_model") == "Dummy")
+            & (~pl.col("cluster_label").is_null())
+        )
+        .select("cluster_label")
+        .unique()
+    )
+    dummy2_clusters = (
+        df_with_clusters.filter(
+            (pl.col("embedding_model") == "Dummy2")
+            & (~pl.col("cluster_label").is_null())
+        )
+        .select("cluster_label")
+        .unique()
+    )
+
+    # Verify that both models have at least one cluster
+    assert dummy_clusters.height > 0
+    assert dummy2_clusters.height > 0
+
+    # Verify that the output DataFrame has the same number of rows as input
+    assert df_with_clusters.height == original_size
 
 
 def test_initial_prompt_embeddings(db_session):
