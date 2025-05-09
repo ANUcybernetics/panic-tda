@@ -20,10 +20,8 @@ def hdbscan(embeddings: np.ndarray) -> List[int]:
     # Calculate min_cluster_size and min_samples based on dataset size
     # For large datasets (10s of thousands), use 0.1-0.5% of dataset size
     n_samples = embeddings.shape[0]
-    min_cluster_size = max(
-        15, int(n_samples * 0.001)
-    )  # 0.1% of dataset size, minimum 15
-    min_samples = max(20, int(n_samples * 0.0015))  # 0.15% of dataset size, minimum 20
+    min_cluster_size = max(2, int(n_samples * 0.001))  # 0.1% of dataset size
+    min_samples = max(2, int(n_samples * 0.0015))  # 0.15% of dataset size
 
     # Configure and run HDBSCAN
     hdbscan = HDBSCAN(
