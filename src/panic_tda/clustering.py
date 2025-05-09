@@ -21,8 +21,8 @@ def hdbscan(embeddings: np.ndarray) -> List[int]:
     # For large datasets (10s of thousands), use 0.1-0.5% of dataset size
     n_samples = embeddings.shape[0]
     min_cluster_size = max(2, int(n_samples * 0.001))  # 0.1% of dataset size
-    min_samples = max(2, int(n_samples * 0.0015))  # 0.15% of dataset size
-    cluster_selection_epsilon = 0.1
+    min_samples = max(2, int(n_samples * 0.001))  # same as above
+    cluster_selection_epsilon = 0.5
 
     # Configure and run HDBSCAN
     hdbscan = HDBSCAN(
