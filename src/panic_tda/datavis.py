@@ -10,6 +10,7 @@ from plotnine import (
     element_text,
     facet_grid,
     facet_wrap,
+    geom_bar,
     geom_boxplot,
     geom_line,
     geom_point,
@@ -358,6 +359,45 @@ def plot_cluster_timelines(
     # Save the chart
     saved_file = save(plot, output_file)
     logging.info(f"Saved cluster timelines plot to {saved_file}")
+
+
+def plot_cluster_histograms(
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_histograms.pdf"
+) -> None:
+    """
+    Create a faceted histogram showing counts of each cluster label,
+    faceted by initial prompt and embedding model.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label
+        output_file: Path to save the visualization
+    """
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = df.filter(pl.col("cluster_label").is_not_null()).to_pandas()
+
+    # Create the plot
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="factor(cluster_label)", fill="embedding_model"),
+        )
+        + geom_bar()
+        + labs(x="cluster", y="count")
+        + facet_wrap(
+            "~ initial_prompt + embedding_model",
+            labeller="label_context",
+            ncol=3,
+            scales="free_x",
+        )
+        + theme(
+            figure_size=(20, 10),
+            strip_text=element_text(size=10),
+        )
+    )
+
+    # Save the chart
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster histograms plot to {saved_file}")
 
 
 def plot_cluster_example_images(
