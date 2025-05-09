@@ -259,21 +259,21 @@ def plot_semantic_drift(
         output_file: Path to save the visualization
     """
     # Scale drift columns between 1.0 and 10.0
-    df = df.with_columns(
-        (
-            1.0
-            + (pl.col("drift_euclid") - pl.col("drift_euclid").min())
-            * 9.0
-            / (pl.col("drift_euclid").max() - pl.col("drift_euclid").min())
-        ).alias("drift_euclid")
-    ).with_columns(
-        (
-            1.0
-            + (pl.col("drift_cosine") - pl.col("drift_cosine").min())
-            * 9.0
-            / (pl.col("drift_cosine").max() - pl.col("drift_cosine").min())
-        ).alias("drift_cosine")
-    )
+    # df = df.with_columns(
+    #     (
+    #         1.0
+    #         + (pl.col("drift_euclid") - pl.col("drift_euclid").min())
+    #         * 9.0
+    #         / (pl.col("drift_euclid").max() - pl.col("drift_euclid").min())
+    #     ).alias("drift_euclid")
+    # ).with_columns(
+    #     (
+    #         1.0
+    #         + (pl.col("drift_cosine") - pl.col("drift_cosine").min())
+    #         * 9.0
+    #         / (pl.col("drift_cosine").max() - pl.col("drift_cosine").min())
+    #     ).alias("drift_cosine")
+    # )
 
     # Unpivot the drift columns
     pandas_df = df.unpivot(
