@@ -3,12 +3,14 @@ import os
 import pytest
 
 from panic_tda.analysis import (
+    add_cluster_labels,
     add_persistence_entropy,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
 )
 from panic_tda.datavis import (
+    plot_cluster_timelines,
     plot_invocation_duration,
     plot_persistence_diagram,
     plot_persistence_diagram_by_prompt,
@@ -50,6 +52,7 @@ def mock_experiment_data(db_session):
     runs_df = load_runs_df(db_session)
     runs_df = add_persistence_entropy(runs_df, db_session)
     embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
     invocations_df = load_invocations_df(db_session)
 
     return {
@@ -191,6 +194,29 @@ def test_plot_invocation_duration(mock_experiment_data):
 
     # Generate the plot
     plot_invocation_duration(invocations_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_timelines(mock_experiment_data):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
+    # Skip test if we don't have cluster labels
+    if "cluster_label" not in embeddings_df.columns:
+        pytest.skip("Embeddings data doesn't have cluster_label column")
+
+    # Verify we have cluster timeline data
+    assert embeddings_df.height > 0
+    assert "run_id" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
+    assert "initial_prompt" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/cluster_timelines.pdf"
+
+    # Generate the plot
+    plot_cluster_timelines(embeddings_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

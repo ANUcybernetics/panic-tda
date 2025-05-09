@@ -312,6 +312,51 @@ def plot_semantic_drift(
     logging.info(f"Saved semantic drift plot to {saved_file}")
 
 
+def plot_cluster_timelines(
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_timelines.pdf"
+) -> None:
+    """
+    Create a faceted scatter plot showing cluster labels over sequence number for each run,
+    faceted by initial prompt.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label and sequence_number
+        output_file: Path to save the visualization
+    """
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = df.filter(pl.col("cluster_label").is_not_null()).to_pandas()
+
+    # Create the plot
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(
+                x="sequence_number",
+                y="run_id",
+                color="factor(cluster_label)",
+            ),
+        )
+        + geom_line(colour="black", alpha=0.7)
+        + geom_point(size=3)
+        + labs(x="sequence number", y="run id", color="cluster")
+        + facet_wrap(
+            "~ initial_prompt + embedding_model",
+            labeller="label_context",
+            ncol=3,
+            scales="free",
+        )
+        + theme(
+            figure_size=(20, 10),
+            strip_text=element_text(size=10),
+            axis_text_y=element_blank(),
+        )
+    )
+
+    # Save the chart
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster timelines plot to {saved_file}")
+
+
 def plot_invocation_duration(
     df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.pdf"
 ) -> None:
