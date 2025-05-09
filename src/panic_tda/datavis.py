@@ -289,21 +289,20 @@ def plot_semantic_drift(
             pandas_df,
             aes(
                 x="sequence_number",
-                y="run_id",
-                size="drift_value",
-                color="embedding_model",
+                y="drift_value",
+                # size="drift_value",
+                color="initial_prompt",
             ),
         )
-        + geom_line(show_legend=False)
+        + geom_line()
         # + scale_color_manual(values=["black", "red"])
-        + labs(x="sequence number")
+        + labs(x="sequence number", y="semantic drift")
         + facet_grid(
-            "initial_prompt ~ embedding_model + drift_metric",
-            space="free_y",
+            "initial_prompt + drift_metric + embedding_model ~",
             labeller="label_context",
         )
         + theme(
-            figure_size=(40, 40),
+            figure_size=(20, 10),
             strip_text=element_text(size=10),
         )
     )
