@@ -22,9 +22,6 @@ def prompt_timeline_run_ids(session: Session):
     # Initialize empty list for selected IDs
     selected_ids = []
 
-    # Import Run model
-    from panic_tda.schemas import Run
-
     # Loop through each prompt in selected_prompts
     for prompt in selected_prompts:
         # For each network pair, get 2 runs
@@ -36,13 +33,15 @@ def prompt_timeline_run_ids(session: Session):
                     Run.initial_prompt == prompt,
                     Run.network == network,
                 )
-                .limit(3)
+                .limit(2)
                 .all()
             )
 
             # Extract run IDs and add to selected_ids
             run_ids = [str(run.id) for run in matching_runs]
             selected_ids.extend(run_ids)
+
+    return selected_ids
 
 
 def prompt_category_mapper(initial_prompt: str) -> str:
