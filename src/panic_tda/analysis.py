@@ -524,15 +524,12 @@ def cache_dfs(
     if runs:
         print("Warming cache for runs dataframe...")
         cache_path = "output/cache/runs.parquet"
-        # Remove existing cache file if it exists
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
 
         start_time = time.time()
         runs_df = load_runs_df(session)
         df_memory_size = runs_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
-        # Save to cache
+        # Save to cache (automatically overwrites if exists)
         runs_df.write_parquet(cache_path)
         elapsed_time = time.time() - start_time
 
@@ -548,16 +545,13 @@ def cache_dfs(
     if embeddings:
         print("Warming cache for embeddings dataframe...")
         cache_path = "output/cache/embeddings.parquet"
-        # Remove existing cache file if it exists
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
 
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
         # embeddings_df = add_cluster_labels(embeddings_df, session)
         df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
-        # Save to cache
+        # Save to cache (automatically overwrites if exists)
         embeddings_df.write_parquet(cache_path)
         elapsed_time = time.time() - start_time
 
@@ -573,9 +567,6 @@ def cache_dfs(
     if invocations:
         print("Warming cache for invocations dataframe...")
         cache_path = "output/cache/invocations.parquet"
-        # Remove existing cache file if it exists
-        if os.path.exists(cache_path):
-            os.remove(cache_path)
 
         start_time = time.time()
         invocations_df = load_invocations_df(session)
@@ -583,7 +574,7 @@ def cache_dfs(
             1024 * 1024
         )  # Convert to MB
 
-        # Save to cache
+        # Save to cache (automatically overwrites if exists)
         invocations_df.write_parquet(cache_path)
         elapsed_time = time.time() - start_time
 
