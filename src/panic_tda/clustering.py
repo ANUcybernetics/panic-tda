@@ -22,10 +22,14 @@ def hdbscan(embeddings: np.ndarray) -> List[int]:
     n_samples = embeddings.shape[0]
     min_cluster_size = max(2, int(n_samples * 0.001))  # 0.1% of dataset size
     min_samples = max(2, int(n_samples * 0.0015))  # 0.15% of dataset size
+    cluster_selection_epsilon = 0.1
 
     # Configure and run HDBSCAN
     hdbscan = HDBSCAN(
-        min_cluster_size=min_cluster_size, min_samples=min_samples, n_jobs=-1
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        cluster_selection_epsilon=cluster_selection_epsilon,
+        n_jobs=-1,
     )
 
     # Fit the model and return the cluster labels
