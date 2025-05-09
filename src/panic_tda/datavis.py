@@ -17,6 +17,7 @@ from plotnine import (
     geom_violin,
     ggplot,
     labs,
+    scale_fill_manual,
     scale_x_continuous,
     scale_y_continuous,
     theme,
@@ -350,7 +351,7 @@ def plot_cluster_timelines(
             scales="free",
         )
         + theme(
-            figure_size=(20, 10),
+            figure_size=(20, 60),
             strip_text=element_text(size=10),
             axis_text_y=element_blank(),
         )
@@ -373,24 +374,28 @@ def plot_cluster_histograms(
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.filter(pl.col("cluster_label").is_not_null()).to_pandas()
+    pandas_df = (
+        df.filter(pl.col("embedding_model") == "Nomic")
+        .filter(pl.col("cluster_label").is_not_null())
+        .to_pandas()
+    )
 
     # Create the plot
     plot = (
         ggplot(
             pandas_df,
-            aes(x="factor(cluster_label)", fill="embedding_model"),
+            aes(x="factor(cluster_label)", fill="cluster_label == -1"),
         )
         + geom_bar()
-        + labs(x="cluster", y="count")
+        + labs(x="cluster", y="count", fill="outlier?")
+        + scale_fill_manual(values=["black", "red"])
         + facet_wrap(
-            "~ initial_prompt + embedding_model",
-            labeller="label_context",
-            ncol=3,
-            scales="free_x",
+            "~ initial_prompt",
+            # labeller="label_context",
+            # ncol=3,
         )
         + theme(
-            figure_size=(20, 10),
+            figure_size=(20, 20),
             strip_text=element_text(size=10),
         )
     )
