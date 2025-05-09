@@ -678,8 +678,9 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
-    df = add_semantic_drift_euclid(df, session)
-    df = add_semantic_drift_cosine(df, session)
+    df = add_cluster_labels(df, 100, session)
+    # df = add_semantic_drift_euclid(df, session)
+    # df = add_semantic_drift_cosine(df, session)
 
     return df
 
