@@ -10,6 +10,7 @@ from panic_tda.analysis import (
     load_runs_df,
 )
 from panic_tda.datavis import (
+    plot_cluster_example_images,
     plot_cluster_timelines,
     plot_invocation_duration,
     plot_persistence_diagram,
@@ -217,6 +218,37 @@ def test_plot_cluster_timelines(mock_experiment_data):
 
     # Generate the plot
     plot_cluster_timelines(embeddings_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_example_images(mock_experiment_data, db_session):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
+    # Skip test if we don't have cluster labels
+    if "cluster_label" not in embeddings_df.columns:
+        pytest.skip("Embeddings data doesn't have cluster_label column")
+
+    # Verify we have the necessary columns
+    assert embeddings_df.height > 0
+    assert "invocation_id" in embeddings_df.columns
+    assert "embedding_model" in embeddings_df.columns
+
+    # Get the first embedding model for testing
+    embedding_model = embeddings_df.select("embedding_model").unique().to_series()[0]
+
+    # Define output file
+    output_file = "output/test/cluster_examples.jpg"
+
+    # Generate the plot
+    plot_cluster_example_images(
+        embeddings_df,
+        num_examples=10,
+        embedding_model=embedding_model,
+        session=db_session,
+        output_file=output_file,
+    )
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

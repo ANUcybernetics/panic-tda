@@ -1,5 +1,6 @@
 import logging
 import os
+from uuid import UUID
 
 import polars as pl
 from plotnine import (
@@ -21,6 +22,8 @@ from plotnine import (
 )
 from plotnine.options import set_option
 from sqlmodel import Session
+
+from panic_tda.export import export_mosaic_image
 
 ## datavis
 
@@ -355,6 +358,53 @@ def plot_cluster_timelines(
     # Save the chart
     saved_file = save(plot, output_file)
     logging.info(f"Saved cluster timelines plot to {saved_file}")
+
+
+def plot_cluster_example_images(
+    df: pl.DataFrame,
+    num_examples: int,
+    embedding_model: str,
+    session: Session,
+    output_file: str = "output/vis/cluster_examples.jpg",
+) -> None:
+    """
+    Create a mosaic image showing example images for each cluster.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label and invocation_id
+        num_examples: Number of example images to include for each cluster
+        embedding_model: The embedding model to filter by
+        output_file: Path to save the visualization
+    """
+
+    # Filter dataframe to get only rows with the specified embedding model
+    # and where cluster_label is not null and not -1
+    filtered_df = df.filter(
+        (pl.col("embedding_model") == embedding_model)
+        & (pl.col("cluster_label").is_not_null())
+        & (pl.col("cluster_label") != -1)
+    )
+
+    # Group by cluster_label and collect the first num_examples invocation_ids for each
+    cluster_examples = {}
+
+    # Convert to pandas for easier groupby operations
+    pandas_df = filtered_df.to_pandas()
+
+    # Group by cluster_label
+    for cluster_label, group in pandas_df.groupby("cluster_label"):
+        # Get the first num_examples invocation_ids
+        invocation_ids = group["invocation_id"].head(num_examples).tolist()
+        cluster_examples[str(cluster_label)] = [UUID(id) for id in invocation_ids]
+
+    # Use export_mosaic_image to create the visualization
+    if cluster_examples:
+        export_mosaic_image(cluster_examples, session, output_file=output_file)
+        logging.info(f"Saved cluster example images to {output_file}")
+    else:
+        logging.warning(
+            f"No cluster examples found for embedding model {embedding_model}"
+        )
 
 
 def plot_invocation_duration(

@@ -6,12 +6,13 @@ import shutil
 import subprocess
 import textwrap
 from io import BytesIO
+from typing import Dict, List
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
 from sqlmodel import Session
 
-from panic_tda.db import read_run
+from panic_tda.db import read_invocation, read_run
 from panic_tda.genai_models import IMAGE_SIZE
 from panic_tda.schemas import InvocationType, Run
 
@@ -995,3 +996,84 @@ def export_timeline(
     # Save the final image
     canvas.save(output_file, format="JPEG", quality=95)
     logger.info(f"Timeline image saved to: {output_file}")
+
+
+def export_mosaic_image(
+    label_invocations: Dict[str, List[UUID]],
+    session: Session,
+    output_file: str,
+) -> None:
+    """
+    Export a mosaic image where each row corresponds to a label and contains all images
+    associated with that label.
+
+    Args:
+        label_invocations: Dictionary mapping labels to lists of Invocation UUIDs
+        session: SQLModel Session for database operations
+        output_file: Path to save the output mosaic image
+        font_size: Font size for label text (default: 16)
+    """
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+    font_size = 32
+
+    # Set up font for labels
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    font = ImageFont.truetype(font_path, font_size)
+
+    # Determine dimensions
+    n_labels = len(label_invocations)
+    # Verify all lists have the same length and get that length
+    list_lengths = [len(invs) for invs in label_invocations.values()]
+    if not all(length == list_lengths[0] for length in list_lengths):
+        logger.warning(
+            "Not all label lists have the same length. Using maximum length."
+        )
+    n_images_per_row = max(list_lengths)
+
+    # Calculate label area height (font size + padding)
+    label_height = font_size + 10
+
+    # Define row gap as 2x the font size
+    row_gap = 2 * font_size
+
+    # Calculate dimensions of the entire mosaic
+    mosaic_width = n_images_per_row * IMAGE_SIZE
+    # Add row gaps between rows (n_labels - 1 gaps)
+    mosaic_height = (
+        n_labels * (IMAGE_SIZE + label_height) + (n_labels - 1) * row_gap
+        if n_labels > 1
+        else n_labels * (IMAGE_SIZE + label_height)
+    )
+
+    # Create canvas for the mosaic
+    mosaic = Image.new("RGB", (mosaic_width, mosaic_height), (255, 255, 255))
+    draw = ImageDraw.Draw(mosaic)
+
+    # For each label, create a row of images with the label above
+    row_y = 0
+    for label, invocation_uuids in label_invocations.items():
+        # Draw label
+        draw.text((10, row_y), label, font=font, fill=(0, 0, 0))
+
+        # Move down to start the image row
+        row_y += label_height
+
+        # Place each image in the row
+        for i, inv_uuid in enumerate(invocation_uuids):
+            if i >= n_images_per_row:
+                break  # Only include up to n_images_per_row images
+
+            # Read invocation from database
+            invocation = read_invocation(inv_uuid, session)
+            x_offset = i * IMAGE_SIZE
+            # the image is actually the output of the previous invocation
+            mosaic.paste(invocation.input_invocation.output, (x_offset, row_y))
+
+        # Move down to the next row, adding the row gap
+        row_y += IMAGE_SIZE + row_gap
+
+    # Save the final mosaic
+    mosaic.save(output_file, format="JPEG", quality=95)
+    logger.info(f"Mosaic image saved to: {output_file}")
