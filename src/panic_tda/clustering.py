@@ -4,9 +4,7 @@ import numpy as np
 from sklearn.cluster import HDBSCAN, OPTICS
 
 
-def hdbscan(
-    embeddings: np.ndarray, min_cluster_size: int = 5, min_samples: int = None
-) -> List[int]:
+def hdbscan(embeddings: np.ndarray) -> List[int]:
     """
     Perform HDBSCAN clustering on a list of embeddings.
 
@@ -19,6 +17,13 @@ def hdbscan(
     Returns:
         List of cluster labels (integers) corresponding to each embedding in the input list
     """
+    # Calculate min_cluster_size and min_samples based on dataset size
+    # For large datasets (10s of thousands), use 0.1-0.5% of dataset size
+    n_samples = embeddings.shape[0]
+    min_cluster_size = max(
+        15, int(n_samples * 0.001)
+    )  # 0.1% of dataset size, minimum 15
+    min_samples = max(20, int(n_samples * 0.0015))  # 0.15% of dataset size, minimum 20
 
     # Configure and run HDBSCAN
     hdbscan = HDBSCAN(
