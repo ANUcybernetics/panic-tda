@@ -374,7 +374,7 @@ def plot_cluster_histograms(
     """
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = (
-        df.filter(pl.col("cluster_label").is_not_null())
+        df.filter(pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != -1)
         # .filter(pl.col("embedding_model") == "Nomic")
         .to_pandas()
     )
@@ -383,14 +383,14 @@ def plot_cluster_histograms(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="factor(cluster_label)", fill="cluster_label == -1"),
+            aes(x="factor(cluster_label)", fill="embedding_model"),
         )
         + geom_bar()
-        + labs(x="cluster", y="count", fill="outlier?")
-        + scale_fill_manual(values=["black", "red"])
+        + labs(x="cluster", y="count")
         + facet_wrap(
             "~ initial_prompt + embedding_model",
             # labeller="label_context",
+            scales="free_y",
             ncol=3,
         )
         + theme(
