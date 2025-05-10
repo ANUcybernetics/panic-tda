@@ -671,7 +671,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
 
     # with the current dataset, it takes about 35 mins (with downsample == 50) to do the clustering
-    df = add_cluster_labels(df, 50, session)
+    df = add_cluster_labels(df, 10, session)
 
     # no longer using semantic drift, so no need to calculate
     # df = add_semantic_drift_euclid(df, session)
