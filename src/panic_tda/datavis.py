@@ -351,7 +351,7 @@ def plot_cluster_timelines(
             scales="free",
         )
         + theme(
-            figure_size=(20, 60),
+            figure_size=(20, 100),
             strip_text=element_text(size=10),
             axis_text_y=element_blank(),
         )
