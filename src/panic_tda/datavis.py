@@ -17,7 +17,6 @@ from plotnine import (
     geom_violin,
     ggplot,
     labs,
-    scale_fill_manual,
     scale_x_continuous,
     scale_y_continuous,
     theme,
