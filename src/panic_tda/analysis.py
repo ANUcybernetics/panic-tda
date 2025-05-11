@@ -618,6 +618,7 @@ def load_invocations_df(session: Session) -> pl.DataFrame:
         run.seed as seed
     FROM invocation
     JOIN run ON invocation.run_id = run.id
+    WHERE run.initial_prompt NOT IN ('yeah', 'nah')
     """
 
     # Use polars to read directly from the database, getting the correct URI format
@@ -659,7 +660,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     FROM embedding
     JOIN invocation ON embedding.invocation_id = invocation.id
     JOIN run ON invocation.run_id = run.id
-    WHERE invocation.type = 'TEXT'
+    WHERE invocation.type = 'TEXT' AND run.initial_prompt NOT IN ('yeah', 'nah')
     ORDER BY run_id, embedding_model, sequence_number
     """
 
@@ -705,6 +706,7 @@ def load_runs_df(session: Session) -> pl.DataFrame:
         (SELECT COUNT(*) FROM invocation WHERE invocation.run_id = run.id) as num_invocations
     FROM run
     WHERE EXISTS (SELECT 1 FROM invocation WHERE invocation.run_id = run.id)
+      AND run.initial_prompt NOT IN ('yeah', 'nah')
     """
 
     # Use polars to read directly from the database, getting the correct URI format
