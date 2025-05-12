@@ -289,32 +289,56 @@ def test_find_embedding_for_vector(db_session: Session):
         max_length=3,
     )
 
-    # Create an invocation for our embedding
-    invocation = Invocation(
+    # Create two invocations for our embeddings
+    invocation1 = Invocation(
         model="TextModel",
         type=InvocationType.TEXT,
         seed=42,
         run_id=sample_run.id,
         sequence_number=1,
-        output_text="Sample output text",
+        output_text="Sample output text 1",
     )
 
-    # Create embedding with a specific vector for testing
-    test_vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
-    embedding = Embedding(invocation_id=invocation.id, embedding_model="test-model")
-    embedding.vector = test_vector
+    invocation2 = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=43,
+        run_id=sample_run.id,
+        sequence_number=2,
+        output_text="Sample output text 2",
+    )
+
+    # Create first embedding with a specific vector for testing
+    test_vector1 = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+    embedding1 = Embedding(invocation_id=invocation1.id, embedding_model="test-model-1")
+    embedding1.vector = test_vector1
+
+    # Create second embedding with a different vector
+    test_vector2 = np.array([0.4, 0.5, 0.6], dtype=np.float32)
+    embedding2 = Embedding(invocation_id=invocation2.id, embedding_model="test-model-2")
+    embedding2.vector = test_vector2
 
     # Add everything to the session
     db_session.add(sample_run)
-    db_session.add(invocation)
-    db_session.add(embedding)
+    db_session.add(invocation1)
+    db_session.add(invocation2)
+    db_session.add(embedding1)
+    db_session.add(embedding2)
     db_session.commit()
 
-    # Test finding exact match
-    result = find_embedding_for_vector(test_vector, db_session)
-    assert result is not None
-    assert result.id == embedding.id
-    assert np.allclose(result.vector, test_vector)
+    # Test finding exact match for first embedding
+    result1 = find_embedding_for_vector(test_vector1, db_session)
+    assert result1 is not None
+    assert result1.id == embedding1.id
+    assert result1.embedding_model == "test-model-1"
+    assert np.array_equal(result1.vector, test_vector1)
+
+    # Test finding exact match for second embedding
+    result2 = find_embedding_for_vector(test_vector2, db_session)
+    assert result2 is not None
+    assert result2.id == embedding2.id
+    assert result2.embedding_model == "test-model-2"
+    assert np.array_equal(result2.vector, test_vector2)
 
     # Test for vector that doesn't exist
     non_existent_vector = np.random.rand(3).astype(np.float32)
