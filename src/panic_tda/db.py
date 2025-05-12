@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from uuid import UUID
 
+import numpy as np
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
@@ -173,6 +174,34 @@ def read_embedding(embedding_id: UUID, session: Session):
         An Embedding object or None if not found
     """
     return session.get(Embedding, embedding_id)
+
+
+def find_embedding_for_vector(vector: np.ndarray, session: Session) -> Embedding:
+    """
+    Finds the first embedding with a vector that exactly matches the given vector.
+
+    Args:
+        vector: Numpy ndarray to match against
+        session: The database session
+
+    Returns:
+        An Embedding object with a matching vector
+
+    Raises:
+        ValueError: If no matching embedding is found
+    """
+
+    # Create a query to find all embeddings with non-null vectors
+    statement = select(Embedding).where(Embedding.vector.is_not(None))
+    embeddings = session.exec(statement).all()
+
+    # Iterate through embeddings to find a match
+    for embedding in embeddings:
+        if np.array_equal(embedding.vector, vector):
+            return embedding
+
+    # No match found
+    raise ValueError("No embedding found with the given vector")
 
 
 def list_invocations(session: Session):

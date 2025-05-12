@@ -11,6 +11,7 @@ from uuid_v7.base import uuid7
 
 from panic_tda.db import (
     delete_invocation,
+    find_embedding_for_vector,
     get_engine_from_connection_string,
     incomplete_embeddings,
     latest_experiment,
@@ -276,6 +277,49 @@ def test_read_embedding(db_session: Session):
     nonexistent_id = uuid7()
     retrieved_embedding = read_embedding(nonexistent_id, db_session)
     assert retrieved_embedding is None
+
+
+def test_find_embedding_for_vector(db_session: Session):
+    """Test the find_embedding_for_vector function."""
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test find embedding",
+        network=["model1"],
+        seed=42,
+        max_length=3,
+    )
+
+    # Create an invocation for our embedding
+    invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        output_text="Sample output text",
+    )
+
+    # Create embedding with a specific vector for testing
+    test_vector = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+    embedding = Embedding(invocation_id=invocation.id, embedding_model="test-model")
+    embedding.vector = test_vector
+
+    # Add everything to the session
+    db_session.add(sample_run)
+    db_session.add(invocation)
+    db_session.add(embedding)
+    db_session.commit()
+
+    # Test finding exact match
+    result = find_embedding_for_vector(test_vector, db_session)
+    assert result is not None
+    assert result.id == embedding.id
+    assert np.allclose(result.vector, test_vector)
+
+    # Test for vector that doesn't exist
+    non_existent_vector = np.random.rand(3).astype(np.float32)
+    with pytest.raises(ValueError, match="No embedding found with the given vector"):
+        find_embedding_for_vector(non_existent_vector, db_session)
 
 
 def test_engine_initialization():
