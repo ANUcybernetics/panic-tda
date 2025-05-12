@@ -374,30 +374,29 @@ def plot_cluster_histograms(
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = (
-        df.filter(pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != -1)
-        # .filter(pl.col("embedding_model") == "Nomic")
-        .to_pandas()
-    )
+    pandas_df = df.filter(
+        pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != "OUTLIER"
+    ).to_pandas()
 
     # Create the plot
     plot = (
         ggplot(
             pandas_df,
-            aes(x="factor(cluster_label)", fill="embedding_model"),
+            aes(x="cluster_label", fill="embedding_model"),
         )
         + geom_bar()
-        + labs(x="cluster", y="count")
+        + labs(x="cluster_label", y="count")
         + facet_wrap(
-            "~ initial_prompt + embedding_model",
+            "~ embedding_model + initial_prompt",
             # labeller="label_context",
-            scales="free_y",
+            # scales="free_y",
             ncol=3,
         )
         + theme(
             figure_size=(20, 80),
             strip_text=element_text(size=10),
         )
+        + coord_flip()
     )
 
     # Save the chart
