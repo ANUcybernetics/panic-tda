@@ -96,7 +96,7 @@ def test_load_embeddings_df(db_session):
         seeds=[-1],
         prompts=["test embedding dataframe"],
         embedding_models=["Dummy", "Dummy2"],
-        max_length=10,
+        max_length=100,
     )
 
     # Save config to database to get an ID
@@ -357,7 +357,7 @@ def test_add_semantic_drift(db_session):
         seeds=[-1],
         prompts=["test semantic drift"],
         embedding_models=["Dummy"],
-        max_length=10,
+        max_length=100,
     )
 
     # Save config to database to get an ID
