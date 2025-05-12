@@ -69,12 +69,19 @@ def test_hdbscan_clustering():
     embeddings_arr = np.array(embeddings_arr)
 
     # Test with default parameters
-    labels = hdbscan(embeddings_arr)
+    result = hdbscan(embeddings_arr)
 
     # Check that we get the expected result type
-    assert isinstance(labels, list)
+    assert isinstance(result, dict)
+    assert "labels" in result
+    assert "medoids" in result
+    assert isinstance(result["labels"], np.ndarray)
+    assert isinstance(result["medoids"], np.ndarray)
+    labels = result["labels"]
+    medoids = result["medoids"]
+
     assert len(labels) == len(embeddings_arr)
-    assert all(isinstance(label, int) for label in labels)
+    assert all(isinstance(label, np.integer) for label in labels)
 
     # Check that we have at least 2 clusters (might have some noise points)
     unique_labels = set(labels)
@@ -82,6 +89,9 @@ def test_hdbscan_clustering():
     if -1 in unique_labels:
         unique_labels.remove(-1)
     assert len(unique_labels) >= 2
+
+    # Check that we have medoids for each cluster
+    assert len(medoids) == len(unique_labels)
 
     # Verify that the first 6 points are in the same cluster
     first_cluster_label = labels[0]
@@ -97,8 +107,9 @@ def test_hdbscan_clustering():
     assert all(label == second_cluster_label for label in labels[7:13])
 
     # Check with custom parameters
-    labels_custom = hdbscan(embeddings_arr)
-    assert len(labels_custom) == len(embeddings_arr)
+    result_custom = hdbscan(embeddings_arr)
+    assert len(result_custom["labels"]) == len(embeddings_arr)
+    assert result_custom["medoids"].shape[1] == EMBEDDING_DIM
 
 
 @pytest.mark.parametrize("n_samples", [10, 100, 1000, 5000])
@@ -125,16 +136,27 @@ def test_hdbscan_scalability(n_samples):
 
     embeddings_arr = np.array(embeddings)
 
-    labels = hdbscan(embeddings_arr)
+    result = hdbscan(embeddings_arr)
 
     # Basic checks
-    assert isinstance(labels, list)
+    assert isinstance(result, dict)
+    assert "labels" in result
+    assert "medoids" in result
+    labels = result["labels"]
+    medoids = result["medoids"]
+
+    assert isinstance(labels, np.ndarray)
     assert len(labels) == n_samples
-    assert all(isinstance(label, int) for label in labels)
+    assert all(isinstance(label, np.integer) for label in labels)
 
     # Should identify at least 2 clusters (plus possibly noise)
     unique_clusters = set(labels) - {-1}  # Remove noise label
     assert len(unique_clusters) >= 2
+
+    # Check medoids
+    assert isinstance(medoids, np.ndarray)
+    assert medoids.shape[1] == EMBEDDING_DIM
+    assert len(medoids) == len(unique_clusters)
 
 
 @pytest.mark.skip(reason="This is flaky, and the whole approach needs to be rethought")
@@ -184,7 +206,8 @@ def test_hdbscan_outlier_detection():
     embeddings_arr = np.array(embeddings_arr)
 
     # Run clustering with parameters better suited for test data
-    labels = hdbscan(embeddings_arr)  # More relaxed parameters
+    result = hdbscan(embeddings_arr)  # More relaxed parameters
+    labels = result["labels"]
 
     # Verify that the outliers are labeled as noise (-1)
     for idx in outlier_indices:
@@ -201,7 +224,8 @@ def test_hdbscan_outlier_detection():
     )
 
     # Test with more lenient parameters - should still identify outliers
-    lenient_labels = hdbscan(embeddings_arr)
+    lenient_result = hdbscan(embeddings_arr)
+    lenient_labels = lenient_result["labels"]
     for idx in outlier_indices:
         assert lenient_labels[idx] == -1, (
             "Outlier should be noise even with lenient parameters"
