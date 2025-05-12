@@ -1,6 +1,14 @@
 # TODO
 
-- add sequence number indicators for the timeline grid
+- see if there's a way to have an adaptive cluster_selection_epsilon value
+
+- cluster timeline plots
+
+  - do histograms for all embedding models
+  - apply 538 theme to the cluster timelines plot
+  - for cluster timelines, make the outliers stand out somehow (possibly with
+    fill instead of color)
+  - allow height to vary based on how many seeds for that prompt
 
 - calculate semantic drift for real data, generate the drift vs seq_no charts
 
@@ -8,9 +16,6 @@
 
 - clustering charts:
 
-  - % of outliers vs cluster members
-  - cluster count histograms, faceted by text/image model and also by prompt
-  - mosaic grids (stills) for different clusters
   - cluster bigrams (inc. pictures)
   - t-SNE picture (with different facetings)
 
@@ -18,9 +23,12 @@
   euclidean and cosine "fetch and calculate" functions are returning the correct
   results
 
-- check normality
+- could probably refactor the analysis.add_cluster_labels function (and
+  assocaited helper functions) to pass the embedding text as well as the
+  embedding vector, and then mapping the cluster back to the embedding text
+  would probably be easier (and maybe more efficient? but maybe doesn't matter)
 
-- idea: downsample before clustering (for computational reasons)
+- check normality
 
 - autoregressive parameter (time column)
 
