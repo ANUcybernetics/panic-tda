@@ -575,7 +575,8 @@ def cache_dfs(
 
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
-        # embeddings_df = add_cluster_labels(embeddings_df, session)
+        embeddings_df = add_cluster_labels(embeddings_df, session)
+
         df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
         # Save to cache (automatically overwrites if exists)
@@ -697,13 +698,6 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
-
-    # with the current dataset, it takes about 35 mins (with downsample == 50) to do the clustering
-    df = add_cluster_labels(df, 10, session)
-
-    # no longer using semantic drift, so no need to calculate
-    # df = add_semantic_drift_euclid(df, session)
-    # df = add_semantic_drift_cosine(df, session)
 
     return df
 
