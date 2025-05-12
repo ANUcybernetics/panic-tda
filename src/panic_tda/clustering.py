@@ -29,6 +29,7 @@ def hdbscan(embeddings: np.ndarray) -> List[int]:
         min_cluster_size=min_cluster_size,
         min_samples=min_samples,
         cluster_selection_epsilon=cluster_selection_epsilon,
+        store_centers="medoid",
         n_jobs=-1,
     )
 
