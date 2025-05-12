@@ -1,5 +1,7 @@
 # TODO
 
+- add some logging printlns to clustering function
+
 - see if there's a way to have an adaptive cluster_selection_epsilon value
 
 - cluster timeline plots
