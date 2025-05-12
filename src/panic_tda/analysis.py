@@ -9,7 +9,7 @@ import ray
 from sqlmodel import Session
 
 from panic_tda.clustering import hdbscan
-from panic_tda.db import list_runs, read_embedding
+from panic_tda.db import find_embedding_for_vector, list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
 from panic_tda.local import prompt_category_mapper
@@ -104,11 +104,11 @@ def fetch_and_cluster_vectors(
 
     Args:
         embedding_ids: A Series containing embedding IDs
-        session: SQLModel database session
         downsample: If > 1, only process every nth embedding (e.g., 2 means every other embedding)
+        session: SQLModel database session
 
     Returns:
-        A Series of cluster labels corresponding to the input embedding IDs,
+        A Series of cluster representative texts corresponding to the input embedding IDs,
         with None values for embeddings skipped due to downsampling
     """
     # Initialize result array with None values
@@ -130,11 +130,38 @@ def fetch_and_cluster_vectors(
 
         # Perform clustering on the selected vectors
         vectors_array = np.vstack(vectors)
-        cluster_labels = hdbscan(vectors_array)
+        cluster_result = hdbscan(vectors_array)
 
-        # Assign cluster labels to the result array at the appropriate indices
+        # Get cluster labels and medoids
+        labels = cluster_result["labels"]
+        medoids = cluster_result["medoids"]
+
+        # Create a mapping from label to representative text
+        unique_labels = sorted(set(labels))
+        label_to_text = {}
+
+        for label in unique_labels:
+            if label == -1:
+                label_to_text[label] = "OUTLIER"
+            else:
+                # Get the medoid vector for this cluster
+                medoid_vector = medoids[label]
+
+                # Fetch the embedding by vector
+                embedding = find_embedding_for_vector(medoid_vector, session)
+                if (
+                    embedding
+                    and embedding.invocation
+                    and embedding.invocation.output_text
+                ):
+                    label_to_text[label] = embedding.invocation.output_text
+                else:
+                    label_to_text[label] = f"CLUSTER_{label}"
+
+        # Assign cluster representative texts to the result array at the appropriate indices
         for i, idx in enumerate(indices_to_process):
-            result[idx] = cluster_labels[i]
+            label = labels[i]
+            result[idx] = label_to_text[label]
 
     return pl.Series(result)
 
@@ -143,7 +170,7 @@ def add_cluster_labels(
     df: pl.DataFrame, downsample: int, session: Session
 ) -> pl.DataFrame:
     """
-    Add cluster labels to the embeddings DataFrame by fetching vectors on demand.
+    Add cluster representative texts to the embeddings DataFrame by fetching vectors on demand.
 
     Args:
         df: DataFrame containing embedding metadata (without vectors)
@@ -151,9 +178,9 @@ def add_cluster_labels(
         session: SQLModel database session for fetching vectors
 
     Returns:
-        DataFrame with cluster labels added
+        DataFrame with cluster representative texts added
     """
-    # Add vectors column using map_elements
+    # Add cluster column using map_batches
     df = df.with_columns(
         pl.col("id")
         .map_batches(

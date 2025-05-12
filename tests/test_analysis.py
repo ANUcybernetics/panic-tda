@@ -196,9 +196,14 @@ def test_add_cluster_labels(db_session):
     # Check that each embedding has a cluster label assigned
     assert df_with_clusters.filter(pl.col("cluster_label").is_null()).height == 0
 
-    # Check that cluster labels are integers
+    # Check that cluster labels are strings
     assert df_with_clusters.filter(
-        ~pl.col("cluster_label").cast(pl.Int64).is_null()
+        pl.col("cluster_label").cast(pl.Utf8).is_not_null()
+    ).height == len(df_with_clusters)
+
+    # Check that cluster labels are non-empty strings
+    assert df_with_clusters.filter(
+        pl.col("cluster_label").str.len_chars() > 0
     ).height == len(df_with_clusters)
 
     # Check that each embedding model has its own set of clusters
@@ -216,6 +221,25 @@ def test_add_cluster_labels(db_session):
     # Verify that both models have at least one cluster
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
+
+    # Verify that all cluster labels are from the set of output texts
+    unique_labels = df_with_clusters.select("cluster_label").unique()
+    all_texts = df_with_clusters.select("text").unique()
+
+    # Extract the unique texts and labels as sets for easier comparison
+    text_set = set(all_texts.select("text").to_series().to_list())
+    label_set = set(unique_labels.select("cluster_label").to_series().to_list())
+
+    # Check that each cluster label is either from the set of output texts or is "OUTLIER"
+    for label in label_set:
+        assert label in text_set or label == "OUTLIER", (
+            f"Cluster label '{label}' not found in the set of output texts and is not 'OUTLIER'"
+        )
+
+    # Another way to verify this is to check that each label is either a text or "OUTLIER"
+    assert all(label in text_set or label == "OUTLIER" for label in label_set), (
+        "Some cluster labels are neither from the set of outputs nor 'OUTLIER'"
+    )
 
 
 def test_add_cluster_labels_with_downsampling(db_session):
