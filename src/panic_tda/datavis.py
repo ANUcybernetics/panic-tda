@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from uuid import UUID
@@ -402,6 +403,42 @@ def plot_cluster_histograms(
     # Save the chart
     saved_file = save(plot, output_file)
     logging.info(f"Saved cluster histograms plot to {saved_file}")
+
+
+def export_cluster_counts_to_json(
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_counts.json"
+) -> None:
+    """
+    Count occurrences of each cluster label grouped by initial_prompt, embedding_model,
+    text_model and cluster_label, then export to a JSON file sorted in decreasing order.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label
+        output_file: Path to save the JSON file
+    """
+    # Group by the required columns and count occurrences
+    counts_df = (
+        df.filter(pl.col("cluster_label").is_not_null())
+        .group_by(["embedding_model", "cluster_label", "text"])
+        .agg(pl.len().alias("count"))
+        .sort(
+            ["embedding_model", "cluster_label", "count"],
+            descending=[False, False, True],
+        )
+        .group_by(["embedding_model", "cluster_label"])
+        .head(10)
+    )
+
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Write to JSON file
+
+    with open(output_file, "w") as f:
+        json.dump(counts_df.to_dicts(), f, indent=2)
+
+    logging.info(f"Saved cluster counts to {output_file}")
 
 
 def plot_cluster_example_images(
