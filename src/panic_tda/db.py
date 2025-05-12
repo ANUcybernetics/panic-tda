@@ -190,18 +190,16 @@ def find_embedding_for_vector(vector: np.ndarray, session: Session) -> Embedding
     Raises:
         ValueError: If no matching embedding is found
     """
+    # Query the database directly with the numpy array - NumpyArrayType will handle serialization
+    statement = select(Embedding).where(
+        Embedding.vector.is_not(None), Embedding.vector == vector
+    )
+    embedding = session.exec(statement).first()
 
-    # Create a query to find all embeddings with non-null vectors
-    statement = select(Embedding).where(Embedding.vector.is_not(None))
-    embeddings = session.exec(statement).all()
+    if embedding is None:
+        raise ValueError("No embedding found with the given vector")
 
-    # Iterate through embeddings to find a match
-    for embedding in embeddings:
-        if np.array_equal(embedding.vector, vector):
-            return embedding
-
-    # No match found
-    raise ValueError("No embedding found with the given vector")
+    return embedding
 
 
 def list_invocations(session: Session):
