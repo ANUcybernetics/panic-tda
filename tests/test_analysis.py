@@ -285,15 +285,12 @@ def test_add_cluster_labels_with_downsampling(db_session):
         "Expected approximately half null labels"
     )
 
-    # Check that the non-null cluster labels are integers
-    non_null_count = df_with_clusters.filter(~pl.col("cluster_label").is_null()).height
-    assert non_null_count > 0, "Expected some non-null cluster labels"
     assert (
         df_with_clusters.filter(
             ~pl.col("cluster_label").is_null()
-            & ~pl.col("cluster_label").cast(pl.Int64).is_null()
+            & (pl.col("cluster_label").str.len_chars() > 0)
         ).height
-        == non_null_count
+        == 200 / downsample
     )
 
     # Check that each embedding model has its own set of clusters (only considering non-null labels)
@@ -317,6 +314,21 @@ def test_add_cluster_labels_with_downsampling(db_session):
     # Verify that both models have at least one cluster
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
+
+    # Verify that all cluster labels are from the set of output texts or "OUTLIER"
+    non_null_df = df_with_clusters.filter(~pl.col("cluster_label").is_null())
+    unique_labels = non_null_df.select("cluster_label").unique()
+    all_texts = df_with_clusters.select("text").unique()
+
+    # Extract the unique texts and labels as sets for easier comparison
+    text_set = set(all_texts.select("text").to_series().to_list())
+    label_set = set(unique_labels.select("cluster_label").to_series().to_list())
+
+    # Check that each cluster label is either from the set of output texts or is "OUTLIER"
+    for label in label_set:
+        assert label in text_set or label == "OUTLIER", (
+            f"Cluster label '{label}' not found in the set of output texts and is not 'OUTLIER'"
+        )
 
     # Verify that the output DataFrame has the same number of rows as input
     assert df_with_clusters.height == original_size

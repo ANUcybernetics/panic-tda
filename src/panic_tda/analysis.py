@@ -9,7 +9,7 @@ import ray
 from sqlmodel import Session
 
 from panic_tda.clustering import hdbscan
-from panic_tda.db import find_embedding_for_vector, list_runs, read_embedding
+from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
 from panic_tda.local import prompt_category_mapper
@@ -122,22 +122,27 @@ def fetch_and_cluster_vectors(
         # Get embedding IDs to process
         ids_to_process = [embedding_ids[i] for i in indices_to_process]
 
-        # Fetch vectors for selected embeddings
-        vectors = [
-            read_embedding(UUID(embedding_id), session).vector
+        # Fetch embeddings and build a cache of vector -> text
+        embeddings = [
+            read_embedding(UUID(embedding_id), session)
             for embedding_id in ids_to_process
         ]
+        vectors = [embedding.vector for embedding in embeddings]
 
-        # Perform clustering on the selected vectors
+        # Create a cache mapping vectors to their corresponding text
+        vector_to_text = {}
+        for embedding in embeddings:
+            # Convert vector to a hashable tuple for dictionary key
+            vector_key = tuple(embedding.vector.flatten())
+            if embedding.invocation and embedding.invocation.output_text:
+                vector_to_text[vector_key] = embedding.invocation.output_text
+
+        # Perform clustering on the vectors
         vectors_array = np.vstack(vectors)
         cluster_result = hdbscan(vectors_array)
 
-        # Get cluster labels and medoids
-        labels = cluster_result["labels"]
-        medoids = cluster_result["medoids"]
-
         # Create a mapping from label to representative text
-        unique_labels = sorted(set(labels))
+        unique_labels = sorted(set(cluster_result["labels"]))
         label_to_text = {}
 
         for label in unique_labels:
@@ -145,22 +150,15 @@ def fetch_and_cluster_vectors(
                 label_to_text[label] = "OUTLIER"
             else:
                 # Get the medoid vector for this cluster
-                medoid_vector = medoids[label]
+                medoid_vector = cluster_result["medoids"][label]
 
-                # Fetch the embedding by vector
-                embedding = find_embedding_for_vector(medoid_vector, session)
-                if (
-                    embedding
-                    and embedding.invocation
-                    and embedding.invocation.output_text
-                ):
-                    label_to_text[label] = embedding.invocation.output_text
-                else:
-                    label_to_text[label] = f"CLUSTER_{label}"
+                # Look up the text in our cache
+                medoid_key = tuple(medoid_vector.flatten())
+                label_to_text[label] = vector_to_text[medoid_key]
 
         # Assign cluster representative texts to the result array at the appropriate indices
         for i, idx in enumerate(indices_to_process):
-            label = labels[i]
+            label = cluster_result["labels"][i]
             result[idx] = label_to_text[label]
 
     return pl.Series(result)
@@ -575,7 +573,7 @@ def cache_dfs(
 
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
-        embeddings_df = add_cluster_labels(embeddings_df, 10, session)
+        embeddings_df = add_cluster_labels(embeddings_df, 100, session)
 
         df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
