@@ -97,7 +97,7 @@ def test_hdbscan_clustering():
     assert all(label == second_cluster_label for label in labels[7:13])
 
     # Check with custom parameters
-    labels_custom = hdbscan(embeddings_arr, min_cluster_size=3, min_samples=2)
+    labels_custom = hdbscan(embeddings_arr)
     assert len(labels_custom) == len(embeddings_arr)
 
 
@@ -125,29 +125,16 @@ def test_hdbscan_scalability(n_samples):
 
     embeddings_arr = np.array(embeddings)
 
-    # Skip cluster number assertion for small sample sizes
-    if n_samples <= 10:
-        # For small sample sizes, just test that the function runs without error
-        labels = hdbscan(embeddings_arr, min_cluster_size=2, min_samples=1)
+    labels = hdbscan(embeddings_arr)
 
-        # Basic checks
-        assert isinstance(labels, list)
-        assert len(labels) == n_samples
-        assert all(isinstance(label, int) for label in labels)
-    else:
-        # For larger sample sizes, use parameters appropriate for the sample size
-        # and validate clustering quality
-        min_cluster_size = max(5, n_samples // 50)
-        labels = hdbscan(embeddings_arr, min_cluster_size=min_cluster_size)
+    # Basic checks
+    assert isinstance(labels, list)
+    assert len(labels) == n_samples
+    assert all(isinstance(label, int) for label in labels)
 
-        # Basic checks
-        assert isinstance(labels, list)
-        assert len(labels) == n_samples
-        assert all(isinstance(label, int) for label in labels)
-
-        # Should identify at least 2 clusters (plus possibly noise)
-        unique_clusters = set(labels) - {-1}  # Remove noise label
-        assert len(unique_clusters) >= 2
+    # Should identify at least 2 clusters (plus possibly noise)
+    unique_clusters = set(labels) - {-1}  # Remove noise label
+    assert len(unique_clusters) >= 2
 
 
 @pytest.mark.skip(reason="This is flaky, and the whole approach needs to be rethought")
@@ -197,9 +184,7 @@ def test_hdbscan_outlier_detection():
     embeddings_arr = np.array(embeddings_arr)
 
     # Run clustering with parameters better suited for test data
-    labels = hdbscan(
-        embeddings_arr, min_cluster_size=3, min_samples=2
-    )  # More relaxed parameters
+    labels = hdbscan(embeddings_arr)  # More relaxed parameters
 
     # Verify that the outliers are labeled as noise (-1)
     for idx in outlier_indices:
@@ -216,7 +201,7 @@ def test_hdbscan_outlier_detection():
     )
 
     # Test with more lenient parameters - should still identify outliers
-    lenient_labels = hdbscan(embeddings_arr, min_cluster_size=2, min_samples=1)
+    lenient_labels = hdbscan(embeddings_arr)
     for idx in outlier_indices:
         assert lenient_labels[idx] == -1, (
             "Outlier should be noise even with lenient parameters"
