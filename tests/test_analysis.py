@@ -5,6 +5,8 @@ import polars as pl
 
 from panic_tda.analysis import (
     add_cluster_labels,
+    add_semantic_drift_cosine,
+    add_semantic_drift_euclid,
     cache_dfs,
     calculate_cosine_distance,
     calculate_euclidean_distances,
@@ -113,7 +115,7 @@ def test_load_embeddings_df(db_session):
 
     # Assertions
     assert isinstance(df, pl.DataFrame)
-    assert len(df) == 10  # Adjusted to match actual number of embeddings
+    assert len(df) == 100
 
     # Check column names
     expected_columns = {
@@ -126,9 +128,8 @@ def test_load_embeddings_df(db_session):
         "sequence_number",
         "initial_prompt",
         "text_model",
-        "drift_euclid",
-        "drift_cosine",
-        "text",  # Added output text to expected columns
+        "text",
+        "cluster_label",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
@@ -143,8 +144,8 @@ def test_load_embeddings_df(db_session):
     assert set(df.columns) == set(expected_columns)
 
     # Check values
-    assert df.filter(pl.col("embedding_model") == "Dummy").height == 5
-    assert df.filter(pl.col("embedding_model") == "Dummy2").height == 5
+    assert df.filter(pl.col("embedding_model") == "Dummy").height == 50
+    assert df.filter(pl.col("embedding_model") == "Dummy2").height == 50
 
     # Verify field values using named columns instead of indices
     text_rows = df.filter(pl.col("text_model") == "DummyI2T")
@@ -371,6 +372,8 @@ def test_add_semantic_drift(db_session):
 
     # Load embeddings (inc. semantic drift measures)
     df = load_embeddings_df(db_session)
+    df = add_semantic_drift_euclid(df, db_session)
+    df = add_semantic_drift_cosine(df, db_session)
 
     # Check that the drift columns were added
     assert "drift_euclid" in df.columns
