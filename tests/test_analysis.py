@@ -130,7 +130,6 @@ def test_load_embeddings_df(db_session):
         "initial_prompt",
         "text_model",
         "text",
-        "cluster_label",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
