@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import polars as pl
+import pytest
 
 from panic_tda.analysis import (
     add_cluster_labels,
@@ -609,6 +610,9 @@ def test_add_persistence_entropy(db_session):
                             )
 
 
+@pytest.mark.skip(
+    reason="This will blow away the real cache, which is probably not what you want."
+)
 def test_cache_dfs(db_session):
     """Test that cache_dfs successfully writes DataFrames to Parquet files."""
 
