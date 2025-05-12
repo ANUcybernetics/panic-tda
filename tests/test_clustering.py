@@ -11,12 +11,15 @@ def test_hdbscan_clustering():
     # Create well-defined clusters using numpy
     embeddings_obj = []
     embeddings_arr = []
+    np.random.seed(42)  # For reproducible test results
 
     # Generate three distinct clusters with clear separation
-    # Cluster 1: centered around [0.1, 0.1, ..., 0.1]
-    for i in range(6):
+    # Cluster 1: centered around [-10, -10, ..., -10]
+    for i in range(15):  # Increased from 6 to 15
         # Create a vector with small random variations around the center
-        vector = np.ones(EMBEDDING_DIM) * 0.1 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        vector = np.ones(EMBEDDING_DIM) * -10.0 + np.random.normal(
+            0, 0.5, EMBEDDING_DIM
+        )
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -26,10 +29,10 @@ def test_hdbscan_clustering():
         embeddings_obj.append(e)
         embeddings_arr.append(vector.astype(np.float32))
 
-    # Cluster 2: centered around [0.9, 0.9, ..., 0.9]
-    for i in range(7):
+    # Cluster 2: centered around [10, 10, ..., 10]
+    for i in range(20):  # Increased from 7 to 20
         # Create a vector with small random variations around the center
-        vector = np.ones(EMBEDDING_DIM) * 0.9 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        vector = np.ones(EMBEDDING_DIM) * 10.0 + np.random.normal(0, 0.5, EMBEDDING_DIM)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -39,10 +42,10 @@ def test_hdbscan_clustering():
         embeddings_obj.append(e)
         embeddings_arr.append(vector.astype(np.float32))
 
-    # Cluster 3: centered around [0.5, 0.5, ..., 0.5]
-    for i in range(5):
+    # Cluster 3: centered around [0, 0, ..., 0]
+    for i in range(18):  # Increased from 5 to 18
         # Create a vector with small random variations around the center
-        vector = np.ones(EMBEDDING_DIM) * 0.5 + np.random.normal(0, 0.02, EMBEDDING_DIM)
+        vector = np.zeros(EMBEDDING_DIM) + np.random.normal(0, 0.5, EMBEDDING_DIM)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -53,9 +56,11 @@ def test_hdbscan_clustering():
         embeddings_arr.append(vector.astype(np.float32))
 
     # Add some noise points that should not belong to any cluster
-    for i in range(3):
-        # Create random vectors in the embedding space
-        vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+    for i in range(5):  # Increased from 3 to 5
+        # Create random vectors in the embedding space, far from any cluster
+        vector = (
+            np.random.rand(EMBEDDING_DIM).astype(np.float32) * 30.0 - 15.0
+        )  # More spread
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -83,28 +88,35 @@ def test_hdbscan_clustering():
     assert len(labels) == len(embeddings_arr)
     assert all(isinstance(label, np.integer) for label in labels)
 
-    # Check that we have at least 2 clusters (might have some noise points)
+    # Check that we have at least 3 clusters (might have some noise points)
     unique_labels = set(labels)
     # Remove noise points (labeled as -1) when counting clusters
     if -1 in unique_labels:
         unique_labels.remove(-1)
-    assert len(unique_labels) >= 2
+    assert len(unique_labels) >= 3
 
     # Check that we have medoids for each cluster
     assert len(medoids) == len(unique_labels)
 
-    # Verify that the first 6 points are in the same cluster
+    # Verify that the first 15 points are in the same cluster
     first_cluster_label = labels[0]
     assert first_cluster_label != -1  # Should not be noise
-    assert all(label == first_cluster_label for label in labels[1:6])
+    assert all(label == first_cluster_label for label in labels[1:15])
 
-    # Verify that the next 7 points are in the same cluster
-    second_cluster_label = labels[6]
+    # Verify that the next 20 points are in the same cluster
+    second_cluster_label = labels[15]
     assert second_cluster_label != -1  # Should not be noise
     assert (
         second_cluster_label != first_cluster_label
     )  # Should be different from first cluster
-    assert all(label == second_cluster_label for label in labels[7:13])
+    assert all(label == second_cluster_label for label in labels[16:35])
+
+    # Verify that the next 18 points are in a third cluster
+    third_cluster_label = labels[35]
+    assert third_cluster_label != -1  # Should not be noise
+    assert third_cluster_label != first_cluster_label  # Different from first cluster
+    assert third_cluster_label != second_cluster_label  # Different from second cluster
+    assert all(label == third_cluster_label for label in labels[36:53])
 
     # Check with custom parameters
     result_custom = hdbscan(embeddings_arr)
