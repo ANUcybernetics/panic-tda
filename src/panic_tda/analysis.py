@@ -95,71 +95,56 @@ def load_embeddings_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def fetch_and_cluster_vectors(
-    embedding_ids: pl.Series, downsample: int, session: Session
-) -> pl.Series:
+def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.Series:
     """
     Fetch embedding vectors from the database, stack them, and perform clustering.
-    Can downsample the embeddings to improve performance.
 
     Args:
         embedding_ids: A Series containing embedding IDs
-        downsample: If > 1, only process every nth embedding (e.g., 2 means every other embedding)
         session: SQLModel database session
 
     Returns:
-        A Series of cluster representative texts corresponding to the input embedding IDs,
-        with None values for embeddings skipped due to downsampling
+        A Series of cluster representative texts corresponding to the input embedding IDs
     """
-    # Initialize result array with None values
-    result = [None] * len(embedding_ids)
+    # Check if we have any embeddings to process
+    if len(embedding_ids) == 0:
+        return pl.Series([])
 
-    # Select indices for embeddings to process
-    indices_to_process = list(range(0, len(embedding_ids), downsample))
+    # Fetch embeddings and build a cache of vector -> text
+    embeddings = [
+        read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
+    ]
+    vectors = [embedding.vector for embedding in embeddings]
 
-    # Only process selected embeddings
-    if indices_to_process:
-        # Get embedding IDs to process
-        ids_to_process = [embedding_ids[i] for i in indices_to_process]
+    # Create a cache mapping vectors to their corresponding text
+    vector_to_text = {}
+    for embedding in embeddings:
+        # Convert vector to a hashable tuple for dictionary key
+        vector_key = tuple(embedding.vector.flatten())
+        if embedding.invocation and embedding.invocation.output_text:
+            vector_to_text[vector_key] = embedding.invocation.output_text
 
-        # Fetch embeddings and build a cache of vector -> text
-        embeddings = [
-            read_embedding(UUID(embedding_id), session)
-            for embedding_id in ids_to_process
-        ]
-        vectors = [embedding.vector for embedding in embeddings]
+    # Perform clustering on the vectors
+    vectors_array = np.vstack(vectors)
+    cluster_result = hdbscan(vectors_array)
 
-        # Create a cache mapping vectors to their corresponding text
-        vector_to_text = {}
-        for embedding in embeddings:
-            # Convert vector to a hashable tuple for dictionary key
-            vector_key = tuple(embedding.vector.flatten())
-            if embedding.invocation and embedding.invocation.output_text:
-                vector_to_text[vector_key] = embedding.invocation.output_text
+    # Create a mapping from label to representative text
+    unique_labels = sorted(set(cluster_result["labels"]))
+    label_to_text = {}
 
-        # Perform clustering on the vectors
-        vectors_array = np.vstack(vectors)
-        cluster_result = hdbscan(vectors_array)
+    for label in unique_labels:
+        if label == -1:
+            label_to_text[label] = "OUTLIER"
+        else:
+            # Get the medoid vector for this cluster
+            medoid_vector = cluster_result["medoids"][label]
 
-        # Create a mapping from label to representative text
-        unique_labels = sorted(set(cluster_result["labels"]))
-        label_to_text = {}
+            # Look up the text in our cache
+            medoid_key = tuple(medoid_vector.flatten())
+            label_to_text[label] = vector_to_text[medoid_key]
 
-        for label in unique_labels:
-            if label == -1:
-                label_to_text[label] = "OUTLIER"
-            else:
-                # Get the medoid vector for this cluster
-                medoid_vector = cluster_result["medoids"][label]
-
-                # Look up the text in our cache
-                medoid_key = tuple(medoid_vector.flatten())
-                label_to_text[label] = vector_to_text[medoid_key]
-
-        # Assign cluster representative texts to the result array at the appropriate indices
-        for i, idx in enumerate(indices_to_process):
-            label = cluster_result["labels"][i]
-            result[idx] = label_to_text[label]
+    # Create result array with cluster labels
+    result = [label_to_text[label] for label in cluster_result["labels"]]
 
     return pl.Series(result)
 
@@ -178,17 +163,33 @@ def add_cluster_labels(
     Returns:
         DataFrame with cluster representative texts added
     """
-    # Add cluster column using map_batches
-    df = df.with_columns(
-        pl.col("id")
-        .map_batches(
-            lambda embedding_ids: fetch_and_cluster_vectors(
-                embedding_ids, downsample, session
-            ),
-        )
-        .alias("cluster_label")
+    # Create a version of the dataframe with only rows to process (downsampled)
+    df_downsampled = (
+        df.with_row_index("row_idx")
+        .filter(pl.col("row_idx") % downsample == 0)
+        .drop("row_idx")
     )
-    return df
+
+    # Process each embedding model group
+    cluster_data = []
+
+    for model_name in df_downsampled["embedding_model"].unique():
+        model_rows = df_downsampled.filter(pl.col("embedding_model") == model_name)
+        embedding_ids = model_rows["id"]
+
+        # Get cluster labels for this model's embeddings
+        cluster_labels = fetch_and_cluster_vectors(embedding_ids, session)
+
+        # Create mapping of ID to cluster label
+        model_cluster_data = {"id": embedding_ids, "cluster_label": cluster_labels}
+
+        cluster_data.append(pl.DataFrame(model_cluster_data))
+
+    clusters_df = pl.concat(cluster_data)
+    # Join the clusters back to the original dataframe
+    result_df = df.join(clusters_df, on="id", how="left")
+
+    return result_df
 
 
 def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]:
