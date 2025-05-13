@@ -404,6 +404,61 @@ def plot_cluster_histograms(
     logging.info(f"Saved cluster histograms plot to {saved_file}")
 
 
+def plot_cluster_histograms_top_n(
+    df: pl.DataFrame, top_n: int, output_file: str = "output/vis/cluster_histograms_top_n.pdf"
+) -> None:
+    """
+    Create a faceted histogram showing counts of the top N most frequent cluster labels,
+    faceted by embedding_model, text_model, and image_model.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label
+        top_n: Number of top clusters to display
+        output_file: Path to save the visualization
+    """
+    # Filter out nulls and outliers
+    filtered_df = df.filter(
+        pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != "OUTLIER"
+    )
+
+    # Group by cluster_label and count occurrences
+    cluster_counts = (
+        filtered_df.group_by("embedding_model", "text_model", "image_model")
+        .agg(pl.count().alias("count"))
+        .sort("count", descending=True)
+        .head(top_n)
+    )
+
+    # Get the list of top N clusters
+    top_clusters = cluster_counts["cluster_label"].to_list()
+
+    # Filter the dataframe to only include top clusters
+    top_clusters_df = filtered_df.filter(pl.col("cluster_label").is_in(top_clusters))
+
+    # Convert to pandas for plotnine
+    pandas_df = top_clusters_df.to_pandas()
+
+    # Create the plot
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="cluster_label", fill="embedding_model"),
+        )
+        + geom_bar()
+        + labs(x="Cluster Label", y="Count", title=f"Top {top_n} Clusters")
+        + facet_wrap("~ embedding_model ~ text_model + image_model")
+        + theme(
+            figure_size=(20, 15),
+            strip_text=element_text(size=9),
+        )
+        + coord_flip()
+    )
+
+    # Save the chart
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved top {top_n} cluster histograms plot to {saved_file}")
+
+
 def export_cluster_counts_to_json(
     df: pl.DataFrame, output_file: str = "output/vis/cluster_counts.json"
 ) -> None:

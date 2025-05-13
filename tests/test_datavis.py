@@ -12,6 +12,7 @@ from panic_tda.data_prep import (
 from panic_tda.datavis import (
     plot_cluster_example_images,
     plot_cluster_histograms,
+    plot_cluster_histograms_top_n,
     plot_cluster_timelines,
     plot_invocation_duration,
     plot_persistence_diagram,
@@ -207,10 +208,6 @@ def test_plot_invocation_duration(mock_experiment_data):
 def test_plot_cluster_timelines(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
 
-    # Skip test if we don't have cluster labels
-    if "cluster_label" not in embeddings_df.columns:
-        pytest.skip("Embeddings data doesn't have cluster_label column")
-
     # Verify we have cluster timeline data
     assert embeddings_df.height > 0
     assert "run_id" in embeddings_df.columns
@@ -229,10 +226,6 @@ def test_plot_cluster_timelines(mock_experiment_data):
 
 def test_plot_cluster_example_images(mock_experiment_data, db_session):
     embeddings_df = mock_experiment_data["embeddings_df"]
-
-    # Skip test if we don't have cluster labels
-    if "cluster_label" not in embeddings_df.columns:
-        pytest.skip("Embeddings data doesn't have cluster_label column")
 
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
@@ -261,10 +254,6 @@ def test_plot_cluster_example_images(mock_experiment_data, db_session):
 def test_plot_cluster_histograms(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
 
-    # Skip test if we don't have cluster labels
-    if "cluster_label" not in embeddings_df.columns:
-        pytest.skip("Embeddings data doesn't have cluster_label column")
-
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
     assert "run_id" in embeddings_df.columns
@@ -276,6 +265,25 @@ def test_plot_cluster_histograms(mock_experiment_data):
 
     # Generate the plot
     plot_cluster_histograms(embeddings_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_histograms_top_n(mock_experiment_data):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
+    # Verify we have the necessary columns
+    assert embeddings_df.height > 0
+    assert "run_id" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
+    assert "initial_prompt" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/cluster_histograms_top_n.pdf"
+
+    # Generate the plot
+    plot_cluster_histograms_top_n(embeddings_df, 2, output_file=output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
