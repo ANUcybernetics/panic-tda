@@ -142,6 +142,9 @@ def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
+@pytest.mark.skip(
+    reason="Not using semantic drift atm, so it's not in the mock db (and therefore skip this test)"
+)
 def test_plot_semantic_drift(mock_experiment_data):
     embeddings_df = mock_experiment_data["embeddings_df"]
 
