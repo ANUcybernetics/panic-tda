@@ -387,7 +387,7 @@ def plot_cluster_histograms(
         + geom_bar()
         + labs(x="cluster_label", y="count")
         + facet_wrap(
-            "~ embedding_model + initial_prompt",
+            "~ embedding_model",
             # labeller="label_context",
             # scales="free_y",
             ncol=3,
