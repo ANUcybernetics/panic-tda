@@ -502,27 +502,9 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
         "entropy": pl.Float64,
     }
 
-    # Only create DataFrame if we have data
-    if data:
-        pd_df = pl.DataFrame(data, schema_overrides=schema_overrides)
-        # Join with the original runs DataFrame
-        result_df = df.join(pd_df, on="run_id", how="left")
-    else:
-        # If no PD data, return the original df to avoid join errors
-        # Optionally add empty columns if needed downstream
-        result_df = df.with_columns([
-            pl.lit(None).cast(pl.String).alias("persistence_diagram_id"),
-            pl.lit(None).cast(pl.String).alias("embedding_model"),
-            pl.lit(None).cast(pl.Datetime).alias("persistence_diagram_started_at"),
-            pl.lit(None).cast(pl.Datetime).alias("persistence_diagram_completed_at"),
-            pl.lit(None).cast(pl.Duration).alias("persistence_diagram_duration"),
-            pl.lit(None).cast(pl.Int64).alias("homology_dimension"),
-            pl.lit(None).cast(pl.Int64).alias("feature_id"),
-            pl.lit(None).cast(pl.Float64).alias("birth"),
-            pl.lit(None).cast(pl.Float64).alias("death"),
-            pl.lit(None).cast(pl.Float64).alias("persistence"),
-            pl.lit(None).cast(pl.Float64).alias("entropy"),
-        ])
+    pd_df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    # Join with the original runs DataFrame
+    result_df = df.join(pd_df, on="run_id", how="left")
 
     return result_df
 
