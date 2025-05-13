@@ -393,7 +393,7 @@ def plot_cluster_histograms(
             ncol=3,
         )
         + theme(
-            figure_size=(20, 80),
+            figure_size=(20, 40),
             strip_text=element_text(size=10),
         )
         + coord_flip()
