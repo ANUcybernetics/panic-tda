@@ -4,7 +4,7 @@ import numpy as np
 import polars as pl
 import pytest
 
-from panic_tda.analysis import (
+from panic_tda.data_prep import (
     add_cluster_labels,
     add_semantic_drift_cosine,
     add_semantic_drift_euclid,

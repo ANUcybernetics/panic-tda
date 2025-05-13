@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from panic_tda.analysis import (
+from panic_tda.data_prep import (
     add_cluster_labels,
     add_persistence_entropy,
     load_embeddings_df,
