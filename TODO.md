@@ -1,16 +1,20 @@
 # TODO
 
-- add some logging printlns to clustering function
+- clustering metrics
 
-- see if there's a way to have an adaptive cluster_selection_epsilon value
-
-- cluster timeline plots
-
-  - do histograms for all embedding models
-  - apply 538 theme to the cluster timelines plot
-  - for cluster timelines, make the outliers stand out somehow (possibly with
-    fill instead of color)
-  - allow height to vary based on how many seeds for that prompt
+  - add cluster label number -> cluster label name mapping (consistent across
+    runs) and add these label numbers to the points in the plots/matrices
+  - show transition matrix faceted by embedding_model ~ network
+  - distribution of run lengths for different cluster labels, again faceted by
+    embedding_model ~ network
+  - how many of the labels are similar across different embeddings (or some
+    metric on which embeddings get clustered together across different embedding
+    models)... double-check that the clustering stuff is actually being faceted
+    correctly
+  - 10 most popular clusters for each prompt (perhaps a table for this)
+  - label distributions by seq no (perhaps beginning/middle/end)
+  - how often does it return to the initial cluster
+  - how often in a cluster vs outlier
 
 - calculate semantic drift for real data, generate the drift vs seq_no charts
 
