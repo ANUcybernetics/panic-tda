@@ -25,6 +25,7 @@ from plotnine import (
 from plotnine.options import set_option
 from sqlmodel import Session
 
+from panic_tda.data_prep import filter_top_n_clusters
 from panic_tda.export import export_mosaic_image
 
 ## datavis
