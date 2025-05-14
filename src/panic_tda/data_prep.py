@@ -192,7 +192,9 @@ def add_cluster_labels(
     return result_df
 
 
-def filter_top_n_clusters(df: pl.DataFrame, n: int, group_by_cols: list[str]) -> pl.DataFrame:
+def filter_top_n_clusters(
+    df: pl.DataFrame, n: int, group_by_cols: list[str]
+) -> pl.DataFrame:
     """
     Filter the embeddings DataFrame to keep only the top n clusters within each
     group defined by group_by_cols.
@@ -207,32 +209,21 @@ def filter_top_n_clusters(df: pl.DataFrame, n: int, group_by_cols: list[str]) ->
     """
     # Count occurrences of each cluster within each group
     group_cols = group_by_cols + ["cluster_label"]
-    cluster_counts = (
-        df
-        .group_by(group_cols)
-        .agg(pl.len().alias("count"))
-    )
+    cluster_counts = df.group_by(group_cols).agg(pl.len().alias("count"))
 
     # Assign rank within each group based on count
-    cluster_ranks = (
-        cluster_counts
-        .with_columns([
-            pl.col("count")
-            .rank(method="dense", descending=True)
-            .over(group_by_cols)
-            .alias("rank")
-        ])
-    )
+    cluster_ranks = cluster_counts.with_columns([
+        pl.col("count")
+        .rank(method="dense", descending=True)
+        .over(group_by_cols)
+        .alias("rank")
+    ])
 
     # Filter to keep only the top n clusters
     top_clusters = cluster_ranks.filter(pl.col("rank") <= n)
 
     # Join with original dataframe to keep only rows from top clusters
-    result = df.join(
-        top_clusters.select(group_cols),
-        on=group_cols,
-        how="inner"
-    )
+    result = df.join(top_clusters.select(group_cols), on=group_cols, how="inner")
 
     return result
 

@@ -826,17 +826,18 @@ def test_filter_top_n_clusters():
         "embedding_model": ["Dummy"] * 60 + ["Dummy2"] * 40,
         "cluster_label": (
             # Dummy model clusters with varying frequencies
-            ["cluster_A"] * 25 +  # Most common
-            ["cluster_B"] * 15 +  # Second most common
-            ["cluster_C"] * 10 +  # Third most common
-            ["cluster_D"] * 5 +   # Fourth most common
-            ["cluster_E"] * 5 +   # Fifth most common
+            ["cluster_A"] * 25  # Most common
+            + ["cluster_B"] * 15  # Second most common
+            + ["cluster_C"] * 10  # Third most common
+            + ["cluster_D"] * 5  # Fourth most common
+            + ["cluster_E"] * 5  # Fifth most common
+            +
             # Dummy2 model clusters with varying frequencies
-            ["cluster_X"] * 20 +  # Most common
-            ["cluster_Y"] * 10 +  # Second most common
-            ["cluster_Z"] * 8 +   # Third most common
-            ["cluster_W"] * 2     # Fourth most common
-        )
+            ["cluster_X"] * 20  # Most common
+            + ["cluster_Y"] * 10  # Second most common
+            + ["cluster_Z"] * 8  # Third most common
+            + ["cluster_W"] * 2  # Fourth most common
+        ),
     }
 
     # Create the DataFrame
@@ -846,22 +847,22 @@ def test_filter_top_n_clusters():
     filtered_df = filter_top_n_clusters(df, 2, ["embedding_model"])
 
     # Extract the top clusters for each embedding model
-    top_clusters_by_model = (
-        filtered_df
-        .group_by("embedding_model")
-        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    top_clusters_by_model = filtered_df.group_by("embedding_model").agg(
+        pl.col("cluster_label").unique().alias("top_clusters")
     )
 
     # Check results
     for model in ["Dummy", "Dummy2"]:
-        model_row = top_clusters_by_model.filter(pl.col("embedding_model") == model).row(
-            0, named=True
-        )
+        model_row = top_clusters_by_model.filter(
+            pl.col("embedding_model") == model
+        ).row(0, named=True)
         top_clusters = model_row["top_clusters"]
 
         # Verify we got the expected number of top clusters
         expected_clusters = (
-            ["cluster_A", "cluster_B"] if model == "Dummy" else ["cluster_X", "cluster_Y"]
+            ["cluster_A", "cluster_B"]
+            if model == "Dummy"
+            else ["cluster_X", "cluster_Y"]
         )
         assert set(top_clusters) == set(expected_clusters), (
             f"Expected top clusters for {model} to be {set(expected_clusters)}, got {set(top_clusters)}"
@@ -875,10 +876,8 @@ def test_filter_top_n_clusters():
 
     # Test with n=1 to keep only the most common cluster per model
     filtered_df_n1 = filter_top_n_clusters(df, 1, ["embedding_model"])
-    top_clusters_n1 = (
-        filtered_df_n1
-        .group_by("embedding_model")
-        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    top_clusters_n1 = filtered_df_n1.group_by("embedding_model").agg(
+        pl.col("cluster_label").unique().alias("top_clusters")
     )
 
     # Check each model keeps only the single most common cluster
@@ -894,17 +893,20 @@ def test_filter_top_n_clusters():
         )
 
     # Test with both embedding_model and initial_prompt in the grouping variables
-    filtered_df_combined = filter_top_n_clusters(df, 1, ["embedding_model", "initial_prompt"])
-
-    # Extract the top clusters for each combination of embedding_model and initial_prompt
-    top_clusters_combined = (
-        filtered_df_combined
-        .group_by(["embedding_model", "initial_prompt"])
-        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    filtered_df_combined = filter_top_n_clusters(
+        df, 1, ["embedding_model", "initial_prompt"]
     )
 
+    # Extract the top clusters for each combination of embedding_model and initial_prompt
+    top_clusters_combined = filtered_df_combined.group_by([
+        "embedding_model",
+        "initial_prompt",
+    ]).agg(pl.col("cluster_label").unique().alias("top_clusters"))
+
     # Check that we have entries for all combinations
-    assert top_clusters_combined.height == 10, "Expected 10 unique combinations (2 models × 5 prompts)"
+    assert top_clusters_combined.height == 10, (
+        "Expected 10 unique combinations (2 models × 5 prompts)"
+    )
 
     # Check each combination has the expected top cluster
     for model in ["Dummy", "Dummy2"]:
@@ -913,8 +915,8 @@ def test_filter_top_n_clusters():
 
             # Get the row for this combination
             combination_row = top_clusters_combined.filter(
-                (pl.col("embedding_model") == model) &
-                (pl.col("initial_prompt") == prompt)
+                (pl.col("embedding_model") == model)
+                & (pl.col("initial_prompt") == prompt)
             ).row(0, named=True)
 
             top_clusters = combination_row["top_clusters"]
