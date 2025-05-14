@@ -429,7 +429,7 @@ def plot_cluster_histograms_top_n(
             aes(x="cluster_label", fill="embedding_model"),
         )
         + geom_bar(show_legend=False)
-        + labs(x="Cluster Label", y="Count", title=f"Top {top_n} Clusters")
+        + labs(x="Cluster Label", y="Count")
         + facet_wrap("~ embedding_model + text_model", ncol=2)
         + theme(
             figure_size=(20, 15),
