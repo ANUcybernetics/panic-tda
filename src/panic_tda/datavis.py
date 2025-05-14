@@ -15,6 +15,7 @@ from plotnine import (
     geom_boxplot,
     geom_line,
     geom_point,
+    geom_tile,
     geom_violin,
     ggplot,
     labs,
@@ -442,6 +443,98 @@ def plot_cluster_histograms_top_n(
     # Save the chart
     saved_file = save(plot, output_file)
     logging.info(f"Saved top {top_n} cluster histograms plot to {saved_file}")
+
+
+def plot_cluster_transitions(
+    df: pl.DataFrame,
+    include_outliers: bool,
+    output_file: str = "output/vis/cluster_transitions.pdf",
+) -> None:
+    """
+    Create a heatmap visualization of cluster transitions within runs.
+
+    For each run_id, calculates transitions between consecutive cluster labels
+    and displays them as a transition matrix using geom_tile.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label, run_id, and sequence_number
+        output_file: Path to save the visualization
+        include_outliers: If False, filter out all "OUTLIER" cluster labels
+    """
+    # Filter out null cluster labels
+    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
+
+    # Filter out outliers if include_outliers is False
+    if not include_outliers:
+        filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
+
+    # List to store transition pairs
+    transitions = []
+
+    # For each run_id and embedding_model combination
+    unique_runs = filtered_df.select(["run_id", "embedding_model"]).unique()
+
+    for run_row in unique_runs.iter_rows(named=True):
+        run_id = run_row["run_id"]
+        embedding_model = run_row["embedding_model"]
+
+        # Get data for this run_id
+        run_df = filtered_df.filter(pl.col("run_id") == run_id)
+
+        # Sort by sequence_number
+        run_df = run_df.sort("sequence_number")
+
+        # Get clusters as list
+        clusters = run_df["cluster_label"].to_list()
+
+        # Find transitions
+        for i in range(len(clusters) - 1):
+            from_cluster = str(clusters[i])
+            to_cluster = str(clusters[i + 1])
+
+            # Only record when cluster changes
+            if from_cluster != to_cluster:
+                transitions.append({
+                    "embedding_model": embedding_model,
+                    "from_cluster": from_cluster,
+                    "to_cluster": to_cluster,
+                })
+
+    # If no transitions, exit
+    if not transitions:
+        logging.warning("No cluster transitions found in the data")
+        return
+
+    # Create transitions DataFrame
+    transitions_df = pl.DataFrame(transitions)
+
+    # Count transition frequencies
+    transition_counts = transitions_df.group_by([
+        "embedding_model",
+        "from_cluster",
+        "to_cluster",
+    ]).agg(pl.count().alias("count"))
+
+    # Convert to pandas for plotting
+    pandas_counts = transition_counts.to_pandas()
+
+    # Create heatmap
+    plot = (
+        ggplot(pandas_counts, aes(x="to_cluster", y="from_cluster", fill="count"))
+        + geom_tile()
+        + labs(x="To Cluster", y="From Cluster", fill="Transition Count")
+        + facet_wrap("~ embedding_model", scales="free")
+        + theme(
+            figure_size=(20, 8),
+            strip_text=element_text(size=10),
+            axis_text_x=element_blank(),
+            axis_text_y=element_blank(),
+        )
+    )
+
+    # Save plot
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster transition matrix to {saved_file}")
 
 
 def export_cluster_counts_to_json(
