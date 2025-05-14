@@ -12,6 +12,7 @@ from panic_tda.data_prep import (
     calculate_cosine_distance,
     calculate_euclidean_distances,
     embed_initial_prompts,
+    filter_top_n_clusters,
     load_embeddings_df,
     load_invocations_df,
     load_runs_df,
@@ -809,4 +810,83 @@ def test_calculate_cosine_distance():
     for i, key in enumerate(["v1", "v2", "v3", "v4", "v5", "v6"]):
         assert np.isclose(computed_from_v6[i], expected_from_v6[key]), (
             f"Cosine distance from v6 to {key} incorrect. Expected {expected_from_v6[key]}, got {computed_from_v6[i]}"
+        )
+
+
+def test_filter_top_n_clusters():
+    """Test that filter_top_n_clusters properly filters and retains top clusters."""
+
+    # Create a synthetic DataFrame with embedding_model and cluster_label columns
+    # We don't need an actual experiment, just the minimal columns required
+    data = {
+        "id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(100)],
+        "initial_prompt": [f"Test prompt {i % 5 + 1}" for i in range(100)],
+        "embedding_model": ["Dummy"] * 60 + ["Dummy2"] * 40,
+        "cluster_label": (
+            # Dummy model clusters with varying frequencies
+            ["cluster_A"] * 25 +  # Most common
+            ["cluster_B"] * 15 +  # Second most common
+            ["cluster_C"] * 10 +  # Third most common
+            ["cluster_D"] * 5 +   # Fourth most common
+            ["cluster_E"] * 5 +   # Fifth most common
+            # Dummy2 model clusters with varying frequencies
+            ["cluster_X"] * 20 +  # Most common
+            ["cluster_Y"] * 10 +  # Second most common
+            ["cluster_Z"] * 8 +   # Third most common
+            ["cluster_W"] * 2     # Fourth most common
+        )
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Use the filter_top_n_clusters function with n=2
+    filtered_df = filter_top_n_clusters(df, 2, ["embedding_model"])
+
+    # Extract the top clusters for each embedding model
+    top_clusters_by_model = (
+        filtered_df
+        .group_by("embedding_model")
+        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    )
+
+    # Check results
+    for model in ["Dummy", "Dummy2"]:
+        model_row = top_clusters_by_model.filter(pl.col("embedding_model") == model).row(
+            0, named=True
+        )
+        top_clusters = model_row["top_clusters"]
+
+        # Verify we got the expected number of top clusters
+        expected_clusters = (
+            ["cluster_A", "cluster_B"] if model == "Dummy" else ["cluster_X", "cluster_Y"]
+        )
+        assert set(top_clusters) == set(expected_clusters), (
+            f"Expected top clusters for {model} to be {set(expected_clusters)}, got {set(top_clusters)}"
+        )
+
+    # Verify other clusters were filtered out
+    for cluster in ["cluster_C", "cluster_D", "cluster_E", "cluster_Z", "cluster_W"]:
+        assert cluster not in filtered_df.select("cluster_label").unique(), (
+            f"Cluster {cluster} should have been filtered out"
+        )
+
+    # Test with n=1 to keep only the most common cluster per model
+    filtered_df_n1 = filter_top_n_clusters(df, 1, ["embedding_model"])
+    top_clusters_n1 = (
+        filtered_df_n1
+        .group_by("embedding_model")
+        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    )
+
+    # Check each model keeps only the single most common cluster
+    for model in ["Dummy", "Dummy2"]:
+        model_row = top_clusters_n1.filter(pl.col("embedding_model") == model).row(
+            0, named=True
+        )
+        top_clusters = model_row["top_clusters"]
+
+        expected_top = ["cluster_A"] if model == "Dummy" else ["cluster_X"]
+        assert set(top_clusters) == set(expected_top), (
+            f"Expected top cluster for {model} to be {expected_top}, got {set(top_clusters)}"
         )

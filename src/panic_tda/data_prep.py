@@ -192,6 +192,53 @@ def add_cluster_labels(
     return result_df
 
 
+def filter_top_n_clusters(df: pl.DataFrame, n: int, group_by_cols: list[str]) -> pl.DataFrame:
+    """
+    Filter the embeddings DataFrame to keep only the top n clusters within each
+    group defined by group_by_cols.
+
+    Args:
+        df: DataFrame containing embeddings with cluster labels
+        n: Number of top clusters to keep within each group
+        group_by_cols: List of column names to group by (default: ["embedding_model", "initial_prompt"])
+
+    Returns:
+        Filtered DataFrame containing only rows from the top n clusters
+    """
+    # Count occurrences of each cluster within each group
+    group_cols = group_by_cols + ["cluster_label"]
+    cluster_counts = (
+        df
+        .group_by(group_cols)
+        .agg(pl.len().alias("count"))
+    )
+
+    # Assign rank within each group based on count
+    cluster_ranks = (
+        cluster_counts
+        .with_columns([
+            pl.col("count")
+            .rank(method="dense", descending=True)
+            .over(group_by_cols)
+            .alias("rank")
+        ])
+    )
+
+    # Filter to keep only the top n clusters
+    top_clusters = cluster_ranks.filter(pl.col("rank") <= n)
+
+    print(top_clusters)
+
+    # Join with original dataframe to keep only rows from top clusters
+    result = df.join(
+        top_clusters.select(group_cols),
+        on=group_cols,
+        how="inner"
+    )
+
+    return result
+
+
 def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]:
     """
     Generate embeddings for all unique combinations of initial prompts and embedding models.
