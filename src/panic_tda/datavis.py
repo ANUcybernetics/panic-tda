@@ -444,7 +444,7 @@ def plot_cluster_histograms_top_n(
 
 
 def export_cluster_counts_to_json(
-    df: pl.DataFrame, output_file: str = "output/vis/cluster_counts.json"
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_counts.json", top_n: int = 10
 ) -> None:
     """
     Count occurrences of each cluster label grouped by initial_prompt, embedding_model,
@@ -455,6 +455,7 @@ def export_cluster_counts_to_json(
     Args:
         df: DataFrame containing embedding data with cluster_label
         output_file: Path to save the JSON file
+        top_n: Number of top text entries to include for each cluster (default: 10)
     """
     # Group by the required columns and count occurrences
     counts_df = (
@@ -486,16 +487,20 @@ def export_cluster_counts_to_json(
             (counts_pd["cluster_label"] == cluster_label)
         ]
 
-        # Take the top 10 rows
-        group_data = group_data.head(10)
+        # Calculate the total count for this cluster
+        cluster_total_count = group_data["count"].sum()
+
+        # Take the top N rows
+        top_group_data = group_data.head(top_n)
 
         # Create a counts dictionary
-        counts_dict = {row["text"]: row["count"] for _, row in group_data.iterrows()}
+        counts_dict = {row["text"]: row["count"] for _, row in top_group_data.iterrows()}
 
         # Add to result
         result.append({
             "embedding_model": embedding_model,
             "cluster_label": cluster_label,
+            "cluster_count": int(cluster_total_count),  # Convert numpy.int64 to int for JSON serialization
             "counts": counts_dict
         })
 
