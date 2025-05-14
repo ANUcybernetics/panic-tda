@@ -1042,3 +1042,110 @@ def test_calculate_cluster_transitions():
             f"Expected count {expected_count} for transition {from_cluster}->{to_cluster}, "
             f"got {multi_transitions_dict[transition]}"
         )
+
+
+def test_calculate_cluster_transitions_filter_outliers():
+    """Test that calculate_cluster_transitions correctly filters outliers when requested."""
+
+    # Create synthetic data with OUTLIER clusters
+    data = {
+        "run_id": ["run1"] * 15,
+        "embedding_model": ["model1"] * 15,
+        "sequence_number": list(range(1, 16)),  # 15 sequential invocations
+        "cluster_label": (
+            ["cluster_A"] * 3  # First 3 invocations are in cluster A
+            + ["OUTLIER"] * 2  # Next 2 are outliers
+            + ["cluster_B"] * 3  # Then to cluster B
+            + ["OUTLIER"] * 1  # Then an outlier
+            + ["cluster_C"] * 3  # Then to cluster C
+            + ["OUTLIER"] * 1  # Another outlier
+            + ["cluster_A"] * 2  # Finally back to cluster A
+        ),
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Apply the function with filter_outliers=True
+    transitions_df_filtered = calculate_cluster_transitions(
+        df, ["embedding_model"], filter_outliers=True
+    )
+
+    # Check that the output is a DataFrame
+    assert isinstance(transitions_df_filtered, pl.DataFrame)
+
+    # Convert to dictionary for easy testing
+    transitions_dict_filtered = {
+        (row["from_cluster"], row["to_cluster"]): row["transition_count"]
+        for row in transitions_df_filtered.filter(
+            pl.col("embedding_model") == "model1"
+        ).rows(named=True)
+    }
+
+    # Check that no transitions involving OUTLIER exist
+    for transition in transitions_dict_filtered.keys():
+        from_cluster, to_cluster = transition
+        assert from_cluster != "OUTLIER" and to_cluster != "OUTLIER", (
+            f"Transition {from_cluster}->{to_cluster} involves outliers but should be filtered out"
+        )
+
+    # Expected transitions with filter_outliers=True
+    # We should see only:
+    # A->B: 1 (skipping the OUTLIER in between)
+    # B->C: 1 (skipping the OUTLIER in between)
+    # C->A: 1 (skipping the OUTLIER in between)
+    expected_filtered_transitions = {
+        ("cluster_A", "cluster_B"): 1,
+        ("cluster_B", "cluster_C"): 1,
+        ("cluster_C", "cluster_A"): 1,
+    }
+
+    # Verify filtered transitions
+    for transition, expected_count in expected_filtered_transitions.items():
+        assert transition in transitions_dict_filtered, (
+            f"Expected transition {transition[0]}->{transition[1]} not found when filtering outliers"
+        )
+        assert transitions_dict_filtered[transition] == expected_count, (
+            f"Expected count {expected_count} for transition {transition[0]}->{transition[1]}, "
+            f"got {transitions_dict_filtered[transition]} when filtering outliers"
+        )
+
+    # Now apply the function with filter_outliers=False
+    transitions_df_unfiltered = calculate_cluster_transitions(
+        df, ["embedding_model"], filter_outliers=False
+    )
+
+    # Convert to dictionary for easy testing
+    transitions_dict_unfiltered = {
+        (row["from_cluster"], row["to_cluster"]): row["transition_count"]
+        for row in transitions_df_unfiltered.filter(
+            pl.col("embedding_model") == "model1"
+        ).rows(named=True)
+    }
+
+    # Expected transitions with filter_outliers=False
+    # Now we should see:
+    # A->OUTLIER: 1
+    # OUTLIER->B: 1
+    # B->OUTLIER: 1
+    # OUTLIER->C: 1
+    # C->OUTLIER: 1
+    # OUTLIER->A: 1
+    expected_unfiltered_transitions = {
+        ("cluster_A", "OUTLIER"): 1,
+        ("OUTLIER", "cluster_B"): 1,
+        ("cluster_B", "OUTLIER"): 1,
+        ("OUTLIER", "cluster_C"): 1,
+        ("cluster_C", "OUTLIER"): 1,
+        ("OUTLIER", "cluster_A"): 1,
+    }
+
+    # Verify unfiltered transitions
+    for transition, expected_count in expected_unfiltered_transitions.items():
+        assert transition in transitions_dict_unfiltered, (
+            f"Expected transition {transition[0]}->{transition[1]} not found when including outliers"
+        )
+        assert transitions_dict_unfiltered[transition] == expected_count, (
+            f"Expected count {expected_count} for transition {transition[0]}->{transition[1]}, "
+            f"got {transitions_dict_unfiltered[transition]} when including outliers"
+        )
