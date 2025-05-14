@@ -9,6 +9,7 @@ from panic_tda.data_prep import (
     add_semantic_drift_cosine,
     add_semantic_drift_euclid,
     cache_dfs,
+    calculate_cluster_transitions,
     calculate_cosine_distance,
     calculate_euclidean_distances,
     embed_initial_prompts,
@@ -926,3 +927,118 @@ def test_filter_top_n_clusters():
             assert set(top_clusters) == set(expected_top), (
                 f"Expected top cluster for {model}/{prompt} to be {expected_top}, got {set(top_clusters)}"
             )
+
+
+def test_calculate_cluster_transitions():
+    """Test that calculate_cluster_transitions correctly identifies transitions between clusters."""
+
+    # Create a synthetic DataFrame with sequential invocations and cluster labels
+    # We'll set up a sequence of transitions between various clusters
+    data = {
+        "run_id": ["run1"] * 20,
+        "embedding_model": ["model1"] * 20,
+        "sequence_number": list(range(1, 21)),  # 20 sequential invocations
+        "cluster_label": (
+            ["cluster_A"] * 5  # First 5 invocations are in cluster A
+            + ["cluster_B"] * 3  # Next 3 invocations are in cluster B
+            + ["cluster_A"] * 2  # Then back to cluster A
+            + ["cluster_C"] * 4  # Then to cluster C
+            + ["cluster_B"] * 4  # Then back to cluster B
+            + ["cluster_A"] * 2  # Finally back to cluster A
+        ),
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Apply the function
+    transitions_df = calculate_cluster_transitions(df, ["embedding_model"])
+    print(transitions_df)
+
+    # Check that the output is a DataFrame
+    assert isinstance(transitions_df, pl.DataFrame)
+
+    # Expected transitions and counts based on our synthetic data:
+    # A->B: 1 time (after the first 5 A's)
+    # B->A: 1 time (after the first 3 B's)
+    # A->C: 1 time (after the next 2 A's)
+    # C->B: 1 time (after the 4 C's)
+    # B->A: 1 time (after the last 4 B's)
+
+    # Check columns
+    expected_columns = [
+        "embedding_model",
+        "from_cluster",
+        "to_cluster",
+        "transition_count",
+    ]
+    assert all(col in transitions_df.columns for col in expected_columns)
+
+    # Convert to a more easily testable format
+    transitions_dict = {
+        (row["from_cluster"], row["to_cluster"]): row["transition_count"]
+        for row in transitions_df.filter(pl.col("embedding_model") == "model1").rows(
+            named=True
+        )
+    }
+
+    # Check expected transitions
+    expected_transitions = {
+        ("cluster_A", "cluster_B"): 1,
+        ("cluster_B", "cluster_A"): 2,
+        ("cluster_A", "cluster_C"): 1,
+        ("cluster_C", "cluster_B"): 1,
+    }
+
+    # Verify transitions exist and have correct counts
+    for transition, expected_count in expected_transitions.items():
+        from_cluster, to_cluster = transition
+        assert transition in transitions_dict, (
+            f"Transition {from_cluster}->{to_cluster} not found"
+        )
+        assert transitions_dict[transition] == expected_count, (
+            f"Expected count {expected_count} for transition {from_cluster}->{to_cluster}, "
+            f"got {transitions_dict[transition]}"
+        )
+
+    # Test with multiple run_ids
+    multi_run_data = {
+        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "embedding_model": ["model1"] * 20,
+        "sequence_number": list(range(1, 11)) + list(range(1, 11)),  # 1-10 for each run
+        "cluster_label": (
+            ["cluster_A"] * 5
+            + ["cluster_B"] * 5  # run1: A->B
+            + ["cluster_C"] * 5
+            + ["cluster_D"] * 5  # run2: C->D
+        ),
+    }
+
+    multi_run_df = pl.DataFrame(multi_run_data)
+    multi_transitions_df = calculate_cluster_transitions(
+        multi_run_df, ["embedding_model"]
+    )
+
+    # Convert to dictionary for easy testing
+    multi_transitions_dict = {
+        (row["from_cluster"], row["to_cluster"]): row["transition_count"]
+        for row in multi_transitions_df.filter(
+            pl.col("embedding_model") == "model1"
+        ).rows(named=True)
+    }
+
+    # Check expected transitions for multiple runs
+    expected_multi_transitions = {
+        ("cluster_A", "cluster_B"): 1,  # From run1
+        ("cluster_C", "cluster_D"): 1,  # From run2
+    }
+
+    for transition, expected_count in expected_multi_transitions.items():
+        from_cluster, to_cluster = transition
+        assert transition in multi_transitions_dict, (
+            f"Transition {from_cluster}->{to_cluster} not found"
+        )
+        assert multi_transitions_dict[transition] == expected_count, (
+            f"Expected count {expected_count} for transition {from_cluster}->{to_cluster}, "
+            f"got {multi_transitions_dict[transition]}"
+        )
