@@ -449,6 +449,8 @@ def export_cluster_counts_to_json(
     """
     Count occurrences of each cluster label grouped by initial_prompt, embedding_model,
     text_model and cluster_label, then export to a JSON file sorted in decreasing order.
+    The output JSON has an array of objects with embedding_model and cluster_label keys,
+    and a "counts" object mapping text to count values.
 
     Args:
         df: DataFrame containing embedding data with cluster_label
@@ -463,18 +465,47 @@ def export_cluster_counts_to_json(
             ["embedding_model", "cluster_label", "count"],
             descending=[False, False, True],
         )
-        .group_by(["embedding_model", "cluster_label"])
-        .head(10)
     )
+
+    # Convert to pandas for easier manipulation (NOTE: that's Claude's comment, not mine. TODO find a polars way to do this, which is probably better)
+    counts_pd = counts_df.to_pandas()
+
+    # Create the result structure with nested counts
+    result = []
+
+    # Get unique combinations of embedding_model and cluster_label
+    unique_groups = counts_pd[["embedding_model", "cluster_label"]].drop_duplicates()
+
+    for _, group in unique_groups.iterrows():
+        embedding_model = group["embedding_model"]
+        cluster_label = group["cluster_label"]
+
+        # Get the data for this group
+        group_data = counts_pd[
+            (counts_pd["embedding_model"] == embedding_model) &
+            (counts_pd["cluster_label"] == cluster_label)
+        ]
+
+        # Take the top 10 rows
+        group_data = group_data.head(10)
+
+        # Create a counts dictionary
+        counts_dict = {row["text"]: row["count"] for _, row in group_data.iterrows()}
+
+        # Add to result
+        result.append({
+            "embedding_model": embedding_model,
+            "cluster_label": cluster_label,
+            "counts": counts_dict
+        })
 
     # Ensure output directory exists
     output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
 
     # Write to JSON file
-
     with open(output_file, "w") as f:
-        json.dump(counts_df.to_dicts(), f, indent=2)
+        json.dump(result, f, indent=2)
 
     logging.info(f"Saved cluster counts to {output_file}")
 
