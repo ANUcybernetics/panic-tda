@@ -83,15 +83,18 @@ def optics(
     return labels.tolist()
 
 
-def cache_labels(
-    cluster_labels: pl.Series, output_path: str = "cluster_label_map.json"
+def create_label_map(
+    cluster_labels: pl.Series,
+    output_path: str = "cluster_label_map.json",
+    cache: bool = True,
 ) -> Dict[str, int]:
     """
-    Map string cluster labels to integers and cache the mapping to a JSON file.
+    Map string cluster labels to integers and optionally cache the mapping to a JSON file.
 
     Args:
         cluster_labels: A polars Series of string labels
         output_path: Path to save the JSON mapping file
+        cache: Whether to write the mapping to a JSON file
 
     Returns:
         Dictionary mapping string labels to integers (-1 for "OUTLIER", 1+ for others)
@@ -115,9 +118,10 @@ def cache_labels(
         label_map[label] = next_id
         next_id += 1
 
-    # Write mapping to JSON file
-    with open(output_path, "w") as f:
-        json.dump(label_map, f, indent=2)
+    # Write mapping to JSON file if cache is True
+    if cache:
+        with open(output_path, "w") as f:
+            json.dump(label_map, f, indent=2)
 
     return label_map
 

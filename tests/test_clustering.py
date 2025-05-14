@@ -5,7 +5,12 @@ import polars as pl
 import pytest
 from uuid_v7.base import uuid7
 
-from panic_tda.clustering import cache_labels, hdbscan, optics, read_labels_from_cache
+from panic_tda.clustering import (
+    create_label_map,
+    hdbscan,
+    optics,
+    read_labels_from_cache,
+)
 from panic_tda.embeddings import EMBEDDING_DIM
 from panic_tda.schemas import Embedding
 
@@ -366,8 +371,8 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     # Create a temporary file path for testing
     cache_path = os.path.join(tmp_path, "test_cluster_map.json")
 
-    # Test cache_labels function
-    label_map = cache_labels(cluster_labels, output_path=cache_path)
+    # Test create_label_map function
+    label_map = create_label_map(cluster_labels, output_path=cache_path)
 
     # Validate the output dictionary
     assert isinstance(label_map, dict)
@@ -394,7 +399,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     new_cluster_labels = pl.Series("cluster_labels", new_labels)
     new_cache_path = os.path.join(tmp_path, "test_cluster_map_2.json")
 
-    new_label_map = cache_labels(new_cluster_labels, output_path=new_cache_path)
+    new_label_map = create_label_map(new_cluster_labels, output_path=new_cache_path)
 
     # Validate the new mapping
     assert new_label_map["OUTLIER"] == -1
