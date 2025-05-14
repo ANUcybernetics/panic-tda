@@ -26,7 +26,8 @@ from plotnine import (
 from plotnine.options import set_option
 from sqlmodel import Session
 
-from panic_tda.data_prep import filter_top_n_clusters
+from panic_tda.clustering import create_label_map
+from panic_tda.data_prep import calculate_cluster_transitions, filter_top_n_clusters
 from panic_tda.export import export_mosaic_image
 
 ## datavis
@@ -464,69 +465,34 @@ def plot_cluster_transitions(
         output_file: Path to save the visualization
         include_outliers: If False, filter out all "OUTLIER" cluster labels
     """
-    # Filter out null cluster labels
-    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
-    # Filter out outliers if include_outliers is False
-    if not include_outliers:
-        filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
+    # Use calculate_cluster_transitions to get transition counts
+    transition_counts = calculate_cluster_transitions(
+        df, ["embedding_model"], include_outliers
+    )
 
-    # TODO it's almost certainly possible (and much more efficient) to do this in pandas, but oh well
-    # List to store transition pairs
-    transitions = []
+    # Create label map to convert string labels to integers
+    label_map = create_label_map(
+        df.get_column("cluster_label"), "cluster_label_map.json"
+    )
 
-    # For each run_id and embedding_model combination
-    unique_runs = filtered_df.select(["run_id", "embedding_model"]).unique()
-
-    for run_row in unique_runs.iter_rows(named=True):
-        run_id = run_row["run_id"]
-        embedding_model = run_row["embedding_model"]
-
-        # Get data for this run_id
-        run_df = filtered_df.filter(pl.col("run_id") == run_id)
-
-        # Sort by sequence_number
-        run_df = run_df.sort("sequence_number")
-
-        # Get clusters as list
-        clusters = run_df["cluster_label"].to_list()
-
-        # Find transitions
-        for i in range(len(clusters) - 1):
-            from_cluster = str(clusters[i])
-            to_cluster = str(clusters[i + 1])
-
-            # Only record when cluster changes
-            if from_cluster != to_cluster:
-                transitions.append({
-                    "embedding_model": embedding_model,
-                    "from_cluster": from_cluster,
-                    "to_cluster": to_cluster,
-                })
-
-    # If no transitions, exit
-    if not transitions:
-        logging.warning("No cluster transitions found in the data")
-        return
-
-    # Create transitions DataFrame
-    transitions_df = pl.DataFrame(transitions)
-
-    # Count transition frequencies
-    transition_counts = transitions_df.group_by([
-        "embedding_model",
-        "from_cluster",
-        "to_cluster",
-    ]).agg(pl.count().alias("count"))
+    # Transform cluster labels to their integer values
+    transition_counts = transition_counts.with_columns([
+        pl.col("from_cluster").replace_strict(label_map),
+        pl.col("to_cluster").replace_strict(label_map),
+    ])
 
     # Convert to pandas for plotting
-    pandas_counts = transition_counts.to_pandas()
+    pandas_df = transition_counts.to_pandas()
 
     # Create heatmap
     plot = (
-        ggplot(pandas_counts, aes(x="to_cluster", y="from_cluster", fill="count"))
+        ggplot(
+            pandas_df,
+            aes(x="to_cluster", y="from_cluster", fill="transition_count"),
+        )
         + geom_tile()
-        + labs(x="To Cluster", y="From Cluster", fill="Transition Count")
+        + labs(x="to cluster", y="from cluster", fill="transition count")
         + facet_wrap("~ embedding_model", scales="free")
         + theme(
             figure_size=(20, 8),

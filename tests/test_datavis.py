@@ -14,6 +14,7 @@ from panic_tda.datavis import (
     plot_cluster_histograms,
     plot_cluster_histograms_top_n,
     plot_cluster_timelines,
+    plot_cluster_transitions,
     plot_invocation_duration,
     plot_persistence_diagram,
     plot_persistence_diagram_by_prompt,
@@ -284,6 +285,25 @@ def test_plot_cluster_histograms_top_n(mock_experiment_data):
 
     # Generate the plot
     plot_cluster_histograms_top_n(embeddings_df, 2, output_file=output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_transitions(mock_experiment_data):
+    embeddings_df = mock_experiment_data["embeddings_df"]
+
+    # Verify we have the necessary columns
+    assert embeddings_df.height > 0
+    assert "run_id" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
+    assert "cluster_label" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/cluster_transitions.pdf"
+
+    # Generate the plot
+    plot_cluster_transitions(embeddings_df, True, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
