@@ -340,20 +340,19 @@ def plot_cluster_timelines(
             aes(
                 x="sequence_number",
                 y="run_id",
-                color="factor(cluster_label)",
+                color="cluster_label",
+                # alpha="cluster_label == 'OUTLIER'"
             ),
         )
         + geom_line(colour="black", alpha=0.7)
-        + geom_point(size=3)
+        + geom_point(size=3, show_legend=False)
         + labs(x="sequence number", y="run id", color="cluster")
-        + facet_wrap(
-            "~ initial_prompt + embedding_model",
-            labeller="label_context",
-            ncol=3,
+        + facet_grid(
+            "embedding_model ~ initial_prompt",
             scales="free",
         )
         + theme(
-            figure_size=(20, 100),
+            figure_size=(20, 50),
             strip_text=element_text(size=10),
             axis_text_y=element_blank(),
         )
@@ -407,7 +406,9 @@ def plot_cluster_histograms(
 
 
 def plot_cluster_histograms_top_n(
-    df: pl.DataFrame, top_n: int, output_file: str = "output/vis/cluster_histograms_top_n.pdf"
+    df: pl.DataFrame,
+    top_n: int,
+    output_file: str = "output/vis/cluster_histograms_top_n.pdf",
 ) -> None:
     """
     Create a faceted histogram showing counts of the top N most frequent cluster labels,
@@ -421,7 +422,9 @@ def plot_cluster_histograms_top_n(
     filtered_df = df.filter(
         pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != "OUTLIER"
     )
-    filtered_df = filter_top_n_clusters(filtered_df, 5, ["embedding_model", "text_model"])
+    filtered_df = filter_top_n_clusters(
+        filtered_df, 5, ["embedding_model", "text_model"]
+    )
     pandas_df = filtered_df.to_pandas()
 
     # Create the plot
@@ -538,7 +541,9 @@ def plot_cluster_transitions(
 
 
 def export_cluster_counts_to_json(
-    df: pl.DataFrame, output_file: str = "output/vis/cluster_counts.json", top_n: int = 10
+    df: pl.DataFrame,
+    output_file: str = "output/vis/cluster_counts.json",
+    top_n: int = 10,
 ) -> None:
     """
     Count occurrences of each cluster label grouped by initial_prompt, embedding_model,
@@ -577,8 +582,8 @@ def export_cluster_counts_to_json(
 
         # Get the data for this group
         group_data = counts_pd[
-            (counts_pd["embedding_model"] == embedding_model) &
-            (counts_pd["cluster_label"] == cluster_label)
+            (counts_pd["embedding_model"] == embedding_model)
+            & (counts_pd["cluster_label"] == cluster_label)
         ]
 
         # Calculate the total count for this cluster
@@ -588,14 +593,18 @@ def export_cluster_counts_to_json(
         top_group_data = group_data.head(top_n)
 
         # Create a counts dictionary
-        counts_dict = {row["text"]: row["count"] for _, row in top_group_data.iterrows()}
+        counts_dict = {
+            row["text"]: row["count"] for _, row in top_group_data.iterrows()
+        }
 
         # Add to result
         result.append({
             "embedding_model": embedding_model,
             "cluster_label": cluster_label,
-            "cluster_count": int(cluster_total_count),  # Convert numpy.int64 to int for JSON serialization
-            "counts": counts_dict
+            "cluster_count": int(
+                cluster_total_count
+            ),  # Convert numpy.int64 to int for JSON serialization
+            "counts": counts_dict,
         })
 
     # Ensure output directory exists
