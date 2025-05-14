@@ -103,7 +103,9 @@ def create_label_map(
     unique_labels = cluster_labels.unique().to_list()
 
     # Separate OUTLIER from other labels and sort the rest
-    other_labels = sorted([label for label in unique_labels if label != "OUTLIER"])
+    other_labels = sorted([
+        label for label in unique_labels if label is not None and label != "OUTLIER"
+    ])
 
     # Create mapping dictionary
     label_map = {}
