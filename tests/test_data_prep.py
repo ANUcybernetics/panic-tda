@@ -131,6 +131,7 @@ def test_load_embeddings_df(db_session):
         "initial_prompt",
         "text_model",
         "text",
+        "network",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)
@@ -155,6 +156,7 @@ def test_load_embeddings_df(db_session):
     assert text_row["initial_prompt"] == "test embedding dataframe"
     assert text_row["text_model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
+    assert text_row["network"] == "DummyT2I → DummyI2T"
 
     # Check output text for text model (DummyI2T)
     assert "text" in text_row

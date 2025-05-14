@@ -710,7 +710,8 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         invocation.sequence_number AS sequence_number,
         invocation.model AS text_model,
         invocation.output_text AS text,
-        run.initial_prompt AS initial_prompt
+        run.initial_prompt AS initial_prompt,
+        run.network AS network
     FROM embedding
     JOIN invocation ON embedding.invocation_id = invocation.id
     JOIN run ON invocation.run_id = run.id
@@ -724,6 +725,11 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
+
+    # Parse network from JSON string and create network_path column
+    df = df.with_columns([
+        pl.col("network").str.json_decode().list.join(" → ").alias("network")
+    ])
 
     return df
 
