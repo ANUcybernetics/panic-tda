@@ -229,7 +229,7 @@ def filter_top_n_clusters(
 
 
 def calculate_cluster_transitions(
-    df: pl.DataFrame, group_by_cols: list[str], filter_outliers: bool = True
+    df: pl.DataFrame, group_by_cols: list[str], include_outliers: bool = False
 ) -> pl.DataFrame:
     """
     Calculate transitions between clusters for each group in the DataFrame.
@@ -237,7 +237,7 @@ def calculate_cluster_transitions(
     Args:
         df: DataFrame containing embeddings with cluster labels and sequence_number column
         group_by_cols: List of column names to group by (e.g., ["embedding_model", "run_id"])
-        filter_outliers: Whether to filter out "OUTLIER" clusters (default: True)
+        include_outliers: Whether to include "OUTLIER" clusters (default: False)
 
     Returns:
         DataFrame containing counts of transitions between clusters
@@ -246,8 +246,8 @@ def calculate_cluster_transitions(
     # Create a filtered dataframe based on parameters
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
-    # Additionally filter out outliers if requested
-    if filter_outliers:
+    # Additionally filter out outliers if not requested to include them
+    if not include_outliers:
         filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
 
     # Create a shifted version of the cluster_label column to get previous cluster

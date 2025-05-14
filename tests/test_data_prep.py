@@ -1044,7 +1044,7 @@ def test_calculate_cluster_transitions():
         )
 
 
-def test_calculate_cluster_transitions_filter_outliers():
+def test_calculate_cluster_transitions_include_outliers():
     """Test that calculate_cluster_transitions correctly filters outliers when requested."""
 
     # Create synthetic data with OUTLIER clusters
@@ -1066,9 +1066,9 @@ def test_calculate_cluster_transitions_filter_outliers():
     # Create the DataFrame
     df = pl.DataFrame(data)
 
-    # Apply the function with filter_outliers=True
+    # Apply the function with include_outliers=False
     transitions_df_filtered = calculate_cluster_transitions(
-        df, ["embedding_model"], filter_outliers=True
+        df, ["embedding_model"], include_outliers=False
     )
 
     # Check that the output is a DataFrame
@@ -1089,7 +1089,7 @@ def test_calculate_cluster_transitions_filter_outliers():
             f"Transition {from_cluster}->{to_cluster} involves outliers but should be filtered out"
         )
 
-    # Expected transitions with filter_outliers=True
+    # Expected transitions with include_outliers=False
     # We should see only:
     # A->B: 1 (skipping the OUTLIER in between)
     # B->C: 1 (skipping the OUTLIER in between)
@@ -1110,9 +1110,9 @@ def test_calculate_cluster_transitions_filter_outliers():
             f"got {transitions_dict_filtered[transition]} when filtering outliers"
         )
 
-    # Now apply the function with filter_outliers=False
+    # Now apply the function with include_outliers=True
     transitions_df_unfiltered = calculate_cluster_transitions(
-        df, ["embedding_model"], filter_outliers=False
+        df, ["embedding_model"], include_outliers=True
     )
 
     # Convert to dictionary for easy testing
@@ -1123,7 +1123,7 @@ def test_calculate_cluster_transitions_filter_outliers():
         ).rows(named=True)
     }
 
-    # Expected transitions with filter_outliers=False
+    # Expected transitions with include_outliers=True
     # Now we should see:
     # A->OUTLIER: 1
     # OUTLIER->B: 1
