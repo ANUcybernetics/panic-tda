@@ -227,8 +227,6 @@ def filter_top_n_clusters(df: pl.DataFrame, n: int, group_by_cols: list[str]) ->
     # Filter to keep only the top n clusters
     top_clusters = cluster_ranks.filter(pl.col("rank") <= n)
 
-    print(top_clusters)
-
     # Join with original dataframe to keep only rows from top clusters
     result = df.join(
         top_clusters.select(group_cols),
