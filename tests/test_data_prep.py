@@ -890,3 +890,35 @@ def test_filter_top_n_clusters():
         assert set(top_clusters) == set(expected_top), (
             f"Expected top cluster for {model} to be {expected_top}, got {set(top_clusters)}"
         )
+
+    # Test with both embedding_model and initial_prompt in the grouping variables
+    filtered_df_combined = filter_top_n_clusters(df, 1, ["embedding_model", "initial_prompt"])
+
+    # Extract the top clusters for each combination of embedding_model and initial_prompt
+    top_clusters_combined = (
+        filtered_df_combined
+        .group_by(["embedding_model", "initial_prompt"])
+        .agg(pl.col("cluster_label").unique().alias("top_clusters"))
+    )
+
+    # Check that we have entries for all combinations
+    assert top_clusters_combined.height == 10, "Expected 10 unique combinations (2 models × 5 prompts)"
+
+    # Check each combination has the expected top cluster
+    for model in ["Dummy", "Dummy2"]:
+        for prompt_num in range(1, 6):
+            prompt = f"Test prompt {prompt_num}"
+
+            # Get the row for this combination
+            combination_row = top_clusters_combined.filter(
+                (pl.col("embedding_model") == model) &
+                (pl.col("initial_prompt") == prompt)
+            ).row(0, named=True)
+
+            top_clusters = combination_row["top_clusters"]
+
+            # Verify the top cluster for each combination
+            expected_top = ["cluster_A"] if model == "Dummy" else ["cluster_X"]
+            assert set(top_clusters) == set(expected_top), (
+                f"Expected top cluster for {model}/{prompt} to be {expected_top}, got {set(top_clusters)}"
+            )
