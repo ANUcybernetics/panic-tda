@@ -471,6 +471,7 @@ def plot_cluster_transitions(
     if not include_outliers:
         filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
 
+    # TODO it's almost certainly possible (and much more efficient) to do this in pandas, but oh well
     # List to store transition pairs
     transitions = []
 
