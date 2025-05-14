@@ -1,47 +1,29 @@
 # TODO
 
-- clustering metrics
+- clustering
 
-  - add cluster label number -> cluster label name mapping (consistent across
-    runs) and add these label numbers to the points in the plots/matrices
-  - show transition matrix faceted by embedding_model ~ network
+  - show transition matrix faceted by `~ embedding_model + network`
+  - order embeddings by "longest stable runs" (with `.rle()`), and calculate
+    longest runs for each network (both "from start" and "anytime")
   - distribution of run lengths for different cluster labels, again faceted by
     embedding_model ~ network
+  - label distributions by seq no (perhaps beginning/middle/end)
+  - how often does it return to the initial cluster
+  - how often in a cluster vs outlier
   - how many of the labels are similar across different embeddings (or some
     metric on which embeddings get clustered together across different embedding
     models)... double-check that the clustering stuff is actually being faceted
     correctly
-  - 10 most popular clusters for each prompt (perhaps a table for this)
-  - label distributions by seq no (perhaps beginning/middle/end)
-  - how often does it return to the initial cluster
-  - how often in a cluster vs outlier
-
-- calculate semantic drift for real data, generate the drift vs seq_no charts
 
 - get h_n subscripting for charts (maybe even using an enum at the polars level)
-
-- clustering charts:
-
-  - cluster bigrams (inc. pictures)
-  - t-SNE picture (with different facetings)
 
 - by creating synthetic data with known drift values, check that both the
   euclidean and cosine "fetch and calculate" functions are returning the correct
   results
 
-- could probably refactor the analysis.add_cluster_labels function (and
-  assocaited helper functions) to pass the embedding text as well as the
-  embedding vector, and then mapping the cluster back to the embedding text
-  would probably be easier (and maybe more efficient? but maybe doesn't matter)
-
 - check normality
 
 - autoregressive parameter (time column)
-
-- group the prompts by (human-labelled) category
-
-- order embeddings by "longest stable runs", and sample something from the
-  longest ones for each network
 
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
   superclasses (and why we chose the models and params we've currently chosen)
