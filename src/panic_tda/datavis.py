@@ -495,10 +495,8 @@ def plot_cluster_transitions(
         + labs(x="to cluster", y="from cluster", fill="transition count")
         + facet_wrap("~ embedding_model", scales="free")
         + theme(
-            figure_size=(20, 8),
+            figure_size=(30, 14),
             strip_text=element_text(size=10),
-            axis_text_x=element_blank(),
-            axis_text_y=element_blank(),
         )
     )
 
@@ -667,45 +665,52 @@ def paper_charts(session: Session) -> None:
     Generate charts for paper publications.
     """
     # from panic_tda.local import prompt_timeline_run_ids
-    #
+
     # selected_ids = prompt_timeline_run_ids(session)
     # from panic_tda.export import export_timeline
 
-    # Export the timeline image
+    # # Export the timeline image
     # export_timeline(
     #     run_ids=selected_ids,
     #     session=session,
-    #     images_per_run=8,
+    #     images_per_run=5,
     #     output_file="output/vis/selected_prompts_timeline.jpg",
     # )
     #
     ### CACHING
     #
-    from panic_tda.analysis import cache_dfs
+    # from panic_tda.data_prep import cache_dfs
 
-    cache_dfs(session, runs=False, embeddings=True, invocations=False)
+    # cache_dfs(session, runs=False, embeddings=True, invocations=False)
+    # cache_dfs(session, runs=True, embeddings=True, invocations=True)
     ### INVOCATIONS
     #
-    from panic_tda.analysis import load_invocations_from_cache
+    # from panic_tda.data_prep import load_invocations_from_cache
 
-    invocations_df = load_invocations_from_cache()
-    print(invocations_df.select("run_id", "sequence_number", "type").head(50))
+    # invocations_df = load_invocations_from_cache()
+    # print(invocations_df.select("run_id", "sequence_number", "type").head(50))
     # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
     #
     ### EMBEDDINGS
     #
-    # from panic_tda.analysis import load_embeddings_from_cache
+    from panic_tda.data_prep import load_embeddings_from_cache
 
-    # embeddings_df = load_embeddings_from_cache()
+    embeddings_df = load_embeddings_from_cache()
+    # embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
+    #
+    # man_df = embeddings_df.filter(pl.col("initial_prompt") == "a picture of a man")
+    # plot_cluster_timelines(man_df, "output/vis/cluster_timelines_man.pdf")
+    plot_cluster_transitions(embeddings_df, False, "output/vis/cluster_transitions.pdf")
+    # plot_cluster_histograms_top_n(embeddings_df, "output/vis/cluster_histograms_top_n.pdf")
+    # export_cluster_counts_to_json(embeddings_df, "output/vis/cluster_counts.json")
 
-    # pl.Config.set_tbl_rows(1000)
-    # selected_embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
-    # print(selected_embeddings_df.select("initial_prompt", "sequence_number", "text", "drift_cosine", "drift_euclid").head(50))
-    # plot_semantic_drift(selected_embeddings_df, "output/vis/semantic_drift.pdf")
+    # plot_cluster_example_images(
+    #     embeddings_df, 10, "Nomic", session, "output/vis/cluster_examples.jpg"
+    # )
     #
     ### RUNS
     #
-    # from panic_tda.analysis import load_runs_from_cache
+    # from panic_tda.data_prep import load_runs_from_cache
 
     # runs_df = load_runs_from_cache()
     #
@@ -714,7 +719,8 @@ def paper_charts(session: Session) -> None:
     # )
     #
     # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.pdf")
-    #
+
     # plot_persistence_entropy_by_prompt(
-    #     nruns_df.filter(pl.col("embedding_model") == "Nomic"), "output/vis/persistence_entropy_by_prompt.png"
+    #     runs_df.filter(pl.col("embedding_model") == "Nomic"),
+    #     "output/vis/persistence_entropy_by_prompt.png",
     # )
