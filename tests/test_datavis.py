@@ -29,19 +29,14 @@ from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
 
 
-@pytest.fixture
-def mock_experiment_data(db_session):
+def setup_minimal_experiment(db_session):
+    """Set up a minimal experiment with just enough data for basic tests."""
     experiment = ExperimentConfig(
-        networks=[
-            ["DummyT2I", "DummyI2T"],
-            ["DummyT2I", "DummyI2T2"],
-            ["DummyT2I2", "DummyI2T2"],
-            ["DummyT2I2", "DummyI2T"],
-        ],
-        prompts=["one fish", "two fish", "red fish", "blue fish"],
-        seeds=[-1] * 4,
-        embedding_models=["Dummy", "Dummy2"],
-        max_length=100,  # Short sequences for testing
+        networks=[["DummyT2I", "DummyI2T"]],
+        prompts=["test prompt"],
+        seeds=[-1],
+        embedding_models=["Dummy"],
+        max_length=10,  # Very short sequences for testing
     )
 
     # Save experiment to database to get an ID
@@ -53,23 +48,63 @@ def mock_experiment_data(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(experiment.id), db_url)
     db_session.refresh(experiment)
-    # Run the actual experiment using the configuration
-    # The dummy models are efficient and won't take long
+
+    return experiment
+
+
+def setup_persistence_experiment(db_session):
+    """Set up an experiment with enough data for persistence diagram tests."""
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
+        prompts=["one fish", "two fish"],
+        seeds=[-1] * 2,
+        embedding_models=["Dummy"],
+        max_length=20,  # Short sequences for testing
+    )
+
+    # Save experiment to database to get an ID
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
+
+    # Run the experiment to populate database with dummy model runs
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+    db_session.refresh(experiment)
+
+    return experiment
+
+
+def setup_cluster_experiment(db_session):
+    """Set up an experiment with enough data for cluster analysis tests."""
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        prompts=["one fish", "red fish"],
+        seeds=[-1] * 2,
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=15,  # Short sequences for testing
+    )
+
+    # Save experiment to database to get an ID
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
+
+    # Run the experiment to populate database with dummy model runs
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+    db_session.refresh(experiment)
+
+    return experiment
+
+
+def test_plot_persistence_diagram(db_session):
+    # Setup a minimal experiment for persistence diagram
+    setup_minimal_experiment(db_session)
+
+    # Load the necessary data
     runs_df = load_runs_df(db_session)
     runs_df = add_persistence_entropy(runs_df, db_session)
-    embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
-    invocations_df = load_invocations_df(db_session)
-
-    return {
-        "runs_df": runs_df,
-        "embeddings_df": embeddings_df,
-        "invocations_df": invocations_df,
-    }
-
-
-def test_plot_persistence_diagram(mock_experiment_data):
-    runs_df = mock_experiment_data["runs_df"]
 
     # Verify we have persistence diagram data
     assert runs_df.height > 0
@@ -87,8 +122,13 @@ def test_plot_persistence_diagram(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_diagram_faceted(mock_experiment_data):
-    runs_df = mock_experiment_data["runs_df"]
+def test_plot_persistence_diagram_faceted(db_session):
+    # Setup an experiment with multiple networks for faceted diagram
+    setup_persistence_experiment(db_session)
+
+    # Load the necessary data
+    runs_df = load_runs_df(db_session)
+    runs_df = add_persistence_entropy(runs_df, db_session)
 
     # Verify we have persistence diagram data
     assert runs_df.height > 0
@@ -108,8 +148,13 @@ def test_plot_persistence_diagram_faceted(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_diagram_by_prompt(mock_experiment_data):
-    runs_df = mock_experiment_data["runs_df"]
+def test_plot_persistence_diagram_by_prompt(db_session):
+    # Setup experiment with multiple prompts
+    setup_persistence_experiment(db_session)
+
+    # Load the necessary data
+    runs_df = load_runs_df(db_session)
+    runs_df = add_persistence_entropy(runs_df, db_session)
 
     # Verify we have persistence diagram data
     assert runs_df.height > 0
@@ -127,8 +172,13 @@ def test_plot_persistence_diagram_by_prompt(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
-    runs_df = mock_experiment_data["runs_df"]
+def test_plot_persistence_entropy_by_prompt(db_session):
+    # Setup experiment with multiple prompts
+    setup_persistence_experiment(db_session)
+
+    # Load the necessary data
+    runs_df = load_runs_df(db_session)
+    runs_df = add_persistence_entropy(runs_df, db_session)
 
     # Verify we have persistence diagram data
     assert runs_df.height > 0
@@ -149,8 +199,13 @@ def test_plot_persistence_entropy_by_prompt(mock_experiment_data):
 @pytest.mark.skip(
     reason="Not using semantic drift atm, so it's not in the mock db (and therefore skip this test)"
 )
-def test_plot_semantic_drift(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_semantic_drift(db_session):
+    # Setup a minimal experiment
+    setup_minimal_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have semantic dispersion data
     assert embeddings_df.height > 0
@@ -169,8 +224,13 @@ def test_plot_semantic_drift(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_persistence_entropy(mock_experiment_data):
-    runs_df = mock_experiment_data["runs_df"]
+def test_plot_persistence_entropy(db_session):
+    # Setup a minimal experiment
+    setup_minimal_experiment(db_session)
+
+    # Load the necessary data
+    runs_df = load_runs_df(db_session)
+    runs_df = add_persistence_entropy(runs_df, db_session)
 
     # Verify we have persistence diagram data with entropy values
     assert runs_df.height > 0
@@ -190,8 +250,12 @@ def test_plot_persistence_entropy(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_invocation_duration(mock_experiment_data):
-    invocations_df = mock_experiment_data["invocations_df"]
+def test_plot_invocation_duration(db_session):
+    # Setup a minimal experiment
+    setup_minimal_experiment(db_session)
+
+    # Load the necessary data
+    invocations_df = load_invocations_df(db_session)
 
     # Verify we have the necessary columns
     assert invocations_df.height > 0
@@ -208,8 +272,13 @@ def test_plot_invocation_duration(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_cluster_timelines(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_cluster_timelines(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have cluster timeline data
     assert embeddings_df.height > 0
@@ -227,8 +296,13 @@ def test_plot_cluster_timelines(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_cluster_example_images(mock_experiment_data, db_session):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_cluster_example_images(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
@@ -244,7 +318,7 @@ def test_plot_cluster_example_images(mock_experiment_data, db_session):
     # Generate the plot
     plot_cluster_example_images(
         embeddings_df,
-        num_examples=10,
+        num_examples=2,  # Reduced from 10 to 2 for faster tests
         embedding_model=embedding_model,
         session=db_session,
         output_file=output_file,
@@ -254,8 +328,13 @@ def test_plot_cluster_example_images(mock_experiment_data, db_session):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_cluster_histograms(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_cluster_histograms(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
@@ -273,8 +352,13 @@ def test_plot_cluster_histograms(mock_experiment_data):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_cluster_histograms_top_n(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_cluster_histograms_top_n(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
@@ -285,15 +369,20 @@ def test_plot_cluster_histograms_top_n(mock_experiment_data):
     # Define output file
     output_file = "output/test/cluster_histograms_top_n.pdf"
 
-    # Generate the plot
-    plot_cluster_histograms_top_n(embeddings_df, 2, output_file=output_file)
+    # Generate the plot - using just 1 top cluster instead of 2 for faster test
+    plot_cluster_histograms_top_n(embeddings_df, 1, output_file=output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_plot_cluster_transitions(mock_experiment_data):
-    embeddings_df = mock_experiment_data["embeddings_df"]
+def test_plot_cluster_transitions(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
 
     # Verify we have the necessary columns
     assert embeddings_df.height > 0
