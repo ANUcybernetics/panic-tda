@@ -3,11 +3,11 @@ import os
 import polars as pl
 from sqlmodel import Session, select
 
-from panic_tda.export import export_video
+from panic_tda.export import export_timeline, export_video
 from panic_tda.schemas import Invocation, Run
 
 
-def prompt_timeline_run_ids(session: Session):
+def selected_run_ids(session: Session):
     selected_prompts = [
         "a picture of a man",
         "a picture of a woman",
@@ -25,6 +25,7 @@ def prompt_timeline_run_ids(session: Session):
     # Initialize empty list for selected IDs
     selected_ids = []
 
+    # TODO this could all be one SQL statement, but :shrug: for now
     # Loop through each prompt in selected_prompts
     for prompt in selected_prompts:
         # For each network pair, get 2 runs
@@ -36,6 +37,7 @@ def prompt_timeline_run_ids(session: Session):
                     Run.initial_prompt == prompt,
                     Run.network == network,
                 )
+                .order_by(Run.id)
                 .limit(2)
                 .all()
             )
@@ -45,6 +47,17 @@ def prompt_timeline_run_ids(session: Session):
             selected_ids.extend(run_ids)
 
     return selected_ids
+
+
+def export_selected_timeline(session: Session):
+    run_ids = selected_run_ids(session)
+
+    export_timeline(
+        run_ids=run_ids,
+        session=session,
+        images_per_run=5,
+        output_file="output/vis/selected_prompts_timeline.jpg",
+    )
 
 
 def prompt_category_mapper(initial_prompt: str) -> str:
