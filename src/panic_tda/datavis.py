@@ -505,37 +505,49 @@ def plot_cluster_histograms(
 def plot_cluster_histograms_top_n(
     df: pl.DataFrame,
     top_n: int,
+    include_outliers: bool = False,
     output_file: str = "output/vis/cluster_histograms_top_n.pdf",
 ) -> None:
     """
     Create a faceted histogram showing counts of the top N most frequent cluster labels,
-    faceted by embedding_model and text_model.
+    faceted by embedding model and network.
 
     Args:
         df: DataFrame containing embedding data with cluster_label
         top_n: Number of top clusters to display
+        include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
-    filtered_df = df.filter(
-        pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != "OUTLIER"
-    )
-    filtered_df = filter_top_n_clusters(
-        filtered_df, 5, ["embedding_model", "text_model"]
-    )
-    pandas_df = filtered_df.to_pandas()
+    # Filter out null cluster labels
+    df = df.filter(pl.col("cluster_label").is_not_null())
+    if not include_outliers:
+        df = df.filter(pl.col("cluster_label") != "OUTLIER")
+
+    # Filter to top N clusters
+    df = filter_top_n_clusters(df, top_n, ["embedding_model", "network"])
+
+    # Calculate the number of unique cluster labels to determine figure height
+    num_unique_clusters = df.get_column("cluster_label").n_unique()
+    # Dynamic height based on number of unique clusters
+    figure_height = max(10, num_unique_clusters * 2)
 
     # Create the plot
     plot = (
         ggplot(
-            pandas_df,
+            df.to_pandas(),
             aes(x="cluster_label", fill="embedding_model"),
         )
-        + geom_bar(show_legend=False)
-        + labs(x="Cluster Label", y="Count")
-        + facet_wrap("~ embedding_model + text_model", ncol=2)
+        + geom_bar()
+        + labs(x="cluster_label", y="count")
+        + facet_wrap(
+            "~ embedding_model + network",
+            # labeller="label_context",
+            scales="free_x",
+            ncol=1,
+        )
         + theme(
-            figure_size=(20, 15),
-            strip_text=element_text(size=9),
+            figure_size=(22, figure_height),
+            strip_text=element_text(size=10),
         )
         + coord_flip()
     )
