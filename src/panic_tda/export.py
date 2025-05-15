@@ -1077,3 +1077,76 @@ def export_mosaic_image(
     # Save the final mosaic
     mosaic.save(output_file, format="JPEG", quality=95)
     logger.info(f"Mosaic image saved to: {output_file}")
+
+
+def image_grid(
+    images: list[Image.Image],
+    image_size: int = 64,
+    aspect_ratio: float = 16 / 9,
+    output_file: str = "output/vis/grid.jpg",
+) -> None:
+    """
+    Create a grid of images with an aspect ratio as close as possible to the target.
+
+    Args:
+        images: List of PIL Image objects to arrange in a grid
+        image_size: Size to resize each image to (square)
+        aspect_ratio: Target aspect ratio for the overall grid (width/height)
+        output_file: Path to save the output grid image
+    """
+    if not images:
+        logger.warning("No images provided for grid creation")
+        return
+
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Calculate optimal number of columns and rows
+    n_images = len(images)
+
+    # Try different numbers of columns to find optimal aspect ratio
+    best_diff = float("inf")
+    best_cols = 1
+
+    for cols in range(1, n_images + 1):
+        rows = math.ceil(n_images / cols)
+        current_ratio = (cols * image_size) / (rows * image_size)
+        diff = abs(current_ratio - aspect_ratio)
+
+        if diff < best_diff:
+            best_diff = diff
+            best_cols = cols
+
+    best_rows = math.ceil(n_images / best_cols)
+
+    # Create the grid image
+    grid_width = best_cols * image_size
+    grid_height = best_rows * image_size
+    grid = Image.new("RGB", (grid_width, grid_height), (255, 255, 255))
+
+    # Paste each image into the grid
+    for idx, img in enumerate(images):
+        if idx >= n_images or img is None:
+            continue
+
+        # Calculate position
+        row = idx // best_cols
+        col = idx % best_cols
+
+        # Resize the image to the target size
+        try:
+            resized_img = img.resize((image_size, image_size))
+
+            # Calculate coordinates
+            x = col * image_size
+            y = row * image_size
+
+            # Paste the image
+            grid.paste(resized_img, (x, y))
+        except Exception as e:
+            logger.error(f"Error processing image at index {idx}: {e}")
+
+    # Save the grid
+    grid.save(output_file, format="JPEG", quality=95)
+    logger.info(f"Grid image saved to: {output_file}")

@@ -5,7 +5,12 @@ from PIL import Image
 from sqlmodel import Session
 
 from panic_tda.engine import perform_experiment
-from panic_tda.export import export_run_images, export_timeline, export_video
+from panic_tda.export import (
+    export_run_images,
+    export_timeline,
+    export_video,
+    image_grid,
+)
 from panic_tda.genai_models import IMAGE_SIZE
 from panic_tda.schemas import ExperimentConfig, Invocation, InvocationType, Run
 
@@ -261,4 +266,20 @@ def test_export_timeline(db_session: Session, tmp_path):
     )
 
     # Check that the output video was created
+    assert os.path.exists(output_file)
+
+
+def test_image_grid(tmp_path):
+    """Test that image_grid correctly arranges images in a grid and writes to files."""
+
+    # Create a set of test images with different colors
+    image_size = 64
+    output_file = "output/test/image_grid.jpg"
+    colors = ["red", "blue", "green", "yellow", "purple", "orange"]
+    images = [
+        Image.new("RGB", (image_size, image_size), color=color) for color in colors
+    ]
+
+    # Test with default parameters (default aspect ratio)
+    image_grid(images, output_file=str(output_file))
     assert os.path.exists(output_file)
