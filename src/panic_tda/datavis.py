@@ -705,7 +705,7 @@ def plot_cluster_example_images(
     filtered_df = df.filter(
         (pl.col("embedding_model") == embedding_model)
         & (pl.col("cluster_label").is_not_null())
-        & (pl.col("cluster_label") != 0)
+        & (pl.col("cluster_label") != "OUTLIER")
     )
 
     # Group by cluster_label and collect the first num_examples invocation_ids for each
