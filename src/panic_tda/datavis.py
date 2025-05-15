@@ -15,7 +15,6 @@ from plotnine import (
     geom_boxplot,
     geom_line,
     geom_point,
-    geom_tile,
     geom_violin,
     ggplot,
     labs,
@@ -463,10 +462,10 @@ def plot_cluster_transitions(
     output_file: str = "output/vis/cluster_transitions.pdf",
 ) -> None:
     """
-    Create a heatmap visualization of cluster transitions within runs.
+    Create a visualization of cluster transitions within runs.
 
     For each run_id, calculates transitions between consecutive cluster labels
-    and displays them as a transition matrix using geom_tile.
+    and displays them as a grid of points where point size represents transition frequency.
 
     Args:
         df: DataFrame containing embedding data with cluster_label, run_id, and sequence_number
@@ -493,17 +492,27 @@ def plot_cluster_transitions(
     # Convert to pandas for plotting
     pandas_df = transition_counts.to_pandas()
 
-    # Create heatmap
+    # Create point grid visualization
     plot = (
         ggplot(
             pandas_df,
-            aes(x="to_cluster", y="from_cluster", fill="transition_count"),
+            aes(
+                x="to_cluster",
+                y="from_cluster",
+                size="transition_count",
+                fill="transition_count",
+            ),
         )
-        + geom_tile()
-        + labs(x="to cluster", y="from cluster", fill="transition count")
+        + geom_point()
+        + labs(
+            x="to cluster",
+            y="from cluster",
+            size="transition count",
+            fill="transition count",
+        )
         + facet_grid("embedding_model ~ network")
         + theme(
-            figure_size=(30, 14),
+            figure_size=(25, 14),
             strip_text=element_text(size=10),
         )
     )
