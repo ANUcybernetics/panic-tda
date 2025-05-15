@@ -1,3 +1,6 @@
+import os
+
+import polars as pl
 from sqlmodel import Session, select
 
 from panic_tda.export import export_video
@@ -228,3 +231,85 @@ def droplet_and_leaf_invocations(
 
     # Combine results
     return (image_invocations, text_invocations)
+
+
+def create_top_class_image_grids(embeddings_df: pl.DataFrame, session: Session):
+    """
+    Creates image grids from the top embedding clusters.
+
+    This function:
+    1. Finds embeddings in the top cluster for each embedding_model and network
+    2. Loads up to 1600 invocations from each grouping
+    3. Creates image grids of the input images
+    4. Exports the grids with descriptive filenames
+
+    Args:
+        embeddings_df: DataFrame containing embedding data
+        session: Database session
+
+    Returns:
+        List of exported image paths
+    """
+    from uuid import UUID
+
+    from panic_tda.data_prep import filter_top_n_clusters
+
+    # Create output directory if it doesn't exist
+    output_dir = "output/vis/cluster_grids"
+    os.makedirs(output_dir, exist_ok=True)
+
+    clustered_embeddings = embeddings_df.filter(
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
+    )
+
+    top_clusters = filter_top_n_clusters(
+        clustered_embeddings, 1, ["embedding_model", "network"]
+    ).select("embedding_model", "network", "invocation_id", "cluster_label")
+
+    # Create a nested dictionary organized by embedding_model and network
+    nested_dict = {}
+    for row in top_clusters.iter_rows(named=True):
+        embedding_model = row["embedding_model"]
+        network = row["network"]
+        invocation_id = row["invocation_id"]
+
+        # Initialize nested structure if it doesn't exist
+        if embedding_model not in nested_dict:
+            nested_dict[embedding_model] = {}
+        if network not in nested_dict[embedding_model]:
+            nested_dict[embedding_model][network] = []
+
+        # Add invocation_id to the list
+        nested_dict[embedding_model][network].append(invocation_id)
+
+    # Loop through the nested dictionary by embedding model and network
+    from panic_tda.export import image_grid
+
+    for embedding_model, networks in nested_dict.items():
+        for network, invocation_ids in networks.items():
+            print(f"Processing {embedding_model} / {network}")
+
+            # Limit to 1600 invocation IDs
+            limited_invocation_ids = [UUID(id) for id in invocation_ids[:6400]]
+
+            # Fetch the invocations from the database
+            query = select(Invocation).where(Invocation.id.in_(limited_invocation_ids))
+            invocations = session.exec(query).all()
+
+            # Get the cluster label for this embedding_model/network combo
+            cluster_filters = (
+                (pl.col("embedding_model") == embedding_model) &
+                (pl.col("network") == network)
+            )
+            filtered_clusters = top_clusters.filter(cluster_filters)
+
+            # Take the first cluster label (should be the same for all rows in this group)
+            if len(filtered_clusters) > 0:
+                cluster_name = filtered_clusters.select("cluster_label").row(0)[0]
+            else:
+                cluster_name = "unknown_cluster"
+
+            output_file = f"{output_dir}/{embedding_model}_{network}__{cluster_name}.jpg".replace(" → ", "").replace(" ", "_")
+
+            # export image grid (save to file)
+            image_grid([inv.input_invocation.output for inv in invocations], 32, 16/10, str(output_file))
