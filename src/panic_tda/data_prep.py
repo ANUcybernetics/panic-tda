@@ -202,7 +202,7 @@ def filter_top_n_clusters(
     Args:
         df: DataFrame containing embeddings with cluster labels
         n: Number of top clusters to keep within each group
-        group_by_cols: List of column names to group by (default: ["embedding_model", "initial_prompt"])
+        group_by_cols: List of column names to group by
 
     Returns:
         Filtered DataFrame containing only rows from the top n clusters
