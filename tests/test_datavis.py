@@ -1,8 +1,8 @@
-import os
 import json
+import os
 
-import pytest
 import polars as pl
+import pytest
 
 from panic_tda.data_prep import (
     add_cluster_labels,
@@ -25,7 +25,6 @@ from panic_tda.datavis import (
     plot_persistence_entropy,
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
-    read_existing_label_map,
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
@@ -430,7 +429,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     assert os.path.exists(cache_path)
 
     # Read the map directly from the JSON file instead of using read_existing_label_map
-    with open(cache_path, 'r') as f:
+    with open(cache_path, "r") as f:
         loaded_map = json.load(f)
 
     # Verify loaded map matches original
@@ -450,7 +449,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     assert new_label_map["Group_3"] == 3
 
     # Read the map directly from the JSON file instead of using read_existing_label_map
-    with open(new_cache_path, 'r') as f:
+    with open(new_cache_path, "r") as f:
         loaded_new_map = json.load(f)
 
     # Verify loaded map matches original

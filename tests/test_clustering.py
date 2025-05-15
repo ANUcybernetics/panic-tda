@@ -1,12 +1,8 @@
-import os
-
 import numpy as np
-import polars as pl
 import pytest
 from uuid_v7.base import uuid7
 
 from panic_tda.clustering import (
-    create_label_map,
     hdbscan,
     optics,
 )
