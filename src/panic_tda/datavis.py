@@ -383,6 +383,11 @@ def plot_cluster_histograms(
     if not include_outliers:
         df = df.filter(pl.col("cluster_label") != "OUTLIER")
 
+    # Calculate the number of unique cluster labels to determine figure height
+    num_unique_clusters = df.get_column("cluster_label").n_unique()
+    # Dynamic height based on number of unique clusters
+    figure_height = max(10, num_unique_clusters * 0.8)
+
     # Create the plot
     plot = (
         ggplot(
@@ -398,7 +403,7 @@ def plot_cluster_histograms(
             ncol=4,
         )
         + theme(
-            figure_size=(22, 40),
+            figure_size=(22, figure_height),
             strip_text=element_text(size=10),
         )
         + coord_flip()
