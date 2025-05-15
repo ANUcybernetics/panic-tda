@@ -466,6 +466,7 @@ def plot_cluster_transitions(
     Args:
         df: DataFrame containing embedding data with cluster_label, run_id, and sequence_number
         include_outliers: If False, filter out all "OUTLIER" cluster labels
+        output_file: Path to save the visualization
     """
 
     # Use calculate_cluster_transitions to get transition counts
