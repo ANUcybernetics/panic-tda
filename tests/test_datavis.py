@@ -289,9 +289,11 @@ def test_plot_cluster_timelines(db_session):
 
     # Define output file
     output_file = "output/test/cluster_timelines.pdf"
+    label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    plot_cluster_timelines(embeddings_df, output_file)
+    create_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    plot_cluster_timelines(embeddings_df, output_file, label_map_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -393,9 +395,11 @@ def test_plot_cluster_transitions(db_session):
 
     # Define output file
     output_file = "output/test/cluster_transitions.pdf"
+    label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    plot_cluster_transitions(embeddings_df, True, output_file)
+    create_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    plot_cluster_transitions(embeddings_df, True, output_file, label_map_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

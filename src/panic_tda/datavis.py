@@ -409,7 +409,11 @@ def plot_cluster_timelines(
     )
 
     # Calculate the number of unique facet combinations to determine figure height
-    unique_facets_count = indexed_df.select("initial_prompt", "embedding_model", "network").unique().height
+    unique_facets_count = (
+        indexed_df.select("initial_prompt", "embedding_model", "network")
+        .unique()
+        .height
+    )
 
     # Set a base height per facet (adjust as needed)
     base_height_per_facet = 10
@@ -426,7 +430,7 @@ def plot_cluster_timelines(
                 x="sequence_number",
                 y="run_id",
                 color="cluster_index",
-                alpha="cluster_index != 0"  # 0 is now the OUTLIER value
+                alpha="cluster_index != 0",  # 0 is now the OUTLIER value
             ),
         )
         + geom_line(colour="black", alpha=0.5)
@@ -434,9 +438,7 @@ def plot_cluster_timelines(
         + geom_text(aes(label="cluster_index"), color="black", size=8)
         + labs(x="sequence number", y="run id", color="cluster")
         + facet_wrap(
-            "~ initial_prompt + embedding_model + network",
-            scales="free",
-            ncol=1
+            "~ initial_prompt + embedding_model + network", scales="free", ncol=1
         )
         + theme(
             figure_size=(20, figure_height),  # Use calculated adaptive height
@@ -764,9 +766,6 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    # from panic_tda.local import prompt_timeline_run_ids
-
-    # selected_ids = prompt_timeline_run_ids(session)
     # from panic_tda.export import export_timeline
 
     # # Export the timeline image
@@ -796,12 +795,18 @@ def paper_charts(session: Session) -> None:
     from panic_tda.data_prep import load_embeddings_from_cache
 
     embeddings_df = load_embeddings_from_cache()
-    # embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
-    #
-    # man_df = embeddings_df.filter(pl.col("initial_prompt") == "a picture of a man")
-    # plot_cluster_timelines(man_df, "output/vis/cluster_timelines_man.pdf")
-    plot_cluster_transitions(embeddings_df, False, "output/vis/cluster_transitions.pdf")
-    # plot_cluster_histograms_top_n(embeddings_df, "output/vis/cluster_histograms_top_n.pdf")
+    create_label_map(embeddings_df.get_column("cluster_label"))
+
+    man_df = embeddings_df.filter(pl.col("initial_prompt") == "a picture of a man")
+    plot_cluster_timelines(man_df, "output/vis/cluster_timelines_man.pdf")
+    # plot_cluster_transitions(embeddings_df, False, "output/vis/cluster_transitions.pdf")
+    # plot_cluster_histograms(
+    #     embeddings_df, True, "output/vis/cluster_histograms_outliers.pdf"
+    # )
+    # plot_cluster_histograms(embeddings_df, False, "output/vis/cluster_histograms.pdf")
+    # plot_cluster_histograms_top_n(
+    #     embeddings_df, "output/vis/cluster_histograms_top_n.pdf"
+    # )
     # export_cluster_counts_to_json(embeddings_df, "output/vis/cluster_counts.json")
 
     # plot_cluster_example_images(
@@ -824,3 +829,7 @@ def paper_charts(session: Session) -> None:
     #     runs_df.filter(pl.col("embedding_model") == "Nomic"),
     #     "output/vis/persistence_entropy_by_prompt.png",
     # )
+    ### LEAVES AND DROPLETS
+    # from panic_tda.local import create_top_class_image_grids
+
+    # create_top_class_image_grids(embeddings_df, 3200, session)
