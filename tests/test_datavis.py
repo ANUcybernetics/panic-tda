@@ -11,6 +11,7 @@ from panic_tda.data_prep import (
     load_runs_df,
 )
 from panic_tda.datavis import (
+    create_label_map,
     plot_cluster_example_images,
     plot_cluster_histograms,
     plot_cluster_histograms_top_n,
@@ -416,7 +417,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     # Validate the output dictionary
     assert isinstance(label_map, dict)
     assert len(label_map) == 4  # 3 clusters + OUTLIER
-    assert label_map["OUTLIER"] == -1
+    assert label_map["OUTLIER"] == 0
     assert label_map["Cluster_A"] > 0
     assert label_map["Cluster_B"] > 0
     assert label_map["Cluster_C"] > 0
@@ -428,7 +429,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     assert os.path.exists(cache_path)
 
     # Test read_labels_from_cache function
-    loaded_map = read_existing_label_map(input_path=cache_path)
+    loaded_map = read_existing_label_map(cache_path)
 
     # Verify loaded map matches original
     assert loaded_map == label_map
