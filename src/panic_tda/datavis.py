@@ -102,10 +102,7 @@ def create_label_map(
     return label_map
 
 
-def read_existing_label_map(
-    column_name: str = "cluster_label",
-    input_path: str = "output/vis/cluster_label_map.json",
-) -> pl.Expr:
+def read_existing_label_map(column_name: str, input_path: str) -> pl.Expr:
     """
     Read the mapping of string cluster labels to integers from a JSON file
     and return a polars expression to use in with_columns.
@@ -123,6 +120,7 @@ def read_existing_label_map(
 
     # Return a polars expression for use in with_columns
     return pl.col(column_name).replace_strict(label_map)
+
 
 def create_persistence_diagram_chart(df: pl.DataFrame):
     """
@@ -389,7 +387,9 @@ def plot_semantic_drift(
 
 
 def plot_cluster_timelines(
-    df: pl.DataFrame, output_file: str = "output/vis/cluster_timelines.pdf"
+    df: pl.DataFrame,
+    output_file: str = "output/vis/cluster_timelines.pdf",
+    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a faceted scatter plot showing cluster labels over sequence number for each run,
@@ -398,13 +398,14 @@ def plot_cluster_timelines(
     Args:
         df: DataFrame containing embedding data with cluster_label and sequence_number
         output_file: Path to save the visualization
+        label_map_path: Path to the JSON file containing cluster label mappings
     """
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
     # Convert string cluster labels to indices
     indexed_df = filtered_df.with_columns(
-        read_existing_label_map("cluster_label").alias("cluster_index")
+        read_existing_label_map("cluster_label", label_map_path).alias("cluster_index")
     )
 
     # Calculate the number of unique facet combinations to determine figure height
@@ -546,6 +547,7 @@ def plot_cluster_transitions(
     df: pl.DataFrame,
     include_outliers: bool,
     output_file: str = "output/vis/cluster_transitions.pdf",
+    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a visualization of cluster transitions within runs.
@@ -557,22 +559,17 @@ def plot_cluster_transitions(
         df: DataFrame containing embedding data with cluster_label, run_id, and sequence_number
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
+        label_map_path: Path to the JSON file containing cluster label mappings
     """
-
     # Use calculate_cluster_transitions to get transition counts
     transition_counts = calculate_cluster_transitions(
         df, ["embedding_model", "network"], include_outliers
     )
 
-    # Create label map to convert string labels to integers
-    label_map = create_label_map(
-        df.get_column("cluster_label"), "output/vis/cluster_label_map.json"
-    )
-
-    # Transform cluster labels to their integer values
+    # Transform cluster labels to their integer values using the label mapping
     transition_counts = transition_counts.with_columns([
-        pl.col("from_cluster").replace_strict(label_map),
-        pl.col("to_cluster").replace_strict(label_map),
+        read_existing_label_map("from_cluster", label_map_path).alias("from_cluster"),
+        read_existing_label_map("to_cluster", label_map_path).alias("to_cluster"),
     ])
 
     # Convert to pandas for plotting
