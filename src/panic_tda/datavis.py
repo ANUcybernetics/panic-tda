@@ -68,7 +68,7 @@ def create_label_map(
         output_path: Path to save the JSON mapping file
 
     Returns:
-        Dictionary mapping string labels to integers (-1 for "OUTLIER", 1+ for others)
+        Dictionary mapping string labels to integers (0 for "OUTLIER", 1+ for others)
     """
     # Get unique labels
     unique_labels = cluster_labels.unique().to_list()
@@ -83,7 +83,7 @@ def create_label_map(
 
     # Handle OUTLIER first if it exists
     if "OUTLIER" in unique_labels:
-        label_map["OUTLIER"] = -1
+        label_map["OUTLIER"] = 0
 
     # Assign IDs to sorted labels
     next_id = 1
@@ -425,7 +425,7 @@ def plot_cluster_timelines(
                 x="sequence_number",
                 y="run_id",
                 color="cluster_index",
-                alpha="cluster_index != -1"  # -1 is now the OUTLIER value
+                alpha="cluster_index != 0"  # 0 is now the OUTLIER value
             ),
         )
         + geom_line(colour="black", alpha=0.5)
@@ -704,11 +704,11 @@ def plot_cluster_example_images(
     """
 
     # Filter dataframe to get only rows with the specified embedding model
-    # and where cluster_label is not null and not -1
+    # and where cluster_label is not null and not0
     filtered_df = df.filter(
         (pl.col("embedding_model") == embedding_model)
         & (pl.col("cluster_label").is_not_null())
-        & (pl.col("cluster_label") != -1)
+        & (pl.col("cluster_label") != 0)
     )
 
     # Group by cluster_label and collect the first num_examples invocation_ids for each
