@@ -395,7 +395,7 @@ def plot_cluster_histograms(
             "~ embedding_model + network",
             # labeller="label_context",
             # scales="free_y",
-            ncol=3,
+            ncol=4,
         )
         + theme(
             figure_size=(22, 40),
