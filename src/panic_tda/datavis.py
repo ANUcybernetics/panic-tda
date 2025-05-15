@@ -365,7 +365,9 @@ def plot_cluster_timelines(
 
 
 def plot_cluster_histograms(
-    df: pl.DataFrame, output_file: str = "output/vis/cluster_histograms.pdf"
+    df: pl.DataFrame,
+    include_outliers: bool = False,
+    output_file: str = "output/vis/cluster_histograms.pdf",
 ) -> None:
     """
     Create a faceted histogram showing counts of each cluster label,
@@ -373,17 +375,18 @@ def plot_cluster_histograms(
 
     Args:
         df: DataFrame containing embedding data with cluster_label
+        include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.filter(
-        pl.col("cluster_label").is_not_null(), pl.col("cluster_label") != "OUTLIER"
-    ).to_pandas()
+    df = df.filter(pl.col("cluster_label").is_not_null())
+    if not include_outliers:
+        df = df.filter(pl.col("cluster_label") != "OUTLIER")
 
     # Create the plot
     plot = (
         ggplot(
-            pandas_df,
+            df.to_pandas(),
             aes(x="cluster_label", fill="embedding_model"),
         )
         + geom_bar()
