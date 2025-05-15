@@ -308,11 +308,7 @@ def create_top_class_image_grids(embeddings_df: pl.DataFrame, session: Session):
             else:
                 cluster_name = "unknown_cluster"
 
-            output_file = (
-                f"{output_dir}/{embedding_model}_{network}__{cluster_name}.jpg".replace(
-                    " → ", ""
-                ).replace(" ", "_")
-            )
+            output_file = f"{output_dir}/{embedding_model}_{network.replace(' → ', '')}__{cluster_name.replace(' ', '_').replace(',', '').replace('.', '')}.jpg"
 
             # export image grid (save to file)
             image_grid(
