@@ -369,7 +369,7 @@ def plot_cluster_histograms(
 ) -> None:
     """
     Create a faceted histogram showing counts of each cluster label,
-    faceted by initial prompt and embedding model.
+    faceted by embedding model and network.
 
     Args:
         df: DataFrame containing embedding data with cluster_label
@@ -389,13 +389,13 @@ def plot_cluster_histograms(
         + geom_bar()
         + labs(x="cluster_label", y="count")
         + facet_wrap(
-            "~ embedding_model",
+            "~ embedding_model + network",
             # labeller="label_context",
             # scales="free_y",
             ncol=3,
         )
         + theme(
-            figure_size=(20, 40),
+            figure_size=(22, 40),
             strip_text=element_text(size=10),
         )
         + coord_flip()
