@@ -476,7 +476,7 @@ def plot_cluster_transitions(
 
     # Use calculate_cluster_transitions to get transition counts
     transition_counts = calculate_cluster_transitions(
-        df, ["embedding_model"], include_outliers
+        df, ["embedding_model", "network"], include_outliers
     )
 
     # Create label map to convert string labels to integers
@@ -501,7 +501,7 @@ def plot_cluster_transitions(
         )
         + geom_tile()
         + labs(x="to cluster", y="from cluster", fill="transition count")
-        + facet_wrap("~ embedding_model", scales="free")
+        + facet_grid("embedding_model ~ network")
         + theme(
             figure_size=(30, 14),
             strip_text=element_text(size=10),
