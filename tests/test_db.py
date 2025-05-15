@@ -21,6 +21,7 @@ from panic_tda.db import (
     read_invocation,
     read_run,
 )
+from panic_tda.local import droplet_and_leaf_invocations
 from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
@@ -813,3 +814,147 @@ def test_dump_schema(db_session: Session):
     assert loaded_schema
     assert len(loaded_schema) > 0
     assert "run" in loaded_schema or "Run" in loaded_schema
+
+
+def test_droplet_and_leaf_invocations(db_session: Session):
+    """Test the droplet_and_leaf_invocations function."""
+
+    # Create a sample run
+    sample_run = Run(
+        initial_prompt="test leaf and droplet",
+        network=["model1"],
+        seed=42,
+        max_length=3,
+    )
+    db_session.add(sample_run)
+    db_session.commit()
+
+    # Create text invocations to serve as inputs for image invocations
+    leaf_input_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=40,
+        run_id=sample_run.id,
+        sequence_number=0,
+        output_text="Generate an image of a green leaf",
+    )
+
+    droplet_input_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=41,
+        run_id=sample_run.id,
+        sequence_number=0,
+        output_text="Show me a water droplet on a surface",
+    )
+
+    irrelevant_input_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=0,
+        output_text="Generate a picture of a mountain",
+    )
+
+    db_session.add(leaf_input_invocation)
+    db_session.add(droplet_input_invocation)
+    db_session.add(irrelevant_input_invocation)
+    db_session.commit()
+
+    # Image invocation with "leaf" in input
+    leaf_img_invocation = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=42,
+        run_id=sample_run.id,
+        sequence_number=1,
+        input_invocation_id=leaf_input_invocation.id,
+    )
+
+    # Image invocation with "droplet" in input
+    droplet_img_invocation = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=43,
+        run_id=sample_run.id,
+        sequence_number=2,
+        input_invocation_id=droplet_input_invocation.id,
+    )
+
+    # Image invocation without relevant keywords
+    irrelevant_img_invocation = Invocation(
+        model="ImageModel",
+        type=InvocationType.IMAGE,
+        seed=44,
+        run_id=sample_run.id,
+        sequence_number=3,
+        input_invocation_id=irrelevant_input_invocation.id,
+    )
+
+    # Text invocations
+    leaf_text_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=45,
+        run_id=sample_run.id,
+        sequence_number=4,
+        output_text="The leaf fell gently from the tree.",
+    )
+
+    droplet_text_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=46,
+        run_id=sample_run.id,
+        sequence_number=5,
+        output_text="A droplet of rain slid down the window.",
+    )
+
+    irrelevant_text_invocation = Invocation(
+        model="TextModel",
+        type=InvocationType.TEXT,
+        seed=47,
+        run_id=sample_run.id,
+        sequence_number=6,
+        output_text="The sky was clear and blue today.",
+    )
+
+    # Add all invocations to the session
+    db_session.add(leaf_img_invocation)
+    db_session.add(droplet_img_invocation)
+    db_session.add(irrelevant_img_invocation)
+    db_session.add(leaf_text_invocation)
+    db_session.add(droplet_text_invocation)
+    db_session.add(irrelevant_text_invocation)
+    db_session.commit()
+
+    # Call the function - now returns a tuple of (image_invocations, text_invocations)
+    image_invocations, text_invocations = droplet_and_leaf_invocations(db_session)
+
+    # Convert results to lists of IDs for easier checking
+    image_ids = [invocation.id for invocation in image_invocations]
+    text_ids = [invocation.id for invocation in text_invocations]
+
+    # Assert no duplicates in results
+    assert len(image_ids) == len(image_invocations), "Duplicate image invocations found"
+    assert len(text_ids) == len(text_invocations), "Duplicate text invocations found"
+    # Verify the results - check correct counts
+    assert (
+        len(image_invocations) == 2
+    )  # Should include all image invocations linked to leaf/droplet text invocations
+    assert (
+        len(text_invocations) == 4
+    )  # Should include all text invocations with leaf/droplet in the output
+
+    # Verify the right invocations are included in the image list
+    assert leaf_img_invocation.id in image_ids
+    assert droplet_img_invocation.id in image_ids
+
+    # Verify the right invocations are included in the text list
+    assert leaf_text_invocation.id in text_ids
+    assert droplet_text_invocation.id in text_ids
+
+    # Verify irrelevant invocations are not included in either list
+    assert irrelevant_img_invocation.id not in image_ids
+    assert irrelevant_text_invocation.id not in text_ids

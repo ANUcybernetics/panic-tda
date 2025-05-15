@@ -1,7 +1,7 @@
 from sqlmodel import Session, select
 
 from panic_tda.export import export_video
-from panic_tda.schemas import Run
+from panic_tda.schemas import Invocation, Run
 
 
 def prompt_timeline_run_ids(session: Session):
@@ -186,3 +186,45 @@ def render_hallway_videos(session: Session) -> str:
 
     # Return summary of created videos
     return f"Created {len(created_videos)} videos: {', '.join(created_videos)}"
+
+
+def droplet_and_leaf_invocations(
+    session: Session,
+) -> tuple[list[Invocation], list[Invocation]]:
+    """
+    Returns IDs of invocations related to "leaf" or "droplet".
+
+    Finds:
+    - Image invocations where input contains "leaf" or "droplet"
+    - Text invocations where output contains "leaf" or "droplet"
+
+    Args:
+        session: Database session
+
+    Returns:
+        List of invocation IDs as strings
+    """
+    # Find text invocations with "leaf" or "droplet" in output
+    query = select(Invocation).where(
+        (Invocation.type == "text")
+        & (
+            Invocation.output_text.ilike("%leaf%")
+            | Invocation.output_text.ilike("%droplet%")
+        )
+    )
+    text_invocations = session.exec(query).all()
+
+    # Find text invocations with leaf/droplet in output to use as input sources
+    leaf_droplet_text_ids = [inv.id for inv in text_invocations]
+
+    # Find image invocations that use these text invocations as input
+    image_invocations = []
+    if leaf_droplet_text_ids:
+        query = select(Invocation).where(
+            (Invocation.type == "image")
+            & (Invocation.input_invocation_id.in_(leaf_droplet_text_ids))
+        )
+        image_invocations = session.exec(query).all()
+
+    # Combine results
+    return (image_invocations, text_invocations)
