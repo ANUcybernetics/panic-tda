@@ -1,11 +1,12 @@
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 import numpy as np
 import sqlalchemy
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
+from humanize.time import naturaldelta
 
 from panic_tda.genai_models import estimated_time
 from panic_tda.schemas import (
@@ -263,26 +264,6 @@ def list_experiments(session: Session):
     return session.exec(statement).all()
 
 
-# Helper function to format time duration
-def format_time_duration(seconds):
-    return f"{int(seconds // 3600):02d}h {int((seconds % 3600) // 60):02d}m {int(seconds % 60):02d}s"
-
-
-# Helper function to calculate time strings for stages
-def get_time_string(percent_complete, start_time, end_time):
-    if percent_complete >= 100.0:
-        elapsed_seconds = (end_time - start_time).total_seconds()
-        return f" (completed in {format_time_duration(elapsed_seconds)})"
-    else:
-        # Estimate time to completion
-        elapsed_seconds = (datetime.now() - start_time).total_seconds()
-        if percent_complete > 0:
-            total_estimated_seconds = elapsed_seconds / (percent_complete / 100.0)
-            remaining_seconds = total_estimated_seconds - elapsed_seconds
-            return f" (est. {format_time_duration(remaining_seconds)} remaining)"
-    return ""
-
-
 def list_embeddings(session: Session):
     """
     Returns all embeddings.
@@ -464,16 +445,9 @@ def print_experiment_info(
         )
 
     if experiment_config.started_at:
-        # Get elapsed time from start
-        elapsed_seconds = (
-            (datetime.now() - experiment_config.started_at).total_seconds()
-            if experiment_config.started_at
-            else 0
-        )
-
         # Create time string for invocations
         invocation_time_str = (
-            f" (est. {format_time_duration(estimated_time_remaining)} remaining)"
+            f" (est. {naturaldelta(timedelta(seconds=estimated_time_remaining))} remaining)"
             if invocation_percent < 100.0
             else " (completed)"
         )
@@ -616,6 +590,6 @@ def print_experiment_info(
     for model, (completed, expected, percent) in diagram_model_stats.items():
         status_report += f"    - {model}: {percent:.1f}% ({completed}/{expected})\n"
 
-    status_report += f"  Elapsed Time: {format_time_duration(elapsed_seconds)}"
+    status_report += f"  Elapsed Time: {naturaldelta(timedelta(seconds=elapsed_seconds))}"
 
     print(status_report)
