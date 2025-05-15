@@ -233,7 +233,9 @@ def droplet_and_leaf_invocations(
     return (image_invocations, text_invocations)
 
 
-def create_top_class_image_grids(embeddings_df: pl.DataFrame, session: Session):
+def create_top_class_image_grids(
+    embeddings_df: pl.DataFrame, limit: int, session: Session
+):
     """
     Creates image grids from the top embedding clusters.
 
@@ -289,8 +291,7 @@ def create_top_class_image_grids(embeddings_df: pl.DataFrame, session: Session):
         for network, invocation_ids in networks.items():
             print(f"Processing {embedding_model} / {network}")
 
-            # Limit to 1600 invocation IDs
-            limited_invocation_ids = [UUID(id) for id in invocation_ids[:6400]]
+            limited_invocation_ids = [UUID(id) for id in invocation_ids[:limit]]
 
             # Fetch the invocations from the database
             query = select(Invocation).where(Invocation.id.in_(limited_invocation_ids))
@@ -315,5 +316,5 @@ def create_top_class_image_grids(embeddings_df: pl.DataFrame, session: Session):
                 [inv.input_invocation.output for inv in invocations],
                 32,
                 16 / 10,
-                str(output_file),
+                output_file,
             )
