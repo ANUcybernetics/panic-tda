@@ -61,6 +61,9 @@
 
 - create similarity matrices for runs
 
+- use the most modern typing syntax (`list` instead of `List`) consistently
+  throughout
+
 - DB indexes
 
 ## Int8 quantization for Flux.1-schnell
