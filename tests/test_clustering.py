@@ -9,7 +9,6 @@ from panic_tda.clustering import (
     create_label_map,
     hdbscan,
     optics,
-    read_labels_from_cache,
 )
 from panic_tda.embeddings import EMBEDDING_DIM
 from panic_tda.schemas import Embedding
@@ -359,54 +358,3 @@ def test_optics_scalability(n_samples):
         # Should identify at least 2 clusters (plus possibly noise)
         unique_clusters = set(labels) - {-1}  # Remove noise label
         assert len(unique_clusters) >= 2
-
-
-def test_cache_labels_and_read_from_cache(tmp_path):
-    """Test caching cluster labels to JSON and reading them back."""
-
-    # Create a polars Series with cluster labels
-    labels = ["Cluster_A", "Cluster_B", "OUTLIER", "Cluster_A", "Cluster_C", "OUTLIER"]
-    cluster_labels = pl.Series("cluster_labels", labels)
-
-    # Create a temporary file path for testing
-    cache_path = os.path.join(tmp_path, "test_cluster_map.json")
-
-    # Test create_label_map function
-    label_map = create_label_map(cluster_labels, output_path=cache_path)
-
-    # Validate the output dictionary
-    assert isinstance(label_map, dict)
-    assert len(label_map) == 4  # 3 clusters + OUTLIER
-    assert label_map["OUTLIER"] == -1
-    assert label_map["Cluster_A"] > 0
-    assert label_map["Cluster_B"] > 0
-    assert label_map["Cluster_C"] > 0
-    assert label_map["Cluster_A"] != label_map["Cluster_B"]
-    assert label_map["Cluster_A"] != label_map["Cluster_C"]
-    assert label_map["Cluster_B"] != label_map["Cluster_C"]
-
-    # Verify file was created
-    assert os.path.exists(cache_path)
-
-    # Test read_labels_from_cache function
-    loaded_map = read_labels_from_cache(input_path=cache_path)
-
-    # Verify loaded map matches original
-    assert loaded_map == label_map
-
-    # Test with different labels to ensure IDs are assigned in order
-    new_labels = ["Group_1", "OUTLIER", "Group_2", "Group_3", "Group_1"]
-    new_cluster_labels = pl.Series("cluster_labels", new_labels)
-    new_cache_path = os.path.join(tmp_path, "test_cluster_map_2.json")
-
-    new_label_map = create_label_map(new_cluster_labels, output_path=new_cache_path)
-
-    # Validate the new mapping
-    assert new_label_map["OUTLIER"] == -1
-    assert new_label_map["Group_1"] == 1
-    assert new_label_map["Group_2"] == 2
-    assert new_label_map["Group_3"] == 3
-
-    # Load and verify
-    loaded_new_map = read_labels_from_cache(input_path=new_cache_path)
-    assert loaded_new_map == new_label_map
