@@ -2,14 +2,16 @@
 
 - clustering
 
-  - show transition matrix faceted by `~ embedding_model + network`
+  - add labels (as text) to timelines (requires getting the label -> int mapping
+    working)
+  - violin plots for distribution of run lengths for
+    `~ embedding_model + network` (and maybe prompt as well)
   - order embeddings by "longest stable runs" (with `.rle()`), and calculate
     longest runs for each network (both "from start" and "anytime")
-  - distribution of run lengths for different cluster labels, again faceted by
-    embedding_model ~ network
-  - label distributions by seq no (perhaps beginning/middle/end)
-  - how often does it return to the initial cluster
-  - how often in a cluster vs outlier
+  - if full TM isn't so illuminating, just do a histogram of top_n bigrams
+  - facet distributions by "stage" (perhaps beginning/middle/end)
+  - how often does it return to the initial cluster? how often in a cluster vs
+    outlier
   - how many of the labels are similar across different embeddings (or some
     metric on which embeddings get clustered together across different embedding
     models)... double-check that the clustering stuff is actually being faceted
