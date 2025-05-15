@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Dict
 from uuid import UUID
 
 import polars as pl
@@ -15,6 +16,7 @@ from plotnine import (
     geom_boxplot,
     geom_line,
     geom_point,
+    geom_text,
     geom_violin,
     ggplot,
     labs,
@@ -25,7 +27,6 @@ from plotnine import (
 from plotnine.options import set_option
 from sqlmodel import Session
 
-from panic_tda.clustering import create_label_map
 from panic_tda.data_prep import calculate_cluster_transitions, filter_top_n_clusters
 from panic_tda.export import export_mosaic_image
 
@@ -54,6 +55,74 @@ def save(plot, filename: str) -> str:
 
     return filename
 
+
+def create_label_map(
+    cluster_labels: pl.Series,
+    output_path: str = "output/vis/cluster_label_map.json",
+) -> Dict[str, int]:
+    """
+    Map string cluster labels to integers and writes the mapping to a JSON file.
+
+    Args:
+        cluster_labels: A polars Series of string labels
+        output_path: Path to save the JSON mapping file
+
+    Returns:
+        Dictionary mapping string labels to integers (-1 for "OUTLIER", 1+ for others)
+    """
+    # Get unique labels
+    unique_labels = cluster_labels.unique().to_list()
+
+    # Separate OUTLIER from other labels and sort the rest
+    other_labels = sorted([
+        label for label in unique_labels if label is not None and label != "OUTLIER"
+    ])
+
+    # Create mapping dictionary
+    label_map = {}
+
+    # Handle OUTLIER first if it exists
+    if "OUTLIER" in unique_labels:
+        label_map["OUTLIER"] = -1
+
+    # Assign IDs to sorted labels
+    next_id = 1
+    for label in other_labels:
+        label_map[label] = next_id
+        next_id += 1
+
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_path)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Write mapping to JSON file
+    with open(output_path, "w") as f:
+        json.dump(label_map, f, indent=2)
+
+    return label_map
+
+
+def read_existing_label_map(
+    column_name: str = "cluster_label",
+    input_path: str = "output/vis/cluster_label_map.json",
+) -> pl.Expr:
+    """
+    Read the mapping of string cluster labels to integers from a JSON file
+    and return a polars expression to use in with_columns.
+
+    Args:
+        column_name: Name of the column to transform
+        input_path: Path to the JSON mapping file
+
+    Returns:
+        Polars expression that can be used in a with_columns call
+    """
+    # Read mapping from JSON file
+    with open(input_path, "r") as f:
+        label_map = json.load(f)
+
+    # Return a polars expression for use in with_columns
+    return pl.col(column_name).replace_strict(label_map)
 
 def create_persistence_diagram_chart(df: pl.DataFrame):
     """
@@ -330,8 +399,23 @@ def plot_cluster_timelines(
         df: DataFrame containing embedding data with cluster_label and sequence_number
         output_file: Path to save the visualization
     """
+    # Filter out null cluster labels
+    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
+
+    # Convert string cluster labels to indices
+    indexed_df = filtered_df.with_columns(
+        read_existing_label_map("cluster_label").alias("cluster_index")
+    )
+
+    # Calculate the number of unique facet combinations to determine figure height
+    unique_facets_count = indexed_df.select("initial_prompt", "embedding_model", "network").unique().height
+
+    # Set a base height per facet (adjust as needed)
+    base_height_per_facet = 10
+    figure_height = max(10, unique_facets_count * base_height_per_facet)
+
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.filter(pl.col("cluster_label").is_not_null()).to_pandas()
+    pandas_df = indexed_df.to_pandas()
 
     # Create the plot
     plot = (
@@ -340,19 +424,21 @@ def plot_cluster_timelines(
             aes(
                 x="sequence_number",
                 y="run_id",
-                color="cluster_label",
-                # alpha="cluster_label == 'OUTLIER'"
+                color="cluster_index",
+                alpha="cluster_index != -1"  # -1 is now the OUTLIER value
             ),
         )
-        + geom_line(colour="black", alpha=0.7)
-        + geom_point(size=3, show_legend=False)
+        + geom_line(colour="black", alpha=0.5)
+        + geom_point(size=8, show_legend=False)
+        + geom_text(aes(label="cluster_index"), color="black", size=8)
         + labs(x="sequence number", y="run id", color="cluster")
-        + facet_grid(
-            "embedding_model ~ initial_prompt",
+        + facet_wrap(
+            "~ initial_prompt + embedding_model + network",
             scales="free",
+            ncol=1
         )
         + theme(
-            figure_size=(20, 50),
+            figure_size=(20, figure_height),  # Use calculated adaptive height
             strip_text=element_text(size=10),
             axis_text_y=element_blank(),
         )
