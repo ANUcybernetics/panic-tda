@@ -635,7 +635,7 @@ def cache_dfs(
 
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
-        embeddings_df = add_cluster_labels(embeddings_df, 20, session)
+        embeddings_df = add_cluster_labels(embeddings_df, 10, session)
 
         df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
