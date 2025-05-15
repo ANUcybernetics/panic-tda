@@ -1149,3 +1149,101 @@ def test_calculate_cluster_transitions_include_outliers():
             f"Expected count {expected_count} for transition {transition[0]}->{transition[1]}, "
             f"got {transitions_dict_unfiltered[transition]} when including outliers"
         )
+
+
+def test_filter_top_n_clusters_by_model_and_network():
+    """Test that filter_top_n_clusters properly filters with embedding_model and network grouping."""
+
+    # Create a synthetic DataFrame with embedding_model, network, and cluster_label columns
+    data = {
+        "id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(120)],
+        "initial_prompt": [f"Test prompt {i % 3 + 1}" for i in range(120)],
+        "embedding_model": (["Dummy"] * 60 + ["Dummy2"] * 60),
+        "network": (["Network1"] * 30 + ["Network2"] * 30) * 2,
+        "cluster_label": (
+            # Dummy model, Network1 clusters
+            ["cluster_A1"] * 15  # Most common
+            + ["cluster_B1"] * 10  # Second most common
+            + ["cluster_C1"] * 5  # Third most common
+            +
+            # Dummy model, Network2 clusters
+            ["cluster_A2"] * 12  # Most common
+            + ["cluster_B2"] * 10  # Second most common
+            + ["cluster_C2"] * 8  # Third most common
+            +
+            # Dummy2 model, Network1 clusters
+            ["cluster_X1"] * 20  # Most common
+            + ["cluster_Y1"] * 8  # Second most common
+            + ["cluster_Z1"] * 2  # Third most common
+            +
+            # Dummy2 model, Network2 clusters
+            ["cluster_X2"] * 18  # Most common
+            + ["cluster_Y2"] * 12  # Second most common
+            + ["cluster_Z2"] * 0  # No instances
+        ),
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Use the filter_top_n_clusters function with n=2 and grouping by both model and network
+    filtered_df = filter_top_n_clusters(df, 2, ["embedding_model", "network"])
+
+    # Extract the top clusters for each combination of embedding_model and network
+    top_clusters_by_combo = filtered_df.group_by(["embedding_model", "network"]).agg(
+        pl.col("cluster_label").unique().alias("top_clusters")
+    )
+
+    # Check results for each combination
+    expected_top_clusters = {
+        ("Dummy", "Network1"): ["cluster_A1", "cluster_B1"],
+        ("Dummy", "Network2"): ["cluster_A2", "cluster_B2"],
+        ("Dummy2", "Network1"): ["cluster_X1", "cluster_Y1"],
+        ("Dummy2", "Network2"): ["cluster_X2", "cluster_Y2"],
+    }
+
+    for model in ["Dummy", "Dummy2"]:
+        for network in ["Network1", "Network2"]:
+            combo_row = top_clusters_by_combo.filter(
+                (pl.col("embedding_model") == model) & (pl.col("network") == network)
+            ).row(0, named=True)
+            top_clusters = set(combo_row["top_clusters"])
+            expected_clusters = set(expected_top_clusters[(model, network)])
+
+            assert top_clusters == expected_clusters, (
+                f"Expected top clusters for {model}/{network} to be {expected_clusters}, got {top_clusters}"
+            )
+
+    # Verify other clusters were filtered out
+    filtered_out_clusters = ["cluster_C1", "cluster_C2", "cluster_Z1", "cluster_Z2"]
+    for cluster in filtered_out_clusters:
+        cluster_count = filtered_df.filter(pl.col("cluster_label") == cluster).height
+        assert cluster_count == 0, (
+            f"Cluster {cluster} should have been filtered out but has {cluster_count} rows"
+        )
+
+    # Test with n=1 to keep only the most common cluster per combination
+    filtered_df_n1 = filter_top_n_clusters(df, 1, ["embedding_model", "network"])
+    top_clusters_n1 = filtered_df_n1.group_by(["embedding_model", "network"]).agg(
+        pl.col("cluster_label").unique().alias("top_clusters")
+    )
+
+    # Check each combination keeps only the single most common cluster
+    expected_top_one = {
+        ("Dummy", "Network1"): ["cluster_A1"],
+        ("Dummy", "Network2"): ["cluster_A2"],
+        ("Dummy2", "Network1"): ["cluster_X1"],
+        ("Dummy2", "Network2"): ["cluster_X2"],
+    }
+
+    for model in ["Dummy", "Dummy2"]:
+        for network in ["Network1", "Network2"]:
+            combo_row = top_clusters_n1.filter(
+                (pl.col("embedding_model") == model) & (pl.col("network") == network)
+            ).row(0, named=True)
+            top_clusters = set(combo_row["top_clusters"])
+            expected_clusters = set(expected_top_one[(model, network)])
+
+            assert top_clusters == expected_clusters, (
+                f"Expected top cluster for {model}/{network} to be {expected_clusters}, got {top_clusters}"
+            )
