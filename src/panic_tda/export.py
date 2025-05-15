@@ -1094,10 +1094,6 @@ def image_grid(
         aspect_ratio: Target aspect ratio for the overall grid (width/height)
         output_file: Path to save the output grid image
     """
-    if not images:
-        logger.warning("No images provided for grid creation")
-        return
-
     # Ensure output directory exists
     output_dir = os.path.dirname(output_file)
     os.makedirs(output_dir, exist_ok=True)
@@ -1105,24 +1101,13 @@ def image_grid(
     # Calculate optimal number of columns and rows
     n_images = len(images)
 
-    # Try different numbers of columns to find optimal aspect ratio
-    best_diff = float("inf")
-    best_cols = 1
-
-    for cols in range(1, n_images + 1):
-        rows = math.ceil(n_images / cols)
-        current_ratio = (cols * image_size) / (rows * image_size)
-        diff = abs(current_ratio - aspect_ratio)
-
-        if diff < best_diff:
-            best_diff = diff
-            best_cols = cols
-
-    best_rows = math.ceil(n_images / best_cols)
+    # Direct calculation of columns based on aspect ratio
+    cols = int(math.sqrt(n_images * aspect_ratio))
+    rows = math.ceil(n_images / cols)
 
     # Create the grid image
-    grid_width = best_cols * image_size
-    grid_height = best_rows * image_size
+    grid_width = cols * image_size
+    grid_height = rows * image_size
     grid = Image.new("RGB", (grid_width, grid_height), (255, 255, 255))
 
     # Paste each image into the grid
@@ -1131,21 +1116,17 @@ def image_grid(
             continue
 
         # Calculate position
-        row = idx // best_cols
-        col = idx % best_cols
+        row = idx // cols
+        col = idx % cols
 
-        # Resize the image to the target size
-        try:
-            resized_img = img.resize((image_size, image_size))
+        resized_img = img.resize((image_size, image_size))
 
-            # Calculate coordinates
-            x = col * image_size
-            y = row * image_size
+        # Calculate coordinates
+        x = col * image_size
+        y = row * image_size
 
-            # Paste the image
-            grid.paste(resized_img, (x, y))
-        except Exception as e:
-            logger.error(f"Error processing image at index {idx}: {e}")
+        # Paste the image
+        grid.paste(resized_img, (x, y))
 
     # Save the grid
     grid.save(output_file, format="JPEG", quality=95)
