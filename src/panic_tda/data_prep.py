@@ -6,6 +6,7 @@ from uuid import UUID
 import numpy as np
 import polars as pl
 import ray
+from humanize.time import naturaldelta
 from sqlmodel import Session
 
 from panic_tda.clustering import hdbscan
@@ -606,6 +607,7 @@ def cache_dfs(
     Returns:
         None
     """
+
     os.makedirs("output/cache", exist_ok=True)  # Ensure cache directory exists
 
     if runs:
@@ -627,7 +629,7 @@ def cache_dfs(
         print(
             f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
         )
-        print(f"  Time taken: {elapsed_time:.2f} seconds")
+        print(f"  Time taken: {naturaldelta(elapsed_time)}")
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
@@ -650,7 +652,7 @@ def cache_dfs(
         print(
             f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
         )
-        print(f"  Time taken: {elapsed_time:.2f} seconds")
+        print(f"  Time taken: {naturaldelta(elapsed_time)}")
 
     if invocations:
         print("Warming cache for invocations dataframe...")
@@ -673,7 +675,7 @@ def cache_dfs(
         print(
             f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
         )
-        print(f"  Time taken: {elapsed_time:.2f} seconds")
+        print(f"  Time taken: {naturaldelta(elapsed_time)}")
 
     print("Cache warming complete.")
 

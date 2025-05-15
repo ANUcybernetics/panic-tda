@@ -12,6 +12,7 @@ dependencies = [
     "einops>=0.8.1",
     "giotto-ph>=0.2.4",
     "giotto-tda>=0.6.2",
+    "humanize>=4.12.3",
     "persim>=0.3.7",
     "piexif>=1.1.3",
     "pillow>=11.1.0",
