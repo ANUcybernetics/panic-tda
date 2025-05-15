@@ -85,7 +85,7 @@ def optics(
 
 def create_label_map(
     cluster_labels: pl.Series,
-    output_path: str = "cluster_label_map.json",
+    output_path: str = "output/vis/cluster_label_map.json",
     cache: bool = True,
 ) -> Dict[str, int]:
     """
@@ -129,7 +129,7 @@ def create_label_map(
 
 
 def read_labels_from_cache(
-    input_path: str = "cluster_label_map.json",
+    input_path: str = "output/vis/cluster_label_map.json",
 ) -> Dict[str, int]:
     """
     Read the mapping of string cluster labels to integers from a JSON file.

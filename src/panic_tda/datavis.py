@@ -473,7 +473,7 @@ def plot_cluster_transitions(
 
     # Create label map to convert string labels to integers
     label_map = create_label_map(
-        df.get_column("cluster_label"), "cluster_label_map.json"
+        df.get_column("cluster_label"), "output/vis/cluster_label_map.json"
     )
 
     # Transform cluster labels to their integer values
