@@ -13,7 +13,6 @@ from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
-from panic_tda.local import prompt_category_mapper
 from panic_tda.schemas import InvocationType
 
 # because I like to see the data
@@ -768,6 +767,70 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     ])
 
     return df
+
+
+def prompt_category_mapper(initial_prompt: str) -> str:
+    """
+    Map an initial prompt to its category based on the predefined mapping.
+
+    Args:
+        initial_prompt: The initial prompt to map
+
+    Returns:
+        The category of the prompt or None if not found
+    """
+    # Mapping from initial prompts to categories derived from prompt-counts.json
+    prompt_to_category = {
+        "a painting of a man": "people_portraits",
+        "a picture of a child": "people_portraits",
+        "a picture of a man": "people_portraits",
+        "a photorealistic portrait of a child": "people_portraits",
+        "a painting of a woman": "people_portraits",
+        "a painting of a child": "people_portraits",
+        "a photo of a child": "people_portraits",
+        "a photo of a man": "people_portraits",
+        "a photorealistic portrait of a woman": "people_portraits",
+        "a photo of a woman": "people_portraits",
+        "a photorealistic portrait of a man": "people_portraits",
+        "a picture of a woman": "people_portraits",
+        "a photorealistic portrait photo of a child": "people_portraits",
+        "a photorealistic portrait photo of a woman": "people_portraits",
+        "a photorealistic portrait photo of a man": "people_portraits",
+        "nah": "abstract",
+        "yeah": "abstract",
+        "a giraffe": "animals",
+        "a cat": "animals",
+        "an elephant": "animals",
+        "a hamster": "animals",
+        "a rabbit": "animals",
+        "a dog": "animals",
+        "a lion": "animals",
+        "a goldfish": "animals",
+        "a red circle on a black background": "geometric_shapes",
+        "a red circle on a yellow background": "geometric_shapes",
+        "a blue circle on a yellow background": "geometric_shapes",
+        "a yellow circle on a blue background": "geometric_shapes",
+        "a blue circle on a red background": "geometric_shapes",
+        "a yellow circle on a black background": "geometric_shapes",
+        "a blue circle on a black background": "geometric_shapes",
+        "a red circle on a blue background": "geometric_shapes",
+        "a yellow circle on a red background": "geometric_shapes",
+        "a pear": "food",
+        "a banana": "food",
+        "an apple": "food",
+        "a boat": "transportation",
+        "a train": "transportation",
+        "a car": "transportation",
+        "orange": "colours",
+        "green": "colours",
+        "yellow": "colours",
+        "red": "colours",
+        "blue": "colours",
+        "indigo": "colours",
+        "violet": "colours",
+    }
+
+    return prompt_to_category.get(initial_prompt)
 
 
 def load_runs_df(session: Session) -> pl.DataFrame:
