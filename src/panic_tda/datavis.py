@@ -61,11 +61,11 @@ def write_label_map(
     output_path: str = "output/vis/cluster_label_map.json",
 ) -> Dict[str, int]:
     """
-    Map string cluster labels to integers and writes the mapping to a JSON file.
+    Map string cluster labels to integers and writes the mapping to a JSON file and a LaTeX file.
 
     Args:
         cluster_labels: A polars Series of string labels
-        output_path: Path to save the JSON mapping file
+        output_path: Path to save the JSON mapping file (LaTeX file will use same path with .tex extension)
 
     Returns:
         Dictionary mapping string labels to integers (0 for "OUTLIER", 1+ for others)
@@ -98,6 +98,48 @@ def write_label_map(
     # Write mapping to JSON file
     with open(output_path, "w") as f:
         json.dump(label_map, f, indent=2)
+
+    # Create LaTeX file path by replacing .json with .tex
+    latex_output_path = output_path.replace(".json", ".tex")
+
+    # Create LaTeX content for the table
+    latex_content = [
+        "\\documentclass{article}",
+        "\\usepackage{booktabs}",
+        "\\usepackage{longtable}",
+        "\\usepackage{array}",
+        "\\begin{document}",
+        "\\begin{longtable}{|c|p{12cm}|}",
+        "\\hline",
+        "\\textbf{Index} & \\textbf{Cluster Label} \\\\",
+        "\\hline",
+    ]
+
+    # Sort items by index value for the table
+    sorted_items = sorted(label_map.items(), key=lambda x: x[1])
+
+    # Add rows to the table
+    for label, index in sorted_items:
+        # Escape special LaTeX characters
+        escaped_label = (
+            label.replace("_", "\\_")
+            .replace("#", "\\#")
+            .replace("$", "\\$")
+            .replace("%", "\\%")
+            .replace("&", "\\&")
+            .replace("{", "\\{")
+            .replace("}", "\\}")
+        )
+        latex_content.append(f"{index} & {escaped_label} \\\\")
+        latex_content.append("\\hline")
+
+    # Close the table and document
+    latex_content.append("\\end{longtable}")
+    latex_content.append("\\end{document}")
+
+    # Write LaTeX file
+    with open(latex_output_path, "w") as f:
+        f.write("\n".join(latex_content))
 
     return label_map
 
