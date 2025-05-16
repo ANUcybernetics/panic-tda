@@ -458,7 +458,7 @@ def plot_cluster_timelines(
     )
 
     # Set a base height per facet (adjust as needed)
-    base_height_per_facet = 10
+    base_height_per_facet = 3
     figure_height = max(10, unique_facets_count * base_height_per_facet)
 
     # Convert polars DataFrame to pandas for plotnine
@@ -480,10 +480,10 @@ def plot_cluster_timelines(
         + geom_text(aes(label="cluster_index"), color="black", size=8)
         + labs(x="sequence number", y="run id", color="cluster")
         + facet_wrap(
-            "~ initial_prompt + embedding_model + network", scales="free", ncol=1
+            "~ initial_prompt + embedding_model + network", scales="free", ncol=4
         )
         + theme(
-            figure_size=(20, figure_height),  # Use calculated adaptive height
+            figure_size=(50, figure_height),  # Use calculated adaptive height
             strip_text=element_text(size=10),
             axis_text_y=element_blank(),
         )
