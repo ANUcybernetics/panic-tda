@@ -1,6 +1,7 @@
 import os
 
 import polars as pl
+from sqlalchemy import func
 from sqlmodel import Session, select
 
 from panic_tda.datavis import (
@@ -306,7 +307,6 @@ def run_counts(session: Session):
     Returns:
         List of tuples with (initial_prompt, network, count)
     """
-    from sqlalchemy import func
 
     # Use SQLModel to query and group the data
     results = session.exec(
@@ -314,6 +314,9 @@ def run_counts(session: Session):
         .group_by(Run.initial_prompt, Run.network)
         .order_by(func.count(Run.id).desc())
     ).all()
+
+    # Collect prompts with a certain count
+    # print(list(set([prompt for prompt, network, count in results if count == 8])))
 
     # Pretty-print results
     print("\nRun counts by prompt and network:")
