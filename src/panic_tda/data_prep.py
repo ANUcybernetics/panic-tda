@@ -271,6 +271,52 @@ def calculate_cluster_transitions(
     return transition_counts
 
 
+def calculate_cluster_run_lengths(
+    df: pl.DataFrame, group_by_cols: list[str], include_outliers: bool = False
+) -> pl.DataFrame:
+    """
+    Calculate run lengths of clusters for each group in the DataFrame.
+
+    Args:
+        df: DataFrame containing embeddings with cluster labels and sequence_number column
+        group_by_cols: List of column names to group by (e.g., ["embedding_model", "run_id"])
+        include_outliers: Whether to include "OUTLIER" clusters (default: False)
+
+    Returns:
+        DataFrame with run length information for each cluster within each group
+    """
+    # Create a filtered dataframe based on parameters
+    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
+
+    # Additionally filter out outliers if not requested to include them
+    if not include_outliers:
+        filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
+
+    # Sort by group columns and sequence number
+    sorted_df = filtered_df.sort(group_by_cols + ["sequence_number"])
+
+    # Create a dataframe with each group's data and apply RLE
+    result_df = sorted_df.group_by(group_by_cols).agg([
+        pl.col("cluster_label").rle().alias("rle_result")
+    ])
+
+    # Explode the RLE result to get one row per run
+    result_df = result_df.explode("rle_result")
+
+    # Extract the length and value from the RLE struct
+    result_df = result_df.with_columns([
+        pl.col("rle_result").struct.field("len").alias("run_length"),
+        pl.col("rle_result").struct.field("value").alias("cluster"),
+    ]).drop("rle_result")
+
+    # Sort by group columns and run length (descending)
+    result_df = result_df.sort(
+        group_by_cols + ["run_length"], descending=[False] * len(group_by_cols) + [True]
+    )
+
+    return result_df
+
+
 def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]:
     """
     Generate embeddings for all unique combinations of initial prompts and embedding models.

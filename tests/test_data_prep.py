@@ -9,6 +9,7 @@ from panic_tda.data_prep import (
     add_semantic_drift_cosine,
     add_semantic_drift_euclid,
     cache_dfs,
+    calculate_cluster_run_lengths,
     calculate_cluster_transitions,
     calculate_cosine_distance,
     calculate_euclidean_distances,
@@ -1148,6 +1149,217 @@ def test_calculate_cluster_transitions_include_outliers():
         assert transitions_dict_unfiltered[transition] == expected_count, (
             f"Expected count {expected_count} for transition {transition[0]}->{transition[1]}, "
             f"got {transitions_dict_unfiltered[transition]} when including outliers"
+        )
+
+
+def test_calculate_cluster_run_lengths():
+    """Test that calculate_cluster_run_lengths correctly calculates run lengths."""
+
+    # Create a synthetic DataFrame with sequential invocations and cluster labels
+    data = {
+        "run_id": ["run1"] * 20,
+        "embedding_model": ["model1"] * 20,
+        "sequence_number": list(range(1, 21)),
+        "cluster_label": (
+            ["cluster_A"] * 5  # Run of 5 As
+            + ["cluster_B"] * 3  # Run of 3 Bs
+            + ["cluster_A"] * 2  # Run of 2 As
+            + ["cluster_C"] * 4  # Run of 4 Cs
+            + ["cluster_B"] * 4  # Run of 4 Bs
+            + ["cluster_A"] * 2  # Run of 2 As
+        ),
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Apply the function
+    runs_df = calculate_cluster_run_lengths(df, ["embedding_model"])
+
+    # Check that the output is a DataFrame
+    assert isinstance(runs_df, pl.DataFrame)
+
+    # Expected run lengths based on our synthetic data:
+    # cluster_A: 5, 2, 2 (sequences of length 5, 2, and 2)
+    # cluster_B: 3, 4 (sequences of length 3 and 4)
+    # cluster_C: 4 (one sequence of length 4)
+
+    # Check columns
+    expected_columns = [
+        "embedding_model",
+        "cluster_label",
+        "run_length",
+        "run_count",
+    ]
+    assert all(col in runs_df.columns for col in expected_columns)
+
+    # Convert to a more easily testable format
+    runs_dict = {
+        (row["cluster_label"], row["run_length"]): row["run_count"]
+        for row in runs_df.filter(pl.col("embedding_model") == "model1").rows(
+            named=True
+        )
+    }
+
+    # Check expected run counts
+    expected_runs = {
+        ("cluster_A", 2): 2,  # Two runs of length 2
+        ("cluster_A", 5): 1,  # One run of length 5
+        ("cluster_B", 3): 1,  # One run of length 3
+        ("cluster_B", 4): 1,  # One run of length 4
+        ("cluster_C", 4): 1,  # One run of length 4
+    }
+
+    # Verify run lengths exist and have correct counts
+    for run_key, expected_count in expected_runs.items():
+        cluster, length = run_key
+        assert run_key in runs_dict, (
+            f"Run length {length} for cluster {cluster} not found"
+        )
+        assert runs_dict[run_key] == expected_count, (
+            f"Expected count {expected_count} for {cluster} runs of length {length}, "
+            f"got {runs_dict[run_key]}"
+        )
+
+    # Test with multiple run_ids
+    multi_run_data = {
+        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "embedding_model": ["model1"] * 20,
+        "sequence_number": list(range(1, 11)) + list(range(1, 11)),
+        "cluster_label": (
+            ["cluster_A"] * 5
+            + ["cluster_B"] * 5  # run1: A(5), B(5)
+            + ["cluster_C"] * 7
+            + ["cluster_D"] * 3  # run2: C(7), D(3)
+        ),
+    }
+
+    multi_run_df = pl.DataFrame(multi_run_data)
+    multi_runs_df = calculate_cluster_run_lengths(multi_run_df, ["embedding_model"])
+
+    # Convert to dictionary for easy testing
+    multi_runs_dict = {
+        (row["cluster_label"], row["run_length"]): row["run_count"]
+        for row in multi_runs_df.filter(pl.col("embedding_model") == "model1").rows(
+            named=True
+        )
+    }
+
+    # Check expected runs for multiple run_ids
+    expected_multi_runs = {
+        ("cluster_A", 5): 1,  # One run of 5 As in run1
+        ("cluster_B", 5): 1,  # One run of 5 Bs in run1
+        ("cluster_C", 7): 1,  # One run of 7 Cs in run2
+        ("cluster_D", 3): 1,  # One run of 3 Ds in run2
+    }
+
+    for run_key, expected_count in expected_multi_runs.items():
+        cluster, length = run_key
+        assert run_key in multi_runs_dict, (
+            f"Run length {length} for cluster {cluster} not found in multi-run test"
+        )
+        assert multi_runs_dict[run_key] == expected_count, (
+            f"Expected count {expected_count} for {cluster} runs of length {length}, "
+            f"got {multi_runs_dict[run_key]} in multi-run test"
+        )
+
+
+def test_calculate_cluster_run_lengths_include_outliers():
+    """Test that calculate_cluster_run_lengths correctly filters outliers when requested."""
+
+    # Create synthetic data with OUTLIER clusters
+    data = {
+        "run_id": ["run1"] * 15,
+        "embedding_model": ["model1"] * 15,
+        "sequence_number": list(range(1, 16)),
+        "cluster_label": (
+            ["cluster_A"] * 3  # Run of 3 As
+            + ["OUTLIER"] * 2  # Run of 2 outliers
+            + ["cluster_B"] * 3  # Run of 3 Bs
+            + ["OUTLIER"] * 1  # Single outlier
+            + ["cluster_C"] * 3  # Run of 3 Cs
+            + ["OUTLIER"] * 1  # Single outlier
+            + ["cluster_A"] * 2  # Run of 2 As
+        ),
+    }
+
+    # Create the DataFrame
+    df = pl.DataFrame(data)
+
+    # Apply the function with include_outliers=False
+    runs_df_filtered = calculate_cluster_run_lengths(
+        df, ["embedding_model"], include_outliers=False
+    )
+
+    # Check that the output is a DataFrame
+    assert isinstance(runs_df_filtered, pl.DataFrame)
+
+    # Convert to dictionary for easy testing
+    runs_dict_filtered = {
+        (row["cluster_label"], row["run_length"]): row["run_count"]
+        for row in runs_df_filtered.filter(pl.col("embedding_model") == "model1").rows(
+            named=True
+        )
+    }
+
+    # Check that no run lengths for OUTLIER exist
+    for run_key in runs_dict_filtered.keys():
+        cluster, _ = run_key
+        assert cluster != "OUTLIER", (
+            "Run length for OUTLIER found but should be filtered out"
+        )
+
+    # Expected run lengths with include_outliers=False
+    expected_filtered_runs = {
+        ("cluster_A", 3): 1,  # One run of 3 As
+        ("cluster_A", 2): 1,  # One run of 2 As
+        ("cluster_B", 3): 1,  # One run of 3 Bs
+        ("cluster_C", 3): 1,  # One run of 3 Cs
+    }
+
+    # Verify filtered run lengths
+    for run_key, expected_count in expected_filtered_runs.items():
+        cluster, length = run_key
+        assert run_key in runs_dict_filtered, (
+            f"Run length {length} for cluster {cluster} not found when filtering outliers"
+        )
+        assert runs_dict_filtered[run_key] == expected_count, (
+            f"Expected count {expected_count} for {cluster} runs of length {length}, "
+            f"got {runs_dict_filtered[run_key]} when filtering outliers"
+        )
+
+    # Now apply the function with include_outliers=True
+    runs_df_unfiltered = calculate_cluster_run_lengths(
+        df, ["embedding_model"], include_outliers=True
+    )
+
+    # Convert to dictionary for easy testing
+    runs_dict_unfiltered = {
+        (row["cluster_label"], row["run_length"]): row["run_count"]
+        for row in runs_df_unfiltered.filter(
+            pl.col("embedding_model") == "model1"
+        ).rows(named=True)
+    }
+
+    # Expected run lengths with include_outliers=True
+    expected_unfiltered_runs = {
+        ("cluster_A", 3): 1,  # One run of 3 As
+        ("cluster_A", 2): 1,  # One run of 2 As
+        ("cluster_B", 3): 1,  # One run of 3 Bs
+        ("cluster_C", 3): 1,  # One run of 3 Cs
+        ("OUTLIER", 2): 1,  # One run of 2 outliers
+        ("OUTLIER", 1): 2,  # Two runs of 1 outlier
+    }
+
+    # Verify unfiltered run lengths
+    for run_key, expected_count in expected_unfiltered_runs.items():
+        cluster, length = run_key
+        assert run_key in runs_dict_unfiltered, (
+            f"Run length {length} for cluster {cluster} not found when including outliers"
+        )
+        assert runs_dict_unfiltered[run_key] == expected_count, (
+            f"Expected count {expected_count} for {cluster} runs of length {length}, "
+            f"got {runs_dict_unfiltered[run_key]} when including outliers"
         )
 
 
