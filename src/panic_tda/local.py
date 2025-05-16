@@ -3,7 +3,9 @@ import os
 import polars as pl
 from sqlmodel import Session, select
 
-from panic_tda.datavis import plot_cluster_example_images
+from panic_tda.datavis import (
+    plot_cluster_example_images,
+)
 from panic_tda.export import export_timeline, export_video
 from panic_tda.schemas import Invocation, Run
 
@@ -292,3 +294,97 @@ def create_top_class_image_grids(
                 16 / 10,
                 output_file,
             )
+
+
+def run_counts(session: Session):
+    """
+    Counts the number of runs for each prompt and network combination.
+
+    Args:
+        session: Database session
+
+    Returns:
+        List of tuples with (initial_prompt, network, count)
+    """
+    from sqlalchemy import func
+
+    # Use SQLModel to query and group the data
+    results = session.exec(
+        select(Run.initial_prompt, Run.network, func.count(Run.id).label("count"))
+        .group_by(Run.initial_prompt, Run.network)
+        .order_by(func.count(Run.id).desc())
+    ).all()
+
+    # Pretty-print results
+    print("\nRun counts by prompt and network:")
+    print("-" * 50)
+    print(f"{'Initial Prompt':<30} | {'Network':<30} | {'Count':<10}")
+    print("-" * 50)
+    for prompt, network, count in results:
+        network_str = str(network) if network else "None"
+        print(f"{prompt[:30]:<30} | {network_str[:30]:<30} | {count:<10}")
+    print("-" * 50)
+
+    return results
+
+
+def paper_charts(session: Session) -> None:
+    """
+    Generate charts for paper publications.
+    """
+    ### CACHING
+    #
+    # from panic_tda.data_prep import cache_dfs
+
+    # cache_dfs(session, runs=False, embeddings=True, invocations=False)
+    # cache_dfs(session, runs=True, embeddings=True, invocations=True)
+    #
+    ### INVOCATIONS
+    #
+    # from panic_tda.data_prep import load_invocations_from_cache
+
+    # invocations_df = load_invocations_from_cache()
+    # print(invocations_df.select("run_id", "sequence_number", "type").head(50))
+    # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
+    #
+    ### EMBEDDINGS
+    #
+    # from panic_tda.data_prep import load_embeddings_from_cache
+
+    # embeddings_df = load_embeddings_from_cache()
+    # write_label_map(embeddings_df.get_column("cluster_label"))
+
+    # man_df = embeddings_df.filter(pl.col("initial_prompt") == "a picture of a man")
+    # plot_cluster_timelines(man_df, "output/vis/cluster_timelines_man.pdf")
+    # plot_cluster_transitions(embeddings_df, False, "output/vis/cluster_transitions.pdf")
+    # plot_cluster_histograms(
+    #     embeddings_df, True, "output/vis/cluster_histograms_outliers.pdf"
+    # )
+    # plot_cluster_histograms(embeddings_df, False, "output/vis/cluster_histograms.pdf")
+    # plot_cluster_histograms_top_n(
+    #     embeddings_df, 10, False, "output/vis/cluster_histograms_top_n.pdf"
+    # )
+    # plot_cluster_bubblegrid(embeddings_df, False, "output/vis/cluster_bubblegrid.pdf")
+    # export_cluster_counts_to_json(embeddings_df, "output/vis/cluster_counts.json")
+    #
+    ### RUNS
+    #
+    # from panic_tda.data_prep import load_runs_from_cache
+
+    # runs_df = load_runs_from_cache()
+
+    run_counts(session)
+
+    #
+    # plot_persistence_diagram_faceted(
+    #     runs_df, "output/vis/persistence_diagram_faceted.png"
+    # )
+    #
+    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.pdf")
+
+    # plot_persistence_entropy_by_prompt(
+    #     runs_df.filter(pl.col("embedding_model") == "Nomic"),
+    #     "output/vis/persistence_entropy_by_prompt.png",
+    # )
+    ### LEAVES AND DROPLETS
+    # create_top_class_image_grids(embeddings_df, 3200, session)

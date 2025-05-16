@@ -7,7 +7,6 @@ from uuid import UUID
 import typer
 
 import panic_tda.engine as engine
-from panic_tda.datavis import paper_charts
 from panic_tda.db import (
     count_invocations,
     create_db_and_tables,
@@ -25,6 +24,7 @@ from panic_tda.export import (
 )
 from panic_tda.genai_models import get_output_type
 from panic_tda.genai_models import list_models as list_genai_models
+from panic_tda.local import paper_charts
 from panic_tda.schemas import ExperimentConfig
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
