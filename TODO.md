@@ -2,10 +2,8 @@
 
 - clustering
 
-  - add labels (as text) to timelines (requires getting the label -> int mapping
-    working)
-  - violin plots for distribution of run lengths for
-    `~ embedding_model + network` (and maybe prompt as well)
+  - run length violin plots (by cluster, and by network + prompt)
+  - transition matrices (removing self-transitions)
   - order embeddings by "longest stable runs" (with `.rle()`), and calculate
     longest runs for each network (both "from start" and "anytime")
   - if full TM isn't so illuminating, just do a histogram of top_n bigrams
