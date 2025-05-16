@@ -499,7 +499,7 @@ def plot_cluster_bubblegrid(
 
     # Add display_label column that only shows labels for counts > 500
     pandas_df["display_label"] = pandas_df.apply(
-        lambda row: row["cluster_index"] if row["count"] > 500 else "", axis=1
+        lambda row: row["cluster_index"] if row["count"] > 600 else "", axis=1
     )
 
     # Create the bubble grid visualization
@@ -523,7 +523,7 @@ def plot_cluster_bubblegrid(
         )
         + facet_grid("embedding_model ~ network")
         + theme(
-            figure_size=(40, 20),
+            figure_size=(30, 20),
             strip_text=element_text(size=10),
             axis_text_y=element_text(size=8),
         )
