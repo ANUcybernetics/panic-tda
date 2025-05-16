@@ -25,6 +25,7 @@ from panic_tda.datavis import (
     plot_persistence_entropy,
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
+    write_label_map,
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
@@ -292,7 +293,7 @@ def test_plot_cluster_timelines(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    create_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
     plot_cluster_timelines(embeddings_df, output_file, label_map_file)
 
     # Verify file was created
@@ -398,7 +399,7 @@ def test_plot_cluster_transitions(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    create_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
     plot_cluster_transitions(embeddings_df, True, output_file, label_map_file)
 
     # Verify file was created
@@ -415,8 +416,8 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     # Create a temporary file path for testing
     cache_path = os.path.join(tmp_path, "test_cluster_map.json")
 
-    # Test create_label_map function
-    label_map = create_label_map(cluster_labels, cache_path)
+    # Test write_label_map function
+    label_map = write_label_map(cluster_labels, cache_path)
 
     # Validate the output dictionary
     assert isinstance(label_map, dict)
@@ -444,7 +445,7 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     new_cluster_labels = pl.Series("cluster_labels", new_labels)
     new_cache_path = os.path.join(tmp_path, "test_cluster_map_2.json")
 
-    new_label_map = create_label_map(new_cluster_labels, new_cache_path)
+    new_label_map = write_label_map(new_cluster_labels, new_cache_path)
 
     # Validate the new mapping
     assert new_label_map["OUTLIER"] == 0

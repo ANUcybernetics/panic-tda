@@ -56,7 +56,7 @@ def save(plot, filename: str) -> str:
     return filename
 
 
-def create_label_map(
+def write_label_map(
     cluster_labels: pl.Series,
     output_path: str = "output/vis/cluster_label_map.json",
 ) -> Dict[str, int]:
