@@ -475,9 +475,11 @@ def plot_cluster_timelines(
                 alpha="cluster_index != 0",  # 0 is now the OUTLIER value
             ),
         )
-        + geom_line(colour="black", alpha=0.5)
+        + geom_line(colour="black", alpha=0.5, show_legend=False)
         + geom_point(size=8, show_legend=False)
-        + geom_text(aes(label="cluster_index"), color="black", size=8)
+        + geom_text(
+            aes(label="cluster_index"), color="black", size=8, show_legend=False
+        )
         + labs(x="sequence number", y="run id", color="cluster")
         + facet_wrap(
             "~ initial_prompt + embedding_model + network", scales="free", ncol=4
