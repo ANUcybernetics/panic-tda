@@ -3,6 +3,7 @@ import os
 import polars as pl
 from sqlmodel import Session, select
 
+from panic_tda.datavis import plot_cluster_example_images
 from panic_tda.export import export_timeline, export_video
 from panic_tda.schemas import Invocation, Run
 
@@ -57,6 +58,30 @@ def export_selected_timeline(session: Session):
         session=session,
         images_per_run=5,
         output_file="output/vis/selected_prompts_timeline.jpg",
+    )
+
+
+def export_cluster_examples(embeddings_df, num_images, session):
+    plot_cluster_example_images(
+        embeddings_df,
+        num_images,
+        "Nomic",
+        session,
+        "output/vis/cluster_examples_nomic.jpg",
+    )
+    plot_cluster_example_images(
+        embeddings_df,
+        num_images,
+        "STSBMpnet",
+        session,
+        "output/vis/cluster_examples_mpnet.jpg",
+    )
+    plot_cluster_example_images(
+        embeddings_df,
+        num_images,
+        "STSBRoberta",
+        session,
+        "output/vis/cluster_examples_roberta.jpg",
     )
 
 
