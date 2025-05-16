@@ -306,7 +306,7 @@ def calculate_cluster_run_lengths(
     # Extract the length and value from the RLE struct
     result_df = result_df.with_columns([
         pl.col("rle_result").struct.field("len").alias("run_length"),
-        pl.col("rle_result").struct.field("value").alias("cluster"),
+        pl.col("rle_result").struct.field("value").alias("cluster_label"),
     ]).drop("rle_result")
 
     # Sort by group columns and run length (descending)

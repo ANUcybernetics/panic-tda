@@ -1179,47 +1179,49 @@ def test_calculate_cluster_run_lengths():
     # Check that the output is a DataFrame
     assert isinstance(runs_df, pl.DataFrame)
 
-    # Expected run lengths based on our synthetic data:
-    # cluster_A: 5, 2, 2 (sequences of length 5, 2, and 2)
-    # cluster_B: 3, 4 (sequences of length 3 and 4)
-    # cluster_C: 4 (one sequence of length 4)
+    # Expected run lengths based on our synthetic data as a Polars DataFrame
+    expected_runs_df = pl.DataFrame({
+        "embedding_model": ["model1"] * 6,
+        "cluster_label": ["cluster_A", "cluster_B", "cluster_A", "cluster_C", "cluster_B", "cluster_A"],
+        "run_length": [5, 3, 2, 4, 4, 2],
+    })
 
-    # Check columns
-    expected_columns = [
-        "embedding_model",
-        "cluster_label",
-        "run_length",
-        "run_count",
-    ]
+    # Check columns exist
+    expected_columns = ["embedding_model", "cluster_label", "run_length"]
     assert all(col in runs_df.columns for col in expected_columns)
 
-    # Convert to a more easily testable format
-    runs_dict = {
-        (row["cluster_label"], row["run_length"]): row["run_count"]
-        for row in runs_df.filter(pl.col("embedding_model") == "model1").rows(
-            named=True
-        )
-    }
+    # Check there are no extraneous columns
+    assert set(runs_df.columns) == set(expected_columns)
 
-    # Check expected run counts
-    expected_runs = {
-        ("cluster_A", 2): 2,  # Two runs of length 2
-        ("cluster_A", 5): 1,  # One run of length 5
-        ("cluster_B", 3): 1,  # One run of length 3
-        ("cluster_B", 4): 1,  # One run of length 4
-        ("cluster_C", 4): 1,  # One run of length 4
-    }
+    # Filter for model1 results
+    filtered_df = runs_df.filter(pl.col("embedding_model") == "model1")
 
-    # Verify run lengths exist and have correct counts
-    for run_key, expected_count in expected_runs.items():
-        cluster, length = run_key
-        assert run_key in runs_dict, (
-            f"Run length {length} for cluster {cluster} not found"
-        )
-        assert runs_dict[run_key] == expected_count, (
-            f"Expected count {expected_count} for {cluster} runs of length {length}, "
-            f"got {runs_dict[run_key]}"
-        )
+    # Sort both DataFrames identically for comparison
+    filtered_df = filtered_df.sort(by=["cluster_label", "run_length"])
+    expected_sorted_df = expected_runs_df.sort(by=["cluster_label", "run_length"])
+
+    # Compare the DataFrames
+    assert filtered_df.height == expected_sorted_df.height, (
+        f"DataFrame heights don't match. Expected: {expected_sorted_df.height}, Got: {filtered_df.height}"
+    )
+
+    # Check each unique combination of cluster_label and run_length
+    for cluster in ["cluster_A", "cluster_B", "cluster_C"]:
+        for length in [2, 3, 4, 5]:
+            expected_count = expected_sorted_df.filter(
+                (pl.col("cluster_label") == cluster) &
+                (pl.col("run_length") == length)
+            ).height
+
+            actual_count = filtered_df.filter(
+                (pl.col("cluster_label") == cluster) &
+                (pl.col("run_length") == length)
+            ).height
+
+            assert actual_count == expected_count, (
+                f"Expected {expected_count} rows with cluster {cluster} and length {length}, "
+                f"got {actual_count}"
+            )
 
     # Test with multiple run_ids
     multi_run_data = {
@@ -1235,32 +1237,27 @@ def test_calculate_cluster_run_lengths():
     }
 
     multi_run_df = pl.DataFrame(multi_run_data)
-    multi_runs_df = calculate_cluster_run_lengths(multi_run_df, ["embedding_model"])
+    multi_runs_df = calculate_cluster_run_lengths(multi_run_df, ["embedding_model", "run_id"])
 
-    # Convert to dictionary for easy testing
-    multi_runs_dict = {
-        (row["cluster_label"], row["run_length"]): row["run_count"]
-        for row in multi_runs_df.filter(pl.col("embedding_model") == "model1").rows(
-            named=True
+    # Expected runs for multiple run_ids as a Polars DataFrame
+    expected_multi_runs_df = pl.DataFrame({
+        "embedding_model": ["model1"] * 4,
+        "cluster_label": ["cluster_A", "cluster_B", "cluster_C", "cluster_D"],
+        "run_length": [5, 5, 7, 3],
+    })
+
+    # Filter for model1 results
+    multi_filtered_df = multi_runs_df.filter(pl.col("embedding_model") == "model1")
+
+    # Check each expected row exists in the result
+    for row in expected_multi_runs_df.rows(named=True):
+        matching_rows = multi_filtered_df.filter(
+            (pl.col("embedding_model") == row["embedding_model"]) &
+            (pl.col("cluster_label") == row["cluster_label"]) &
+            (pl.col("run_length") == row["run_length"])
         )
-    }
-
-    # Check expected runs for multiple run_ids
-    expected_multi_runs = {
-        ("cluster_A", 5): 1,  # One run of 5 As in run1
-        ("cluster_B", 5): 1,  # One run of 5 Bs in run1
-        ("cluster_C", 7): 1,  # One run of 7 Cs in run2
-        ("cluster_D", 3): 1,  # One run of 3 Ds in run2
-    }
-
-    for run_key, expected_count in expected_multi_runs.items():
-        cluster, length = run_key
-        assert run_key in multi_runs_dict, (
-            f"Run length {length} for cluster {cluster} not found in multi-run test"
-        )
-        assert multi_runs_dict[run_key] == expected_count, (
-            f"Expected count {expected_count} for {cluster} runs of length {length}, "
-            f"got {multi_runs_dict[run_key]} in multi-run test"
+        assert matching_rows.height == 1, (
+            f"Expected exactly one row matching {row}, got {matching_rows.height}"
         )
 
 
