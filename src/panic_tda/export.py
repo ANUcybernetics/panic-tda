@@ -824,14 +824,17 @@ def export_timeline(
     # Calculate canvas width without left border (since we're removing it)
     canvas_width = timeline_total_width
 
-    # Increase spacing between prompt rows to accommodate text
-    prompt_text_height = 60  # Increased height for prompt text area (was 40)
-    prompt_spacing = prompt_text_height + 20  # Add extra spacing around the text
+    # Set up font for text - single font size for all text
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+    font_size = int(IMAGE_SIZE * 0.2)  # 0.2 times the image size
+    font = ImageFont.truetype(font_path, font_size)
 
-    # Add height for network banner at the top
-    network_banner_height = 50
+    # Calculate spacing based on font size
+    prompt_text_height = font_size * 2  # Height for prompt text area
+    prompt_spacing = prompt_text_height + font_size  # Spacing between prompt blocks
+    network_banner_height = font_size * 2  # Height for network banner
 
-    # Calculate canvas height (now without left border)
+    # Calculate canvas height
     # Network banner + all rows of images + spacing between prompt blocks
     canvas_height = (
         network_banner_height
@@ -841,18 +844,6 @@ def export_timeline(
 
     # Create the canvas
     canvas = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
-
-    # Set up font for text
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    base_font_size = int(IMAGE_SIZE * 0.12)  # Increased from 0.1
-    prompt_font_size = max(
-        18, int(base_font_size * 1.2)
-    )  # Increased font size for prompts
-    network_font_size = max(
-        16, int(base_font_size * 1.1)
-    )  # Increased font size for networks
-    prompt_font = ImageFont.truetype(font_path, prompt_font_size)
-    network_font = ImageFont.truetype(font_path, network_font_size)
 
     # Helper function to create a horizontal text banner for prompts
     def create_prompt_banner(text, width, height, font):
@@ -898,17 +889,17 @@ def export_timeline(
 
         # Draw network text centered in its column
         try:
-            bbox = draw.textbbox((0, 0), network_str, font=network_font)
+            bbox = draw.textbbox((0, 0), network_str, font=font)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
         except AttributeError:
-            text_width = draw.textlength(network_str, font=network_font)
-            text_height = network_font.size
+            text_width = draw.textlength(network_str, font=font)
+            text_height = font.size
 
         x = col_center - (text_width / 2)
         y = (network_banner_height - text_height) / 2
 
-        draw.text((x, y), network_str, font=network_font, fill=(0, 0, 0))
+        draw.text((x, y), network_str, font=font, fill=(0, 0, 0))
 
     # Paste the network banner at the top
     canvas.paste(network_banner, (0, 0))
@@ -928,7 +919,7 @@ def export_timeline(
 
         # Create and place the prompt banner above this block
         prompt_banner = create_prompt_banner(
-            "prompt: " + prompt, canvas_width, prompt_text_height, prompt_font
+            "initial prompt: " + prompt, canvas_width, prompt_text_height, font
         )
         prompt_banner_y = (
             block_start_y - prompt_text_height if prompt_idx > 0 else content_start_y
