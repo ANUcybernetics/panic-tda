@@ -20,6 +20,7 @@ from plotnine import (
     geom_violin,
     ggplot,
     labs,
+    scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
     theme,
@@ -603,9 +604,12 @@ def plot_cluster_bubblegrid(
     # Convert to pandas for plotting
     pandas_df = counts_df.to_pandas()
 
-    # Add display_label column that only shows labels for counts > 500
+    # Add display_label column that only shows labels for the top 25% of values
+    threshold = pandas_df["count"].quantile(
+        0.75
+    )  # Calculate threshold as 75th percentile
     pandas_df["display_label"] = pandas_df.apply(
-        lambda row: row["cluster_index"] if row["count"] > 600 else "", axis=1
+        lambda row: row["cluster_index"] if row["count"] > threshold else "", axis=1
     )
 
     # Create the bubble grid visualization
@@ -620,18 +624,20 @@ def plot_cluster_bubblegrid(
             ),
         )
         + geom_point(alpha=0.8, show_legend=False)
-        + geom_text(aes(label="display_label"), color="black", size=6)
+        + geom_text(aes(label="display_label"), color="black", size=10)
+        + scale_size_continuous(range=(1, 12))
         + labs(
             x="Cluster",
             y="Prompt",
             size="Count",
             fill="Count",
         )
-        + facet_grid("embedding_model ~ network")
+        + facet_wrap("~ network", ncol=4)
         + theme(
-            figure_size=(30, 20),
-            strip_text=element_text(size=10),
-            axis_text_y=element_text(size=8),
+            figure_size=(30, 12),
+            strip_text=element_text(size=16),
+            axis_text_x=element_text(size=12),
+            axis_text_y=element_text(size=14),
         )
     )
 
@@ -759,10 +765,10 @@ def plot_sense_check_histograms(
         + geom_bar()
         + labs(x="Initial Prompt", y="Count")
         + facet_wrap("~ embedding_model", scales="free_x")
+        + coord_flip()  # Flip coordinates to make prompts more readable
         + theme(
             figure_size=(15, 8),
             strip_text=element_text(size=10),
-            axis_text_x=element_text(angle=45, hjust=1),
         )
     )
 
