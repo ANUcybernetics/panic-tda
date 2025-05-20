@@ -727,6 +727,67 @@ def plot_cluster_run_length_bubblegrid(
     logging.info(f"Saved cluster run length bubble grid to {saved_file}")
 
 
+def plot_sense_check_histograms(
+    df: pl.DataFrame,
+    output_file: str = "output/vis/sense_check_histograms.pdf",
+) -> None:
+    """
+    Create two separate histograms showing the distribution of:
+    1. Initial prompts
+    2. Networks
+    Each facet-wrapped by embedding_model.
+
+    Args:
+        df: DataFrame containing embedding data with initial_prompt, network, and embedding_model
+        output_file: Path to save the visualization
+    """
+    # Convert to pandas for plotting
+    pandas_df = df.to_pandas()
+
+    # Create the output directory if it doesn't exist
+    output_dir = os.path.dirname(output_file)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Create base filename for the two output files
+    base_file = os.path.splitext(output_file)[0]
+
+    # Create and save the first chart for Initial Prompts
+    prompt_plot = (
+        ggplot(pandas_df, aes(x="initial_prompt", fill="embedding_model"))
+        + geom_bar()
+        + labs(x="Initial Prompt", y="Count")
+        + facet_wrap("~ embedding_model", scales="free_x")
+        + theme(
+            figure_size=(15, 8),
+            strip_text=element_text(size=10),
+            axis_text_x=element_text(angle=45, hjust=1),
+        )
+    )
+
+    # Save the prompt plot
+    prompt_output = f"{base_file}_prompts.pdf"
+    saved_file = save(prompt_plot, prompt_output)
+    logging.info(f"Saved prompt histogram to {saved_file}")
+
+    # Create and save the second chart for Networks
+    network_plot = (
+        ggplot(pandas_df, aes(x="network", fill="embedding_model"))
+        + geom_bar()
+        + labs(x="Network", y="Count")
+        + facet_wrap("~ embedding_model", scales="free_x")
+        + theme(
+            figure_size=(15, 8),
+            strip_text=element_text(size=10),
+            axis_text_x=element_text(angle=45, hjust=1),
+        )
+    )
+
+    # Save the network plot
+    network_output = f"{base_file}_networks.pdf"
+    saved_file = save(network_plot, network_output)
+    logging.info(f"Saved network histogram to {saved_file}")
+
+
 def plot_cluster_histograms(
     df: pl.DataFrame,
     include_outliers: bool = False,
