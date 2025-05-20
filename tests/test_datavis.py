@@ -16,6 +16,7 @@ from panic_tda.datavis import (
     plot_cluster_example_images,
     plot_cluster_histograms,
     plot_cluster_histograms_top_n,
+    plot_cluster_run_lengths,
     plot_cluster_timelines,
     plot_cluster_transitions,
     plot_invocation_duration,
@@ -247,6 +248,30 @@ def test_plot_persistence_entropy(db_session):
 
     # Generate the plot
     plot_persistence_entropy(runs_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_run_lengths(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+
+    # Verify we have the necessary columns
+    assert embeddings_df.height > 0
+    assert "run_id" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
+    assert "cluster_label" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/cluster_run_lengths.pdf"
+
+    # Generate the plot
+    plot_cluster_run_lengths(embeddings_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

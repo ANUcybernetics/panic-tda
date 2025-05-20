@@ -27,7 +27,11 @@ from plotnine import (
 from plotnine.options import set_option
 from sqlmodel import Session
 
-from panic_tda.data_prep import calculate_cluster_transitions, filter_top_n_clusters
+from panic_tda.data_prep import (
+    calculate_cluster_run_lengths,
+    calculate_cluster_transitions,
+    filter_top_n_clusters,
+)
 from panic_tda.export import export_mosaic_image
 
 ## datavis
@@ -319,6 +323,53 @@ def plot_persistence_entropy(
     # Save plot with high resolution
     saved_file = save(plot, output_file)
     logging.info(f"Saved persistence entropy plot to {saved_file}")
+
+
+def plot_cluster_run_lengths(
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_run_lengths.pdf"
+) -> None:
+    """
+    Create and save a visualization of cluster run length distributions with:
+    - embedding_model on x axis
+    - run_length on y axis
+    - embedding_model as fill color
+    - faceted by cluster_label
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label
+        output_file: Path to save the visualization
+    """
+    # Calculate run lengths using calculate_cluster_run_lengths
+    run_lengths_df = calculate_cluster_run_lengths(df, ["embedding_model", "network"])
+
+    # Filter out null or OUTLIER cluster labels if needed
+    run_lengths_df = run_lengths_df.filter(
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
+    )
+
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = run_lengths_df.to_pandas()
+
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="embedding_model", y="run_length", fill="embedding_model"),
+        )
+        + geom_violin()
+        + geom_boxplot(fill="white", width=0.5, alpha=0.5)
+        + labs(x="embedding model", y="distribution of cluster run lengths")
+        + facet_wrap("~ network", ncol=4)
+        + theme(
+            figure_size=(15, 10),
+            strip_text=element_text(size=10),
+            axis_ticks_major_x=element_blank(),
+            axis_text_x=element_blank(),
+        )
+    )
+
+    # Save plot with high resolution
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster run lengths plot to {saved_file}")
 
 
 def plot_persistence_entropy_by_prompt(
