@@ -1076,8 +1076,7 @@ def run_counts(runs_df: pl.DataFrame):
 
     # Group by network and count unique run_ids
     results = (
-        runs_df
-        .group_by("network", "initial_prompt")
+        runs_df.group_by("network", "initial_prompt")
         .agg(pl.col("run_id").n_unique().alias("count"))
         .sort("count", descending=True)
     )
