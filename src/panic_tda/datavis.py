@@ -174,7 +174,9 @@ def read_existing_label_map(column_name: str, input_path: str) -> pl.Expr:
         label_map = json.load(f)
 
     # Return a polars expression for use in with_columns
-    return pl.col(column_name).replace_strict(label_map, default=pl.lit("OUTLIER"))
+    return pl.col(column_name).replace_strict(
+        label_map, default=pl.lit(None).cast(pl.Int64)
+    )
 
 
 def create_persistence_diagram_chart(df: pl.DataFrame):
