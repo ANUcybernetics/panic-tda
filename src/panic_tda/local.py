@@ -54,17 +54,6 @@ def example_run_ids(session: Session):
     return selected_ids
 
 
-def export_selected_timeline(session: Session):
-    run_ids = selected_run_ids(session)
-
-    export_timeline(
-        run_ids=run_ids,
-        session=session,
-        images_per_run=5,
-        output_file="output/vis/selected_prompts_timeline.jpg",
-    )
-
-
 def export_cluster_examples(embeddings_df, num_images, session):
     plot_cluster_example_images(
         embeddings_df,
