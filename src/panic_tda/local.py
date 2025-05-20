@@ -299,26 +299,37 @@ def create_top_class_image_grids(
 
 def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     """
-    Returns the first N run IDs that have an associated persistence diagram.
+    Returns the first N run IDs for each initial prompt that have an associated
+    persistence diagram.
 
     Args:
         session: Database session
-        first_n: Maximum number of run IDs to return
+        first_n: Maximum number of run IDs to return per initial prompt
 
     Returns:
-        List of run IDs as strings
+        List of run IDs as strings, grouped by initial prompt
     """
-    # Join Run and PersistenceDiagram to find runs with diagrams
-    query = (
-        select(Run.id)
-        .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
-        .distinct()
-        .order_by(Run.id)
-        .limit(first_n)
-    )
+    # First, get all distinct initial prompts
+    distinct_prompts_query = select(Run.initial_prompt).distinct()
+    distinct_prompts = session.exec(distinct_prompts_query).all()
 
-    results = session.exec(query).all()
-    return [str(run_id) for run_id in results]
+    all_run_ids = []
+
+    # For each prompt, get the first N run IDs with persistence diagrams
+    for prompt in distinct_prompts:
+        prompt_runs_query = (
+            select(Run.id)
+            .where(Run.initial_prompt == prompt)
+            .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
+            .distinct()
+            .order_by(Run.id)
+            .limit(first_n)
+        )
+
+        prompt_run_ids = session.exec(prompt_runs_query).all()
+        all_run_ids.extend(prompt_run_ids)
+
+    return [str(run_id) for run_id in all_run_ids]
 
 
 def run_counts(session: Session):

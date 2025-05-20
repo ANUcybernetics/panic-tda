@@ -963,25 +963,46 @@ def test_droplet_and_leaf_invocations(db_session: Session):
 def test_list_completed_run_ids(db_session: Session):
     """Test the list_completed_run_ids function."""
 
-    # Create several test runs
+    # Create runs with different prompts
     run1 = Run(
-        initial_prompt="test completed runs 1",
+        initial_prompt="test prompt A",
         network=["model1"],
         seed=42,
         max_length=3,
     )
 
     run2 = Run(
-        initial_prompt="test completed runs 2",
+        initial_prompt="test prompt A",
         network=["model1"],
         seed=43,
         max_length=3,
     )
 
     run3 = Run(
-        initial_prompt="test completed runs 3",
+        initial_prompt="test prompt A",
         network=["model1"],
         seed=44,
+        max_length=3,
+    )
+
+    run4 = Run(
+        initial_prompt="test prompt B",
+        network=["model1"],
+        seed=45,
+        max_length=3,
+    )
+
+    run5 = Run(
+        initial_prompt="test prompt B",
+        network=["model1"],
+        seed=46,
+        max_length=3,
+    )
+
+    run6 = Run(
+        initial_prompt="test prompt C",
+        network=["model1"],
+        seed=47,
         max_length=3,
     )
 
@@ -989,9 +1010,12 @@ def test_list_completed_run_ids(db_session: Session):
     db_session.add(run1)
     db_session.add(run2)
     db_session.add(run3)
+    db_session.add(run4)
+    db_session.add(run5)
+    db_session.add(run6)
     db_session.commit()
 
-    # Create persistence diagrams for only two of the runs
+    # Create persistence diagrams for most of the runs
     diagram1 = PersistenceDiagram(
         run_id=run1.id,
         embedding_model="test-model",
@@ -1004,27 +1028,54 @@ def test_list_completed_run_ids(db_session: Session):
         generators=[np.array([[0.3, 0.6], [0.4, 0.8]])],
     )
 
+    diagram3 = PersistenceDiagram(
+        run_id=run4.id,
+        embedding_model="test-model",
+        generators=[np.array([[0.5, 0.7], [0.6, 0.9]])],
+    )
+
+    diagram4 = PersistenceDiagram(
+        run_id=run5.id,
+        embedding_model="test-model",
+        generators=[np.array([[0.7, 0.8], [0.8, 0.9]])],
+    )
+
+    diagram5 = PersistenceDiagram(
+        run_id=run6.id,
+        embedding_model="test-model",
+        generators=[np.array([[0.9, 1.0], [1.0, 1.1]])],
+    )
+
     # Add persistence diagrams to the session
     db_session.add(diagram1)
     db_session.add(diagram2)
+    db_session.add(diagram3)
+    db_session.add(diagram4)
+    db_session.add(diagram5)
     db_session.commit()
 
-    # Test with a limit higher than available completed runs
-    results = list_completed_run_ids(db_session, 5)
+    # Test with first_n=2 for each prompt
+    results = list_completed_run_ids(db_session, 2)
 
-    # Should return the two runs that have persistence diagrams
-    assert len(results) == 2
+    # Should include up to 2 runs from each prompt group that have persistence diagrams
+    assert len(results) == 5  # 2 from prompt A, 2 from prompt B, 1 from prompt C
     assert str(run1.id) in results
     assert str(run2.id) in results
-    assert str(run3.id) not in results
+    assert str(run4.id) in results
+    assert str(run5.id) in results
+    assert str(run6.id) in results
+    assert str(run3.id) not in results  # No persistence diagram
 
-    # Test with a limit of 1
+    # Test with first_n=1 for each prompt
     results = list_completed_run_ids(db_session, 1)
 
-    # Should return only one run
-    assert len(results) == 1
+    # Should include only 1 run from each prompt group
+    assert len(results) == 3  # 1 from each prompt
+    assert str(run1.id) in results
+    assert str(run4.id) in results
+    assert str(run6.id) in results
 
-    # Test with a limit of 0
+    # Test with first_n=0
     results = list_completed_run_ids(db_session, 0)
 
     # Should return an empty list
