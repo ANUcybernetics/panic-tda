@@ -12,7 +12,7 @@ from panic_tda.export import export_timeline, export_video
 from panic_tda.schemas import Invocation, PersistenceDiagram, Run
 
 
-def selected_run_ids(session: Session):
+def example_run_ids(session: Session):
     selected_prompts = [
         "a picture of a man",
         "a picture of a woman",
