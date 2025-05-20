@@ -963,7 +963,8 @@ def test_droplet_and_leaf_invocations(db_session: Session):
 def test_list_completed_run_ids(db_session: Session):
     """Test the list_completed_run_ids function."""
 
-    # Create runs with different prompts
+    # Create runs with different prompts and networks
+    # Group 1: prompt A, network 1
     run1 = Run(
         initial_prompt="test prompt A",
         network=["model1"],
@@ -985,24 +986,41 @@ def test_list_completed_run_ids(db_session: Session):
         max_length=3,
     )
 
+    # Group 2: prompt A, network 2
     run4 = Run(
-        initial_prompt="test prompt B",
-        network=["model1"],
+        initial_prompt="test prompt A",
+        network=["model2"],
         seed=45,
         max_length=3,
     )
 
     run5 = Run(
-        initial_prompt="test prompt B",
-        network=["model1"],
+        initial_prompt="test prompt A",
+        network=["model2"],
         seed=46,
         max_length=3,
     )
 
+    # Group 3: prompt B, network 1
     run6 = Run(
-        initial_prompt="test prompt C",
+        initial_prompt="test prompt B",
         network=["model1"],
         seed=47,
+        max_length=3,
+    )
+
+    run7 = Run(
+        initial_prompt="test prompt B",
+        network=["model1"],
+        seed=48,
+        max_length=3,
+    )
+
+    # Group 4: prompt C, network 3
+    run8 = Run(
+        initial_prompt="test prompt C",
+        network=["model3"],
+        seed=49,
         max_length=3,
     )
 
@@ -1013,6 +1031,8 @@ def test_list_completed_run_ids(db_session: Session):
     db_session.add(run4)
     db_session.add(run5)
     db_session.add(run6)
+    db_session.add(run7)
+    db_session.add(run8)
     db_session.commit()
 
     # Create persistence diagrams for most of the runs
@@ -1028,52 +1048,71 @@ def test_list_completed_run_ids(db_session: Session):
         generators=[np.array([[0.3, 0.6], [0.4, 0.8]])],
     )
 
-    diagram3 = PersistenceDiagram(
+    diagram4 = PersistenceDiagram(
         run_id=run4.id,
         embedding_model="test-model",
         generators=[np.array([[0.5, 0.7], [0.6, 0.9]])],
     )
 
-    diagram4 = PersistenceDiagram(
+    diagram5 = PersistenceDiagram(
         run_id=run5.id,
         embedding_model="test-model",
         generators=[np.array([[0.7, 0.8], [0.8, 0.9]])],
     )
 
-    diagram5 = PersistenceDiagram(
+    diagram6 = PersistenceDiagram(
         run_id=run6.id,
         embedding_model="test-model",
         generators=[np.array([[0.9, 1.0], [1.0, 1.1]])],
     )
 
+    diagram7 = PersistenceDiagram(
+        run_id=run7.id,
+        embedding_model="test-model",
+        generators=[np.array([[1.1, 1.2], [1.2, 1.3]])],
+    )
+
+    diagram8 = PersistenceDiagram(
+        run_id=run8.id,
+        embedding_model="test-model",
+        generators=[np.array([[1.3, 1.4], [1.4, 1.5]])],
+    )
+
     # Add persistence diagrams to the session
     db_session.add(diagram1)
     db_session.add(diagram2)
-    db_session.add(diagram3)
     db_session.add(diagram4)
     db_session.add(diagram5)
+    db_session.add(diagram6)
+    db_session.add(diagram7)
+    db_session.add(diagram8)
     db_session.commit()
 
-    # Test with first_n=2 for each prompt
+    # Test with first_n=2 for each prompt and network combination
     results = list_completed_run_ids(db_session, 2)
 
-    # Should include up to 2 runs from each prompt group that have persistence diagrams
-    assert len(results) == 5  # 2 from prompt A, 2 from prompt B, 1 from prompt C
+    # Should include up to 2 runs from each prompt+network combination that have persistence diagrams
+    assert (
+        len(results) == 7
+    )  # 2 from (A,model1), 2 from (A,model2), 2 from (B,model1), 1 from (C,model3)
     assert str(run1.id) in results
     assert str(run2.id) in results
     assert str(run4.id) in results
     assert str(run5.id) in results
     assert str(run6.id) in results
+    assert str(run7.id) in results
+    assert str(run8.id) in results
     assert str(run3.id) not in results  # No persistence diagram
 
-    # Test with first_n=1 for each prompt
+    # Test with first_n=1 for each prompt and network combination
     results = list_completed_run_ids(db_session, 1)
 
-    # Should include only 1 run from each prompt group
-    assert len(results) == 3  # 1 from each prompt
+    # Should include only 1 run from each prompt+network combination
+    assert len(results) == 4  # 1 from each unique combination
     assert str(run1.id) in results
     assert str(run4.id) in results
     assert str(run6.id) in results
+    assert str(run8.id) in results
 
     # Test with first_n=0
     results = list_completed_run_ids(db_session, 0)

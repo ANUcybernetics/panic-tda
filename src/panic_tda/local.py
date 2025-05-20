@@ -299,35 +299,35 @@ def create_top_class_image_grids(
 
 def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     """
-    Returns the first N run IDs for each initial prompt that have an associated
-    persistence diagram.
+    Returns the first N run IDs for each combination of initial prompt and network
+    that have an associated persistence diagram.
 
     Args:
         session: Database session
-        first_n: Maximum number of run IDs to return per initial prompt
+        first_n: Maximum number of run IDs to return per initial prompt and network combination
 
     Returns:
-        List of run IDs as strings, grouped by initial prompt
+        List of run IDs as strings, grouped by initial prompt and network
     """
-    # First, get all distinct initial prompts
-    distinct_prompts_query = select(Run.initial_prompt).distinct()
-    distinct_prompts = session.exec(distinct_prompts_query).all()
+    # First, get all distinct combinations of initial prompt and network
+    distinct_combinations_query = select(Run.initial_prompt, Run.network).distinct()
+    distinct_combinations = session.exec(distinct_combinations_query).all()
 
     all_run_ids = []
 
-    # For each prompt, get the first N run IDs with persistence diagrams
-    for prompt in distinct_prompts:
-        prompt_runs_query = (
+    # For each combination, get the first N run IDs with persistence diagrams
+    for prompt, network in distinct_combinations:
+        combination_runs_query = (
             select(Run.id)
-            .where(Run.initial_prompt == prompt)
+            .where((Run.initial_prompt == prompt) & (Run.network == network))
             .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
             .distinct()
             .order_by(Run.id)
             .limit(first_n)
         )
 
-        prompt_run_ids = session.exec(prompt_runs_query).all()
-        all_run_ids.extend(prompt_run_ids)
+        combination_run_ids = session.exec(combination_runs_query).all()
+        all_run_ids.extend(combination_run_ids)
 
     return [str(run_id) for run_id in all_run_ids]
 
