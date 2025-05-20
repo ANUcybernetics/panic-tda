@@ -5,9 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import aliased
 from sqlmodel import Session, select
 
-from panic_tda.datavis import (
-    plot_cluster_example_images,
-)
+from panic_tda.datavis import plot_cluster_example_images
 from panic_tda.export import export_timeline, export_video
 from panic_tda.schemas import Invocation, PersistenceDiagram, Run
 
