@@ -340,36 +340,24 @@ def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     return [str(run_id) for run_id in run_ids]
 
 
-def run_counts(session: Session):
+def run_counts(runs_df: pl.DataFrame):
     """
-    Counts the number of runs for each prompt and network combination.
+    Counts the number of unique run IDs for each network.
 
     Args:
-        session: Database session
+        runs_df: Polars DataFrame containing runs data
 
     Returns:
-        List of tuples with (initial_prompt, network, count)
+        List of tuples with (network, count)
     """
 
-    # Use SQLModel to query and group the data
-    results = session.exec(
-        select(Run.initial_prompt, Run.network, func.count(Run.id).label("count"))
-        .group_by(Run.initial_prompt, Run.network)
-        .order_by(func.count(Run.id).desc())
-    ).all()
-
-    # Collect prompts with a certain count
-    # print(list(set([prompt for prompt, network, count in results if count == 8])))
-
-    # Pretty-print results
-    print("\nRun counts by prompt and network:")
-    print("-" * 50)
-    print(f"{'Initial Prompt':<30} | {'Network':<30} | {'Count':<10}")
-    print("-" * 50)
-    for prompt, network, count in results:
-        network_str = str(network) if network else "None"
-        print(f"{prompt[:30]:<30} | {network_str[:30]:<30} | {count:<10}")
-    print("-" * 50)
+    # Group by network and count unique run_ids
+    results = (
+        runs_df
+        .group_by("network", "initial_prompt")
+        .agg(pl.col("run_id").n_unique().alias("count"))
+        .sort("count", descending=True)
+    )
 
     return results
 
