@@ -295,6 +295,17 @@ def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     This is handy when you want to select "balanced" groups (ind. var. combinations)
     for analysis.
 
+    NOTE: if you've got a runs_df you're happy with, you can get the same data with:
+
+    ```
+    run_ids = (
+        runs_df
+        .unique(subset=["network", "initial_prompt", "run_id"])
+        .group_by("network", "initial_prompt")
+        .head(4)
+    ).get_column("run_id").to_list()
+    ```
+
     Args:
         session: Database session
         first_n: Maximum number of run IDs to return per initial prompt and network combination
