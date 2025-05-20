@@ -715,18 +715,20 @@ def plot_cluster_run_length_bubblegrid(
             ),
         )
         + geom_point(alpha=0.8, show_legend=False)
-        + geom_text(aes(label="display_label"), color="black", size=6)
+        + geom_text(aes(label="display_label"), color="black", size=10)
+        + scale_size_continuous(range=(1, 12))
         + labs(
             x="Cluster",
             y="Prompt",
             size="Avg Run Length",
             fill="Cluster",
         )
-        + facet_grid("embedding_model ~ network")
+        + facet_wrap("~ network", ncol=4)
         + theme(
-            figure_size=(30, 20),
-            strip_text=element_text(size=10),
-            axis_text_y=element_text(size=8),
+            figure_size=(30, 12),
+            strip_text=element_text(size=16),
+            axis_text_x=element_text(size=12),
+            axis_text_y=element_text(size=14),
         )
     )
 
