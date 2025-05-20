@@ -303,6 +303,9 @@ def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     Returns the first N run IDs for each combination of initial prompt and network
     that have an associated persistence diagram.
 
+    This is handy when you want to select "balanced" groups (ind. var. combinations)
+    for analysis.
+
     Args:
         session: Database session
         first_n: Maximum number of run IDs to return per initial prompt and network combination
