@@ -355,6 +355,7 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
+    # pl.Config.set_tbl_rows(10)
     ### CACHING
     #
     # from panic_tda.data_prep import cache_dfs
