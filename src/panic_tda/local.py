@@ -8,7 +8,7 @@ from panic_tda.datavis import (
     plot_cluster_example_images,
 )
 from panic_tda.export import export_timeline, export_video
-from panic_tda.schemas import Invocation, Run
+from panic_tda.schemas import Invocation, PersistenceDiagram, Run
 
 
 def selected_run_ids(session: Session):
@@ -295,6 +295,30 @@ def create_top_class_image_grids(
                 16 / 10,
                 output_file,
             )
+
+
+def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
+    """
+    Returns the first N run IDs that have an associated persistence diagram.
+
+    Args:
+        session: Database session
+        first_n: Maximum number of run IDs to return
+
+    Returns:
+        List of run IDs as strings
+    """
+    # Join Run and PersistenceDiagram to find runs with diagrams
+    query = (
+        select(Run.id)
+        .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
+        .distinct()
+        .order_by(Run.id)
+        .limit(first_n)
+    )
+
+    results = session.exec(query).all()
+    return [str(run_id) for run_id in results]
 
 
 def run_counts(session: Session):

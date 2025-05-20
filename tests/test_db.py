@@ -21,7 +21,7 @@ from panic_tda.db import (
     read_invocation,
     read_run,
 )
-from panic_tda.local import droplet_and_leaf_invocations
+from panic_tda.local import droplet_and_leaf_invocations, list_completed_run_ids
 from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
@@ -958,3 +958,74 @@ def test_droplet_and_leaf_invocations(db_session: Session):
     # Verify irrelevant invocations are not included in either list
     assert irrelevant_img_invocation.id not in image_ids
     assert irrelevant_text_invocation.id not in text_ids
+
+
+def test_list_completed_run_ids(db_session: Session):
+    """Test the list_completed_run_ids function."""
+
+    # Create several test runs
+    run1 = Run(
+        initial_prompt="test completed runs 1",
+        network=["model1"],
+        seed=42,
+        max_length=3,
+    )
+
+    run2 = Run(
+        initial_prompt="test completed runs 2",
+        network=["model1"],
+        seed=43,
+        max_length=3,
+    )
+
+    run3 = Run(
+        initial_prompt="test completed runs 3",
+        network=["model1"],
+        seed=44,
+        max_length=3,
+    )
+
+    # Add runs to the session
+    db_session.add(run1)
+    db_session.add(run2)
+    db_session.add(run3)
+    db_session.commit()
+
+    # Create persistence diagrams for only two of the runs
+    diagram1 = PersistenceDiagram(
+        run_id=run1.id,
+        embedding_model="test-model",
+        generators=[np.array([[0.1, 0.5], [0.2, 0.7]])],
+    )
+
+    diagram2 = PersistenceDiagram(
+        run_id=run2.id,
+        embedding_model="test-model",
+        generators=[np.array([[0.3, 0.6], [0.4, 0.8]])],
+    )
+
+    # Add persistence diagrams to the session
+    db_session.add(diagram1)
+    db_session.add(diagram2)
+    db_session.commit()
+
+    # Test with a limit higher than available completed runs
+    results = list_completed_run_ids(db_session, 5)
+
+    # Should return the two runs that have persistence diagrams
+    assert len(results) == 2
+    assert str(run1.id) in results
+    assert str(run2.id) in results
+    assert str(run3.id) not in results
+
+    # Test with a limit of 1
+    results = list_completed_run_ids(db_session, 1)
+
+    # Should return only one run
+    assert len(results) == 1
+
+    # Test with a limit of 0
+    results = list_completed_run_ids(db_session, 0)
+
+    # Should return an empty list
+    assert len(results) == 0
