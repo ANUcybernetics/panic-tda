@@ -66,30 +66,37 @@ def write_label_map(
 ) -> Dict[str, int]:
     """
     Map string cluster labels to integers and writes the mapping to a JSON file and a LaTeX file.
+    Outlier labels are completely excluded from the mapping.
+
+    Labels are expected to be in the format "embedding_model::cluster_label".
 
     Args:
-        cluster_labels: A polars Series of string labels
+        cluster_labels: A polars Series of string labels in format "embedding_model::cluster_label"
         output_path: Path to save the JSON mapping file (LaTeX file will use same path with .tex extension)
 
     Returns:
-        Dictionary mapping string labels to integers (0 for "OUTLIER", 1+ for others)
+        Dictionary mapping string labels to integers (starting from 1)
     """
     # Get unique labels
     unique_labels = cluster_labels.unique().to_list()
 
-    # Separate OUTLIER from other labels and sort the rest
-    other_labels = sorted([
-        label for label in unique_labels if label is not None and label != "OUTLIER"
-    ])
+    # Filter out None and OUTLIER labels, and sort the rest
+    other_labels = []
+
+    for label in unique_labels:
+        if label is None:
+            continue
+        # Only include non-outlier labels
+        if not label.endswith("::OUTLIER"):
+            other_labels.append(label)
+
+    # Sort the non-outlier labels
+    other_labels.sort()
 
     # Create mapping dictionary
     label_map = {}
 
-    # Handle OUTLIER first if it exists
-    if "OUTLIER" in unique_labels:
-        label_map["OUTLIER"] = 0
-
-    # Assign IDs to sorted labels
+    # Assign IDs to sorted labels, starting from 1
     next_id = 1
     for label in other_labels:
         label_map[label] = next_id
@@ -153,6 +160,8 @@ def read_existing_label_map(column_name: str, input_path: str) -> pl.Expr:
     Read the mapping of string cluster labels to integers from a JSON file
     and return a polars expression to use in with_columns.
 
+    Labels are expected to be in the format "embedding_model::cluster_label".
+
     Args:
         column_name: Name of the column to transform
         input_path: Path to the JSON mapping file
@@ -165,7 +174,7 @@ def read_existing_label_map(column_name: str, input_path: str) -> pl.Expr:
         label_map = json.load(f)
 
     # Return a polars expression for use in with_columns
-    return pl.col(column_name).replace_strict(label_map)
+    return pl.col(column_name).replace_strict(label_map, default=pl.lit("OUTLIER"))
 
 
 def create_persistence_diagram_chart(df: pl.DataFrame):

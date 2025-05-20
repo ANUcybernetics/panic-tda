@@ -319,7 +319,16 @@ def test_plot_cluster_timelines(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(
+        embeddings_df.select(
+            pl.concat_str([
+                pl.col("embedding_model"),
+                pl.lit("::"),
+                pl.col("cluster_label"),
+            ])
+        ).to_series(),
+        label_map_file,
+    )
     plot_cluster_timelines(embeddings_df, output_file, label_map_file)
 
     # Verify file was created
@@ -425,7 +434,16 @@ def test_plot_cluster_transitions(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(
+        embeddings_df.select(
+            pl.concat_str([
+                pl.col("embedding_model"),
+                pl.lit("::"),
+                pl.col("cluster_label"),
+            ])
+        ).to_series(),
+        label_map_file,
+    )
     plot_cluster_transitions(embeddings_df, True, output_file, label_map_file)
 
     # Verify file was created
@@ -436,7 +454,14 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     """Test caching cluster labels to JSON and reading them back."""
 
     # Create a polars Series with cluster labels
-    labels = ["Cluster_A", "Cluster_B", "OUTLIER", "Cluster_A", "Cluster_C", "OUTLIER"]
+    labels = [
+        "model1::Cluster_A",
+        "model1::Cluster_B",
+        "model1::OUTLIER",
+        "model1::Cluster_A",
+        "model1::Cluster_C",
+        "model1::OUTLIER",
+    ]
     cluster_labels = pl.Series("cluster_labels", labels)
 
     # Create a temporary file path for testing
@@ -447,14 +472,13 @@ def test_cache_labels_and_read_from_cache(tmp_path):
 
     # Validate the output dictionary
     assert isinstance(label_map, dict)
-    assert len(label_map) == 4  # 3 clusters + OUTLIER
-    assert label_map["OUTLIER"] == 0
-    assert label_map["Cluster_A"] > 0
-    assert label_map["Cluster_B"] > 0
-    assert label_map["Cluster_C"] > 0
-    assert label_map["Cluster_A"] != label_map["Cluster_B"]
-    assert label_map["Cluster_A"] != label_map["Cluster_C"]
-    assert label_map["Cluster_B"] != label_map["Cluster_C"]
+    assert len(label_map) == 3  # 3 clusters
+    assert label_map["model1::Cluster_A"] > 0
+    assert label_map["model1::Cluster_B"] > 0
+    assert label_map["model1::Cluster_C"] > 0
+    assert label_map["model1::Cluster_A"] != label_map["model1::Cluster_B"]
+    assert label_map["model1::Cluster_A"] != label_map["model1::Cluster_C"]
+    assert label_map["model1::Cluster_B"] != label_map["model1::Cluster_C"]
 
     # Verify file was created
     assert os.path.exists(cache_path)
@@ -467,17 +491,22 @@ def test_cache_labels_and_read_from_cache(tmp_path):
     assert loaded_map == label_map
 
     # Test with different labels to ensure IDs are assigned in order
-    new_labels = ["Group_1", "OUTLIER", "Group_2", "Group_3", "Group_1"]
+    new_labels = [
+        "model2::Group_1",
+        "model2::OUTLIER",
+        "model2::Group_2",
+        "model2::Group_3",
+        "model2::Group_1",
+    ]
     new_cluster_labels = pl.Series("cluster_labels", new_labels)
     new_cache_path = os.path.join(tmp_path, "test_cluster_map_2.json")
 
     new_label_map = write_label_map(new_cluster_labels, new_cache_path)
 
     # Validate the new mapping
-    assert new_label_map["OUTLIER"] == 0
-    assert new_label_map["Group_1"] == 1
-    assert new_label_map["Group_2"] == 2
-    assert new_label_map["Group_3"] == 3
+    assert new_label_map["model2::Group_1"] == 1
+    assert new_label_map["model2::Group_2"] == 2
+    assert new_label_map["model2::Group_3"] == 3
 
     # Read the map directly from the JSON file instead of using read_existing_label_map
     with open(new_cache_path, "r") as f:
@@ -507,7 +536,16 @@ def test_plot_cluster_bubblegrid(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(
+        embeddings_df.select(
+            pl.concat_str([
+                pl.col("embedding_model"),
+                pl.lit("::"),
+                pl.col("cluster_label"),
+            ])
+        ).to_series(),
+        label_map_file,
+    )
 
     # without outliers
     plot_cluster_bubblegrid(embeddings_df, False, output_file, label_map_file)
@@ -542,7 +580,16 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
     label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+    write_label_map(
+        embeddings_df.select(
+            pl.concat_str([
+                pl.col("embedding_model"),
+                pl.lit("::"),
+                pl.col("cluster_label"),
+            ])
+        ).to_series(),
+        label_map_file,
+    )
 
     # without outliers
     plot_cluster_run_length_bubblegrid(
