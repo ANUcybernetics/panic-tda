@@ -300,7 +300,6 @@ def plot_persistence_entropy(
         output_file: Path to save the visualization
     """
     # # Transform homology_dimension column to use h with subscripts
-    print(df.head())
     df = df.with_columns(
         pl.col("homology_dimension")
         .replace_strict({0: "h₀", 1: "h₁", 2: "h₂"})
