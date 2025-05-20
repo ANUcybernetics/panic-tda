@@ -2,6 +2,7 @@ import os
 
 import polars as pl
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
 from sqlmodel import Session, select
 
 from panic_tda.datavis import (
@@ -309,27 +310,31 @@ def list_completed_run_ids(session: Session, first_n: int) -> list[str]:
     Returns:
         List of run IDs as strings, grouped by initial prompt and network
     """
-    # First, get all distinct combinations of initial prompt and network
-    distinct_combinations_query = select(Run.initial_prompt, Run.network).distinct()
-    distinct_combinations = session.exec(distinct_combinations_query).all()
 
-    all_run_ids = []
-
-    # For each combination, get the first N run IDs with persistence diagrams
-    for prompt, network in distinct_combinations:
-        combination_runs_query = (
-            select(Run.id)
-            .where((Run.initial_prompt == prompt) & (Run.network == network))
-            .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
-            .distinct()
-            .order_by(Run.id)
-            .limit(first_n)
+    # Use a CTE (Common Table Expression) to rank runs within each prompt/network group
+    ranked_runs = (
+        select(
+            Run.id,
+            Run.initial_prompt,
+            Run.network,
+            func.row_number()
+            .over(partition_by=[Run.initial_prompt, Run.network], order_by=Run.id)
+            .label("row_num"),
         )
+        .join(PersistenceDiagram, PersistenceDiagram.run_id == Run.id)
+        .distinct()
+        .cte("ranked_runs")
+    )
 
-        combination_run_ids = session.exec(combination_runs_query).all()
-        all_run_ids.extend(combination_run_ids)
+    # Alias the CTE
+    rr = aliased(ranked_runs, name="rr")
 
-    return [str(run_id) for run_id in all_run_ids]
+    # Get the run IDs with row_num ≤ first_n
+    query = select(rr.c.id).where(rr.c.row_num <= first_n)
+
+    run_ids = session.exec(query).all()
+
+    return [str(run_id) for run_id in run_ids]
 
 
 def run_counts(session: Session):
