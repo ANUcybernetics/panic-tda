@@ -299,18 +299,14 @@ def plot_persistence_entropy(
         df: DataFrame containing runs data with homology_dimension and entropy
         output_file: Path to save the visualization
     """
-    # # Convert homology_dimension to h with subscripts
-    # subscripts = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
-
     # # Transform homology_dimension column to use h with subscripts
-    # df = df.with_columns(
-    #     pl.concat_str(
-    #         pl.lit("h"),
-    #         pl.col("homology_dimension").cast(pl.Utf8).str.replace_all(
-    #             dict(zip("0123456789", "₀₁₂₃₄₅₆₇₈₉"))
-    #         )
-    #     ).alias("homology_dimension")
-    # )
+    print(df.head())
+    df = df.with_columns(
+        pl.col("homology_dimension")
+        .replace_strict({0: "h₀", 1: "h₁", 2: "h₂"})
+        .alias("homology_dimension"),
+        pl.col("network").list.join(" → ").alias("network"),
+    )
 
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = df.to_pandas()
@@ -323,7 +319,7 @@ def plot_persistence_entropy(
         + geom_violin()
         + geom_boxplot(fill="white", width=0.5, alpha=0.5)
         + labs(x="embedding model", y="distribution of persistence entropy")
-        + facet_grid("homology_dimension ~ image_model + text_model")
+        + facet_grid("homology_dimension ~ network")
         + theme(
             figure_size=(10, 6),
             strip_text=element_text(size=10),
