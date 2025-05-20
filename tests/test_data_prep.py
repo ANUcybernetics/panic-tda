@@ -1182,7 +1182,14 @@ def test_calculate_cluster_run_lengths():
     # Expected run lengths based on our synthetic data as a Polars DataFrame
     expected_runs_df = pl.DataFrame({
         "embedding_model": ["model1"] * 6,
-        "cluster_label": ["cluster_A", "cluster_B", "cluster_A", "cluster_C", "cluster_B", "cluster_A"],
+        "cluster_label": [
+            "cluster_A",
+            "cluster_B",
+            "cluster_A",
+            "cluster_C",
+            "cluster_B",
+            "cluster_A",
+        ],
         "run_length": [5, 3, 2, 4, 4, 2],
     })
 
@@ -1209,13 +1216,11 @@ def test_calculate_cluster_run_lengths():
     for cluster in ["cluster_A", "cluster_B", "cluster_C"]:
         for length in [2, 3, 4, 5]:
             expected_count = expected_sorted_df.filter(
-                (pl.col("cluster_label") == cluster) &
-                (pl.col("run_length") == length)
+                (pl.col("cluster_label") == cluster) & (pl.col("run_length") == length)
             ).height
 
             actual_count = filtered_df.filter(
-                (pl.col("cluster_label") == cluster) &
-                (pl.col("run_length") == length)
+                (pl.col("cluster_label") == cluster) & (pl.col("run_length") == length)
             ).height
 
             assert actual_count == expected_count, (
@@ -1237,7 +1242,9 @@ def test_calculate_cluster_run_lengths():
     }
 
     multi_run_df = pl.DataFrame(multi_run_data)
-    multi_runs_df = calculate_cluster_run_lengths(multi_run_df, ["embedding_model", "run_id"])
+    multi_runs_df = calculate_cluster_run_lengths(
+        multi_run_df, ["embedding_model", "run_id"]
+    )
 
     # Expected runs for multiple run_ids as a Polars DataFrame
     expected_multi_runs_df = pl.DataFrame({
@@ -1252,9 +1259,9 @@ def test_calculate_cluster_run_lengths():
     # Check each expected row exists in the result
     for row in expected_multi_runs_df.rows(named=True):
         matching_rows = multi_filtered_df.filter(
-            (pl.col("embedding_model") == row["embedding_model"]) &
-            (pl.col("cluster_label") == row["cluster_label"]) &
-            (pl.col("run_length") == row["run_length"])
+            (pl.col("embedding_model") == row["embedding_model"])
+            & (pl.col("cluster_label") == row["cluster_label"])
+            & (pl.col("run_length") == row["run_length"])
         )
         assert matching_rows.height == 1, (
             f"Expected exactly one row matching {row}, got {matching_rows.height}"
@@ -1310,7 +1317,9 @@ def test_calculate_cluster_run_lengths_include_outliers():
 
     # Sort both DataFrames identically for comparison
     filtered_df = filtered_df.sort(by=["cluster_label", "run_length"])
-    expected_filtered_sorted_df = expected_filtered_runs_df.sort(by=["cluster_label", "run_length"])
+    expected_filtered_sorted_df = expected_filtered_runs_df.sort(
+        by=["cluster_label", "run_length"]
+    )
 
     # Compare the DataFrames
     assert filtered_df.height == expected_filtered_sorted_df.height, (
@@ -1326,13 +1335,11 @@ def test_calculate_cluster_run_lengths_include_outliers():
     for cluster in ["cluster_A", "cluster_B", "cluster_C"]:
         for length in [2, 3]:
             expected_count = expected_filtered_sorted_df.filter(
-                (pl.col("cluster_label") == cluster) &
-                (pl.col("run_length") == length)
+                (pl.col("cluster_label") == cluster) & (pl.col("run_length") == length)
             ).height
 
             actual_count = filtered_df.filter(
-                (pl.col("cluster_label") == cluster) &
-                (pl.col("run_length") == length)
+                (pl.col("cluster_label") == cluster) & (pl.col("run_length") == length)
             ).height
 
             assert actual_count == expected_count, (
@@ -1348,7 +1355,14 @@ def test_calculate_cluster_run_lengths_include_outliers():
     # Expected run lengths with include_outliers=True as a Polars DataFrame
     expected_unfiltered_runs_df = pl.DataFrame({
         "embedding_model": ["model1"] * 6,
-        "cluster_label": ["cluster_A", "cluster_A", "cluster_B", "cluster_C", "OUTLIER", "OUTLIER"],
+        "cluster_label": [
+            "cluster_A",
+            "cluster_A",
+            "cluster_B",
+            "cluster_C",
+            "OUTLIER",
+            "OUTLIER",
+        ],
         "run_length": [3, 2, 3, 3, 2, 1],
         "run_count": [1, 1, 1, 1, 1, 2],
     })
@@ -1357,7 +1371,10 @@ def test_calculate_cluster_run_lengths_include_outliers():
     unfiltered_df = runs_df_unfiltered.filter(pl.col("embedding_model") == "model1")
 
     # Remove run_count from expected if it's not in the actual result
-    if "run_count" in expected_unfiltered_runs_df.columns and "run_count" not in unfiltered_df.columns:
+    if (
+        "run_count" in expected_unfiltered_runs_df.columns
+        and "run_count" not in unfiltered_df.columns
+    ):
         expected_unfiltered_runs_df = expected_unfiltered_runs_df.drop("run_count")
 
     # Check each unique combination of cluster_label and run_length
@@ -1369,8 +1386,7 @@ def test_calculate_cluster_run_lengths_include_outliers():
             expected_count = row["run_count"]
 
         matching_rows = unfiltered_df.filter(
-            (pl.col("cluster_label") == cluster) &
-            (pl.col("run_length") == length)
+            (pl.col("cluster_label") == cluster) & (pl.col("run_length") == length)
         )
 
         if cluster == "OUTLIER" and length == 1:

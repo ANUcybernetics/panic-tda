@@ -590,6 +590,8 @@ def print_experiment_info(
     for model, (completed, expected, percent) in diagram_model_stats.items():
         status_report += f"    - {model}: {percent:.1f}% ({completed}/{expected})\n"
 
-    status_report += f"  Elapsed Time: {naturaldelta(timedelta(seconds=elapsed_seconds))}"
+    status_report += (
+        f"  Elapsed Time: {naturaldelta(timedelta(seconds=elapsed_seconds))}"
+    )
 
     print(status_report)

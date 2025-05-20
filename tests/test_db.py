@@ -1137,7 +1137,11 @@ def test_list_completed_run_ids(db_session: Session):
     )  # 2 from (A,model1), 2 from (A,model2), 2 from (B,model1), 1 from (C,model3)
 
     # Verify runs from Group 1 - should only include 2 despite having 4 valid runs
-    group1_count = sum(1 for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)] if run_id in results)
+    group1_count = sum(
+        1
+        for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)]
+        if run_id in results
+    )
     assert group1_count == 2, "Should only select 2 runs from prompt A, network 1"
 
     # Verify specific runs from other groups
@@ -1162,7 +1166,11 @@ def test_list_completed_run_ids(db_session: Session):
     assert len(results) == 8  # 3 + 2 + 2 + 1 = 8
 
     # Group 1 should now have 3 runs since first_n=3
-    group1_count = sum(1 for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)] if run_id in results)
+    group1_count = sum(
+        1
+        for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)]
+        if run_id in results
+    )
     assert group1_count == 3, "Should select 3 runs from prompt A, network 1"
 
     # Test with first_n=1 for each prompt and network combination
@@ -1172,7 +1180,11 @@ def test_list_completed_run_ids(db_session: Session):
     assert len(results) == 4  # 1 from each unique combination
 
     # Verify only one run from Group 1 (prompt A, network 1)
-    group1_count = sum(1 for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)] if run_id in results)
+    group1_count = sum(
+        1
+        for run_id in [str(run1.id), str(run2.id), str(run3a.id), str(run3c.id)]
+        if run_id in results
+    )
     assert group1_count == 1, "Should only select 1 run from prompt A, network 1"
 
     # Test with first_n=0
