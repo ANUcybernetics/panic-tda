@@ -16,6 +16,7 @@ from panic_tda.datavis import (
     plot_cluster_example_images,
     plot_cluster_histograms,
     plot_cluster_histograms_top_n,
+    plot_cluster_run_length_bubblegrid,
     plot_cluster_run_lengths,
     plot_cluster_timelines,
     plot_cluster_transitions,
@@ -516,6 +517,43 @@ def test_plot_cluster_bubblegrid(db_session):
 
     # with outliers
     plot_cluster_bubblegrid(embeddings_df, True, output_file, label_map_file)
+    assert os.path.exists(output_file), (
+        f"File was not created (with outliers): {output_file}"
+    )
+
+
+def test_plot_cluster_run_length_bubblegrid(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+
+    # Verify we have the necessary columns
+    assert embeddings_df.height > 0
+    assert "run_id" in embeddings_df.columns
+    assert "sequence_number" in embeddings_df.columns
+    assert "initial_prompt" in embeddings_df.columns
+    assert "cluster_label" in embeddings_df.columns
+
+    # Define output file
+    output_file = "output/test/cluster_run_length_bubblegrid.pdf"
+    label_map_file = "output/test/cluster_labels.json"
+
+    # Generate the plot
+    write_label_map(embeddings_df.get_column("cluster_label"), label_map_file)
+
+    # without outliers
+    plot_cluster_run_length_bubblegrid(
+        embeddings_df, False, output_file, label_map_file
+    )
+    assert os.path.exists(output_file), (
+        f"File was not created (without outliers): {output_file}"
+    )
+
+    # with outliers
+    plot_cluster_run_length_bubblegrid(embeddings_df, True, output_file, label_map_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )

@@ -629,6 +629,95 @@ def plot_cluster_bubblegrid(
     logging.info(f"Saved cluster bubble grid to {saved_file}")
 
 
+def plot_cluster_run_length_bubblegrid(
+    df: pl.DataFrame,
+    include_outliers: bool = False,
+    output_file: str = "output/vis/cluster_run_length_bubblegrid.pdf",
+    label_map_path: str = "output/vis/cluster_label_map.json",
+) -> None:
+    """
+    Create a bubble grid visualization of average cluster run lengths.
+
+    Uses a grid where x is cluster_label, y is initial_prompt, and bubble size
+    represents average run length. Uses facet_grid by embedding_model and network.
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label and initial_prompt
+        include_outliers: If False, filter out all "OUTLIER" cluster labels
+        output_file: Path to save the visualization
+        label_map_path: Path to the JSON file containing cluster label mappings
+    """
+    # Filter out null cluster labels
+    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
+
+    # Filter out outliers if specified
+    if not include_outliers:
+        filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
+
+    # Calculate run lengths using calculate_cluster_run_lengths
+    run_lengths_df = calculate_cluster_run_lengths(
+        filtered_df, ["embedding_model", "network", "initial_prompt"]
+    )
+
+    # Group by and calculate average run length
+    avg_run_lengths_df = (
+        run_lengths_df.group_by([
+            "cluster_label",
+            "initial_prompt",
+            "embedding_model",
+            "network",
+        ])
+        .agg(pl.mean("run_length").alias("avg_run_length"))
+        .sort(["embedding_model", "network", "cluster_label", "initial_prompt"])
+    )
+
+    # Convert string cluster labels to their integer values using the label mapping
+    avg_run_lengths_df = avg_run_lengths_df.with_columns(
+        read_existing_label_map("cluster_label", label_map_path).alias("cluster_index"),
+    )
+
+    # Convert to pandas for plotting
+    pandas_df = avg_run_lengths_df.to_pandas()
+
+    # Add display_label column that only shows labels for high average run lengths
+    threshold = pandas_df["avg_run_length"].quantile(0.75)  # Show top 25% by default
+    pandas_df["display_label"] = pandas_df.apply(
+        lambda row: row["cluster_index"] if row["avg_run_length"] > threshold else "",
+        axis=1,
+    )
+
+    # Create the bubble grid visualization
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(
+                x="cluster_index",
+                y="initial_prompt",
+                size="avg_run_length",
+                fill="cluster_label",
+            ),
+        )
+        + geom_point(alpha=0.8, show_legend=False)
+        + geom_text(aes(label="display_label"), color="black", size=6)
+        + labs(
+            x="Cluster",
+            y="Prompt",
+            size="Avg Run Length",
+            fill="Cluster",
+        )
+        + facet_grid("embedding_model ~ network")
+        + theme(
+            figure_size=(30, 20),
+            strip_text=element_text(size=10),
+            axis_text_y=element_text(size=8),
+        )
+    )
+
+    # Save the plot
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster run length bubble grid to {saved_file}")
+
+
 def plot_cluster_histograms(
     df: pl.DataFrame,
     include_outliers: bool = False,
