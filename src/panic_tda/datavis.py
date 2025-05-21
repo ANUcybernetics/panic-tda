@@ -14,7 +14,6 @@ from plotnine import (
     facet_wrap,
     geom_bar,
     geom_boxplot,
-    geom_histogram,
     geom_line,
     geom_point,
     geom_text,
@@ -26,7 +25,7 @@ from plotnine import (
     scale_x_continuous,
     scale_y_continuous,
     theme,
-    theme_538
+    theme_538,
 )
 from plotnine.options import set_option
 from sqlmodel import Session
@@ -610,8 +609,8 @@ def plot_cluster_bubblegrid(
         read_existing_label_map("cluster_label", label_map_path).alias("cluster_index"),
     )
 
-    # Calculate the 75th percentile threshold in polars
-    threshold = counts_df.select(pl.col("count").quantile(0.75)).item()
+    # Calculate the top percentile threshold in polars
+    threshold = counts_df.select(pl.col("count").quantile(0.9)).item()
 
     # Create display_label column using polars expressions
     counts_df = counts_df.with_columns(
@@ -643,7 +642,7 @@ def plot_cluster_bubblegrid(
             size="count",
             fill="count",
         )
-        + facet_wrap("~ network", ncol=4)
+        + facet_grid("embedding_model ~ network", ncol=4, labeller="label_context")
         + theme_538()
         + theme(
             figure_size=(25, 11),
