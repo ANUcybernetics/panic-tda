@@ -193,7 +193,7 @@ def add_cluster_labels(
 
 
 def filter_top_n_clusters(
-    df: pl.DataFrame, n: int, group_by_cols: list[str]
+    df: pl.DataFrame, n: int, group_by_cols: list[str] = []
 ) -> pl.DataFrame:
     """
     Filter the embeddings DataFrame to keep only the top n clusters within each
@@ -208,7 +208,7 @@ def filter_top_n_clusters(
         Filtered DataFrame containing only rows from the top n clusters
     """
     # Count occurrences of each cluster within each group
-    group_cols = group_by_cols + ["cluster_label"]
+    group_cols = ["embedding_model"] + group_by_cols + ["cluster_label"]
     cluster_counts = df.group_by(group_cols).agg(pl.len().alias("count"))
 
     # Assign rank within each group based on count

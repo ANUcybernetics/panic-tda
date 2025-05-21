@@ -846,7 +846,7 @@ def test_filter_top_n_clusters():
     df = pl.DataFrame(data)
 
     # Use the filter_top_n_clusters function with n=2
-    filtered_df = filter_top_n_clusters(df, 2, ["embedding_model"])
+    filtered_df = filter_top_n_clusters(df, 2)
 
     # Extract the top clusters for each embedding model
     top_clusters_by_model = filtered_df.group_by("embedding_model").agg(
@@ -877,7 +877,7 @@ def test_filter_top_n_clusters():
         )
 
     # Test with n=1 to keep only the most common cluster per model
-    filtered_df_n1 = filter_top_n_clusters(df, 1, ["embedding_model"])
+    filtered_df_n1 = filter_top_n_clusters(df, 1)
     top_clusters_n1 = filtered_df_n1.group_by("embedding_model").agg(
         pl.col("cluster_label").unique().alias("top_clusters")
     )
@@ -895,9 +895,7 @@ def test_filter_top_n_clusters():
         )
 
     # Test with both embedding_model and initial_prompt in the grouping variables
-    filtered_df_combined = filter_top_n_clusters(
-        df, 1, ["embedding_model", "initial_prompt"]
-    )
+    filtered_df_combined = filter_top_n_clusters(df, 1, ["initial_prompt"])
 
     # Extract the top clusters for each combination of embedding_model and initial_prompt
     top_clusters_combined = filtered_df_combined.group_by([
@@ -1437,7 +1435,7 @@ def test_filter_top_n_clusters_by_model_and_network():
     df = pl.DataFrame(data)
 
     # Use the filter_top_n_clusters function with n=2 and grouping by both model and network
-    filtered_df = filter_top_n_clusters(df, 2, ["embedding_model", "network"])
+    filtered_df = filter_top_n_clusters(df, 2, ["network"])
 
     # Extract the top clusters for each combination of embedding_model and network
     top_clusters_by_combo = filtered_df.group_by(["embedding_model", "network"]).agg(
@@ -1473,7 +1471,7 @@ def test_filter_top_n_clusters_by_model_and_network():
         )
 
     # Test with n=1 to keep only the most common cluster per combination
-    filtered_df_n1 = filter_top_n_clusters(df, 1, ["embedding_model", "network"])
+    filtered_df_n1 = filter_top_n_clusters(df, 1, ["network"])
     top_clusters_n1 = filtered_df_n1.group_by(["embedding_model", "network"]).agg(
         pl.col("cluster_label").unique().alias("top_clusters")
     )
