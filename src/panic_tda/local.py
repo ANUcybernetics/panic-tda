@@ -1133,52 +1133,71 @@ def paper_charts(session: Session) -> None:
     # cache_dfs(session, runs=False, embeddings=True, invocations=False)
     # cache_dfs(session, runs=True, embeddings=True, invocations=True)
     #
+    # DATA SELECTION
+    selected_ids = TOP4_RUN_IDS
+    #
+    # EXAMPLE IMAGES
+    #
+    export_timeline(
+        run_ids=example_run_ids(session),
+        session=session,
+        images_per_run=5,
+        output_file="output/vis/paper/fig1.jpg",
+    )
     ### INVOCATIONS
     #
     # from panic_tda.data_prep import load_invocations_from_cache
 
     # invocations_df = load_invocations_from_cache()
-    # print(invocations_df.select("run_id", "sequence_number", "type").head(50))
-    # plot_invocation_duration(invocations_df, "output/vis/invocation_duration.png")
-    #
+
     ### EMBEDDINGS
     #
-    # from panic_tda.data_prep import load_embeddings_from_cache
+    from panic_tda.data_prep import load_embeddings_from_cache
+    from panic_tda.datavis import (
+        plot_cluster_bubblegrid,
+        plot_cluster_run_lengths,
+        write_label_map,
+    )
 
-    # embeddings_df = load_embeddings_from_cache()
-    # write_label_map(embeddings_df.get_column("cluster_label"))
+    embeddings_df = load_embeddings_from_cache()
+    embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
 
-    # man_df = embeddings_df.filter(pl.col("initial_prompt") == "a picture of a man")
-    # plot_cluster_timelines(man_df, "output/vis/cluster_timelines_man.pdf")
-    # plot_cluster_transitions(embeddings_df, False, "output/vis/cluster_transitions.pdf")
-    # plot_cluster_histograms(
-    #     embeddings_df, True, "output/vis/cluster_histograms_outliers.pdf"
-    # )
-    # plot_cluster_histograms(embeddings_df, False, "output/vis/cluster_histograms.pdf")
-    # plot_cluster_histograms_top_n(
-    #     embeddings_df, 10, False, "output/vis/cluster_histograms_top_n.pdf"
-    # )
-    # plot_cluster_bubblegrid(embeddings_df, False, "output/vis/cluster_bubblegrid.pdf")
-    # export_cluster_counts_to_json(embeddings_df, "output/vis/cluster_counts.json")
-    #
+    label_map_file = "output/vis/paper/cluster_labels.json"
+    write_label_map(
+        embeddings_df.select(
+            pl.concat_str([
+                pl.col("embedding_model"),
+                pl.lit("::"),
+                pl.col("cluster_label"),
+            ])
+        ).to_series(),
+        label_map_file,
+    )
+
+    # plot_sense_check_histograms(embeddings_df)
+    plot_cluster_bubblegrid(
+        embeddings_df.filter(pl.col("embedding_model") == "Nomic"),
+        False,
+        "output/vis/paper/fig2.pdf",
+    )
+
+    plot_cluster_run_lengths(
+        embeddings_df,
+        "output/vis/paper/fig3.pdf",
+    )
+
+    print(cluster_counts(embeddings_df, 3))
+    # print(cluster_counts(embeddings_df, 3).to_pandas().to_latex())
+
     ### RUNS
-    #
-    # from panic_tda.data_prep import load_runs_from_cache
 
-    # runs_df = load_runs_from_cache()
+    from panic_tda.data_prep import load_runs_from_cache
+    from panic_tda.datavis import plot_persistence_entropy
 
-    run_counts(session)
+    runs_df = load_runs_from_cache()
+    # print(run_counts(runs_df))
 
-    #
-    # plot_persistence_diagram_faceted(
-    #     runs_df, "output/vis/persistence_diagram_faceted.png"
-    # )
-    #
-    # plot_persistence_entropy(runs_df, "output/vis/persistence_entropy.pdf")
+    plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
-    # plot_persistence_entropy_by_prompt(
-    #     runs_df.filter(pl.col("embedding_model") == "Nomic"),
-    #     "output/vis/persistence_entropy_by_prompt.png",
-    # )
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)
