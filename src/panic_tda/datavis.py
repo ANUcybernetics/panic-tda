@@ -1112,7 +1112,7 @@ def plot_cluster_example_images(
 
 
 def plot_invocation_duration(
-    df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.pdf"
+    invocation_df: pl.DataFrame, output_file: str = "output/vis/invocation_duration.pdf"
 ) -> None:
     """
     Create and save a visualization of invocation duration distribution,
@@ -1123,7 +1123,7 @@ def plot_invocation_duration(
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
+    pandas_df = invocation_df.to_pandas()
 
     # Create the plot with model on x-axis and duration on y-axis
     plot = (
