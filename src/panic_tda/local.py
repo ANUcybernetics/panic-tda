@@ -1084,6 +1084,43 @@ def run_counts(runs_df: pl.DataFrame):
     return results
 
 
+def cluster_counts(embeddings_df: pl.DataFrame, top_n: int):
+    """
+    Counts the number of unique clusters for each network.
+
+    Args:
+        embeddings_df: Polars DataFrame containing embeddings data
+        top_n: Number of top clusters to consider
+
+    Returns:
+        List of tuples with (network, count)
+    """
+    # Count and rank embeddings by model and network
+    embedding_counts = (
+        embeddings_df.filter(pl.col("cluster_label").is_not_null())
+        .group_by("embedding_model", "network", "cluster_label")
+        .agg(pl.len().alias("count"))
+        .with_columns([
+            # Calculate percentage of total within group
+            (
+                pl.col("count")
+                * 100
+                / pl.col("count").sum().over(["embedding_model", "network"])
+            ).alias("percentage"),
+        ])
+        .with_columns(
+            pl.col("count")
+            .rank(method="dense", descending=True)
+            .over("embedding_model", "network")
+            .alias("rank")
+        )
+        .filter(pl.col("rank") <= top_n)
+        .sort(["embedding_model", "network", "rank"])
+    )
+
+    return embedding_counts
+
+
 def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
