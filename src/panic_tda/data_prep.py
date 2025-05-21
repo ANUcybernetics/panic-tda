@@ -215,7 +215,7 @@ def filter_top_n_clusters(
     cluster_ranks = cluster_counts.with_columns([
         pl.col("count")
         .rank(method="dense", descending=True)
-        .over(group_by_cols)
+        .over(["embedding_model"] + group_by_cols)
         .alias("rank")
     ])
 
