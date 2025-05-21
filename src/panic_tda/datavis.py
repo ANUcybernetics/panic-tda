@@ -21,10 +21,12 @@ from plotnine import (
     geom_violin,
     ggplot,
     labs,
+    scale_color_brewer,
     scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
     theme,
+    theme_538
 )
 from plotnine.options import set_option
 from sqlmodel import Session
@@ -339,10 +341,10 @@ def plot_cluster_run_lengths(
 ) -> None:
     """
     Create and save a visualization of cluster run length distributions with:
-    - run_length on x axis (with bin width 1)
+    - run_length on x axis
     - count on y axis
-    - embedding_model as fill color
-    - faceted by network
+    - network as color
+    - embedding_model represented by point shape
 
     Args:
         df: DataFrame containing embedding data with cluster_label
@@ -356,21 +358,31 @@ def plot_cluster_run_lengths(
         (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
 
+    # Aggregate to get counts by run_length, embedding_model, and network
+    count_df = (
+        run_lengths_df.group_by(["run_length", "embedding_model", "network"])
+        .agg(pl.count().alias("count"))
+        .sort(["run_length", "embedding_model", "network"])
+    )
+
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = run_lengths_df.to_pandas()
+    pandas_df = count_df.to_pandas()
 
     plot = (
         ggplot(
             pandas_df,
-            aes(x="run_length", fill="embedding_model"),
+            aes(x="run_length", y="count", color="network"),
         )
-        + geom_histogram(binwidth=1, position="dodge", show_legend=False)
-        + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
-        + labs(x="run length", y="count")
-        + facet_wrap("~ network", ncol=1)
+        + geom_point(size=3)
+        + geom_line()
+        # + scale_color_brewer(type="qual")
+        # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
+        + labs(x="run length", y="count", color="network")
+        + facet_wrap("~ embedding_model", ncol=1)
+        + theme_538()
         + theme(
-            figure_size=(8, 6),
-            strip_text=element_text(size=10),
+            figure_size=(10, 6),
+            legend_position="top",
         )
     )
 
