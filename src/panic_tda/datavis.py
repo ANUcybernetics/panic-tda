@@ -373,9 +373,9 @@ def plot_cluster_run_lengths(
             pandas_df,
             aes(x="run_length", y="count", color="network"),
         )
-        + geom_point(size=3)
+        + geom_point(size=2, stroke=1, fill="none")
         + geom_line()
-        # + scale_color_brewer(type="qual")
+        + scale_color_brewer(type="qual", palette=2)
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
         + labs(x="run length", y="count", color="network")
         + facet_wrap("~ embedding_model", ncol=1)
