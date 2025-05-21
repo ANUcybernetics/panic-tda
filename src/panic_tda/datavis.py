@@ -623,7 +623,8 @@ def plot_cluster_bubblegrid(
         counts_df.filter(pl.col("display_label") != pl.lit(""))
         .select("cluster_index", "cluster_label")
         .unique()
-        .to_struct("labels")
+        .to_pandas()
+        .to_latex(index=False)
     )
 
     # Convert to pandas for plotting (only at the end)
