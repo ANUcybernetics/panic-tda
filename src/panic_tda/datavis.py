@@ -24,6 +24,7 @@ from plotnine import (
     scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
+    scale_y_log10,
     theme,
 )
 from plotnine.options import set_option
@@ -377,7 +378,8 @@ def plot_cluster_run_lengths(
         + geom_line()
         + scale_color_brewer(type="qual", palette=2)
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
-        + labs(x="run length", y="count", color="")
+        + scale_y_log10()  # Log scale for y-axis
+        + labs(x="run length", y="count (log scale)", color="")
         + facet_wrap("~ embedding_model", ncol=1)
         + theme(
             figure_size=(8, 6),
