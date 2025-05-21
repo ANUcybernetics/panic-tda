@@ -205,7 +205,7 @@ def filter_top_n_clusters(
         group_by_cols: List of column names to group by
 
     Returns:
-        Filtered DataFrame containing only rows from the top n clusters
+        Filtered DataFrame containing only rows from the top n clusters, with count and rank columns
     """
     # Count occurrences of each cluster within each group
     group_cols = ["embedding_model"] + group_by_cols + ["cluster_label"]
@@ -223,7 +223,8 @@ def filter_top_n_clusters(
     top_clusters = cluster_ranks.filter(pl.col("rank") <= n)
 
     # Join with original dataframe to keep only rows from top clusters
-    result = df.join(top_clusters.select(group_cols), on=group_cols, how="inner")
+    # Include the count and rank columns in the result
+    result = df.join(top_clusters, on=group_cols, how="inner")
 
     return result
 
