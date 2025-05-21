@@ -318,13 +318,14 @@ def plot_persistence_entropy(
         )
         + geom_violin()
         + geom_boxplot(fill="white", width=0.5, alpha=0.5)
-        + labs(x="embedding model", y="distribution of persistence entropy")
+        + labs(x=None, y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
         + theme(
-            figure_size=(10, 6),
+            figure_size=(12, 8),
             strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
             axis_text_x=element_blank(),
+            legend_position="bottom",
         )
     )
 
