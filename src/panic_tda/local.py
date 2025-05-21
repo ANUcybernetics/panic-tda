@@ -229,9 +229,9 @@ def create_top_class_image_grids(
         (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
 
-    top_clusters = filter_top_n_clusters(
-        clustered_embeddings, 1, ["embedding_model", "network"]
-    ).select("embedding_model", "network", "invocation_id", "cluster_label")
+    top_clusters = filter_top_n_clusters(clustered_embeddings, 1, ["network"]).select(
+        "embedding_model", "network", "invocation_id", "cluster_label"
+    )
 
     # Create a nested dictionary organized by embedding_model and network
     nested_dict = {}
