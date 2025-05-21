@@ -1155,9 +1155,13 @@ def paper_charts(session: Session) -> None:
     )
     ### INVOCATIONS
     #
-    # from panic_tda.data_prep import load_invocations_from_cache
+    from panic_tda.data_prep import load_invocations_from_cache
+    from panic_tda.datavis import plot_invocation_duration
 
-    # invocations_df = load_invocations_from_cache()
+    invocations_df = load_invocations_from_cache()
+    invocations_df = invocations_df.filter(pl.col("run_id").is_in(selected_ids))
+
+    plot_invocation_duration(invocations_df)
 
     ### EMBEDDINGS
     #
@@ -1201,13 +1205,13 @@ def paper_charts(session: Session) -> None:
 
     ### RUNS
 
-    from panic_tda.data_prep import load_runs_from_cache
-    from panic_tda.datavis import plot_persistence_entropy
+    # from panic_tda.data_prep import load_runs_from_cache
+    # from panic_tda.datavis import plot_persistence_entropy
 
-    runs_df = load_runs_from_cache()
-    # print(run_counts(runs_df))
+    # runs_df = load_runs_from_cache()
+    # # print(run_counts(runs_df))
 
-    plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
+    # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)

@@ -1,13 +1,18 @@
 # TODO
 
+- update the README
+
+- fix up the write_label_map stuff - should be a polars df (or even an
+  expression?) so that it can be passed as an arg and joined on to whichever df
+  is being plotted
+
 - clustering
 
-  - run length violin plots (by cluster, and by network + prompt)
   - transition matrices (removing self-transitions)
   - order embeddings by "longest stable runs" (with `.rle()`), and calculate
     longest runs for each network (both "from start" and "anytime")
-  - if full TM isn't so illuminating, just do a histogram of top_n bigrams
-  - facet distributions by "stage" (perhaps beginning/middle/end)
+  - histogram of top_n bigrams
+  - facet cluster distributions by "stage" (perhaps beginning/middle/end)
   - how often does it return to the initial cluster? how often in a cluster vs
     outlier
   - how many of the labels are similar across different embeddings (or some
@@ -15,15 +20,7 @@
     models)... double-check that the clustering stuff is actually being faceted
     correctly
 
-- get h_n subscripting for charts (maybe even using an enum at the polars level)
-
-- by creating synthetic data with known drift values, check that both the
-  euclidean and cosine "fetch and calculate" functions are returning the correct
-  results
-
-- check normality
-
-- autoregressive parameter (time column)
+- glm with autoregressive parameter (time column)
 
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
   superclasses (and why we chose the models and params we've currently chosen)
@@ -31,40 +28,31 @@
 - (maybe) add the vector embedding of the initial prompt to the Run object (to
   save having to re-calculate it later)
 
+- add clustering results to the schemas & db (perhaps a new Cluster SQLModel
+  with label/medoid/centroid/embedding_model fields, and then each Embedding has
+  many of those)
+
 - populate the estimated_time function (for genai and embedding models) with
   real values
 
-- check that ExperimentConfig deletion cascades to all runs (and that there are
-  no invocations or embeddings that belong to a now-deleted experiment)
+ in output video, add visual indicator for which cluster the trajectory is in
+  (maybe in combination with tSNE)
 
-- export video improvements:
+- for export module, get the `prompt_order` parameter actually working
 
-  - add visual indicator for when there's a semantic "jump"
-  - add colour coding to the different model names
-  - "one label per row" and "one label per column"
-  - re-add the `prompt_order` parameter
-
-- tSNE chart would be cool/helpful (to see whether the different runs get
-  clustered together)
-
-- add florence2 or blip3 or some other (more modern) captioning model
+- add more genai models
 
 - experiment with actor pools for the run stage (because e.g. SDXLTurbo can
   certainly fit a few copies at once)
-
-- use the dummy embeddings in the final analysis as a control, perhaps with a
-  slightly more sophisticated "random walk" scheme
 
 - visualise the time taken for the various different invocations
 
 - run the tests in GitHub actions
 
-- create similarity matrices for runs
-
 - use the most modern typing syntax (`list` instead of `List`) consistently
   throughout
 
-- DB indexes
+- check DB indexes
 
 ## Int8 quantization for Flux.1-schnell
 
