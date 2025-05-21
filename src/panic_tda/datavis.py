@@ -575,7 +575,7 @@ def plot_cluster_bubblegrid(
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
-    # Filter out outliers if specified
+    # TODO this is currently broken, because outliers are now null
     if not include_outliers:
         filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
 
@@ -596,17 +596,19 @@ def plot_cluster_bubblegrid(
         read_existing_label_map("cluster_label", label_map_path).alias("cluster_index"),
     )
 
-    # Convert to pandas for plotting
-    pandas_df = counts_df.to_pandas()
+    # Calculate the 75th percentile threshold in polars
+    threshold = counts_df.select(pl.col("count").quantile(0.75)).item()
 
-    # Add display_label column that only shows labels for the top 25% of values
-    threshold = pandas_df["count"].quantile(
-        0.75
-    )  # Calculate threshold as 75th percentile
-    pandas_df["display_label"] = pandas_df.apply(
-        lambda row: row["cluster_index"] if row["count"] > threshold else "", axis=1
+    # Create display_label column using polars expressions
+    counts_df = counts_df.with_columns(
+        pl.when(pl.col("count") > threshold)
+        .then(pl.col("cluster_index").cast(pl.Utf8))
+        .otherwise(pl.lit(""))
+        .alias("display_label")
     )
 
+    # Convert to pandas for plotting (only at the end)
+    pandas_df = counts_df.to_pandas()
     # Create the bubble grid visualization
     plot = (
         ggplot(
