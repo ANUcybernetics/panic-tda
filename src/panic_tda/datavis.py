@@ -320,13 +320,15 @@ def plot_persistence_entropy(
         )
         + geom_violin()
         + geom_boxplot(fill="white", width=0.5, alpha=0.5)
-        + labs(x=None, y="persistence entropy", fill="embedding model")
+        + labs(y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
+        + theme_538()
         + theme(
             figure_size=(12, 8),
             strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
             axis_text_x=element_blank(),
+            axis_title_x=element_blank(),
             legend_position="bottom",
         )
     )
@@ -642,6 +644,7 @@ def plot_cluster_bubblegrid(
             fill="count",
         )
         + facet_wrap("~ network", ncol=4)
+        + theme_538()
         + theme(
             figure_size=(25, 11),
             strip_text=element_text(size=16),
