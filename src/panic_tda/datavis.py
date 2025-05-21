@@ -14,6 +14,7 @@ from plotnine import (
     facet_wrap,
     geom_bar,
     geom_boxplot,
+    geom_histogram,
     geom_line,
     geom_point,
     geom_text,
@@ -337,10 +338,10 @@ def plot_cluster_run_lengths(
 ) -> None:
     """
     Create and save a visualization of cluster run length distributions with:
-    - embedding_model on x axis
-    - run_length on y axis
+    - run_length on x axis (with bin width 1)
+    - count on y axis
     - embedding_model as fill color
-    - faceted by cluster_label
+    - faceted by network
 
     Args:
         df: DataFrame containing embedding data with cluster_label
@@ -360,17 +361,15 @@ def plot_cluster_run_lengths(
     plot = (
         ggplot(
             pandas_df,
-            aes(x="embedding_model", y="run_length", fill="embedding_model"),
+            aes(x="run_length", fill="embedding_model"),
         )
-        + geom_violin()
-        + geom_boxplot(fill="white", width=0.5, alpha=0.5)
-        + labs(x="embedding model", y="distribution of cluster run lengths")
-        + facet_wrap("~ network", ncol=4)
+        + geom_histogram(binwidth=1, position="dodge", show_legend=False)
+        + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
+        + labs(x="run length", y="count")
+        + facet_wrap("~ network", ncol=1)
         + theme(
-            figure_size=(15, 10),
+            figure_size=(8, 6),
             strip_text=element_text(size=10),
-            axis_ticks_major_x=element_blank(),
-            axis_text_x=element_blank(),
         )
     )
 
