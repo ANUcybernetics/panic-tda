@@ -1084,38 +1084,47 @@ def run_counts(runs_df: pl.DataFrame):
     return results
 
 
-def cluster_counts(embeddings_df: pl.DataFrame, top_n: int):
+def cluster_counts(
+    embeddings_df: pl.DataFrame, top_n: int, additional_group_vars: list = []
+):
     """
-    Counts the number of unique clusters for each network.
+    Counts the number of unique clusters for each embedding model and cluster label,
+    with optional additional grouping variables.
 
     Args:
         embeddings_df: Polars DataFrame containing embeddings data
         top_n: Number of top clusters to consider
+        additional_group_vars: Optional additional columns to group by (default: [])
 
     Returns:
-        List of tuples with (network, count)
+        DataFrame with cluster counts and rankings
     """
-    # Count and rank embeddings by model and network
+    # Create the group variables list - always include embedding_model and cluster_label
+    group_vars = ["embedding_model", "cluster_label"] + additional_group_vars
+
+    # Count and rank embeddings by specified grouping variables
     embedding_counts = (
         embeddings_df.filter(pl.col("cluster_label").is_not_null())
-        .group_by("embedding_model", "network", "cluster_label")
+        .group_by(group_vars)
         .agg(pl.len().alias("count"))
         .with_columns([
             # Calculate percentage of total within group
             (
                 pl.col("count")
                 * 100
-                / pl.col("count").sum().over(["embedding_model", "network"])
+                / pl.col("count")
+                .sum()
+                .over(group_vars[:-1])  # Group by everything except cluster_label
             ).alias("percentage"),
         ])
         .with_columns(
             pl.col("count")
             .rank(method="dense", descending=True)
-            .over("embedding_model", "network")
+            .over(group_vars[:-1])  # Group by everything except cluster_label
             .alias("rank")
         )
         .filter(pl.col("rank") <= top_n)
-        .sort(["embedding_model", "network", "rank"])
+        .sort(group_vars[:-1] + ["rank"])
     )
 
     return embedding_counts
@@ -1187,6 +1196,7 @@ def paper_charts(session: Session) -> None:
     )
 
     print(cluster_counts(embeddings_df, 3))
+    print(cluster_counts(embeddings_df, 3, ["network"]))
     # print(cluster_counts(embeddings_df, 3).to_pandas().to_latex())
 
     ### RUNS
