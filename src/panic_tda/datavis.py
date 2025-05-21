@@ -321,12 +321,13 @@ def plot_persistence_entropy(
         + labs(y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
         + theme(
-            figure_size=(12, 8),
-            strip_text=element_text(size=10),
+            figure_size=(8, 6),
+            plot_margin=0.0,
+            # strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
             axis_text_x=element_blank(),
             axis_title_x=element_blank(),
-            legend_position="bottom",
+            legend_position="top",
         )
     )
 
@@ -376,10 +377,11 @@ def plot_cluster_run_lengths(
         + geom_line()
         + scale_color_brewer(type="qual", palette=2)
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
-        + labs(x="run length", y="count", color="network")
+        + labs(x="run length", y="count", color="")
         + facet_wrap("~ embedding_model", ncol=1)
         + theme(
-            figure_size=(10, 6),
+            figure_size=(8, 6),
+            plot_margin=0.0,
             legend_position="top",
         )
     )
@@ -642,9 +644,10 @@ def plot_cluster_bubblegrid(
         + facet_grid("embedding_model ~ network", labeller="label_context")
         + theme(
             figure_size=(25, 11),
-            strip_text=element_text(size=16),
+            plot_margin=0.0,
+            strip_text=element_text(size=20),
             axis_text=element_text(size=14),
-            axis_title=element_text(size=16),
+            axis_title=element_text(size=20),
         )
     )
 
@@ -877,7 +880,7 @@ def plot_cluster_histograms_top_n(
         df = df.filter(pl.col("cluster_label") != "OUTLIER")
 
     # Filter to top N clusters
-    df = filter_top_n_clusters(df, top_n, ["embedding_model", "network"])
+    df = filter_top_n_clusters(df, top_n, ["network"])
 
     # Calculate the number of unique cluster labels to determine figure height
     num_unique_clusters = df.get_column("cluster_label").n_unique()
