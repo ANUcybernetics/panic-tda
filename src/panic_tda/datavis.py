@@ -25,7 +25,6 @@ from plotnine import (
     scale_x_continuous,
     scale_y_continuous,
     theme,
-    theme_538,
 )
 from plotnine.options import set_option
 from sqlmodel import Session
@@ -321,7 +320,6 @@ def plot_persistence_entropy(
         + geom_boxplot(fill="white", width=0.5, alpha=0.5)
         + labs(y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
-        + theme_538()
         + theme(
             figure_size=(12, 8),
             strip_text=element_text(size=10),
@@ -380,7 +378,6 @@ def plot_cluster_run_lengths(
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
         + labs(x="run length", y="count", color="network")
         + facet_wrap("~ embedding_model", ncol=1)
-        + theme_538()
         + theme(
             figure_size=(10, 6),
             legend_position="top",
@@ -643,7 +640,6 @@ def plot_cluster_bubblegrid(
             fill="count",
         )
         + facet_grid("embedding_model ~ network", labeller="label_context")
-        + theme_538()
         + theme(
             figure_size=(25, 11),
             strip_text=element_text(size=16),
