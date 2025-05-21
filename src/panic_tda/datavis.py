@@ -622,10 +622,10 @@ def plot_cluster_bubblegrid(
         + geom_text(aes(label="display_label"), color="black", size=10)
         + scale_size_continuous(range=(1, 12))
         + labs(
-            x="Cluster",
-            y="Prompt",
-            size="Count",
-            fill="Count",
+            x="cluster index",
+            y="initial prompt",
+            size="count",
+            fill="count",
         )
         + facet_wrap("~ network", ncol=4)
         + theme(
