@@ -20,12 +20,12 @@ The results of all the above computations will be stored in a local sqlite
 database for further analysis (see the `datavis` module for existing
 visualizations, or write your own).
 
-This This work design of this tool was initially motivated by the
+Note: this tool was initially motivated by the
 [**PANIC!** art installation](https://cybernetics.anu.edu.au/news/2022/11/22/panic-a-serendipity-engine/)
-(first exhibited 2022). Watching PANIC! in action, there is clearly some
-structure to the trajectories that the genAI model outputs "trace out". This
-tool is an attempt to quantify and understand that structure (see
-[_why?_](#why?) below).
+(first exhibited 2022)---see [DESIGN.md](./DESIGN.md) for more details. Watching
+PANIC! in action, there is clearly some structure to the trajectories that the
+genAI model outputs "trace out". This tool is an attempt to quantify and
+understand that structure (see [_why?_](#why?) below).
 
 ## Requirements
 

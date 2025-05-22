@@ -29,9 +29,13 @@ The PANIC! installation is a combination of software and hardware:
 
 Over the past few years, many visitors have observed the way that their initial
 text input (prompt) is transformed as the information is recursively transformed
-by these genAI models. Motivated by this (and our own curiosity) we set out in
-this `panic-tda`repo to create a tool for exploring the patterns in these
-information trajectories in a more systematic way.
+by these genAI models.
+
+## This panic-tda repository
+
+Motivated by this (and our own curiosity) we set out in this `panic-tda`repo to
+create a tool for exploring the patterns in these information trajectories in a
+more systematic way.
 
 `panic-tda` has different priorities to the actual PANIC installation: in
 particular it's designed to run many (thousands) of experiments in batch mode,
