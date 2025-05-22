@@ -558,36 +558,17 @@ def plot_cluster_bubblegrid(
     # Join with the label_map_df to add the cluster_index column
     counts_df = counts_df.join(label_map_df, on=["embedding_model", "cluster_label"])
 
-    # Calculate the median count threshold (for "top 50%").
-    # If counts_df is empty or the 'count' column is all null, quantile() will produce a null result.
-    # .item() extracts this value, which will be None in such cases, or the median value.
-    median_overall_count_threshold = counts_df.select(
-        pl.col("count").quantile(0.75)  # Using default interpolation, e.g., "linear"
-    ).item()
+    # Define the list of cluster indices to display labels for
+    displayable_cluster_indices = [1, 2, 17, 27, 37]
 
     # Create display_label column.
-    # A label (the cluster_index as a string) is displayed for a row if:
-    # 1. The 'count' in that row (which corresponds to a specific 'initial_prompt' for a
-    #    'cluster_index', within a given 'embedding_model' and 'network') is equal to the
-    #    maximum 'count' observed for that 'cluster_index' (across all 'initial_prompt's
-    #    within the same 'embedding_model' and 'network'). This ensures the label is placed
-    #    on the bubble(s) where the cluster is most prominent for that specific cluster.
-    # 2. This 'count' (which is the maximum for its cluster) is also strictly greater than
-    #    the 'median_overall_count_threshold'. This filters for clusters whose peak frequency
-    #    is significant enough to be in the top 50% of all observed counts.
-    #
-    # Note on null handling: If median_overall_count_threshold is None (e.g., from an empty
-    # counts_df), the comparison `pl.col("count") > None` results in a column of nulls.
-    # In Polars' `pl.when(condition)`, if the condition evaluates to null, the 'otherwise'
-    # branch is taken. This means if there's no valid median (e.g., no data), no labels
-    # will be displayed, which is a sensible default.
     counts_df = counts_df.with_columns(
         pl.when(
-            (
+            (pl.col("cluster_index").is_in(displayable_cluster_indices))
+            & (
                 pl.col("count")
                 == pl.max("count").over(["embedding_model", "network", "cluster_index"])
             )
-            & (pl.col("count") > median_overall_count_threshold)
         )
         .then(pl.col("cluster_index").cast(pl.Utf8))
         .otherwise(pl.lit(""))
@@ -605,7 +586,33 @@ def plot_cluster_bubblegrid(
 
     # Convert to pandas for plotting (only at the end)
     pandas_df = counts_df.to_pandas()
-    # Create the bubble grid visualization
+
+    # Determine the range and breaks for the x-axis
+    # Safely get max cluster_index, defaulting to 0 if empty or all NaN
+    if pandas_df["cluster_index"].empty:  # Check if the Series is empty
+        max_ci_int = 0
+    else:
+        _max_val = pandas_df["cluster_index"].max()  # Get max value
+        # Check if _max_val is NaN (which can happen if all values are NaN, or if the series is empty and .max() returns NaN for some pandas versions)
+        # A standard way to check for NaN is (value != value)
+        if isinstance(_max_val, float) and _max_val != _max_val:
+            max_ci_int = 0
+        else:
+            try:
+                max_ci_int = int(_max_val)  # Convert to int
+            except (
+                ValueError,
+                TypeError,
+            ):  # Catch potential errors during conversion if _max_val is not int-convertible
+                max_ci_int = 0  # Default to 0 on error
+
+    # Define tick positions (every 2)
+    # The range goes up to max_ci_int + 2 to ensure the last tick is at or after max_ci_int
+    x_axis_ticks = list(range(0, max_ci_int + 2, 2))
+
+    # Define labels for these ticks: show label if tick is a multiple of 10, otherwise empty string
+    x_axis_labels = [str(tick) if tick % 10 == 0 else "" for tick in x_axis_ticks]
+
     plot = (
         ggplot(
             pandas_df,
@@ -619,6 +626,9 @@ def plot_cluster_bubblegrid(
         + geom_point(alpha=0.8, show_legend=False)
         + geom_text(aes(label="display_label"), color="black", size=10)
         + scale_size_continuous(range=(1, 15))
+        + scale_x_continuous(
+            breaks=x_axis_ticks, labels=x_axis_labels
+        )  # Apply new ticks and labels
         + labs(
             x="cluster index",
             y="initial prompt",
