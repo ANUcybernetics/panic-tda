@@ -558,12 +558,37 @@ def plot_cluster_bubblegrid(
     # Join with the label_map_df to add the cluster_index column
     counts_df = counts_df.join(label_map_df, on=["embedding_model", "cluster_label"])
 
-    # Calculate the top percentile threshold in polars
-    threshold = counts_df.select(pl.col("count").quantile(0.9)).item()
+    # Calculate the median count threshold (for "top 50%").
+    # If counts_df is empty or the 'count' column is all null, quantile() will produce a null result.
+    # .item() extracts this value, which will be None in such cases, or the median value.
+    median_overall_count_threshold = counts_df.select(
+        pl.col("count").quantile(0.75)  # Using default interpolation, e.g., "linear"
+    ).item()
 
-    # Create display_label column using polars expressions
+    # Create display_label column.
+    # A label (the cluster_index as a string) is displayed for a row if:
+    # 1. The 'count' in that row (which corresponds to a specific 'initial_prompt' for a
+    #    'cluster_index', within a given 'embedding_model' and 'network') is equal to the
+    #    maximum 'count' observed for that 'cluster_index' (across all 'initial_prompt's
+    #    within the same 'embedding_model' and 'network'). This ensures the label is placed
+    #    on the bubble(s) where the cluster is most prominent for that specific cluster.
+    # 2. This 'count' (which is the maximum for its cluster) is also strictly greater than
+    #    the 'median_overall_count_threshold'. This filters for clusters whose peak frequency
+    #    is significant enough to be in the top 50% of all observed counts.
+    #
+    # Note on null handling: If median_overall_count_threshold is None (e.g., from an empty
+    # counts_df), the comparison `pl.col("count") > None` results in a column of nulls.
+    # In Polars' `pl.when(condition)`, if the condition evaluates to null, the 'otherwise'
+    # branch is taken. This means if there's no valid median (e.g., no data), no labels
+    # will be displayed, which is a sensible default.
     counts_df = counts_df.with_columns(
-        pl.when(pl.col("count") > threshold)
+        pl.when(
+            (
+                pl.col("count")
+                == pl.max("count").over(["embedding_model", "network", "cluster_index"])
+            )
+            & (pl.col("count") > median_overall_count_threshold)
+        )
         .then(pl.col("cluster_index").cast(pl.Utf8))
         .otherwise(pl.lit(""))
         .alias("display_label")
