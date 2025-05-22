@@ -2,10 +2,6 @@
 
 - update the README
 
-- fix up the write_label_map stuff - should be a polars df (or even an
-  expression?) so that it can be passed as an arg and joined on to whichever df
-  is being plotted
-
 - clustering
 
   - transition matrices (removing self-transitions)
@@ -35,8 +31,8 @@
 - populate the estimated_time function (for genai and embedding models) with
   real values
 
- in output video, add visual indicator for which cluster the trajectory is in
-  (maybe in combination with tSNE)
+in output video, add visual indicator for which cluster the trajectory is in
+(maybe in combination with tSNE)
 
 - for export module, get the `prompt_order` parameter actually working
 

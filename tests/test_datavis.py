@@ -1,4 +1,3 @@
-import json
 import os
 
 import polars as pl
@@ -12,6 +11,7 @@ from panic_tda.data_prep import (
     load_runs_df,
 )
 from panic_tda.datavis import (
+    create_label_map_df,
     plot_cluster_bubblegrid,
     plot_cluster_example_images,
     plot_cluster_histograms,
@@ -27,7 +27,6 @@ from panic_tda.datavis import (
     plot_persistence_entropy,
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
-    write_label_map,
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
@@ -316,20 +315,10 @@ def test_plot_cluster_timelines(db_session):
 
     # Define output file
     output_file = "output/test/cluster_timelines.pdf"
-    label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(
-        embeddings_df.select(
-            pl.concat_str([
-                pl.col("embedding_model"),
-                pl.lit("::"),
-                pl.col("cluster_label"),
-            ])
-        ).to_series(),
-        label_map_file,
-    )
-    plot_cluster_timelines(embeddings_df, output_file, label_map_file)
+    label_df = create_label_map_df(embeddings_df)
+    plot_cluster_timelines(embeddings_df, label_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -431,89 +420,100 @@ def test_plot_cluster_transitions(db_session):
 
     # Define output file
     output_file = "output/test/cluster_transitions.pdf"
-    label_map_file = "output/test/cluster_labels.json"
 
     # Generate the plot
-    write_label_map(
-        embeddings_df.select(
-            pl.concat_str([
-                pl.col("embedding_model"),
-                pl.lit("::"),
-                pl.col("cluster_label"),
-            ])
-        ).to_series(),
-        label_map_file,
-    )
-    plot_cluster_transitions(embeddings_df, True, output_file, label_map_file)
+    label_df = create_label_map_df(embeddings_df)
+    plot_cluster_transitions(embeddings_df, label_df, True, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-def test_cache_labels_and_read_from_cache(tmp_path):
-    """Test caching cluster labels to JSON and reading them back."""
+def test_create_label_map_df():
+    """Test that label_map_df is constructed properly and verifies that cluster_index
+    is unique for each embedding_model + cluster_label combination."""
 
-    # Create a polars Series with cluster labels
-    labels = [
-        "model1::Cluster_A",
-        "model1::Cluster_B",
-        "model1::OUTLIER",
-        "model1::Cluster_A",
-        "model1::Cluster_C",
-        "model1::OUTLIER",
-    ]
-    cluster_labels = pl.Series("cluster_labels", labels)
+    # Create a polars DataFrame with embedding_model and cluster_label columns
+    # Use multiple embedding models with unsorted cluster labels including duplicated labels
+    # across different embedding models
+    data = {
+        "embedding_model": [
+            "model1",
+            "model2",
+            "model1",
+            "model2",
+            "model1",
+            "model2",
+            "model1",
+            "model2",
+        ],
+        "cluster_label": [
+            "Cluster_B",
+            "Cluster_C",
+            "Cluster_A",
+            "Cluster_A",
+            "Cluster_B",
+            "OUTLIER",
+            "OUTLIER",
+            "Cluster_C",
+        ],
+    }
+    embeddings_df = pl.DataFrame(data)
 
-    # Create a temporary file path for testing
-    cache_path = os.path.join(tmp_path, "test_cluster_map.json")
+    # Test create_label_map_df function
+    label_map_df = create_label_map_df(embeddings_df)
 
-    # Test write_label_map function
-    label_map = write_label_map(cluster_labels, cache_path)
+    # Validate the output DataFrame
+    assert isinstance(label_map_df, pl.DataFrame)
+    assert label_map_df.height == 4
 
-    # Validate the output dictionary
-    assert isinstance(label_map, dict)
-    assert len(label_map) == 3  # 3 clusters
-    assert label_map["model1::Cluster_A"] > 0
-    assert label_map["model1::Cluster_B"] > 0
-    assert label_map["model1::Cluster_C"] > 0
-    assert label_map["model1::Cluster_A"] != label_map["model1::Cluster_B"]
-    assert label_map["model1::Cluster_A"] != label_map["model1::Cluster_C"]
-    assert label_map["model1::Cluster_B"] != label_map["model1::Cluster_C"]
+    # Check the columns
+    assert set(label_map_df.columns) == {
+        "embedding_model",
+        "cluster_label",
+        "cluster_index",
+    }
 
-    # Verify file was created
-    assert os.path.exists(cache_path)
+    # Verify that OUTLIER labels are excluded
+    assert not label_map_df.filter(pl.col("cluster_label") == "OUTLIER").height
 
-    # Read the map directly from the JSON file instead of using read_existing_label_map
-    with open(cache_path, "r") as f:
-        loaded_map = json.load(f)
+    # Verify each expected combination exists
+    assert (
+        label_map_df.filter(
+            (pl.col("embedding_model") == "model1")
+            & (pl.col("cluster_label") == "Cluster_A")
+        ).height
+        == 1
+    )
+    assert (
+        label_map_df.filter(
+            (pl.col("embedding_model") == "model1")
+            & (pl.col("cluster_label") == "Cluster_B")
+        ).height
+        == 1
+    )
+    assert (
+        label_map_df.filter(
+            (pl.col("embedding_model") == "model2")
+            & (pl.col("cluster_label") == "Cluster_A")
+        ).height
+        == 1
+    )
+    assert (
+        label_map_df.filter(
+            (pl.col("embedding_model") == "model2")
+            & (pl.col("cluster_label") == "Cluster_C")
+        ).height
+        == 1
+    )
 
-    # Verify loaded map matches original
-    assert loaded_map == label_map
+    # Verify that cluster_index values are unique
+    assert len(label_map_df["cluster_index"].unique()) == len(
+        set(label_map_df["cluster_index"].unique())
+    )
 
-    # Test with different labels to ensure IDs are assigned in order
-    new_labels = [
-        "model2::Group_1",
-        "model2::OUTLIER",
-        "model2::Group_2",
-        "model2::Group_3",
-        "model2::Group_1",
-    ]
-    new_cluster_labels = pl.Series("cluster_labels", new_labels)
-    new_cache_path = os.path.join(tmp_path, "test_cluster_map_2.json")
-
-    new_label_map = write_label_map(new_cluster_labels, new_cache_path)
-
-    # Validate the new mapping
-    assert new_label_map["model2::Group_1"] == 1
-    assert new_label_map["model2::Group_2"] == 2
-    assert new_label_map["model2::Group_3"] == 3
-
-    # Read the map directly from the JSON file instead of using read_existing_label_map
-    with open(new_cache_path, "r") as f:
-        loaded_new_map = json.load(f)
-
-    # Verify loaded map matches original
-    assert loaded_new_map == new_label_map
+    # Verify that cluster_index starts from 0 and is continuous
+    assert sorted(label_map_df["cluster_index"].to_list()) == list(range(1, 5))
 
 
 def test_plot_cluster_bubblegrid(db_session):
@@ -533,28 +533,18 @@ def test_plot_cluster_bubblegrid(db_session):
 
     # Define output file
     output_file = "output/test/cluster_bubblegrid.pdf"
-    label_map_file = "output/test/cluster_labels.json"
 
-    # Generate the plot
-    write_label_map(
-        embeddings_df.select(
-            pl.concat_str([
-                pl.col("embedding_model"),
-                pl.lit("::"),
-                pl.col("cluster_label"),
-            ])
-        ).to_series(),
-        label_map_file,
-    )
+    # Generate the label map
+    label_df = create_label_map_df(embeddings_df)
 
     # without outliers
-    plot_cluster_bubblegrid(embeddings_df, False, output_file, label_map_file)
+    plot_cluster_bubblegrid(embeddings_df, label_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_bubblegrid(embeddings_df, True, output_file, label_map_file)
+    plot_cluster_bubblegrid(embeddings_df, label_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )
@@ -577,30 +567,18 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
 
     # Define output file
     output_file = "output/test/cluster_run_length_bubblegrid.pdf"
-    label_map_file = "output/test/cluster_labels.json"
 
-    # Generate the plot
-    write_label_map(
-        embeddings_df.select(
-            pl.concat_str([
-                pl.col("embedding_model"),
-                pl.lit("::"),
-                pl.col("cluster_label"),
-            ])
-        ).to_series(),
-        label_map_file,
-    )
+    # Generate the label map
+    label_df = create_label_map_df(embeddings_df)
 
     # without outliers
-    plot_cluster_run_length_bubblegrid(
-        embeddings_df, False, output_file, label_map_file
-    )
+    plot_cluster_run_length_bubblegrid(embeddings_df, label_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_run_length_bubblegrid(embeddings_df, True, output_file, label_map_file)
+    plot_cluster_run_length_bubblegrid(embeddings_df, label_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )

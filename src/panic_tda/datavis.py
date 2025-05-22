@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from typing import Dict
 from uuid import UUID
 
 import polars as pl
@@ -63,58 +62,34 @@ def save(plot, filename: str) -> str:
     return filename
 
 
-def write_label_map(
-    cluster_labels: pl.Series,
-    output_path: str = "output/vis/cluster_label_map.json",
-) -> Dict[str, int]:
+def create_label_map_df(
+    embedding_df: pl.DataFrame,
+    output_path: str = "output/vis/cluster_label_map.tex",
+) -> pl.DataFrame:
     """
-    Map string cluster labels to integers and writes the mapping to a JSON file and a LaTeX file.
-    Outlier labels are completely excluded from the mapping.
-
-    Labels are expected to be in the format "embedding_model::cluster_label".
+    Creates a mapping of cluster labels to integer indices, excluding outliers.
 
     Args:
-        cluster_labels: A polars Series of string labels in format "embedding_model::cluster_label"
-        output_path: Path to save the JSON mapping file (LaTeX file will use same path with .tex extension)
+        embedding_df: DataFrame containing cluster_label and embedding_model columns
+        output_path: Path to save the LaTeX file
 
     Returns:
-        Dictionary mapping string labels to integers (starting from 1)
+        DataFrame with cluster_label and cluster_index columns for joining
     """
-    # Get unique labels
-    unique_labels = cluster_labels.unique().to_list()
+    # Filter out rows with null or OUTLIER cluster labels
+    filtered_df = embedding_df.filter(
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
+    )
 
-    # Filter out None and OUTLIER labels, and sort the rest
-    other_labels = []
+    # Get unique combinations of embedding_model and cluster_label, sorted alphabetically
+    unique_clusters = (
+        filtered_df.select("embedding_model", "cluster_label")
+        .unique()
+        .sort(["embedding_model", "cluster_label"])
+    )
 
-    for label in unique_labels:
-        if label is None:
-            continue
-        # Only include non-outlier labels
-        if not label.endswith("::OUTLIER"):
-            other_labels.append(label)
-
-    # Sort the non-outlier labels
-    other_labels.sort()
-
-    # Create mapping dictionary
-    label_map = {}
-
-    # Assign IDs to sorted labels, starting from 1
-    next_id = 1
-    for label in other_labels:
-        label_map[label] = next_id
-        next_id += 1
-
-    # Ensure output directory exists
-    output_dir = os.path.dirname(output_path)
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Write mapping to JSON file
-    with open(output_path, "w") as f:
-        json.dump(label_map, f, indent=2)
-
-    # Create LaTeX file path by replacing .json with .tex
-    latex_output_path = output_path.replace(".json", ".tex")
+    # Add cluster_index column with increasing integers starting at 1
+    map_df = unique_clusters.with_row_index("cluster_index", offset=1)
 
     # Create LaTeX content for the table
     latex_content = [
@@ -129,14 +104,14 @@ def write_label_map(
         "\\hline",
     ]
 
-    # Sort items by index value for the table
-    sorted_items = sorted(label_map.items(), key=lambda x: x[1])
-
     # Add rows to the table
-    for label, index in sorted_items:
+    for row in map_df.sort("cluster_index").iter_rows(named=True):
+        cluster_label = row["cluster_label"]
+        index = row["cluster_index"]
+
         # Escape special LaTeX characters
         escaped_label = (
-            label.replace("_", "\\_")
+            cluster_label.replace("_", "\\_")
             .replace("#", "\\#")
             .replace("$", "\\$")
             .replace("%", "\\%")
@@ -152,34 +127,11 @@ def write_label_map(
     latex_content.append("\\end{document}")
 
     # Write LaTeX file
-    with open(latex_output_path, "w") as f:
+    with open(output_path, "w") as f:
         f.write("\n".join(latex_content))
 
-    return label_map
-
-
-def read_existing_label_map(column_name: str, input_path: str) -> pl.Expr:
-    """
-    Read the mapping of string cluster labels to integers from a JSON file
-    and return a polars expression to use in with_columns.
-
-    Labels are expected to be in the format "embedding_model::cluster_label".
-
-    Args:
-        column_name: Name of the column to transform
-        input_path: Path to the JSON mapping file
-
-    Returns:
-        Polars expression that can be used in a with_columns call
-    """
-    # Read mapping from JSON file
-    with open(input_path, "r") as f:
-        label_map = json.load(f)
-
-    # Return a polars expression for use in with_columns
-    return pl.col(column_name).replace_strict(
-        label_map, default=pl.lit(None).cast(pl.Int64)
-    )
+    # Return the mapping dataframe for joining
+    return map_df.select("embedding_model", "cluster_label", "cluster_index")
 
 
 def create_persistence_diagram_chart(df: pl.DataFrame):
@@ -502,8 +454,8 @@ def plot_semantic_drift(
 
 def plot_cluster_timelines(
     df: pl.DataFrame,
+    label_map_df: pl.DataFrame,
     output_file: str = "output/vis/cluster_timelines.pdf",
-    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a faceted scatter plot showing cluster labels over sequence number for each run,
@@ -511,16 +463,14 @@ def plot_cluster_timelines(
 
     Args:
         df: DataFrame containing embedding data with cluster_label and sequence_number
+        label_map_df: DataFrame containing cluster label mappings
         output_file: Path to save the visualization
-        label_map_path: Path to the JSON file containing cluster label mappings
     """
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
-    # Convert string cluster labels to indices
-    indexed_df = filtered_df.with_columns(
-        read_existing_label_map("cluster_label", label_map_path).alias("cluster_index")
-    )
+    # Join with the label_map_df to add the cluster_index column
+    indexed_df = filtered_df.join(label_map_df, on=["embedding_model", "cluster_label"])
 
     # Calculate the number of unique facet combinations to determine figure height
     unique_facets_count = (
@@ -570,9 +520,9 @@ def plot_cluster_timelines(
 
 def plot_cluster_bubblegrid(
     df: pl.DataFrame,
+    label_map_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_bubblegrid.pdf",
-    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a bubble grid visualization of cluster label frequencies.
@@ -582,9 +532,9 @@ def plot_cluster_bubblegrid(
 
     Args:
         df: DataFrame containing embedding data with cluster_label and initial_prompt
+        label_map_df: DataFrame containing cluster label mappings
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
-        label_map_path: Path to the JSON file containing cluster label mappings
     """
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
@@ -605,10 +555,8 @@ def plot_cluster_bubblegrid(
         .sort(["embedding_model", "network", "cluster_label", "initial_prompt"])
     )
 
-    # Convert string cluster labels to their integer values using the label mapping
-    counts_df = counts_df.with_columns(
-        read_existing_label_map("cluster_label", label_map_path).alias("cluster_index"),
-    )
+    # Join with the label_map_df to add the cluster_index column
+    counts_df = counts_df.join(label_map_df, on=["embedding_model", "cluster_label"])
 
     # Calculate the top percentile threshold in polars
     threshold = counts_df.select(pl.col("count").quantile(0.9)).item()
@@ -669,9 +617,9 @@ def plot_cluster_bubblegrid(
 
 def plot_cluster_run_length_bubblegrid(
     df: pl.DataFrame,
+    label_map_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_run_length_bubblegrid.pdf",
-    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a bubble grid visualization of average cluster run lengths.
@@ -681,9 +629,9 @@ def plot_cluster_run_length_bubblegrid(
 
     Args:
         df: DataFrame containing embedding data with cluster_label and initial_prompt
+        label_map_df: DataFrame containing cluster label mappings
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
-        label_map_path: Path to the JSON file containing cluster label mappings
     """
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
@@ -709,9 +657,9 @@ def plot_cluster_run_length_bubblegrid(
         .sort(["embedding_model", "network", "cluster_label", "initial_prompt"])
     )
 
-    # Convert string cluster labels to their integer values using the label mapping
-    avg_run_lengths_df = avg_run_lengths_df.with_columns(
-        read_existing_label_map("cluster_label", label_map_path).alias("cluster_index"),
+    # Join with the label_map_df to add the cluster_index column
+    avg_run_lengths_df = avg_run_lengths_df.join(
+        label_map_df, on=["embedding_model", "cluster_label"]
     )
 
     # Convert to pandas for plotting
@@ -926,9 +874,9 @@ def plot_cluster_histograms_top_n(
 
 def plot_cluster_transitions(
     df: pl.DataFrame,
+    label_map_df: pl.DataFrame,
     include_outliers: bool,
     output_file: str = "output/vis/cluster_transitions.pdf",
-    label_map_path: str = "output/vis/cluster_label_map.json",
 ) -> None:
     """
     Create a visualization of cluster transitions within runs.
@@ -938,20 +886,29 @@ def plot_cluster_transitions(
 
     Args:
         df: DataFrame containing embedding data with cluster_label, run_id, and sequence_number
+        label_map_df: DataFrame containing cluster label mappings
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
-        label_map_path: Path to the JSON file containing cluster label mappings
     """
     # Use calculate_cluster_transitions to get transition counts
     transition_counts = calculate_cluster_transitions(
         df, ["embedding_model", "network"], include_outliers
     )
 
-    # Transform cluster labels to their integer values using the label mapping
-    transition_counts = transition_counts.with_columns([
-        read_existing_label_map("from_cluster", label_map_path).alias("from_cluster"),
-        read_existing_label_map("to_cluster", label_map_path).alias("to_cluster"),
-    ])
+    # Join with label_map_df to get cluster_index for from_cluster
+    transition_counts = transition_counts.join(
+        label_map_df.rename({"cluster_label": "from_cluster"}),
+        on=["embedding_model", "from_cluster"],
+    )
+
+    # Join with label_map_df to get cluster_index for to_cluster
+    transition_counts = transition_counts.join(
+        label_map_df.rename({
+            "cluster_label": "to_cluster",
+            "cluster_index": "to_cluster_index",
+        }),
+        on=["embedding_model", "to_cluster"],
+    )
 
     # Convert to pandas for plotting
     pandas_df = transition_counts.to_pandas()
@@ -961,8 +918,8 @@ def plot_cluster_transitions(
         ggplot(
             pandas_df,
             aes(
-                x="to_cluster",
-                y="from_cluster",
+                x="to_cluster_index",
+                y="cluster_index",
                 size="transition_count",
                 fill="transition_count",
             ),

@@ -1167,16 +1167,16 @@ def paper_charts(session: Session) -> None:
     #
     from panic_tda.data_prep import load_embeddings_from_cache
     from panic_tda.datavis import (
+        create_label_map_df,
         plot_cluster_bubblegrid,
         plot_cluster_run_lengths,
-        write_label_map,
     )
 
     embeddings_df = load_embeddings_from_cache()
     embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
 
     label_map_file = "output/vis/paper/cluster_labels.json"
-    write_label_map(
+    create_label_map_df(
         embeddings_df.select(
             pl.concat_str([
                 pl.col("embedding_model"),
