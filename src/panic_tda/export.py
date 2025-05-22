@@ -826,7 +826,7 @@ def export_timeline(
 
     # Set up font for text - single font size for all text
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-    font_size = int(IMAGE_SIZE * 0.2)  # 0.2 times the image size
+    font_size = int(IMAGE_SIZE * 0.25)
     font = ImageFont.truetype(font_path, font_size)
 
     # Calculate spacing based on font size
@@ -868,9 +868,6 @@ def export_timeline(
         draw.text((x, y), text, font=font, fill=(0, 0, 0))
         return banner
 
-    # Define abbreviations for network names
-    abbreviations = {"FluxSchnell": "Flux", "SDXLTurbo": "SDXL"}
-
     # Create single network banner for the top
     network_banner = Image.new(
         "RGB", (canvas_width, network_banner_height), color="white"
@@ -879,9 +876,7 @@ def export_timeline(
 
     # Create network labels with positions
     for network_idx, network in enumerate(all_networks):
-        # Create abbreviated network string
-        abbreviated_network = [abbreviations.get(net, net) for net in network]
-        network_str = "network: " + " → ".join(abbreviated_network)
+        network_str = "network: " + " → ".join(network)
 
         # Calculate position for this network
         col_start = network_idx * (timeline_width + network_spacing)
