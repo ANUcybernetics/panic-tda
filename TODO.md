@@ -1,7 +1,5 @@
 # TODO
 
-- update the README
-
 - clustering
 
   - transition matrices (removing self-transitions)
