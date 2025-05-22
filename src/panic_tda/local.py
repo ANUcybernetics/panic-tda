@@ -1163,6 +1163,10 @@ def paper_charts(session: Session) -> None:
 
     plot_invocation_duration(invocations_df)
 
+    print(
+        f"Total unique initial_prompts in invocations_df: {invocations_df.select(pl.col('initial_prompt').n_unique()).item()}"
+    )
+
     ### EMBEDDINGS
     #
     from panic_tda.data_prep import load_embeddings_from_cache
