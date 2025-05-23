@@ -1158,6 +1158,8 @@ def test_calculate_cluster_run_lengths():
     data = {
         "run_id": ["run1"] * 20,
         "embedding_model": ["model1"] * 20,
+        "initial_prompt": ["prompt1"] * 20,
+        "network": ["networkA"] * 20,
         "sequence_number": list(range(1, 21)),
         "cluster_label": (
             ["cluster_A"] * 5  # Run of 5 As
@@ -1179,10 +1181,13 @@ def test_calculate_cluster_run_lengths():
     assert isinstance(runs_df, pl.DataFrame)
 
     # Expected run lengths based on our synthetic data as a Polars DataFrame
-    # The order of runs should match their appearance in the sequence for each group.
+    # The order of runs should match their appearance in the sequence for each group,
+    # as preserved by the function's internal sorting by sequence_number_min.
     expected_runs_df = pl.DataFrame({
         "run_id": ["run1"] * 6,
         "embedding_model": ["model1"] * 6,
+        "initial_prompt": ["prompt1"] * 6,
+        "network": ["networkA"] * 6,
         "cluster_label": [
             "cluster_A",
             "cluster_B",
@@ -1195,24 +1200,35 @@ def test_calculate_cluster_run_lengths():
     })
 
     # Check columns exist
-    expected_columns = ["run_id", "embedding_model", "cluster_label", "run_length"]
+    expected_columns = [
+        "run_id",
+        "embedding_model",
+        "initial_prompt",
+        "network",
+        "cluster_label",
+        "run_length",
+    ]
     assert all(col in runs_df.columns for col in expected_columns)
     # Check there are no extraneous columns
     assert set(runs_df.columns) == set(expected_columns)
 
     # Compare the DataFrames
+    # The function sorts by group_cols and then by the start of each run (sequence_number_min internally)
+    # So, if expected_runs_df is defined in that precise order, direct comparison with check_row_order=True is valid.
     pl.testing.assert_frame_equal(
         runs_df,
         expected_runs_df,
         check_dtypes=True,
-        check_row_order=True,
-        check_column_order=False,
+        check_row_order=True, # Row order matters as function preserves run order
+        check_column_order=False, # Column order is checked by set comparison above
     )
 
     # Test with multiple run_ids
     multi_run_data = {
         "run_id": ["run1"] * 10 + ["run2"] * 10,
         "embedding_model": ["model1"] * 20,
+        "initial_prompt": ["prompt1"] * 10 + ["prompt2"] * 10,
+        "network": ["networkA"] * 10 + ["networkB"] * 10,
         "sequence_number": list(range(1, 11)) + list(range(1, 11)),
         "cluster_label": (
             ["cluster_A"] * 5
@@ -1227,11 +1243,13 @@ def test_calculate_cluster_run_lengths():
     actual_multi_runs_df = calculate_cluster_run_lengths(multi_run_df)
 
     # Expected runs for multiple run_ids as a Polars DataFrame
-    # Order of groups (run1 then run2) should be maintained from input.
-    # Order of runs within groups should be maintained.
+    # Order of groups (run1 then run2) should be maintained from input if input is sorted by group_cols.
+    # Order of runs within groups should be maintained based on sequence_number.
     expected_multi_runs_df = pl.DataFrame({
         "run_id": ["run1", "run1", "run2", "run2"],
         "embedding_model": ["model1", "model1", "model1", "model1"],
+        "initial_prompt": ["prompt1", "prompt1", "prompt2", "prompt2"],
+        "network": ["networkA", "networkA", "networkB", "networkB"],
         "cluster_label": ["cluster_A", "cluster_B", "cluster_C", "cluster_D"],
         "run_length": pl.Series([5, 5, 7, 3], dtype=pl.UInt32),
     })
@@ -1252,6 +1270,8 @@ def test_calculate_cluster_run_lengths_include_outliers():
     data = {
         "run_id": ["run1"] * 15,
         "embedding_model": ["model1"] * 15,
+        "initial_prompt": ["prompt_outlier_test"] * 15,
+        "network": ["network_outlier_test"] * 15,
         "sequence_number": list(range(1, 16)),
         "cluster_label": (
             ["cluster_A"] * 3  # Run of 3 As
@@ -1275,17 +1295,27 @@ def test_calculate_cluster_run_lengths_include_outliers():
 
     # Expected run lengths with include_outliers=False.
     # Outliers are filtered first, then runs are calculated on remaining data.
-    # Sequence becomes: A,A,A, B,B,B, C,C,C, A,A
-    # Runs: A(3), B(3), C(3), A(2)
+    # Sequence of non-outlier labels: A,A,A, B,B,B, C,C,C, A,A
+    # Corresponding runs (ordered by appearance): A(3), B(3), C(3), A(2)
     expected_filtered_runs_df = pl.DataFrame({
         "run_id": ["run1"] * 4,
         "embedding_model": ["model1"] * 4,
+        "initial_prompt": ["prompt_outlier_test"] * 4,
+        "network": ["network_outlier_test"] * 4,
         "cluster_label": ["cluster_A", "cluster_B", "cluster_C", "cluster_A"],
         "run_length": pl.Series([3, 3, 3, 2], dtype=pl.UInt32),
     })
 
+
     # Check columns exist
-    expected_columns = ["run_id", "embedding_model", "cluster_label", "run_length"]
+    expected_columns = [
+        "run_id",
+        "embedding_model",
+        "initial_prompt",
+        "network",
+        "cluster_label",
+        "run_length",
+    ]
     assert all(col in runs_df_filtered.columns for col in expected_columns)
     # Check there are no extraneous columns
     assert set(runs_df_filtered.columns) == set(expected_columns)
@@ -1304,10 +1334,12 @@ def test_calculate_cluster_run_lengths_include_outliers():
 
     # Expected run lengths with include_outliers=True.
     # Original sequence: A,A,A, O,O, B,B,B, O, C,C,C, O, A,A
-    # Runs: A(3), O(2), B(3), O(1), C(3), O(1), A(2)
+    # Corresponding runs (ordered by appearance): A(3), O(2), B(3), O(1), C(3), O(1), A(2)
     expected_unfiltered_runs_df = pl.DataFrame({
         "run_id": ["run1"] * 7,
         "embedding_model": ["model1"] * 7,
+        "initial_prompt": ["prompt_outlier_test"] * 7,
+        "network": ["network_outlier_test"] * 7,
         "cluster_label": [
             "cluster_A",
             "OUTLIER",
