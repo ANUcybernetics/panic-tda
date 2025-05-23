@@ -1156,21 +1156,22 @@ def paper_charts(session: Session) -> None:
     )
     ### INVOCATIONS
     #
-    from panic_tda.data_prep import load_invocations_from_cache
-    from panic_tda.datavis import plot_invocation_duration
+    # from panic_tda.data_prep import load_invocations_from_cache
+    # from panic_tda.datavis import plot_invocation_duration
 
-    invocations_df = load_invocations_from_cache()
-    invocations_df = invocations_df.filter(pl.col("run_id").is_in(selected_ids))
+    # invocations_df = load_invocations_from_cache()
+    # invocations_df = invocations_df.filter(pl.col("run_id").is_in(selected_ids))
 
-    plot_invocation_duration(invocations_df)
+    # plot_invocation_duration(invocations_df)
 
-    print(
-        f"Total unique initial_prompts in invocations_df: {invocations_df.select(pl.col('initial_prompt').n_unique()).item()}"
-    )
+    # print(
+    #     f"Total unique initial_prompts in invocations_df: {invocations_df.select(pl.col('initial_prompt').n_unique()).item()}"
+    # )
 
     ### EMBEDDINGS
     #
     from panic_tda.data_prep import (
+        calculate_cluster_run_lengths,
         load_embeddings_from_cache,
     )
     from panic_tda.datavis import (
@@ -1194,10 +1195,19 @@ def paper_charts(session: Session) -> None:
 
     plot_cluster_run_length_violin(
         embeddings_df,
+        True,
         "output/vis/paper/fig3.pdf",
     )
 
-    # run_length_df = calculate_cluster_run_lengths(embeddings_df)
+    run_length_df = calculate_cluster_run_lengths(embeddings_df, True)
+    run_length_df = run_length_df.join(
+        label_df, on=["embedding_model", "cluster_label"], how="left"
+    )
+    print(
+        run_length_df.filter(
+            (pl.col("run_length") == 50) & (pl.col("cluster_label") != "OUTLIER")
+        )
+    )
     # print(
     #     run_length_df.group_by("embedding_model").agg([
     #         pl.col("run_length").quantile(0.25).alias("run_length_q25"),
