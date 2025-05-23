@@ -1202,7 +1202,11 @@ def test_calculate_cluster_run_lengths():
 
     # Compare the DataFrames
     pl.testing.assert_frame_equal(
-        runs_df, expected_runs_df, check_dtypes=True, check_row_order=True, check_column_order=False
+        runs_df,
+        expected_runs_df,
+        check_dtypes=True,
+        check_row_order=True,
+        check_column_order=False,
     )
 
     # Test with multiple run_ids

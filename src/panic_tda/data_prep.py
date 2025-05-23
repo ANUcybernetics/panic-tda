@@ -305,9 +305,11 @@ def calculate_cluster_run_lengths(
     group_cols = ["embedding_model", "run_id", "initial_prompt", "network"]
 
     # Create a dataframe with each group's data and apply RLE
-    result_df = filtered_df.group_by(group_cols).agg([
-        pl.col("cluster_label").rle().alias("rle_result")
-    ]).explode("rle_result")
+    result_df = (
+        filtered_df.group_by(group_cols)
+        .agg([pl.col("cluster_label").rle().alias("rle_result")])
+        .explode("rle_result")
+    )
 
     # Extract the length and value from the RLE struct
     result_df = result_df.with_columns([
