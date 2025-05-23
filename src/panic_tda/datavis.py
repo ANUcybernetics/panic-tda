@@ -378,18 +378,17 @@ def plot_cluster_run_length_violin(
         + geom_boxplot(
             width=0.1, fill="white", alpha=0.7, outlier_shape=""
         )  # Add a narrow boxplot inside, hide its outliers
-        + labs(y="cluster run length")  # X-axis label from aes, fill legend suppressed
+        + labs(
+            y="run length distribution"
+        )  # X-axis label from aes, fill legend suppressed
         + facet_grid("~ network")  # Facet by network on columns
         + theme(
-            figure_size=(12, 6),  # Adjust as needed
-            plot_margin=0.05,
+            figure_size=(9, 3),  # Adjust as needed
+            plot_margin=0.0,
             strip_text=element_text(size=10),
-            axis_text_x=element_text(
-                angle=45, hjust=1, size=9
-            ),  # Rotated for readability
-            axis_title_x=element_blank(),  # "Embedding Model" is implicit from ticks
-            axis_title_y=element_text(size=10),
-            legend_position="none",  # Fill color legend is redundant with x-axis
+            axis_text_x=element_blank(),
+            axis_title_x=element_blank(),
+            legend_position="bottom",  # Fill color legend is redundant with x-axis
         )
     )
 
