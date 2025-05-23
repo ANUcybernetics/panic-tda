@@ -637,7 +637,7 @@ def plot_cluster_bubblegrid(
         )
         + facet_grid("embedding_model ~ network", labeller="label_context")
         + theme(
-            figure_size=(25, 11),
+            figure_size=(24, 11),
             plot_margin=0.0,
             strip_text=element_text(size=20),
             axis_text=element_text(size=14),
