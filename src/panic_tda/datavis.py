@@ -345,7 +345,9 @@ def plot_cluster_run_lengths(
 
 
 def plot_cluster_run_length_violin(
-    df: pl.DataFrame, output_file: str = "output/vis/cluster_run_length_violin.pdf"
+    df: pl.DataFrame,
+    include_outliers: bool = False,
+    output_file: str = "output/vis/cluster_run_length_violin.pdf",
 ) -> None:
     """
     Create and save a violin plot of cluster run length distributions.
@@ -359,7 +361,7 @@ def plot_cluster_run_length_violin(
             and network. The 'network' column is expected to be a list of strings.
         output_file: Path to save the visualization
     """
-    run_lengths_df = calculate_cluster_run_lengths(df)
+    run_lengths_df = calculate_cluster_run_lengths(df, include_outliers)
 
     # Filter out null or OUTLIER cluster labels
     run_lengths_df = run_lengths_df.filter(
@@ -374,9 +376,9 @@ def plot_cluster_run_length_violin(
             pandas_df,
             aes(x="embedding_model", y="run_length", fill="embedding_model"),
         )
-        + geom_violin(trim=False)  # trim=False to show full violin tails
+        + geom_violin()
         + geom_boxplot(
-            width=0.3, fill="white", alpha=0.7, outlier_shape=""
+            width=0.3, fill="white", alpha=0.7
         )  # Add a narrow boxplot inside, hide its outliers
         + labs(
             y="run length distribution", fill="embedding model"
