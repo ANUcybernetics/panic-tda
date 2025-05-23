@@ -1171,13 +1171,12 @@ def paper_charts(session: Session) -> None:
     ### EMBEDDINGS
     #
     from panic_tda.data_prep import (
-        calculate_cluster_run_lengths,
         load_embeddings_from_cache,
     )
     from panic_tda.datavis import (
         create_label_map_df,
         plot_cluster_bubblegrid,
-        plot_cluster_run_lengths,
+        plot_cluster_run_length_violin,
     )
 
     embeddings_df = load_embeddings_from_cache()
@@ -1193,39 +1192,33 @@ def paper_charts(session: Session) -> None:
         "output/vis/paper/fig2.pdf",
     )
 
-    plot_cluster_run_lengths(
+    plot_cluster_run_length_violin(
         embeddings_df,
         "output/vis/paper/fig3.pdf",
     )
 
-    run_length_df = calculate_cluster_run_lengths(embeddings_df)
-    print(
-        run_length_df
-        .group_by("embedding_model")
-        .agg([
-            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
-            pl.col("run_length").quantile(0.50).alias("run_length_median"),
-            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
-        ])
-    )
-    print(
-        run_length_df
-        .group_by("network")
-        .agg([
-            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
-            pl.col("run_length").quantile(0.50).alias("run_length_median"),
-            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
-        ])
-    )
-    print(
-        run_length_df
-        .group_by("initial_prompt")
-        .agg([
-            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
-            pl.col("run_length").quantile(0.50).alias("run_length_median"),
-            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
-        ])
-    )
+    # run_length_df = calculate_cluster_run_lengths(embeddings_df)
+    # print(
+    #     run_length_df.group_by("embedding_model").agg([
+    #         pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+    #         pl.col("run_length").quantile(0.50).alias("run_length_median"),
+    #         pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+    #     ])
+    # )
+    # print(
+    #     run_length_df.group_by("network").agg([
+    #         pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+    #         pl.col("run_length").quantile(0.50).alias("run_length_median"),
+    #         pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+    #     ])
+    # )
+    # print(
+    #     run_length_df.group_by("initial_prompt").agg([
+    #         pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+    #         pl.col("run_length").quantile(0.50).alias("run_length_median"),
+    #         pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+    #     ])
+    # )
 
     # print(cluster_counts(embeddings_df, 1))
     # print(
