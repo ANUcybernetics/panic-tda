@@ -379,7 +379,7 @@ def plot_cluster_run_length_violin(
             width=0.3, fill="white", alpha=0.7, outlier_shape=""
         )  # Add a narrow boxplot inside, hide its outliers
         + labs(
-            y="run length distribution"
+            y="run length distribution", fill="embedding model"
         )  # X-axis label from aes, fill legend suppressed
         + facet_grid("~ network")  # Facet by network on columns
         + theme(
