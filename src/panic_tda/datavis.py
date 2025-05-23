@@ -376,7 +376,7 @@ def plot_cluster_run_length_violin(
         )
         + geom_violin(trim=False)  # trim=False to show full violin tails
         + geom_boxplot(
-            width=0.1, fill="white", alpha=0.7, outlier_shape=""
+            width=0.3, fill="white", alpha=0.7, outlier_shape=""
         )  # Add a narrow boxplot inside, hide its outliers
         + labs(
             y="run length distribution"
