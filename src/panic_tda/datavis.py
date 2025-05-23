@@ -273,7 +273,7 @@ def plot_persistence_entropy(
         + labs(y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
         + theme(
-            figure_size=(6.5, 5),
+            figure_size=(6.8, 5),
             plot_margin=0.0,
             # strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
@@ -385,7 +385,7 @@ def plot_cluster_run_length_violin(
         )  # X-axis label from aes, fill legend suppressed
         + facet_grid("~ network")  # Facet by network on columns
         + theme(
-            figure_size=(6.5, 2.5),  # Adjust as needed
+            figure_size=(6.8, 2.5),  # Adjust as needed
             plot_margin=0.0,
             axis_text_x=element_blank(),
             axis_title_x=element_blank(),

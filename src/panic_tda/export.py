@@ -816,7 +816,7 @@ def export_timeline(
     timeline_width = images_per_run * IMAGE_SIZE
 
     # Add spacing between network columns
-    network_spacing = 20
+    network_spacing = 80
     timeline_total_width = cols * timeline_width
     if cols > 1:
         timeline_total_width += (cols - 1) * network_spacing
