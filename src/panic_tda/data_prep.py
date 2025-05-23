@@ -284,7 +284,8 @@ def calculate_cluster_run_lengths(
 
     Args:
         df: DataFrame containing embeddings with 'cluster_label',
-            'sequence_number', 'run_id', and 'embedding_model' columns.
+            'sequence_number', 'run_id', and 'embedding_model' columns (sequence_number must
+            be sorted within run_id).
         include_outliers: Whether to include "OUTLIER" clusters (default: False).
 
     Returns:
@@ -303,11 +304,8 @@ def calculate_cluster_run_lengths(
     # RLE is applied per run_id and per embedding_model
     group_cols = ["run_id", "embedding_model"]
 
-    # Sort by group columns and sequence number to ensure correct order for RLE
-    sorted_df = filtered_df.sort(group_cols + ["sequence_number"])
-
     # Create a dataframe with each group's data and apply RLE
-    result_df = sorted_df.group_by(group_cols).agg([
+    result_df = filtered_df.group_by(group_cols).agg([
         pl.col("cluster_label").rle().alias("rle_result")
     ]).explode("rle_result")
 
