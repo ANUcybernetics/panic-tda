@@ -314,7 +314,8 @@ def plot_cluster_run_lengths(
     # Aggregate to get counts by run_length, embedding_model, and network
     count_df = (
         run_lengths_df.group_by(["run_length", "embedding_model", "network"])
-        .agg(pl.len()).alias("count"))
+        .agg(pl.len())
+        .alias("count")
         .sort(["run_length", "embedding_model", "network"])
     )
 
@@ -676,8 +677,7 @@ def plot_cluster_run_length_bubblegrid(
         filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
 
     # Calculate run lengths using calculate_cluster_run_lengths
-    run_lengths_df = calculate_cluster_run_lengths(
-        filtered_df)
+    run_lengths_df = calculate_cluster_run_lengths(filtered_df)
 
     # Group by and calculate average run length
     avg_run_lengths_df = (
