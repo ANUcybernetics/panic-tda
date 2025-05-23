@@ -10,6 +10,7 @@ from panic_tda.data_prep import (
     load_invocations_df,
     load_runs_df,
 )
+from panic_tda.datavis import plot_cluster_run_length_violin # Temporary import for clarity
 from panic_tda.datavis import (
     create_label_map_df,
     plot_cluster_bubblegrid,
@@ -272,6 +273,25 @@ def test_plot_cluster_run_lengths(db_session):
 
     # Generate the plot
     plot_cluster_run_lengths(embeddings_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_cluster_run_length_violin(db_session):
+    # Setup the experiment with cluster data
+    setup_cluster_experiment(db_session)
+
+    # Load the necessary data
+    embeddings_df = load_embeddings_df(db_session)
+    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+
+    # Define output file
+    output_file = "output/test/cluster_run_length_violin.pdf"
+
+    # Generate the plot
+    # Assuming plot_cluster_run_length_violin is imported
+    plot_cluster_run_length_violin(embeddings_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

@@ -345,6 +345,70 @@ def plot_cluster_run_lengths(
     logging.info(f"Saved cluster run lengths plot to {saved_file}")
 
 
+def plot_cluster_run_length_violin(
+    df: pl.DataFrame, output_file: str = "output/vis/cluster_run_length_violin.pdf"
+) -> None:
+    """
+    Create and save a violin plot of cluster run length distributions.
+
+    - run_length on y-axis
+    - embedding_model on x-axis and as fill color
+    - faceted by network
+
+    Args:
+        df: DataFrame containing embedding data with cluster_label, embedding_model,
+            and network. The 'network' column is expected to be a list of strings.
+        output_file: Path to save the visualization
+    """
+    # Ensure network column is a string representation for faceting
+    # This is expected as per how 'network' is created in load_runs_df
+    df = df.with_columns(pl.col("network").list.join(" → ").alias("network"))
+
+    # Calculate run lengths
+    run_lengths_df = calculate_cluster_run_lengths(df)
+
+    # Filter out null or OUTLIER cluster labels
+    run_lengths_df = run_lengths_df.filter(
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
+    )
+
+    # Convert polars DataFrame to pandas for plotnine
+    pandas_df = run_lengths_df.to_pandas()
+
+    if pandas_df.empty:
+        logging.warning(
+            "DataFrame is empty after processing for plot_cluster_run_length_violin. Skipping plot generation."
+        )
+        return
+
+    plot = (
+        ggplot(
+            pandas_df,
+            aes(x="embedding_model", y="run_length", fill="embedding_model"),
+        )
+        + geom_violin(trim=False)  # trim=False to show full violin tails
+        + geom_boxplot(
+            width=0.1, fill="white", alpha=0.7, outlier_shape=""
+        )  # Add a narrow boxplot inside, hide its outliers
+        + labs(y="Cluster Run Length")  # X-axis label from aes, fill legend suppressed
+        + facet_grid("~ network")  # Facet by network on columns
+        + theme(
+            figure_size=(12, 6),  # Adjust as needed
+            plot_margin=0.05,
+            strip_text=element_text(size=10),
+            axis_text_x=element_text(
+                angle=45, hjust=1, size=9
+            ),  # Rotated for readability
+            axis_title_x=element_blank(),  # "Embedding Model" is implicit from ticks
+            axis_title_y=element_text(size=10),
+            legend_position="none",  # Fill color legend is redundant with x-axis
+        )
+    )
+
+    # Save plot with high resolution
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved cluster run length violin plot to {saved_file}")
+
 def plot_persistence_entropy_by_prompt(
     df: pl.DataFrame, output_file: str = "output/vis/persistence_entropy_by_prompt.pdf"
 ) -> None:
