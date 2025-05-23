@@ -314,7 +314,7 @@ def plot_cluster_run_lengths(
     # Aggregate to get counts by run_length, embedding_model, and network
     count_df = (
         run_lengths_df.group_by(["run_length", "embedding_model", "network"])
-        .agg(pl.count().alias("count"))
+        .agg(pl.len()).alias("count"))
         .sort(["run_length", "embedding_model", "network"])
     )
 
