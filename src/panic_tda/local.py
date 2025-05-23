@@ -1206,7 +1206,7 @@ def paper_charts(session: Session) -> None:
     print(
         run_length_df.filter(
             (pl.col("run_length") == 50) & (pl.col("cluster_label") != "OUTLIER")
-        )
+        ).sort("initial_prompt")
     )
     # print(
     #     run_length_df.group_by("embedding_model").agg([
