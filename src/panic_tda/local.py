@@ -1170,7 +1170,10 @@ def paper_charts(session: Session) -> None:
 
     ### EMBEDDINGS
     #
-    from panic_tda.data_prep import load_embeddings_from_cache
+    from panic_tda.data_prep import (
+        calculate_cluster_run_lengths,
+        load_embeddings_from_cache,
+    )
     from panic_tda.datavis import (
         create_label_map_df,
         plot_cluster_bubblegrid,
@@ -1195,33 +1198,62 @@ def paper_charts(session: Session) -> None:
         "output/vis/paper/fig3.pdf",
     )
 
-    # print(cluster_counts(embeddings_df, 1))
+    run_length_df = calculate_cluster_run_lengths(embeddings_df)
     print(
-        cluster_counts(embeddings_df.filter(pl.col("embedding_model") == "Nomic"), 6)
-        .join(label_df, on=["embedding_model", "cluster_label"], how="left")
-        .select("cluster_label", "cluster_index", "percentage")
-        .with_columns(pl.col("percentage").round(1).alias("percentage"))
-        .to_pandas()
-        .to_latex(index=False)
+        run_length_df
+        .group_by("embedding_model")
+        .agg([
+            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+            pl.col("run_length").quantile(0.50).alias("run_length_median"),
+            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+        ])
+    )
+    print(
+        run_length_df
+        .group_by("network")
+        .agg([
+            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+            pl.col("run_length").quantile(0.50).alias("run_length_median"),
+            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+        ])
+    )
+    print(
+        run_length_df
+        .group_by("initial_prompt")
+        .agg([
+            pl.col("run_length").quantile(0.25).alias("run_length_q25"),
+            pl.col("run_length").quantile(0.50).alias("run_length_median"),
+            pl.col("run_length").quantile(0.75).alias("run_length_q75"),
+        ])
     )
 
-    print(
-        embeddings_df.group_by("embedding_model")
-        .agg(pl.col("id").n_unique().alias("embedding_count"))
-        .sort("embedding_count", descending=True)
-    )
+    # print(cluster_counts(embeddings_df, 1))
+    # print(
+    #     cluster_counts(embeddings_df.filter(pl.col("embedding_model") == "Nomic"), 6)
+    #     .join(label_df, on=["embedding_model", "cluster_label"], how="left")
+    #     .select("cluster_label", "cluster_index", "percentage")
+    #     .with_columns(pl.col("percentage").round(1).alias("percentage"))
+    #     .to_pandas()
+    #     .to_latex(index=False)
+    # )
+
+    # print(
+    #     embeddings_df.group_by("embedding_model")
+    #     .agg(pl.col("id").n_unique().alias("embedding_count"))
+    #     .sort("embedding_count", descending=True)
+    # )
 
     # print(cluster_counts(embeddings_df, 3).to_pandas().to_latex())
 
     ### RUNS
 
-    from panic_tda.data_prep import load_runs_from_cache
-    # from panic_tda.datavis import plot_persistence_entropy
+    # from panic_tda.data_prep import load_runs_from_cache
+    # # from panic_tda.datavis import plot_persistence_entropy
 
-    runs_df = load_runs_from_cache()
-    runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
+    # runs_df = load_runs_from_cache()
+    # runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
 
-    print(run_counts(runs_df, ["network"]))
+    # print(run_counts(runs_df, ["network"]))
 
     # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
