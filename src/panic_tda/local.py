@@ -1063,20 +1063,21 @@ TOP4_RUN_IDS = [
 ]
 
 
-def run_counts(runs_df: pl.DataFrame):
+def run_counts(runs_df: pl.DataFrame, grouping_cols: list[str]):
     """
-    Counts the number of unique run IDs for each network.
+    Counts the number of unique run IDs for each combination of specified grouping columns.
 
     Args:
         runs_df: Polars DataFrame containing runs data
+        grouping_cols: A list of column names to group by.
 
     Returns:
-        List of tuples with (network, count)
+        Polars DataFrame with grouping columns and the count of unique run_ids.
     """
 
-    # Group by network and count unique run_ids
+    # Group by specified columns and count unique run_ids
     results = (
-        runs_df.group_by("network", "initial_prompt")
+        runs_df.group_by(grouping_cols)
         .agg(pl.col("run_id").n_unique().alias("count"))
         .sort("count", descending=True)
     )
@@ -1203,15 +1204,24 @@ def paper_charts(session: Session) -> None:
         .to_pandas()
         .to_latex(index=False)
     )
+
+    print(
+        embeddings_df.group_by("embedding_model")
+        .agg(pl.col("id").n_unique().alias("embedding_count"))
+        .sort("embedding_count", descending=True)
+    )
+
     # print(cluster_counts(embeddings_df, 3).to_pandas().to_latex())
 
     ### RUNS
 
-    # from panic_tda.data_prep import load_runs_from_cache
+    from panic_tda.data_prep import load_runs_from_cache
     # from panic_tda.datavis import plot_persistence_entropy
 
-    # runs_df = load_runs_from_cache()
-    # # print(run_counts(runs_df))
+    runs_df = load_runs_from_cache()
+    runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
+
+    print(run_counts(runs_df, ["network"]))
 
     # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
