@@ -159,7 +159,7 @@ def test_load_embeddings_df(db_session):
     assert text_row["initial_prompt"] == "test embedding dataframe"
     assert text_row["text_model"] == "DummyI2T"
     assert text_row["sequence_number"] == 1
-    assert text_row["network"] == "DummyT2I → DummyI2T"
+    assert text_row["network"] == "DummyT2I→DummyI2T"
 
     # Check output text for text model (DummyI2T)
     assert "text" in text_row
@@ -1219,8 +1219,8 @@ def test_calculate_cluster_run_lengths():
         runs_df,
         expected_runs_df,
         check_dtypes=True,
-        check_row_order=True, # Row order matters as function preserves run order
-        check_column_order=False, # Column order is checked by set comparison above
+        check_row_order=True,  # Row order matters as function preserves run order
+        check_column_order=False,  # Column order is checked by set comparison above
     )
 
     # Test with multiple run_ids
@@ -1305,7 +1305,6 @@ def test_calculate_cluster_run_lengths_include_outliers():
         "cluster_label": ["cluster_A", "cluster_B", "cluster_C", "cluster_A"],
         "run_length": pl.Series([3, 3, 3, 2], dtype=pl.UInt32),
     })
-
 
     # Check columns exist
     expected_columns = [

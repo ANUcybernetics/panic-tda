@@ -812,7 +812,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 
     # Parse network from JSON string and create network_path column
     df = df.with_columns([
-        pl.col("network").str.json_decode().list.join(" → ").alias("network")
+        pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
 
     return df

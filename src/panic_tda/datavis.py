@@ -257,7 +257,7 @@ def plot_persistence_entropy(
         pl.col("homology_dimension")
         .replace_strict({0: "h₀", 1: "h₁", 2: "h₂"})
         .alias("homology_dimension"),
-        pl.col("network").list.join(" → ").alias("network"),
+        pl.col("network").list.join("→").alias("network"),
     )
 
     # Convert polars DataFrame to pandas for plotnine
@@ -273,13 +273,13 @@ def plot_persistence_entropy(
         + labs(y="persistence entropy", fill="embedding model")
         + facet_grid("homology_dimension ~ network")
         + theme(
-            figure_size=(8, 6),
+            figure_size=(6.5, 5),
             plot_margin=0.0,
             # strip_text=element_text(size=10),
             axis_ticks_major_x=element_blank(),
             axis_text_x=element_blank(),
             axis_title_x=element_blank(),
-            legend_position="top",
+            legend_position="bottom",
         )
     )
 
@@ -378,16 +378,15 @@ def plot_cluster_run_length_violin(
         )
         + geom_violin()
         + geom_boxplot(
-            width=0.3, fill="white", alpha=0.7
+            width=0.5, fill="white", alpha=0.5
         )  # Add a narrow boxplot inside, hide its outliers
         + labs(
             y="run length distribution", fill="embedding model"
         )  # X-axis label from aes, fill legend suppressed
         + facet_grid("~ network")  # Facet by network on columns
         + theme(
-            figure_size=(9, 3),  # Adjust as needed
+            figure_size=(6.5, 2.5),  # Adjust as needed
             plot_margin=0.0,
-            strip_text=element_text(size=10),
             axis_text_x=element_blank(),
             axis_title_x=element_blank(),
             legend_position="bottom",  # Fill color legend is redundant with x-axis
@@ -691,7 +690,7 @@ def plot_cluster_bubblegrid(
         )
         + facet_grid("embedding_model ~ network", labeller="label_context")
         + theme(
-            figure_size=(24, 11),
+            figure_size=(22, 11),
             plot_margin=0.0,
             strip_text=element_text(size=20),
             axis_text=element_text(size=14),

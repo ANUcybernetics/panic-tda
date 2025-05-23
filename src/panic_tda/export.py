@@ -480,7 +480,7 @@ def export_video(
     for network_idx, network in enumerate(all_networks):
         # Create abbreviated network string
         abbreviated_network = [abbreviations.get(net, net) for net in network]
-        network_str = " → ".join(abbreviated_network)
+        network_str = "→".join(abbreviated_network)
 
         # Calculate the width of this network's block
         network_width = seeds_per_row * IMAGE_SIZE
@@ -876,7 +876,7 @@ def export_timeline(
 
     # Create network labels with positions
     for network_idx, network in enumerate(all_networks):
-        network_str = "network: " + " → ".join(network)
+        network_str = "network: " + "→".join(network)
 
         # Calculate position for this network
         col_start = network_idx * (timeline_width + network_spacing)
