@@ -330,8 +330,8 @@ def plot_cluster_run_lengths(
         + geom_line()
         + scale_color_brewer(type="qual", palette=2)
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
-        + scale_y_log10()  # Log scale for y-axis
-        + labs(x="run length", y="count (log scale)", color="")
+        # + scale_y_log10()  # Log scale for y-axis
+        + labs(x="run length", y="# runs", color="")
         + facet_wrap("~ embedding_model", ncol=1)
         + theme(
             figure_size=(8, 6),
