@@ -302,7 +302,7 @@ def calculate_cluster_run_lengths(
 
     # Define the fixed group columns for RLE processing
     # RLE is applied per run_id and per embedding_model
-    group_cols = ["run_id", "embedding_model"]
+    group_cols = ["embedding_model", "run_id", "initial_prompt", "network"]
 
     # Create a dataframe with each group's data and apply RLE
     result_df = filtered_df.group_by(group_cols).agg([
