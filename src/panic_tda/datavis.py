@@ -3,6 +3,7 @@ import logging
 import os
 from uuid import UUID
 
+import matplotlib
 import polars as pl
 from plotnine import (
     aes,
@@ -35,9 +36,12 @@ from panic_tda.data_prep import (
 )
 from panic_tda.export import export_mosaic_image
 
-## datavis
-
 set_option("limitsize", False)
+
+matplotlib.rcParams["pdf.fonttype"] = 42  # For TrueType
+matplotlib.rcParams["ps.fonttype"] = 42  # For PostScript Type 1
+
+## datavis
 
 
 def save(plot, filename: str) -> str:

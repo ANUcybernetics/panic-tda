@@ -274,7 +274,7 @@ def create_top_class_image_grids(
             else:
                 cluster_name = "unknown_cluster"
 
-            output_file = f"{output_dir}/{embedding_model}_{network.replace(' → ', '')}__{cluster_name.replace(' ', '_').replace(',', '').replace('.', '')}.jpg"
+            output_file = f"{output_dir}/{embedding_model}_{network.replace('→', '')}__{cluster_name.replace(' ', '_').replace(',', '').replace('.', '')}.jpg"
 
             # export image grid (save to file)
             image_grid(
@@ -1181,7 +1181,12 @@ def paper_charts(session: Session) -> None:
     )
 
     embeddings_df = load_embeddings_from_cache()
-    embeddings_df = embeddings_df.filter(pl.col("run_id").is_in(selected_ids))
+
+    embeddings_df = embeddings_df.filter(
+        pl.col("run_id").is_in(selected_ids)
+    ).with_columns(
+        pl.col("network").str.replace_all(" → ", "→", literal=True).alias("network")
+    )
 
     label_df = create_label_map_df(embeddings_df)
 
@@ -1250,15 +1255,15 @@ def paper_charts(session: Session) -> None:
 
     ### RUNS
 
-    # from panic_tda.data_prep import load_runs_from_cache
-    # # from panic_tda.datavis import plot_persistence_entropy
+    from panic_tda.data_prep import load_runs_from_cache
+    from panic_tda.datavis import plot_persistence_entropy
 
-    # runs_df = load_runs_from_cache()
-    # runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
+    runs_df = load_runs_from_cache()
+    runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
 
     # print(run_counts(runs_df, ["network"]))
 
-    # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
+    plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)
