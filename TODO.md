@@ -14,6 +14,8 @@
     models)... double-check that the clustering stuff is actually being faceted
     correctly
 
+- use (pre-calculated) cosine distance for the clustering
+
 - glm with autoregressive parameter (time column)
 
 - add some subsections to the design doc about the GenAIModel and EmbeddingModel
