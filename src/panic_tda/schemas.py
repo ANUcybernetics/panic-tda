@@ -1,7 +1,7 @@
 import io
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from uuid import UUID
 
 import numpy as np
@@ -552,8 +552,9 @@ class Embedding(SQLModel, table=True):
     embedding_model: str = Field(..., description="Embedding model class name")
     vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
 
-    # Relationship attribute
+    # Relationship attributes
     invocation: Invocation = Relationship(back_populates="embeddings")
+    cluster_assignments: List["EmbeddingCluster"] = Relationship(back_populates="embedding")
 
     @property
     def dimension(self) -> int:
@@ -580,6 +581,55 @@ class Embedding(SQLModel, table=True):
             return 0.0
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
+
+
+class ClusteringResult(SQLModel, table=True):
+    """
+    Represents a clustering computation performed on a set of embeddings.
+    
+    This class stores the parameters and results of a clustering operation,
+    allowing multiple different clusterings to be performed on the same set
+    of embeddings with different parameters or algorithms.
+    """
+    
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    experiment_id: UUID = Field(foreign_key="experimentconfig.id", index=True)
+    embedding_model: str = Field(..., description="Embedding model used for clustering")
+    algorithm: str = Field(..., description="Clustering algorithm used (e.g., 'hdbscan', 'optics')")
+    parameters: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON, description="Algorithm parameters")
+    
+    # Cluster information
+    clusters: List[Dict[str, Any]] = Field(
+        default_factory=list, 
+        sa_type=JSON,
+        description="List of clusters with their properties (id, medoid_text, etc.)"
+    )
+    
+    experiment: "ExperimentConfig" = Relationship(back_populates="clustering_results")
+    embedding_clusters: List["EmbeddingCluster"] = Relationship(
+        back_populates="clustering_result",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+    )
+
+
+class EmbeddingCluster(SQLModel, table=True):
+    """
+    Maps embeddings to their cluster assignments in a specific clustering result.
+    
+    This join table allows an embedding to belong to different clusters
+    in different clustering results.
+    """
+    
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
+    
+    embedding_id: UUID = Field(foreign_key="embedding.id", index=True)
+    clustering_result_id: UUID = Field(foreign_key="clusteringresult.id", index=True)
+    cluster_id: int = Field(..., description="Cluster identifier (or -1 for outliers)")
+    
+    embedding: Embedding = Relationship(back_populates="cluster_assignments")
+    clustering_result: ClusteringResult = Relationship(back_populates="embedding_clusters")
 
 
 class PersistenceDiagram(SQLModel, table=True):
@@ -675,6 +725,10 @@ class ExperimentConfig(SQLModel, table=True):
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
     runs: List[Run] = Relationship(
+        back_populates="experiment",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+    clustering_results: List[ClusteringResult] = Relationship(
         back_populates="experiment",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )

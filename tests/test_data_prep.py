@@ -135,6 +135,7 @@ def test_load_embeddings_df(db_session):
         "text_model",
         "text",
         "network",
+        "experiment_id",
     }
     # Check for missing columns using set difference
     missing_columns = expected_columns - set(df.columns)

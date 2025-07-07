@@ -7,13 +7,13 @@ import numpy as np
 import polars as pl
 import ray
 from humanize.time import naturaldelta
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
-from panic_tda.schemas import InvocationType
+from panic_tda.schemas import ClusteringResult, EmbeddingCluster, InvocationType
 
 # because I like to see the data
 pl.Config.set_tbl_rows(1000)
@@ -95,12 +95,62 @@ def load_embeddings_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.Series:
+def create_or_get_clustering_result(
+    experiment_id: UUID,
+    embedding_model: str,
+    algorithm: str,
+    parameters: dict,
+    session: Session
+) -> ClusteringResult:
+    """
+    Create or retrieve a clustering result for the given parameters.
+    
+    Args:
+        experiment_id: The experiment ID
+        embedding_model: The embedding model name
+        algorithm: The clustering algorithm name
+        parameters: The algorithm parameters
+        session: Database session
+        
+    Returns:
+        ClusteringResult instance
+    """
+    # Check if we already have this clustering result
+    existing = session.exec(
+        select(ClusteringResult)
+        .where(ClusteringResult.experiment_id == experiment_id)
+        .where(ClusteringResult.embedding_model == embedding_model)
+        .where(ClusteringResult.algorithm == algorithm)
+    ).first()
+    
+    if existing:
+        return existing
+    
+    # Create new clustering result
+    clustering_result = ClusteringResult(
+        experiment_id=experiment_id,
+        embedding_model=embedding_model,
+        algorithm=algorithm,
+        parameters=parameters
+    )
+    session.add(clustering_result)
+    session.commit()
+    return clustering_result
+
+
+def fetch_and_cluster_vectors(
+    embedding_ids: pl.Series, 
+    experiment_id: UUID,
+    embedding_model: str,
+    session: Session
+) -> pl.Series:
     """
     Fetch embedding vectors from the database, stack them, and perform clustering.
 
     Args:
         embedding_ids: A Series containing embedding IDs
+        experiment_id: The experiment ID for this clustering
+        embedding_model: The embedding model name
         session: SQLModel database session
 
     Returns:
@@ -109,6 +159,33 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     # Check if we have any embeddings to process
     if len(embedding_ids) == 0:
         return pl.Series([])
+
+    # Get or create clustering result
+    parameters = {
+        "cluster_selection_epsilon": 0.6,
+        "allow_single_cluster": True
+    }
+    clustering_result = create_or_get_clustering_result(
+        experiment_id, embedding_model, "hdbscan", parameters, session
+    )
+    
+    # Check if we already have cluster assignments for these embeddings
+    existing_assignments = session.exec(
+        select(EmbeddingCluster)
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        .where(EmbeddingCluster.embedding_id.in_([UUID(eid) for eid in embedding_ids]))
+    ).all()
+    
+    if len(existing_assignments) == len(embedding_ids):
+        # We already have all assignments, use them
+        assignment_map = {str(a.embedding_id): a.cluster_id for a in existing_assignments}
+        cluster_ids = [assignment_map[str(eid)] for eid in embedding_ids]
+        
+        # Get cluster texts from clustering_result
+        cluster_text_map = {c["id"]: c["medoid_text"] for c in clustering_result.clusters}
+        cluster_text_map[-1] = "OUTLIER"
+        
+        return pl.Series([cluster_text_map[cid] for cid in cluster_ids])
 
     # Fetch embeddings and build a cache of vector -> text
     embeddings = [
@@ -128,8 +205,9 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
     vectors_array = np.vstack(vectors)
     cluster_result = hdbscan(vectors_array)
 
-    # Create a mapping from label to representative text
+    # Create cluster information
     unique_labels = sorted(set(cluster_result["labels"]))
+    clusters_info = []
     label_to_text = {}
 
     for label in unique_labels:
@@ -138,10 +216,28 @@ def fetch_and_cluster_vectors(embedding_ids: pl.Series, session: Session) -> pl.
         else:
             # Get the medoid vector for this cluster
             medoid_vector = cluster_result["medoids"][label]
-
-            # Look up the text in our cache
             medoid_key = tuple(medoid_vector.flatten())
-            label_to_text[label] = vector_to_text[medoid_key]
+            medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
+            
+            clusters_info.append({
+                "id": int(label),  # Convert numpy int to Python int
+                "medoid_text": medoid_text
+            })
+            label_to_text[label] = medoid_text
+
+    # Update clustering result with clusters
+    clustering_result.clusters = clusters_info
+    
+    # Create embedding cluster assignments
+    for i, (embedding_id, cluster_label) in enumerate(zip(embedding_ids, cluster_result["labels"])):
+        embedding_cluster = EmbeddingCluster(
+            embedding_id=UUID(embedding_id),
+            clustering_result_id=clustering_result.id,
+            cluster_id=int(cluster_label)
+        )
+        session.add(embedding_cluster)
+    
+    session.commit()
 
     # Create result array with cluster labels
     result = [label_to_text[label] for label in cluster_result["labels"]]
@@ -170,20 +266,28 @@ def add_cluster_labels(
         .drop("row_idx")
     )
 
-    # Process each embedding model group
+    # Process each experiment and embedding model group
     cluster_data = []
 
-    for model_name in df_downsampled["embedding_model"].unique():
-        model_rows = df_downsampled.filter(pl.col("embedding_model") == model_name)
-        embedding_ids = model_rows["id"]
+    for experiment_id in df_downsampled["experiment_id"].unique():
+        experiment_df = df_downsampled.filter(pl.col("experiment_id") == experiment_id)
+        
+        for model_name in experiment_df["embedding_model"].unique():
+            model_rows = experiment_df.filter(pl.col("embedding_model") == model_name)
+            embedding_ids = model_rows["id"]
 
-        # Get cluster labels for this model's embeddings
-        cluster_labels = fetch_and_cluster_vectors(embedding_ids, session)
+            # Get cluster labels for this model's embeddings
+            cluster_labels = fetch_and_cluster_vectors(
+                embedding_ids, 
+                UUID(experiment_id),
+                model_name,
+                session
+            )
 
-        # Create mapping of ID to cluster label
-        model_cluster_data = {"id": embedding_ids, "cluster_label": cluster_labels}
+            # Create mapping of ID to cluster label
+            model_cluster_data = {"id": embedding_ids, "cluster_label": cluster_labels}
 
-        cluster_data.append(pl.DataFrame(model_cluster_data))
+            cluster_data.append(pl.DataFrame(model_cluster_data))
 
     clusters_df = pl.concat(cluster_data)
     # Join the clusters back to the original dataframe
@@ -795,7 +899,8 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
         invocation.model AS text_model,
         invocation.output_text AS text,
         run.initial_prompt AS initial_prompt,
-        run.network AS network
+        run.network AS network,
+        run.experiment_id AS experiment_id
     FROM embedding
     JOIN invocation ON embedding.invocation_id = invocation.id
     JOIN run ON invocation.run_id = run.id
@@ -808,7 +913,7 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     df = pl.read_database_uri(query=query, uri=db_url)
 
     # Format UUID columns
-    df = format_uuid_columns(df, ["id", "invocation_id", "run_id"])
+    df = format_uuid_columns(df, ["id", "invocation_id", "run_id", "experiment_id"])
 
     # Parse network from JSON string and create network_path column
     df = df.with_columns([
