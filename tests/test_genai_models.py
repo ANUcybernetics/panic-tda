@@ -37,6 +37,19 @@ def ray_cleanup():
     time.sleep(1)
 
 
+@pytest.fixture(scope="module")
+def genai_model_actors():
+    """Module-scoped fixture for GenAI model actors."""
+    actors = {}
+    for model_name in list_models():
+        actor_class = get_actor_class(model_name)
+        actors[model_name] = actor_class.remote()
+    yield actors
+    # Cleanup
+    for actor in actors.values():
+        ray.kill(actor)
+
+
 @pytest.mark.parametrize("model_name", list_models())
 def test_model_output_types(model_name):
     """Test that each model has the correct output type."""
@@ -125,63 +138,57 @@ def test_get_actor_class():
     "model_name",
     [m for m in list_models() if get_output_type(m) == InvocationType.IMAGE],
 )
-def test_text_to_image_models(model_name):
+def test_text_to_image_models(model_name, genai_model_actors):
     """Test that text-to-image models return expected output and are deterministic with fixed seed."""
-    try:
-        # Create the actor using the model class
-        model_class = get_actor_class(model_name)
-        model = model_class.remote()
+    # Get the actor from fixture
+    model = genai_model_actors[model_name]
 
-        # Standard text prompt for all text-to-image models
-        input_data = "A beautiful mountain landscape at sunset"
+    # Standard text prompt for all text-to-image models
+    input_data = "A beautiful mountain landscape at sunset"
 
-        # Test with fixed seed
-        seed = 42
+    # Test with fixed seed
+    seed = 42
 
-        # First invocation with fixed seed
-        result1_ref = model.invoke.remote(input_data, seed)
-        result1 = ray.get(result1_ref)
+    # First invocation with fixed seed
+    result1_ref = model.invoke.remote(input_data, seed)
+    result1 = ray.get(result1_ref)
 
-        # Check result type
-        assert isinstance(result1, Image.Image)
-        assert result1.width == IMAGE_SIZE
-        assert result1.height == IMAGE_SIZE
+    # Check result type
+    assert isinstance(result1, Image.Image)
+    assert result1.width == IMAGE_SIZE
+    assert result1.height == IMAGE_SIZE
 
-        # Second invocation with same seed
-        result2_ref = model.invoke.remote(input_data, seed)
-        result2 = ray.get(result2_ref)
+    # Second invocation with same seed
+    result2_ref = model.invoke.remote(input_data, seed)
+    result2 = ray.get(result2_ref)
 
-        # Verify output type
-        assert isinstance(result2, Image.Image)
+    # Verify output type
+    assert isinstance(result2, Image.Image)
 
-        # Check that results are identical with same seed
-        np_result1 = np.array(result1)
-        np_result2 = np.array(result2)
-        assert np.array_equal(np_result1, np_result2), (
-            f"{model_name} images should be identical when using the same seed"
-        )
+    # Check that results are identical with same seed
+    np_result1 = np.array(result1)
+    np_result2 = np.array(result2)
+    assert np.array_equal(np_result1, np_result2), (
+        f"{model_name} images should be identical when using the same seed"
+    )
 
-        # Test with -1 seed (should be non-deterministic)
-        seed = -1
+    # Test with -1 seed (should be non-deterministic)
+    seed = -1
 
-        # First invocation with random seed
-        random_result1_ref = model.invoke.remote(input_data, seed)
-        random_result1 = ray.get(random_result1_ref)
+    # First invocation with random seed
+    random_result1_ref = model.invoke.remote(input_data, seed)
+    random_result1 = ray.get(random_result1_ref)
 
-        # Second invocation with random seed
-        random_result2_ref = model.invoke.remote(input_data, seed)
-        random_result2 = ray.get(random_result2_ref)
+    # Second invocation with random seed
+    random_result2_ref = model.invoke.remote(input_data, seed)
+    random_result2 = ray.get(random_result2_ref)
 
-        # Check that results are different with random seed
-        np_random_result1 = np.array(random_result1)
-        np_random_result2 = np.array(random_result2)
-        assert not np.array_equal(np_random_result1, np_random_result2), (
-            f"{model_name} images should be different when using seed=-1"
-        )
-
-    finally:
-        # Terminate the actor after test to free GPU memory
-        ray.kill(model)
+    # Check that results are different with random seed
+    np_random_result1 = np.array(random_result1)
+    np_random_result2 = np.array(random_result2)
+    assert not np.array_equal(np_random_result1, np_random_result2), (
+        f"{model_name} images should be different when using seed=-1"
+    )
 
 
 @pytest.mark.slow
@@ -189,58 +196,52 @@ def test_text_to_image_models(model_name):
     "model_name",
     [m for m in list_models() if get_output_type(m) == InvocationType.TEXT],
 )
-def test_image_to_text_models(model_name):
+def test_image_to_text_models(model_name, genai_model_actors):
     """Test that image-to-text models return expected output and are deterministic with fixed seed."""
-    try:
-        # Create the actor using the model class
-        model_class = get_actor_class(model_name)
-        model = model_class.remote()
+    # Get the actor from fixture
+    model = genai_model_actors[model_name]
 
-        # Create a standard test image for all image-to-text models
-        input_data = Image.new("RGB", (100, 100), color="red")
+    # Create a standard test image for all image-to-text models
+    input_data = Image.new("RGB", (100, 100), color="red")
 
-        # Test with fixed seed
-        seed = 42
+    # Test with fixed seed
+    seed = 42
 
-        # First invocation with fixed seed
-        result1_ref = model.invoke.remote(input_data, seed)
-        result1 = ray.get(result1_ref)
+    # First invocation with fixed seed
+    result1_ref = model.invoke.remote(input_data, seed)
+    result1 = ray.get(result1_ref)
 
-        # Check result type
-        assert isinstance(result1, str)
-        assert len(result1) > 0  # Caption should not be empty
+    # Check result type
+    assert isinstance(result1, str)
+    assert len(result1) > 0  # Caption should not be empty
 
-        # Second invocation with same seed
-        result2_ref = model.invoke.remote(input_data, seed)
-        result2 = ray.get(result2_ref)
+    # Second invocation with same seed
+    result2_ref = model.invoke.remote(input_data, seed)
+    result2 = ray.get(result2_ref)
 
-        # Verify output type
-        assert isinstance(result2, str)
+    # Verify output type
+    assert isinstance(result2, str)
 
-        # Check that results are identical with same seed
-        assert result1 == result2, (
-            f"{model_name} captions should be identical when using the same seed"
-        )
+    # Check that results are identical with same seed
+    assert result1 == result2, (
+        f"{model_name} captions should be identical when using the same seed"
+    )
 
-        # Test with -1 seed (should be non-deterministic)
-        seed = -1
+    # Test with -1 seed (should be non-deterministic)
+    seed = -1
 
-        # First invocation with random seed
-        random_result1_ref = model.invoke.remote(input_data, seed)
-        _random_result1 = ray.get(random_result1_ref)
+    # First invocation with random seed
+    random_result1_ref = model.invoke.remote(input_data, seed)
+    _random_result1 = ray.get(random_result1_ref)
 
-        # Second invocation with random seed
-        random_result2_ref = model.invoke.remote(input_data, seed)
-        _random_result2 = ray.get(random_result2_ref)
+    # Second invocation with random seed
+    random_result2_ref = model.invoke.remote(input_data, seed)
+    _random_result2 = ray.get(random_result2_ref)
 
-        # Skip this assertion for captioning; haven't got those models taking seeds yet
-        # assert random_result1 != random_result2, (
-        #     f"{model_name} captions should be different when using seed=-1"
-        # )
-
-    finally:
-        # Terminate the actor after test to free GPU memory
-        ray.kill(model)
+    # Skip this assertion for captioning; haven't got those models taking seeds yet
+    # assert random_result1 != random_result2, (
+    #     f"{model_name} captions should be different when using seed=-1"
+    # )
 
 
 @pytest.mark.slow

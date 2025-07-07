@@ -2,6 +2,7 @@ import os
 import tempfile
 
 import pytest
+import ray
 from sqlmodel import Session, SQLModel, create_engine
 
 
@@ -40,3 +41,14 @@ def session():
     """Alias for db_session for backward compatibility"""
     with db_session() as session:
         yield session
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ray_session():
+    """Initialize Ray once for the entire test session."""
+    # Initialize Ray with appropriate resources
+    # Don't specify num_gpus to let Ray auto-detect
+    ray.init(ignore_reinit_error=True)
+    yield
+    # Shutdown Ray after all tests
+    ray.shutdown()

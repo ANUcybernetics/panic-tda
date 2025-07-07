@@ -59,7 +59,19 @@ markers = [
     "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
 ]
 addopts = "-m 'not slow and not benchmark'"
+# Show slowest tests
+testpaths = ["tests"]
+# Disable warnings during tests
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
 
 [tool.ruff.format]
 # Enable preview style formatting.
 preview = true
+
+[dependency-groups]
+dev = [
+    "pytest-xdist>=3.8.0",
+]

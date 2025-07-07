@@ -43,6 +43,34 @@ from panic_tda.schemas import (
 )
 
 
+@pytest.fixture(scope="module")
+def genai_model_actors():
+    """Module-scoped fixture for GenAI model actors."""
+    actors = {}
+    for model_name in list_models():
+        actor_class = get_genai_actor_class(model_name)
+        actors[model_name] = actor_class.remote()
+    yield actors
+    # Cleanup
+    for actor in actors.values():
+        ray.kill(actor)
+
+
+@pytest.fixture(scope="module")
+def embedding_model_actors():
+    """Module-scoped fixture for embedding model actors."""
+    from panic_tda.embeddings import list_models as list_embedding_models
+    
+    actors = {}
+    for model_name in list_embedding_models():
+        actor_class = get_embedding_actor_class(model_name)
+        actors[model_name] = actor_class.remote()
+    yield actors
+    # Cleanup
+    for actor in actors.values():
+        ray.kill(actor)
+
+
 def test_get_output_hash():
     """Test that get_output_hash correctly hashes different types of output."""
 
