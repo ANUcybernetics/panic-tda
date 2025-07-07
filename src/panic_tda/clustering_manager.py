@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 import polars as pl
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from tqdm import tqdm
 
 from panic_tda.data_prep import add_cluster_labels, load_embeddings_df
@@ -34,13 +34,12 @@ def get_clustering_status(session: Session) -> Dict[UUID, Dict[str, any]]:
     
     for exp in experiments:
         # Get embedding count for this experiment
-        embeddings = session.exec(
-            select(Embedding)
+        embedding_count = session.exec(
+            select(func.count(Embedding.id))
             .join(Invocation)
             .join(Run)
             .where(Run.experiment_id == exp.id)
-        ).all()
-        embedding_count = len(embeddings)
+        ).one()
         
         # Get clustering results
         clustering_results = session.exec(
@@ -56,11 +55,10 @@ def get_clustering_status(session: Session) -> Dict[UUID, Dict[str, any]]:
         
         for cr in clustering_results:
             # Count assignments for this clustering result
-            assignments = session.exec(
-                select(EmbeddingCluster)
+            assignment_count = session.exec(
+                select(func.count(EmbeddingCluster.id))
                 .where(EmbeddingCluster.clustering_result_id == cr.id)
-            ).all()
-            assignment_count = len(assignments)
+            ).one()
             
             clustered_count += assignment_count
             models_with_clusters.append(cr.embedding_model)
@@ -275,14 +273,15 @@ def get_cluster_details(
         return None
     
     # Get cluster sizes
-    cluster_sizes = defaultdict(int)
-    assignments = session.exec(
-        select(EmbeddingCluster)
+    cluster_sizes = {}
+    size_results = session.exec(
+        select(EmbeddingCluster.cluster_id, func.count(EmbeddingCluster.id))
         .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        .group_by(EmbeddingCluster.cluster_id)
     ).all()
     
-    for assignment in assignments:
-        cluster_sizes[assignment.cluster_id] += 1
+    for cluster_id, count in size_results:
+        cluster_sizes[cluster_id] = count
     
     # Build cluster details
     clusters = []
@@ -312,6 +311,6 @@ def get_cluster_details(
         "parameters": clustering_result.parameters,
         "created_at": clustering_result.created_at,
         "total_clusters": len(clusters),
-        "total_assignments": len(assignments),
+        "total_assignments": sum(cluster_sizes.values()),
         "clusters": clusters
     }
