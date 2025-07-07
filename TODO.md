@@ -1,5 +1,8 @@
 # TODO
 
+- check that the clustering manager CLI can delete un-needed clustering runs
+  (and also that it doesn't ever leave things in a half-finished state)
+
 - clustering
 
   - transition matrices (removing self-transitions)
