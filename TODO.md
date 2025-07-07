@@ -1,7 +1,11 @@
 # TODO
 
 - figure out exactly why the clustering log is causing claude code to crash
-  (maybe submit bug report)
+  (maybe submit bug report)... one workaround might be to give the "details" as
+  json (which seems less likely to cause an escaping issue... if that's what it
+  is)
+
+- cluster the existing data
 
 - check that the clustering manager CLI can delete un-needed clustering runs
 
