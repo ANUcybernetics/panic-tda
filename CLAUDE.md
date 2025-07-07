@@ -107,3 +107,7 @@ The tool reveals patterns in how generative AI models transform information:
 - Quantifiable trajectory structure via persistent homology
 
 For detailed design rationale, see @DESIGN.md.
+
+## Warnings and Gotchas
+
+- Don't ever run a clustering (e.g. `uv run panic-tda clustering-*`) command with output to sdout - it crashes claude code for some reason - redirect to a file
