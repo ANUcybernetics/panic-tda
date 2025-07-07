@@ -1,10 +1,9 @@
 # TODO
 
-- make clustering _not_ OOM when it gets too big (just take your time,
-  sklearn...)
+- figure out exactly why the clustering log is causing claude code to crash
+  (maybe submit bug report)
 
 - check that the clustering manager CLI can delete un-needed clustering runs
-  (and also that it doesn't ever leave things in a half-finished state)
 
 - clustering
 
