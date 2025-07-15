@@ -16,13 +16,16 @@ def test_hdbscan_clustering():
     embeddings_arr = []
     np.random.seed(42)  # For reproducible test results
 
-    # Generate three distinct clusters with clear separation
-    # Cluster 1: centered around [-10, -10, ..., -10]
+    # Generate three distinct clusters with clear separation based on DIRECTION
+    # For cosine distance, we need different directions, not different magnitudes
+    
+    # Cluster 1: First half dims positive, second half negative
     for i in range(15):  # Increased from 6 to 15
-        # Create a vector with small random variations around the center
-        vector = np.ones(EMBEDDING_DIM) * -10.0 + np.random.normal(
-            0, 0.5, EMBEDDING_DIM
-        )
+        vector = np.zeros(EMBEDDING_DIM)
+        vector[:EMBEDDING_DIM//2] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
+        vector[EMBEDDING_DIM//2:] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        # Normalize to unit length for stable cosine distance
+        vector = vector / np.linalg.norm(vector)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -32,10 +35,13 @@ def test_hdbscan_clustering():
         embeddings_obj.append(e)
         embeddings_arr.append(vector.astype(np.float32))
 
-    # Cluster 2: centered around [10, 10, ..., 10]
+    # Cluster 2: First half dims negative, second half positive (opposite of cluster 1)
     for i in range(20):  # Increased from 7 to 20
-        # Create a vector with small random variations around the center
-        vector = np.ones(EMBEDDING_DIM) * 10.0 + np.random.normal(0, 0.5, EMBEDDING_DIM)
+        vector = np.zeros(EMBEDDING_DIM)
+        vector[:EMBEDDING_DIM//2] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
+        vector[EMBEDDING_DIM//2:] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        # Normalize to unit length for stable cosine distance
+        vector = vector / np.linalg.norm(vector)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -45,10 +51,13 @@ def test_hdbscan_clustering():
         embeddings_obj.append(e)
         embeddings_arr.append(vector.astype(np.float32))
 
-    # Cluster 3: centered around [0, 0, ..., 0]
+    # Cluster 3: Alternating positive/negative pattern
     for i in range(18):  # Increased from 5 to 18
-        # Create a vector with small random variations around the center
-        vector = np.zeros(EMBEDDING_DIM) + np.random.normal(0, 0.5, EMBEDDING_DIM)
+        vector = np.zeros(EMBEDDING_DIM)
+        for j in range(EMBEDDING_DIM):
+            vector[j] = (1.0 if j % 2 == 0 else -1.0) + np.random.normal(0, 0.1)
+        # Normalize to unit length for stable cosine distance
+        vector = vector / np.linalg.norm(vector)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
@@ -60,18 +69,18 @@ def test_hdbscan_clustering():
 
     # Add some noise points that should not belong to any cluster
     for i in range(5):  # Increased from 3 to 5
-        # Create random vectors in the embedding space, far from any cluster
-        vector = (
-            np.random.rand(EMBEDDING_DIM).astype(np.float32) * 30.0 - 15.0
-        )  # More spread
+        # Create random vectors with completely different patterns
+        vector = np.random.randn(EMBEDDING_DIM)
+        # Normalize to unit length
+        vector = vector / np.linalg.norm(vector)
         e = Embedding(
             id=uuid7(),
             invocation_id=uuid7(),
             embedding_model="TestModel",
-            vector=vector,
+            vector=vector.astype(np.float32),
         )
         embeddings_obj.append(e)
-        embeddings_arr.append(vector)
+        embeddings_arr.append(vector.astype(np.float32))
 
     # Convert to numpy array
     embeddings_arr = np.array(embeddings_arr)
@@ -133,20 +142,30 @@ def test_hdbscan_scalability(n_samples):
     # Create random data with some structure for clustering
     np.random.seed(42)
 
-    # Generate data with 3 clusters
-    cluster_centers = [
-        np.ones(EMBEDDING_DIM) * 0.1,  # Cluster 1
-        np.ones(EMBEDDING_DIM) * 0.5,  # Cluster 2
-        np.ones(EMBEDDING_DIM) * 0.9,  # Cluster 3
-    ]
-
+    # Generate data with 3 clusters based on direction patterns
     embeddings = []
     for i in range(n_samples):
         # Assign to one of 3 clusters randomly
         cluster_idx = i % 3
-        # Create a vector with small random variations around the center
-        # Use smaller standard deviation for better separation
-        vector = cluster_centers[cluster_idx] + np.random.normal(0, 0.03, EMBEDDING_DIM)
+        
+        if cluster_idx == 0:
+            # Cluster 1: First half positive, second half negative
+            vector = np.zeros(EMBEDDING_DIM)
+            vector[:EMBEDDING_DIM//2] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
+            vector[EMBEDDING_DIM//2:] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        elif cluster_idx == 1:
+            # Cluster 2: First half negative, second half positive
+            vector = np.zeros(EMBEDDING_DIM)
+            vector[:EMBEDDING_DIM//2] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
+            vector[EMBEDDING_DIM//2:] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        else:
+            # Cluster 3: Alternating pattern
+            vector = np.zeros(EMBEDDING_DIM)
+            for j in range(EMBEDDING_DIM):
+                vector[j] = (1.0 if j % 2 == 0 else -1.0) + np.random.normal(0, 0.1)
+        
+        # Normalize to unit length for stable cosine distance
+        vector = vector / np.linalg.norm(vector)
         embeddings.append(vector.astype(np.float32))
 
     embeddings_arr = np.array(embeddings)

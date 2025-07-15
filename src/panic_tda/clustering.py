@@ -2,6 +2,7 @@ from typing import List
 
 import numpy as np
 from sklearn.cluster import HDBSCAN, OPTICS
+from sklearn.metrics.pairwise import cosine_distances
 
 
 def hdbscan(embeddings: np.ndarray) -> dict:
@@ -22,22 +23,47 @@ def hdbscan(embeddings: np.ndarray) -> dict:
     n_samples = embeddings.shape[0]
     min_cluster_size = max(2, int(n_samples * 0.001))  # 0.1% of dataset size
     min_samples = max(2, int(n_samples * 0.001))  # same as above
-    cluster_selection_epsilon = 0.6
+    # Cosine distance ranges from 0 to 2, so we need a smaller epsilon
+    cluster_selection_epsilon = 0.3
 
-    # Configure and run HDBSCAN
+    # Compute cosine distance matrix
+    distance_matrix = cosine_distances(embeddings)
+
+    # Configure and run HDBSCAN without store_centers since precomputed distances don't support it
     hdbscan = HDBSCAN(
         min_cluster_size=min_cluster_size,
         min_samples=min_samples,
         cluster_selection_epsilon=cluster_selection_epsilon,
         allow_single_cluster=True,
-        store_centers="medoid",
+        metric="precomputed",
         n_jobs=-1,
     )
 
     # Fit the model and return the cluster labels
-    hdb = hdbscan.fit(embeddings)
+    hdb = hdbscan.fit(distance_matrix)
+    
+    # Compute medoids manually for each cluster using cosine distances
+    unique_labels = np.unique(hdb.labels_)
+    unique_labels = unique_labels[unique_labels != -1]  # Remove noise label
+    
+    medoids = []
+    for label in unique_labels:
+        # Get indices of points in this cluster
+        cluster_indices = np.where(hdb.labels_ == label)[0]
+        
+        # Get the distance submatrix for this cluster
+        cluster_distances = distance_matrix[np.ix_(cluster_indices, cluster_indices)]
+        
+        # Find the point with minimum sum of distances to all other points in the cluster
+        medoid_idx_in_cluster = np.argmin(cluster_distances.sum(axis=1))
+        medoid_idx = cluster_indices[medoid_idx_in_cluster]
+        
+        # Get the actual embedding vector for the medoid
+        medoids.append(embeddings[medoid_idx])
+    
+    medoids = np.array(medoids) if medoids else np.empty((0, embeddings.shape[1]))
 
-    return {"labels": hdb.labels_, "medoids": hdb.medoids_}
+    return {"labels": hdb.labels_, "medoids": medoids}
 
 
 def optics(
