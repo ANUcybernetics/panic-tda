@@ -1,4 +1,20 @@
-# TODO
+---
+id: task-01
+title: turn TODO.md into tasks
+status: To Do
+assignee: []
+created_date: "2025-07-15"
+labels: []
+dependencies: []
+---
+
+## Description
+
+This is the (old) TODO.md file. Now we're using backlog, it makes sense to turn
+some of them (the ones that are actually tasks, and are still relevant - which
+isn't all of them) into proper tasks. At some stage I'll do that.
+
+# TODO.md
 
 - figure out exactly why the clustering log is causing claude code to crash
   (maybe submit bug report)... one workaround might be to give the "details" as
