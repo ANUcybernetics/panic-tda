@@ -18,5 +18,5 @@ nohup uv run panic-tda cluster-embeddings --force > "$LOG_FILE" 2>&1 &
 echo "Started background job with PID: $!"
 echo "Log file: $LOG_FILE"
 
-# Show initial output
-tail -f $LOG_FILE
+# Show initial output (first 20 lines)
+echo "To follow the log in real-time, run: tail -f $LOG_FILE"
