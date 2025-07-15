@@ -1,7 +1,7 @@
 ---
 id: task-04
 title: cluster production embedding data
-status: To Do
+status: In Progress
 assignee: []
 created_date: "2025-07-15"
 labels: []
@@ -20,3 +20,11 @@ directed to a file using the @perform-clustering.sh script.
 Before doing this, ensure that the prod db contains no clustering data (I've
 never successfully done this before, so any data in there is erroneous and comes
 from previous attempts which have not worked).
+
+## Progress Notes
+
+- Removed existing clustering data (7 ClusteringResult rows, 2353 EmbeddingCluster rows)
+- Updated perform-clustering.sh to avoid hanging on tail -f
+- Started clustering process with nohup using: ./perform-clustering.sh
+- The clustering is running but will take a very long time due to 4.2M embeddings with no downsampling
+- Process appears to be working correctly, just slow due to the large data volume
