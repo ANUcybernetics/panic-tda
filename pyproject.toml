@@ -73,5 +73,6 @@ preview = true
 
 [dependency-groups]
 dev = [
+    "alembic>=1.16.4",
     "pytest-xdist>=3.8.0",
 ]
