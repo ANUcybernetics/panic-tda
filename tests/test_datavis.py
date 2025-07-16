@@ -10,7 +10,9 @@ from panic_tda.data_prep import (
     load_invocations_df,
     load_runs_df,
 )
-from panic_tda.datavis import plot_cluster_run_length_violin # Temporary import for clarity
+from panic_tda.datavis import (
+    plot_cluster_run_length_violin,
+)  # Temporary import for clarity
 from panic_tda.datavis import (
     create_label_map_df,
     plot_cluster_bubblegrid,

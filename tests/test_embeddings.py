@@ -131,9 +131,7 @@ def test_run_embeddings_by_model(db_session, dummy_actors):
 
     # Verify embeddings have valid vectors
     assert all(e.vector is not None and len(e.vector) > 0 for e in dummy_embeddings)
-    assert all(
-        e.vector is not None and len(e.vector) > 0 for e in dummy2_embeddings
-    )
+    assert all(e.vector is not None and len(e.vector) > 0 for e in dummy2_embeddings)
 
 
 def test_invocation_embedding_property(db_session):
@@ -472,13 +470,12 @@ def test_nomic_embedding_actor_pool(embedding_model_actors):
 
     text_samples = [f"Sample text {i}" for i in range(total_samples)]
     batches = [
-        text_samples[i : i + batch_size]
-        for i in range(0, total_samples, batch_size)
+        text_samples[i : i + batch_size] for i in range(0, total_samples, batch_size)
     ]
 
     # Use the existing Nomic actor from the fixture for the main test
     nomic_actor = embedding_model_actors["Nomic"]
-    
+
     # Create additional actors for the pool test (similar to engine.py implementation)
     model_name = "Nomic"
     model_class = get_actor_class(model_name)

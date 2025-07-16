@@ -18,12 +18,16 @@ def test_hdbscan_clustering():
 
     # Generate three distinct clusters with clear separation based on DIRECTION
     # For cosine distance, we need different directions, not different magnitudes
-    
+
     # Cluster 1: First half dims positive, second half negative
     for i in range(15):  # Increased from 6 to 15
         vector = np.zeros(EMBEDDING_DIM)
-        vector[:EMBEDDING_DIM//2] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
-        vector[EMBEDDING_DIM//2:] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        vector[: EMBEDDING_DIM // 2] = 1.0 + np.random.normal(
+            0, 0.1, EMBEDDING_DIM // 2
+        )
+        vector[EMBEDDING_DIM // 2 :] = -1.0 + np.random.normal(
+            0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM // 2
+        )
         # Normalize to unit length for stable cosine distance
         vector = vector / np.linalg.norm(vector)
         e = Embedding(
@@ -38,8 +42,12 @@ def test_hdbscan_clustering():
     # Cluster 2: First half dims negative, second half positive (opposite of cluster 1)
     for i in range(20):  # Increased from 7 to 20
         vector = np.zeros(EMBEDDING_DIM)
-        vector[:EMBEDDING_DIM//2] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
-        vector[EMBEDDING_DIM//2:] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+        vector[: EMBEDDING_DIM // 2] = -1.0 + np.random.normal(
+            0, 0.1, EMBEDDING_DIM // 2
+        )
+        vector[EMBEDDING_DIM // 2 :] = 1.0 + np.random.normal(
+            0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM // 2
+        )
         # Normalize to unit length for stable cosine distance
         vector = vector / np.linalg.norm(vector)
         e = Embedding(
@@ -147,23 +155,31 @@ def test_hdbscan_scalability(n_samples):
     for i in range(n_samples):
         # Assign to one of 3 clusters randomly
         cluster_idx = i % 3
-        
+
         if cluster_idx == 0:
             # Cluster 1: First half positive, second half negative
             vector = np.zeros(EMBEDDING_DIM)
-            vector[:EMBEDDING_DIM//2] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
-            vector[EMBEDDING_DIM//2:] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+            vector[: EMBEDDING_DIM // 2] = 1.0 + np.random.normal(
+                0, 0.1, EMBEDDING_DIM // 2
+            )
+            vector[EMBEDDING_DIM // 2 :] = -1.0 + np.random.normal(
+                0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM // 2
+            )
         elif cluster_idx == 1:
             # Cluster 2: First half negative, second half positive
             vector = np.zeros(EMBEDDING_DIM)
-            vector[:EMBEDDING_DIM//2] = -1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM//2)
-            vector[EMBEDDING_DIM//2:] = 1.0 + np.random.normal(0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM//2)
+            vector[: EMBEDDING_DIM // 2] = -1.0 + np.random.normal(
+                0, 0.1, EMBEDDING_DIM // 2
+            )
+            vector[EMBEDDING_DIM // 2 :] = 1.0 + np.random.normal(
+                0, 0.1, EMBEDDING_DIM - EMBEDDING_DIM // 2
+            )
         else:
             # Cluster 3: Alternating pattern
             vector = np.zeros(EMBEDDING_DIM)
             for j in range(EMBEDDING_DIM):
                 vector[j] = (1.0 if j % 2 == 0 else -1.0) + np.random.normal(0, 0.1)
-        
+
         # Normalize to unit length for stable cosine distance
         vector = vector / np.linalg.norm(vector)
         embeddings.append(vector.astype(np.float32))

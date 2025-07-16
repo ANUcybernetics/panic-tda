@@ -8,7 +8,6 @@ import polars as pl
 import ray
 from humanize.time import naturaldelta
 from sqlmodel import Session, select
-from typing import Optional
 
 from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs, read_embedding

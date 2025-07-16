@@ -650,7 +650,7 @@ def cluster_embeddings_command(
 ):
     """
     Run clustering on all embeddings in the database.
-    
+
     This command clusters all available embeddings across all experiments.
     Use --force to re-cluster if clustering results already exist.
     """
@@ -662,14 +662,20 @@ def cluster_embeddings_command(
     with get_session_from_connection_string(db_str) as session:
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import cluster_all_data
-        
+
         result = cluster_all_data(session, downsample, force)
-        
+
         if result["status"] == "success":
-            typer.echo(f"Successfully clustered {result['clustered_embeddings']:,}/{result['total_embeddings']:,} embeddings")
-            typer.echo(f"Created {result['total_clusters']:,} clusters across {result['embedding_models_count']} embedding models")
+            typer.echo(
+                f"Successfully clustered {result['clustered_embeddings']:,}/{result['total_embeddings']:,} embeddings"
+            )
+            typer.echo(
+                f"Created {result['total_clusters']:,} clusters across {result['embedding_models_count']} embedding models"
+            )
         elif result["status"] == "already_clustered":
-            typer.echo("All data already has clustering results. Use --force to re-cluster.")
+            typer.echo(
+                "All data already has clustering results. Use --force to re-cluster."
+            )
         else:
             typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
@@ -705,7 +711,7 @@ def clustering_status_command(
 
     with get_session_from_connection_string(db_str) as session:
         status_dict = get_clustering_status(session)
-        
+
         if experiment_id:
             # Show specific experiment
             try:
@@ -713,11 +719,11 @@ def clustering_status_command(
             except ValueError:
                 logger.error(f"Invalid experiment ID format: {experiment_id}")
                 raise typer.Exit(code=1)
-            
+
             if exp_uuid not in status_dict:
                 logger.error(f"Experiment with ID {experiment_id} not found")
                 raise typer.Exit(code=1)
-            
+
             status = status_dict[exp_uuid]
             _print_experiment_clustering_status(status, verbose, session)
         else:
@@ -725,36 +731,48 @@ def clustering_status_command(
             if not status_dict:
                 typer.echo("No experiments found in the database.")
                 return
-            
+
             # Summary table
             typer.echo("\nClustering Status Summary:")
             typer.echo("-" * 80)
-            typer.echo(f"{'Experiment ID':<38} {'Embeddings':>12} {'Clustered':>12} {'Models':<20}")
+            typer.echo(
+                f"{'Experiment ID':<38} {'Embeddings':>12} {'Clustered':>12} {'Models':<20}"
+            )
             typer.echo("-" * 80)
-            
+
             total_embeddings = 0
             total_clustered = 0
-            
+
             for exp_id, status in status_dict.items():
                 total_embeddings += status["embedding_count"]
                 total_clustered += status["clustered_count"]
-                
+
                 # Format clustered count with color
-                clustered_str = f"{status['clustered_count']:,}/{status['embedding_count']:,}"
+                clustered_str = (
+                    f"{status['clustered_count']:,}/{status['embedding_count']:,}"
+                )
                 if status["is_fully_clustered"] and status["embedding_count"] > 0:
                     clustered_str = typer.style(clustered_str, fg=typer.colors.GREEN)
                 elif status["clustered_count"] > 0:
                     clustered_str = typer.style(clustered_str, fg=typer.colors.YELLOW)
                 else:
                     clustered_str = typer.style(clustered_str, fg=typer.colors.RED)
-                
-                models_str = ", ".join(status["clustering_models"]) if status["clustering_models"] else "None"
-                
-                typer.echo(f"{str(exp_id):<38} {status['embedding_count']:>12,} {clustered_str:>12} {models_str:<20}")
-            
+
+                models_str = (
+                    ", ".join(status["clustering_models"])
+                    if status["clustering_models"]
+                    else "None"
+                )
+
+                typer.echo(
+                    f"{str(exp_id):<38} {status['embedding_count']:>12,} {clustered_str:>12} {models_str:<20}"
+                )
+
             typer.echo("-" * 80)
-            typer.echo(f"{'Total':<38} {total_embeddings:>12,} {total_clustered:>12,}/{total_embeddings:,}")
-            
+            typer.echo(
+                f"{'Total':<38} {total_embeddings:>12,} {total_clustered:>12,}/{total_embeddings:,}"
+            )
+
             if verbose:
                 typer.echo("\nDetailed Status:")
                 for exp_id, status in status_dict.items():
@@ -768,12 +786,14 @@ def _print_experiment_clustering_status(status: dict, verbose: bool, session):
     typer.echo(f"Experiment ID: {status['experiment_id']}")
     typer.echo(f"  Runs: {status['run_count']}")
     typer.echo(f"  Embeddings: {status['embedding_count']:,}")
-    typer.echo(f"  Clustered: {status['clustered_count']:,} ({status['clustered_count']/max(1, status['embedding_count'])*100:.1f}%)")
-    
+    typer.echo(
+        f"  Clustered: {status['clustered_count']:,} ({status['clustered_count'] / max(1, status['embedding_count']) * 100:.1f}%)"
+    )
+
     if status["clustering_details"]:
         typer.echo(f"  Clustering models: {', '.join(status['clustering_models'])}")
         typer.echo(f"  Total clusters: {status['total_clusters']}")
-        
+
         if verbose:
             for detail in status["clustering_details"]:
                 typer.echo(f"\n  {detail['embedding_model']}:")
@@ -782,12 +802,10 @@ def _print_experiment_clustering_status(status: dict, verbose: bool, session):
                 typer.echo(f"    Clusters: {detail['cluster_count']}")
                 typer.echo(f"    Assignments: {detail['assignment_count']}")
                 typer.echo(f"    Created: {detail['created_at']}")
-                
+
                 # Show top clusters
                 cluster_info = get_cluster_details(
-                    status["experiment_id"],
-                    detail["embedding_model"],
-                    session
+                    status["experiment_id"], detail["embedding_model"], session
                 )
                 if cluster_info and cluster_info["clusters"]:
                     typer.echo("    Top clusters:")
@@ -795,7 +813,9 @@ def _print_experiment_clustering_status(status: dict, verbose: bool, session):
                         text = cluster["medoid_text"]
                         if len(text) > 50:
                             text = text[:47] + "..."
-                        typer.echo(f"      {i+1}. {text} ({cluster['size']} embeddings)")
+                        typer.echo(
+                            f"      {i + 1}. {text} ({cluster['size']} embeddings)"
+                        )
 
 
 @app.command("cluster-details")
@@ -840,11 +860,13 @@ def cluster_details_command(
 
         # Get cluster details
         details = get_cluster_details(exp_uuid, embedding_model, session)
-        
+
         if not details:
-            logger.error(f"No clustering results found for experiment {experiment_id} with model {embedding_model}")
+            logger.error(
+                f"No clustering results found for experiment {experiment_id} with model {embedding_model}"
+            )
             raise typer.Exit(code=1)
-        
+
         # Print header
         typer.echo(f"Clustering details for experiment {experiment_id}")
         typer.echo(f"Embedding model: {embedding_model}")
@@ -854,21 +876,21 @@ def cluster_details_command(
         typer.echo(f"Total clusters: {details['total_clusters']}")
         typer.echo(f"Total assignments: {details['total_assignments']}")
         typer.echo("")
-        
+
         # Print clusters
         typer.echo(f"Top {min(limit, len(details['clusters']))} clusters by size:")
         typer.echo("-" * 80)
-        
+
         for i, cluster in enumerate(details["clusters"][:limit]):
             text = cluster["medoid_text"]
             if len(text) > 60:
                 text = text[:57] + "..."
-            
+
             # Color code based on type
             if cluster["id"] == -1:
                 text = typer.style(text, fg=typer.colors.RED)
-            
-            typer.echo(f"{i+1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
+
+            typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
 
 
 if __name__ == "__main__":

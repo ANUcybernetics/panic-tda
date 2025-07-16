@@ -60,7 +60,7 @@ def genai_model_actors():
 def embedding_model_actors():
     """Module-scoped fixture for embedding model actors."""
     from panic_tda.embeddings import list_models as list_embedding_models
-    
+
     actors = {}
     for model_name in list_embedding_models():
         actor_class = get_embedding_actor_class(model_name)
