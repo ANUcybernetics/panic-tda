@@ -1,7 +1,7 @@
 ---
 id: task-01
 title: turn TODO.md into tasks
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-15"
 labels: []
