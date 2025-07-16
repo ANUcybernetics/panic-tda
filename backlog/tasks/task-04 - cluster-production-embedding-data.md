@@ -28,3 +28,9 @@ from previous attempts which have not worked).
 - Started clustering process with nohup using: ./perform-clustering.sh
 - The clustering is running but will take a very long time due to 4.2M embeddings with no downsampling
 - Process appears to be working correctly, just slow due to the large data volume
+
+## Update
+
+- The batch clustering command was completing immediately with 0 experiments clustered
+- Individual experiment clustering works fine (tested on small experiment)
+- Creating script to run clustering on each experiment individually
