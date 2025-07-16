@@ -1,7 +1,7 @@
 ---
 id: task-06
 title: fix db-only clustering workflow
-status: To Do
+status: In Progress
 assignee: []
 created_date: "2025-07-16"
 labels: []
@@ -97,3 +97,32 @@ The clustering should work as follows:
 - `src/panic_tda/clustering_manager.py` - Main changes to `cluster_all_data()`
 - Remove any dataframe-based clustering from `data_prep.py`
 - Ensure `perform-clustering.sh` continues to work with the new implementation
+
+## Implementation Notes
+
+### Issue Discovered
+
+The main issue was that TEXT invocations (which have embeddings) are only on odd sequence numbers (1, 3, 5, ...), while IMAGE invocations are on even sequence numbers (0, 2, 4, ...). When using `sequence_number % downsample == 0`, we were only matching IMAGE invocations, which have no embeddings.
+
+### Solution Implemented
+
+1. **Updated clustering queries** to:
+   - Filter for TEXT invocations explicitly using `Invocation.type == InvocationType.TEXT`
+   - Adjust downsampling logic to work with odd sequence numbers: `((sequence_number - 1) / 2) % downsample == 0`
+   - This transforms the odd sequence (1, 3, 5, 7...) to (0, 1, 2, 3...) for proper downsampling
+
+2. **Removed dataframe dependencies**:
+   - Removed imports of `load_embeddings_df` and `add_cluster_labels` from `data_prep.py`
+   - Implemented direct database queries using SQLModel
+
+3. **Added proper logging**:
+   - Log sample counts per model after downsampling
+   - Log when models are skipped due to insufficient samples
+   - Log clustering progress for each model
+
+### Testing Results
+
+- Tested with downsample=10: Successfully clustered embeddings
+- Tested with downsample=100: Successfully clustered 42,480 embeddings into 71 clusters
+- Tested with downsample=1000: Successfully clustered 7,728 embeddings into 287 clusters
+- Dummy model correctly skipped when it has < 2 samples after downsampling

@@ -7,20 +7,19 @@ monitor clustering progress, and retrieve clustering results.
 
 import logging
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 from uuid import UUID
 
-import polars as pl
 from sqlmodel import Session, select, func
-from tqdm import tqdm
 
-from panic_tda.data_prep import add_cluster_labels, load_embeddings_df
+# Removed dataframe-based imports
 from panic_tda.schemas import (
     ClusteringResult,
     EmbeddingCluster,
     Embedding,
     ExperimentConfig,
     Invocation,
+    InvocationType,
     Run,
 )
 
@@ -184,10 +183,22 @@ def cluster_all_data(
         logger.info("Deleted existing clustering results")
 
     try:
-        # Load all embeddings
-        all_embeddings_df = load_embeddings_df(session)
+        # Query to get embedding counts per model with downsampling
+        # Note: TEXT invocations have odd sequence numbers (1, 3, 5, ...)
+        # We downsample by selecting every Nth TEXT invocation
+        # Since we're dealing with odd numbers, we use: ((sequence_number - 1) / 2) % downsample == 0
+        count_query = (
+            select(Embedding.embedding_model, func.count(Embedding.id).label("count"))
+            .select_from(Embedding)
+            .join(Invocation, Embedding.invocation_id == Invocation.id)
+            .where(Invocation.type == InvocationType.TEXT)
+            .where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
+            .group_by(Embedding.embedding_model)
+        )
 
-        if len(all_embeddings_df) == 0:
+        model_counts = session.exec(count_query).all()
+
+        if not model_counts:
             logger.warning("No embeddings found in the database")
             return {
                 "status": "error",
@@ -198,31 +209,110 @@ def cluster_all_data(
                 "embedding_models_count": 0,
             }
 
-        total_embeddings = len(all_embeddings_df)
+        # Get total embedding count
+        total_embeddings_query = select(func.count(Embedding.id))
+        total_embeddings = session.exec(total_embeddings_query).one()
         logger.info(f"Found {total_embeddings:,} total embeddings")
 
-        # Get unique embedding models
-        embedding_models = all_embeddings_df["embedding_model"].unique().to_list()
+        embedding_models = [m[0] for m in model_counts]
         logger.info(f"Embedding models: {embedding_models}")
-
-        # Add cluster labels with global clustering
         logger.info(f"Running global clustering with downsample factor {downsample}")
-        clustered_df = add_cluster_labels(all_embeddings_df, downsample, session)
 
-        # Count results
-        clustered_embeddings = clustered_df.filter(
-            pl.col("cluster_label").is_not_null()
-        ).height
-
-        # Count unique clusters across all models
+        # Process each embedding model
         total_clusters = 0
-        for model in embedding_models:
-            model_clusters = (
-                clustered_df.filter(pl.col("embedding_model") == model)["cluster_label"]
-                .unique()
-                .drop_nulls()
+        clustered_embeddings = 0
+
+        for model_name, count in model_counts:
+            logger.info(f"Model {model_name}: {count} embeddings after downsampling")
+
+            # Skip models with insufficient samples
+            if count < 2:
+                logger.info(f"  Skipping {model_name} - too few samples for HDBSCAN")
+                continue
+
+            # Query embeddings for this model with downsampling
+            embeddings_query = (
+                select(Embedding.id, Embedding.vector, Invocation.output_text)
+                .select_from(Embedding)
+                .join(Invocation, Embedding.invocation_id == Invocation.id)
+                .where(Embedding.embedding_model == model_name)
+                .where(Invocation.type == InvocationType.TEXT)
+                .where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
+                .order_by(Invocation.sequence_number)
             )
-            total_clusters += len(model_clusters)
+
+            # Fetch embeddings and cluster them
+            from panic_tda.data_prep import create_or_get_clustering_result
+            from panic_tda.clustering import hdbscan
+            import numpy as np
+
+            # Get or create clustering result
+            parameters = {
+                "cluster_selection_epsilon": 0.6,
+                "allow_single_cluster": True,
+            }
+            clustering_result = create_or_get_clustering_result(
+                model_name, "hdbscan", parameters, session
+            )
+
+            # Fetch embeddings
+            embeddings_data = session.exec(embeddings_query).all()
+            embedding_ids = [e[0] for e in embeddings_data]
+            vectors = [e[1] for e in embeddings_data]
+            output_texts = [e[2] for e in embeddings_data]
+
+            # Stack vectors and perform clustering
+            vectors_array = np.vstack(vectors)
+            cluster_result = hdbscan(vectors_array)
+
+            # Create cluster information
+            unique_labels = sorted(set(cluster_result["labels"]))
+            clusters_info = []
+
+            # Create mapping for medoid text
+            vector_to_text = {}
+            for i, (vec, text) in enumerate(zip(vectors, output_texts)):
+                if text:
+                    vector_to_text[tuple(vec.flatten())] = text
+
+            for label in unique_labels:
+                if label == -1:
+                    continue  # Skip outliers in cluster info
+                else:
+                    # Get the medoid vector for this cluster
+                    medoid_vector = cluster_result["medoids"][label]
+                    medoid_key = tuple(medoid_vector.flatten())
+                    medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
+
+                    clusters_info.append({
+                        "id": int(label),
+                        "medoid_text": medoid_text,
+                    })
+
+            # Update clustering result with clusters
+            clustering_result.clusters = clusters_info
+
+            # Create embedding cluster assignments
+            for embedding_id, cluster_label in zip(
+                embedding_ids, cluster_result["labels"]
+            ):
+                embedding_cluster = EmbeddingCluster(
+                    embedding_id=embedding_id,
+                    clustering_result_id=clustering_result.id,
+                    cluster_id=int(cluster_label),
+                )
+                session.add(embedding_cluster)
+
+            # Commit this model's clustering
+            session.commit()
+
+            # Update counts
+            clustered_embeddings += len(embedding_ids)
+            total_clusters += len(clusters_info) + (1 if -1 in unique_labels else 0)
+
+            logger.info(
+                f"  Clustered {len(embedding_ids)} embeddings into {len(unique_labels)} clusters"
+            )
 
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "
