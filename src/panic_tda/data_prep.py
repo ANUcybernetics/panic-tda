@@ -96,21 +96,18 @@ def load_embeddings_from_cache() -> pl.DataFrame:
 
 
 def create_or_get_clustering_result(
-    embedding_model: str,
-    algorithm: str,
-    parameters: dict,
-    session: Session
+    embedding_model: str, algorithm: str, parameters: dict, session: Session
 ) -> ClusteringResult:
     """
     Create or retrieve a clustering result for the given parameters.
     Does not commit - caller is responsible for transaction management.
-    
+
     Args:
         embedding_model: The embedding model name
         algorithm: The clustering algorithm name
         parameters: The algorithm parameters
         session: Database session
-        
+
     Returns:
         ClusteringResult instance
     """
@@ -120,15 +117,13 @@ def create_or_get_clustering_result(
         .where(ClusteringResult.embedding_model == embedding_model)
         .where(ClusteringResult.algorithm == algorithm)
     ).first()
-    
+
     if existing:
         return existing
-    
+
     # Create new clustering result
     clustering_result = ClusteringResult(
-        embedding_model=embedding_model,
-        algorithm=algorithm,
-        parameters=parameters
+        embedding_model=embedding_model, algorithm=algorithm, parameters=parameters
     )
     session.add(clustering_result)
     # No commit - let caller handle transaction
@@ -136,13 +131,11 @@ def create_or_get_clustering_result(
 
 
 def fetch_and_cluster_vectors(
-    embedding_ids: pl.Series, 
-    embedding_model: str,
-    session: Session
+    embedding_ids: pl.Series, embedding_model: str, session: Session
 ) -> pl.Series:
     """
     Fetch embedding vectors from the database, stack them, and perform global clustering.
-    
+
     This function clusters embeddings globally across all experiments, storing results
     with experiment_id=NULL in the database.
 
@@ -161,38 +154,39 @@ def fetch_and_cluster_vectors(
     # Start a transaction for atomic operations
     with session.begin_nested():
         # Get or create global clustering result (experiment_id=None)
-        parameters = {
-            "cluster_selection_epsilon": 0.6,
-            "allow_single_cluster": True
-        }
+        parameters = {"cluster_selection_epsilon": 0.6, "allow_single_cluster": True}
         clustering_result = create_or_get_clustering_result(
-            embedding_model,
-            "hdbscan",
-            parameters,
-            session
+            embedding_model, "hdbscan", parameters, session
         )
-        
+
         # Check if we already have cluster assignments for these embeddings
         existing_assignments = session.exec(
             select(EmbeddingCluster)
             .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
-            .where(EmbeddingCluster.embedding_id.in_([UUID(eid) for eid in embedding_ids]))
+            .where(
+                EmbeddingCluster.embedding_id.in_([UUID(eid) for eid in embedding_ids])
+            )
         ).all()
-        
+
         if len(existing_assignments) == len(embedding_ids):
             # We already have all assignments, use them
-            assignment_map = {str(a.embedding_id): a.cluster_id for a in existing_assignments}
+            assignment_map = {
+                str(a.embedding_id): a.cluster_id for a in existing_assignments
+            }
             cluster_ids = [assignment_map[str(eid)] for eid in embedding_ids]
-            
+
             # Get cluster texts from clustering_result
-            cluster_text_map = {c["id"]: c["medoid_text"] for c in clustering_result.clusters}
+            cluster_text_map = {
+                c["id"]: c["medoid_text"] for c in clustering_result.clusters
+            }
             cluster_text_map[-1] = "OUTLIER"
-            
+
             return pl.Series([cluster_text_map[cid] for cid in cluster_ids])
 
         # Fetch embeddings and build a cache of vector -> text
         embeddings = [
-            read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
+            read_embedding(UUID(embedding_id), session)
+            for embedding_id in embedding_ids
         ]
         vectors = [embedding.vector for embedding in embeddings]
 
@@ -221,25 +215,27 @@ def fetch_and_cluster_vectors(
                 medoid_vector = cluster_result["medoids"][label]
                 medoid_key = tuple(medoid_vector.flatten())
                 medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
-                
+
                 clusters_info.append({
                     "id": int(label),  # Convert numpy int to Python int
-                    "medoid_text": medoid_text
+                    "medoid_text": medoid_text,
                 })
                 label_to_text[label] = medoid_text
 
         # Update clustering result with clusters
         clustering_result.clusters = clusters_info
-        
+
         # Create embedding cluster assignments
-        for i, (embedding_id, cluster_label) in enumerate(zip(embedding_ids, cluster_result["labels"])):
+        for i, (embedding_id, cluster_label) in enumerate(
+            zip(embedding_ids, cluster_result["labels"])
+        ):
             embedding_cluster = EmbeddingCluster(
                 embedding_id=UUID(embedding_id),
                 clustering_result_id=clustering_result.id,
-                cluster_id=int(cluster_label)
+                cluster_id=int(cluster_label),
             )
             session.add(embedding_cluster)
-        
+
         # Transaction will be committed when exiting the with block
 
     # Create result array with cluster labels
@@ -253,7 +249,7 @@ def add_cluster_labels(
 ) -> pl.DataFrame:
     """
     Add cluster representative texts to the embeddings DataFrame.
-    
+
     This clusters all embeddings across all experiments together.
 
     Args:
@@ -279,11 +275,7 @@ def add_cluster_labels(
         embedding_ids = model_rows["id"]
 
         # Get cluster labels for this model's embeddings globally
-        cluster_labels = fetch_and_cluster_vectors(
-            embedding_ids, 
-            model_name,
-            session
-        )
+        cluster_labels = fetch_and_cluster_vectors(embedding_ids, model_name, session)
 
         # Create mapping of ID to cluster label
         model_cluster_data = {"id": embedding_ids, "cluster_label": cluster_labels}
@@ -291,10 +283,10 @@ def add_cluster_labels(
         cluster_data.append(pl.DataFrame(model_cluster_data))
 
     clusters_df = pl.concat(cluster_data)
-    
+
     # Commit all clustering operations atomically
     session.commit()
-    
+
     # Join the clusters back to the original dataframe
     result_df = df.join(clusters_df, on="id", how="left")
 
