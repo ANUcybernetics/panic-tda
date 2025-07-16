@@ -14,7 +14,7 @@ import polars as pl
 from sqlmodel import Session, select, func
 from tqdm import tqdm
 
-from panic_tda.data_prep import add_cluster_labels_global, load_embeddings_df
+from panic_tda.data_prep import add_cluster_labels, load_embeddings_df
 from panic_tda.schemas import ClusteringResult, EmbeddingCluster, Embedding, ExperimentConfig, Invocation, Run
 
 logger = logging.getLogger(__name__)
@@ -207,7 +207,7 @@ def cluster_all_data(
         
         # Add cluster labels with global clustering
         logger.info(f"Running global clustering with downsample factor {downsample}")
-        clustered_df = add_cluster_labels_global(all_embeddings_df, downsample, session)
+        clustered_df = add_cluster_labels(all_embeddings_df, downsample, session)
         
         # Count results
         clustered_embeddings = clustered_df.filter(
