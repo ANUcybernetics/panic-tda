@@ -260,19 +260,29 @@ def add_cluster_labels(
     Returns:
         DataFrame with cluster representative texts added
     """
-    # Create a version of the dataframe with only rows to process (downsampled)
-    df_downsampled = (
-        df.with_row_index("row_idx")
-        .filter(pl.col("row_idx") % downsample == 0)
-        .drop("row_idx")
-    )
-
     # Process each embedding model globally (across all experiments)
     cluster_data = []
 
-    for model_name in df_downsampled["embedding_model"].unique():
-        model_rows = df_downsampled.filter(pl.col("embedding_model") == model_name)
-        embedding_ids = model_rows["id"]
+    for model_name in df["embedding_model"].unique():
+        # Filter to get only rows for this model
+        model_df = df.filter(pl.col("embedding_model") == model_name)
+        
+        # Apply downsampling within this model's data
+        model_df_downsampled = (
+            model_df.with_row_index("row_idx")
+            .filter(pl.col("row_idx") % downsample == 0)
+            .drop("row_idx")
+        )
+        
+        embedding_ids = model_df_downsampled["id"]
+        
+        # Log the number of embeddings for this model
+        print(f"Model {model_name}: {len(model_df)} total, {len(embedding_ids)} after downsampling")
+        
+        # Skip if too few samples for clustering
+        if len(embedding_ids) < 2:
+            print(f"  Skipping {model_name} - too few samples for HDBSCAN")
+            continue
 
         # Get cluster labels for this model's embeddings globally
         cluster_labels = fetch_and_cluster_vectors(embedding_ids, model_name, session)
