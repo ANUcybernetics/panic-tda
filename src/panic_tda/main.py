@@ -8,8 +8,6 @@ import typer
 
 import panic_tda.engine as engine
 from panic_tda.clustering_manager import (
-    cluster_all_experiments,
-    cluster_experiment,
     get_cluster_details,
     get_clustering_status,
 )
@@ -632,10 +630,6 @@ def script():
 
 @app.command("cluster-embeddings")
 def cluster_embeddings_command(
-    experiment_id: str = typer.Argument(
-        None,
-        help="ID of the experiment to cluster (if not provided, clusters all experiments)",
-    ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
         "--db-path",
@@ -655,11 +649,10 @@ def cluster_embeddings_command(
     ),
 ):
     """
-    Run clustering on embeddings for one or all experiments.
-
-    If no experiment ID is provided, this will cluster embeddings for all experiments
-    that don't already have clustering results. Use --force to re-cluster experiments
-    that already have results.
+    Run clustering on all embeddings in the database.
+    
+    This command clusters all available embeddings across all experiments.
+    Use --force to re-cluster if clustering results already exist.
     """
     # Create database connection
     db_str = f"sqlite:///{db_path}"
@@ -667,43 +660,18 @@ def cluster_embeddings_command(
     logger.info(f"Downsampling factor: {downsample}")
 
     with get_session_from_connection_string(db_str) as session:
-        if experiment_id:
-            # Process specific experiment
-            try:
-                exp_uuid = UUID(experiment_id)
-            except ValueError:
-                logger.error(f"Invalid experiment ID format: {experiment_id}")
-                raise typer.Exit(code=1)
-
-            # Check experiment exists
-            experiment = session.get(ExperimentConfig, exp_uuid)
-            if not experiment:
-                logger.error(f"Experiment with ID {experiment_id} not found")
-                raise typer.Exit(code=1)
-
-            result = cluster_experiment(exp_uuid, session, downsample, force)
-            
-            if result["status"] == "success":
-                typer.echo(f"Successfully clustered {result['clustered_embeddings']}/{result['total_embeddings']} embeddings")
-                typer.echo(f"Models: {', '.join(result['embedding_models'])}")
-            elif result["status"] == "already_clustered":
-                typer.echo("Experiment already has clustering results. Use --force to re-cluster.")
-            else:
-                typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
+        # Import here to avoid circular imports
+        from panic_tda.clustering_manager import cluster_all_data
+        
+        result = cluster_all_data(session, downsample, force)
+        
+        if result["status"] == "success":
+            typer.echo(f"Successfully clustered {result['clustered_embeddings']:,}/{result['total_embeddings']:,} embeddings")
+            typer.echo(f"Created {result['total_clusters']:,} clusters across {result['embedding_models_count']} embedding models")
+        elif result["status"] == "already_clustered":
+            typer.echo("All data already has clustering results. Use --force to re-cluster.")
         else:
-            # Process all experiments
-            results = cluster_all_experiments(session, downsample, force)
-            
-            success_count = sum(1 for r in results if r["status"] == "success")
-            already_clustered_count = sum(1 for r in results if r["status"] == "already_clustered")
-            error_count = sum(1 for r in results if r["status"] == "error")
-            
-            typer.echo(f"Clustering complete:")
-            typer.echo(f"  Successfully clustered: {success_count} experiments")
-            if already_clustered_count > 0:
-                typer.echo(f"  Already clustered: {already_clustered_count} experiments")
-            if error_count > 0:
-                typer.echo(f"  Errors: {error_count} experiments")
+            typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
 
 @app.command("clustering-status")

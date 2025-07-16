@@ -595,7 +595,6 @@ class ClusteringResult(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
-    experiment_id: UUID = Field(foreign_key="experimentconfig.id", index=True)
     embedding_model: str = Field(..., description="Embedding model used for clustering")
     algorithm: str = Field(..., description="Clustering algorithm used (e.g., 'hdbscan', 'optics')")
     parameters: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON, description="Algorithm parameters")
@@ -607,7 +606,6 @@ class ClusteringResult(SQLModel, table=True):
         description="List of clusters with their properties (id, medoid_text, etc.)"
     )
     
-    experiment: "ExperimentConfig" = Relationship(back_populates="clustering_results")
     embedding_clusters: List["EmbeddingCluster"] = Relationship(
         back_populates="clustering_result",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"}
@@ -725,10 +723,6 @@ class ExperimentConfig(SQLModel, table=True):
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)
     runs: List[Run] = Relationship(
-        back_populates="experiment",
-        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
-    )
-    clustering_results: List[ClusteringResult] = Relationship(
         back_populates="experiment",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )

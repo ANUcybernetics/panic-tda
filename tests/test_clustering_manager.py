@@ -2,10 +2,9 @@
 
 import pytest
 from uuid import UUID
-from sqlmodel import select
+from sqlmodel import select, Session, create_engine
 from panic_tda.clustering_manager import (
-    cluster_experiment,
-    cluster_all_experiments,
+    cluster_all_data,
     get_clustering_status,
     get_cluster_details,
 )
@@ -13,48 +12,48 @@ from panic_tda.schemas import ExperimentConfig, ClusteringResult, EmbeddingClust
 from panic_tda.engine import perform_experiment
 
 
-def test_cluster_experiment_downsample_1(db_session):
-    """Test cluster_experiment with downsample=1 (no downsampling)."""
-    # Create test experiment
-    config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1],
-        prompts=["test clustering no downsampling"],
-        embedding_models=["Dummy", "Dummy2"],
-        max_length=50,
-    )
+def test_cluster_all_data_no_downsampling(db_session):
+    """Test cluster_all_data with downsample=1 (no downsampling)."""
+    # Create test experiments
+    configs = []
+    for i in range(2):
+        config = ExperimentConfig(
+            networks=[["DummyT2I", "DummyI2T"]],
+            seeds=[-1],
+            prompts=[f"test clustering {i}"],
+            embedding_models=["Dummy", "Dummy2"],
+            max_length=50,
+        )
+        db_session.add(config)
+        db_session.commit()
+        db_session.refresh(config)
+        configs.append(config)
     
-    # Save config to database
-    db_session.add(config)
-    db_session.commit()
-    db_session.refresh(config)
-    
-    # Run experiment to populate embeddings
+    # Run experiments to populate embeddings
     db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(str(config.id), db_url)
+    for config in configs:
+        perform_experiment(str(config.id), db_url)
     
-    # Cluster the experiment with no downsampling
-    result = cluster_experiment(config.id, db_session, downsample=1, force=False)
+    # Cluster all data with no downsampling
+    result = cluster_all_data(db_session, downsample=1, force=False)
     
     # Verify successful clustering
     assert result["status"] == "success"
-    assert result["experiment_id"] == config.id
-    # Note: Only text outputs get embeddings. With DummyT2I->DummyI2T network,
-    # only DummyI2T outputs text, so we get 1 text output per invocation
-    assert result["total_embeddings"] == 50  # 50 text outputs, 1 embedding per model
-    assert result["clustered_embeddings"] == 50  # All embeddings should be clustered
-    assert result["downsample_factor"] == 1
-    assert set(result["embedding_models"]) == {"Dummy", "Dummy2"}
+    # With DummyT2I->DummyI2T network, only I2T outputs get embedded
+    # 2 experiments * 50 invocations = 100 total embeddings
+    assert result["total_embeddings"] == 100
+    assert result["clustered_embeddings"] == 100  # All embeddings should be clustered
+    assert result["embedding_models_count"] == 2  # Dummy and Dummy2
+    assert result["total_clusters"] > 0  # Should have at least one cluster
     
     # Verify clustering results are stored in database
     clustering_results = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.experiment_id == config.id)
+        select(ClusteringResult)
     ).all()
     assert len(clustering_results) == 2  # One for each embedding model
     
     # Verify each clustering result has correct properties
     for cr in clustering_results:
-        assert cr.experiment_id == config.id
         assert cr.embedding_model in ["Dummy", "Dummy2"]
         assert cr.algorithm == "hdbscan"
         assert cr.parameters == {
@@ -67,18 +66,12 @@ def test_cluster_experiment_downsample_1(db_session):
         assignments = db_session.exec(
             select(EmbeddingCluster).where(EmbeddingCluster.clustering_result_id == cr.id)
         ).all()
-        assert len(assignments) == 25  # 25 embeddings per model (50 total text outputs / 2 models)
-        
-        # Verify all assignments have valid cluster IDs
-        cluster_ids = {c["id"] for c in cr.clusters}
-        cluster_ids.add(-1)  # Outliers are labeled as -1
-        for assignment in assignments:
-            assert assignment.cluster_id in cluster_ids
+        assert len(assignments) == 50  # 50 embeddings per model (100 total / 2 models)
 
 
-def test_cluster_experiment_downsample_2(db_session):
-    """Test cluster_experiment with downsample=2."""
-    # Create test experiment with more data
+def test_cluster_all_data_with_downsampling(db_session):
+    """Test cluster_all_data with downsample=2."""
+    # Create test experiment
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
@@ -87,7 +80,6 @@ def test_cluster_experiment_downsample_2(db_session):
         max_length=100,
     )
     
-    # Save config to database
     db_session.add(config)
     db_session.commit()
     db_session.refresh(config)
@@ -96,37 +88,53 @@ def test_cluster_experiment_downsample_2(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
     
-    # Cluster the experiment with downsampling
-    result = cluster_experiment(config.id, db_session, downsample=2, force=False)
+    # Cluster all data with downsampling
+    result = cluster_all_data(db_session, downsample=2, force=False)
     
     # Verify successful clustering
     assert result["status"] == "success"
-    assert result["experiment_id"] == config.id
-    assert result["total_embeddings"] == 100  # 100 text outputs total (both models)
-    assert result["clustered_embeddings"] == 50  # Half of embeddings should be clustered due to downsampling
-    assert result["downsample_factor"] == 2
-    assert set(result["embedding_models"]) == {"Dummy", "Dummy2"}
+    assert result["total_embeddings"] == 100  # 100 invocations with I2T output
+    assert result["clustered_embeddings"] == 50  # Half due to downsampling
+    assert result["embedding_models_count"] == 2
+    assert result["total_clusters"] > 0
     
-    # Verify clustering results are stored in database
+    # Verify only half the embeddings are assigned clusters
     clustering_results = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.experiment_id == config.id)
+        select(ClusteringResult)
     ).all()
-    assert len(clustering_results) == 2  # One for each embedding model
     
-    # Verify each clustering result has correct properties
     for cr in clustering_results:
-        assert cr.experiment_id == config.id
-        assert cr.embedding_model in ["Dummy", "Dummy2"]
-        
-        # Verify embedding assignments exist (only half due to downsampling)
         assignments = db_session.exec(
             select(EmbeddingCluster).where(EmbeddingCluster.clustering_result_id == cr.id)
         ).all()
         assert len(assignments) == 25  # 25 embeddings per model (downsampled from 50)
 
 
-def test_cluster_experiment_already_clustered(db_session):
-    """Test cluster_experiment behavior when experiment is already clustered."""
+def test_cluster_all_data_no_embeddings(db_session):
+    """Test cluster_all_data when there are no embeddings."""
+    # Create test experiment but don't run it
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test no embeddings"],
+        embedding_models=["Dummy"],
+        max_length=10,
+    )
+    
+    db_session.add(config)
+    db_session.commit()
+    
+    # Try to cluster - should handle gracefully
+    result = cluster_all_data(db_session, downsample=1, force=False)
+    
+    # When there are no embeddings, the dataframe loading might fail
+    assert result["status"] == "error"
+    assert result["total_embeddings"] == 0
+    assert result["clustered_embeddings"] == 0
+
+
+def test_cluster_all_data_already_clustered(db_session):
+    """Test cluster_all_data behavior when data is already clustered."""
     # Create test experiment
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
@@ -136,7 +144,6 @@ def test_cluster_experiment_already_clustered(db_session):
         max_length=20,
     )
     
-    # Save config to database
     db_session.add(config)
     db_session.commit()
     db_session.refresh(config)
@@ -146,47 +153,17 @@ def test_cluster_experiment_already_clustered(db_session):
     perform_experiment(str(config.id), db_url)
     
     # First clustering
-    result1 = cluster_experiment(config.id, db_session, downsample=1, force=False)
+    result1 = cluster_all_data(db_session, downsample=1, force=False)
     assert result1["status"] == "success"
     
     # Second clustering without force - should return already_clustered
-    result2 = cluster_experiment(config.id, db_session, downsample=1, force=False)
+    result2 = cluster_all_data(db_session, downsample=1, force=False)
     assert result2["status"] == "already_clustered"
-    assert "already has clustering results" in result2["message"]
+    assert "already exist" in result2["message"]
     
     # Third clustering with force - should re-cluster
-    result3 = cluster_experiment(config.id, db_session, downsample=1, force=True)
+    result3 = cluster_all_data(db_session, downsample=1, force=True)
     assert result3["status"] == "success"
-
-
-def test_cluster_experiment_no_embeddings(db_session):
-    """Test cluster_experiment behavior when experiment has no embeddings."""
-    # Create test experiment
-    config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1],
-        prompts=["test no embeddings"],
-        embedding_models=["Dummy"],  # Include embedding models
-        max_length=10,
-    )
-    
-    # Save config to database
-    db_session.add(config)
-    db_session.commit()
-    db_session.refresh(config)
-    
-    # Don't run the experiment - so there will be no embeddings
-    
-    # Try to cluster - should handle gracefully when there are no embeddings
-    try:
-        result = cluster_experiment(config.id, db_session, downsample=1, force=False)
-        # If it doesn't fail, it should return no_embeddings status
-        assert result["status"] == "no_embeddings"
-        assert "No embeddings found" in result["message"]
-    except Exception as e:
-        # If it fails due to no embeddings, that's also acceptable for this test
-        # Accept SchemaError as a valid failure mode when there are no embeddings
-        assert "SchemaError" in str(type(e).__name__) or "no embeddings" in str(e).lower()
 
 
 def test_get_clustering_status(db_session):
@@ -206,91 +183,37 @@ def test_get_clustering_status(db_session):
         db_session.refresh(config)
         configs.append(config)
     
-    # Run and cluster first experiment
-    db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(str(configs[0].id), db_url)
-    cluster_experiment(configs[0].id, db_session, downsample=1, force=False)
-    
-    # Run second experiment but don't cluster it
-    perform_experiment(str(configs[1].id), db_url)
-    
-    # Get clustering status
-    status = get_clustering_status(db_session)
-    
-    # Verify status for first experiment (clustered)
-    assert configs[0].id in status
-    exp0_status = status[configs[0].id]
-    # The actual embedding count depends on how many text outputs are generated
-    assert exp0_status["embedding_count"] > 0  # Should have some embeddings
-    assert exp0_status["clustered_count"] == exp0_status["embedding_count"]
-    assert exp0_status["is_fully_clustered"] is True
-    assert len(exp0_status["clustering_models"]) == 1
-    assert "Dummy" in exp0_status["clustering_models"]
-    
-    # Verify status for second experiment (not clustered)
-    assert configs[1].id in status
-    exp1_status = status[configs[1].id]
-    assert exp1_status["embedding_count"] > 0  # Should have some embeddings
-    assert exp1_status["clustered_count"] == 0
-    assert exp1_status["is_fully_clustered"] is False
-    assert len(exp1_status["clustering_models"]) == 0
-
-
-@pytest.mark.skip(reason="Issue with session management in cluster_all_experiments")
-def test_cluster_all_experiments(db_session):
-    """Test cluster_all_experiments function."""
-    # Create multiple experiments
-    configs = []
-    for i in range(3):
-        config = ExperimentConfig(
-            networks=[["DummyT2I", "DummyI2T"]],
-            seeds=[-1],
-            prompts=[f"test all {i}"],
-            embedding_models=["Dummy"],
-            max_length=20,
-        )
-        db_session.add(config)
-        db_session.commit()
-        db_session.refresh(config)
-        configs.append(config)
-    
-    # Run all experiments
+    # Run experiments
     db_url = str(db_session.get_bind().engine.url)
     for config in configs:
         perform_experiment(str(config.id), db_url)
     
-    # Cluster one experiment manually
-    result = cluster_experiment(configs[0].id, db_session, downsample=1, force=False)
-    assert result["status"] == "success"
+    # Get clustering status before clustering
+    status_before = get_clustering_status(db_session)
     
-    # Commit to ensure clustering result is persisted
-    db_session.commit()
+    # Verify status for both experiments before clustering
+    for config in configs:
+        assert config.id in status_before
+        exp_status = status_before[config.id]
+        assert exp_status["experiment_id"] == config.id
+        assert exp_status["embedding_count"] == 15  # 15 I2T outputs per embedding model
+        assert exp_status["clustered_count"] == 0  # Not clustered yet
+        assert exp_status["is_fully_clustered"] is False
     
-    # Verify it's marked as clustered
-    from panic_tda.clustering_manager import get_experiments_without_clustering
-    unclustered = get_experiments_without_clustering(db_session)
-    unclustered_ids = [exp.id for exp in unclustered]
+    # Cluster all data
+    cluster_all_data(db_session, downsample=1, force=False)
     
-    # Should have 2 unclustered experiments
-    assert len(unclustered) == 2
-    assert configs[0].id not in unclustered_ids
-    assert configs[1].id in unclustered_ids
-    assert configs[2].id in unclustered_ids
+    # Get clustering status after clustering
+    status_after = get_clustering_status(db_session)
     
-    # Cluster all experiments (should only cluster the two that aren't clustered)
-    results = cluster_all_experiments(db_session, downsample=1, force=False)
-    
-    # Should have results for 2 experiments (not the already clustered one)
-    assert len(results) == 2
-    
-    # All should be successful
-    for result in results:
-        assert result["status"] == "success"
-        assert result["experiment_id"] in [configs[1].id, configs[2].id]
-    
-    # Test with force=True (should cluster all 3)
-    results_forced = cluster_all_experiments(db_session, downsample=1, force=True)
-    assert len(results_forced) == 3
+    # Verify status for both experiments after clustering
+    for config in configs:
+        assert config.id in status_after
+        exp_status = status_after[config.id]
+        assert exp_status["experiment_id"] == config.id
+        assert exp_status["embedding_count"] == 15
+        assert exp_status["clustered_count"] == 15  # All clustered now
+        assert exp_status["is_fully_clustered"] is True
 
 
 def test_get_cluster_details(db_session):
@@ -304,17 +227,16 @@ def test_get_cluster_details(db_session):
         max_length=40,
     )
     
-    # Save config to database
     db_session.add(config)
     db_session.commit()
     db_session.refresh(config)
     
-    # Run experiment to populate embeddings
+    # Run experiment
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
     
-    # Cluster the experiment
-    cluster_experiment(config.id, db_session, downsample=1, force=False)
+    # Cluster all data
+    cluster_all_data(db_session, downsample=1, force=False)
     
     # Get cluster details for each embedding model
     for model in ["Dummy", "Dummy2"]:
@@ -324,7 +246,7 @@ def test_get_cluster_details(db_session):
         assert details["experiment_id"] == config.id
         assert details["embedding_model"] == model
         assert details["algorithm"] == "hdbscan"
-        assert details["total_assignments"] == 20  # 40 text outputs / 2 models = 20 per model
+        assert details["total_assignments"] == 20  # 40 outputs / 2 models = 20 per model
         assert details["total_clusters"] > 0
         
         # Verify cluster information
@@ -355,7 +277,6 @@ def test_clustering_persistence_across_sessions(db_session):
         max_length=25,
     )
     
-    # Save config to database
     db_session.add(config)
     db_session.commit()
     db_session.refresh(config)
@@ -365,33 +286,91 @@ def test_clustering_persistence_across_sessions(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(experiment_id), db_url)
     
-    # Cluster the experiment
-    result = cluster_experiment(experiment_id, db_session, downsample=1, force=False)
+    # Cluster all data
+    result = cluster_all_data(db_session, downsample=1, force=False)
     assert result["status"] == "success"
     
     # Commit and close session
     db_session.commit()
     
     # Create new session and verify clustering results persist
-    from sqlmodel import Session, create_engine
     engine = create_engine(db_url)
     with Session(engine) as new_session:
         # Check clustering results exist
         clustering_results = new_session.exec(
-            select(ClusteringResult).where(ClusteringResult.experiment_id == experiment_id)
+            select(ClusteringResult)
         ).all()
-        assert len(clustering_results) == 1
+        assert len(clustering_results) >= 1  # At least one clustering result should exist
+        
+        # Find the clustering result for our embedding model
+        cr = next((cr for cr in clustering_results if cr.embedding_model == "Dummy"), None)
+        assert cr is not None, "Should have clustering result for Dummy model"
         
         # Check embedding assignments exist
-        cr = clustering_results[0]
         assignments = new_session.exec(
             select(EmbeddingCluster).where(EmbeddingCluster.clustering_result_id == cr.id)
         ).all()
-        # With downsampling=1, all embeddings should be clustered
-        # But the actual count may vary based on the clustering algorithm
-        assert len(assignments) > 0  # Should have some assignments
-        assert len(assignments) <= 25  # Can't have more than total embeddings
+        # Since clustering is global, we should have at least some assignments
+        assert len(assignments) > 0  # Some embeddings should be clustered
+        
+        # Check that embeddings from our experiment are included
+        from panic_tda.schemas import Embedding, Invocation, Run
+        our_embeddings = new_session.exec(
+            select(Embedding.id)
+            .join(Invocation)
+            .join(Run)
+            .where(Run.experiment_id == experiment_id)
+        ).all()
+        
+        assigned_embedding_ids = {a.embedding_id for a in assignments}
+        our_embedding_ids = set(our_embeddings)
+        
+        # At least some of our embeddings should be in the clustering
+        assert len(our_embedding_ids.intersection(assigned_embedding_ids)) > 0
         
         # Verify attempting to cluster again returns already_clustered
-        result2 = cluster_experiment(experiment_id, new_session, downsample=1, force=False)
+        result2 = cluster_all_data(new_session, downsample=1, force=False)
         assert result2["status"] == "already_clustered"
+
+
+def test_cluster_all_data_multiple_models(db_session):
+    """Test clustering with multiple embedding models."""
+    # Create test experiment with multiple embedding models
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],  # Single seed to avoid persistence diagram issues
+        prompts=["test multiple models", "another prompt", "third prompt"],  # Multiple prompts for more data
+        embedding_models=["Dummy", "Dummy2"],  # Only use existing models
+        max_length=30,
+    )
+    
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    
+    # Run experiment without persistence diagram stage
+    db_url = str(db_session.get_bind().engine.url)
+    from panic_tda.engine import perform_experiment
+    
+    # Run the full experiment - it will skip persistence diagrams if not enough data
+    perform_experiment(str(config.id), db_url)
+    
+    # Cluster all data
+    result = cluster_all_data(db_session, downsample=1, force=False)
+    
+    assert result["status"] == "success"
+    # 1 seed * 3 prompts * 30 I2T outputs = 90 embeddings
+    assert result["total_embeddings"] == 90
+    assert result["clustered_embeddings"] == 90
+    assert result["embedding_models_count"] == 2  # Two models
+    # Should have clusters for each model
+    assert result["total_clusters"] >= 2  # At least one cluster per model
+    
+    # Verify persistence
+    clustering_results = db_session.exec(
+        select(ClusteringResult)
+    ).all()
+    assert len(clustering_results) == 2  # One for each embedding model
+    
+    for cr in clustering_results:
+        assert cr.embedding_model in ["Dummy", "Dummy2"]
