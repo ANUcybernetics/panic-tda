@@ -280,9 +280,12 @@ def cluster_all_data(
                     continue  # Skip outliers in cluster info
                 else:
                     # Get the medoid vector for this cluster
-                    medoid_vector = cluster_result["medoids"][label]
-                    medoid_key = tuple(medoid_vector.flatten())
-                    medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
+                    if label < len(cluster_result["medoids"]):
+                        medoid_vector = cluster_result["medoids"][label]
+                        medoid_key = tuple(medoid_vector.astype(np.float32).flatten())
+                        medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
+                    else:
+                        medoid_text = f"Cluster {label}"
 
                     clusters_info.append({
                         "id": int(label),

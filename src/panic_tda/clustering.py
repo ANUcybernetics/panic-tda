@@ -49,31 +49,35 @@ def hdbscan(embeddings: np.ndarray) -> dict:
     # Fit the model and return the cluster labels
     hdb = hdbscan.fit(embeddings_normalized)
 
-    # Get medoids from HDBSCAN and create a mapping from cluster label to medoid vector
-    medoids = {}
-    if hasattr(hdb, "medoids_") and hdb.medoids_ is not None:
-        # medoids_ contains indices of medoid points for each cluster
+    # HDBSCAN returns medoid vectors directly when store_centers='medoid'
+    # The medoids are normalized vectors, but we need to match them back to original embeddings
+    medoids_array = np.empty((0, embeddings.shape[1]))
+    
+    if hasattr(hdb, "medoids_") and hdb.medoids_ is not None and len(hdb.medoids_) > 0:
+        # Get unique cluster labels (excluding noise)
         unique_labels = np.unique(hdb.labels_)
-        unique_labels = unique_labels[unique_labels != -1]  # Remove noise label
-
-        for i, label in enumerate(unique_labels):
-            if i < len(hdb.medoids_):
-                medoid_idx = hdb.medoids_[i]
-                # Use original (non-normalized) embeddings for the medoid
-                medoids[label] = embeddings[medoid_idx]
-
-    # Convert to list format expected by clustering manager
-    medoids_list = (
-        [
-            medoids.get(i, np.zeros(embeddings.shape[1]))
-            for i in range(max(medoids.keys()) + 1)
-        ]
-        if medoids
-        else []
-    )
-    medoids_array = (
-        np.array(medoids_list) if medoids_list else np.empty((0, embeddings.shape[1]))
-    )
+        unique_labels = unique_labels[unique_labels != -1]
+        
+        if len(unique_labels) > 0:
+            # Create array indexed by cluster label
+            max_label = max(unique_labels)
+            medoids_array = np.zeros((max_label + 1, embeddings.shape[1]))
+            
+            # For each cluster, find the original embedding that corresponds to the normalized medoid
+            for i, label in enumerate(sorted(unique_labels)):
+                if i < len(hdb.medoids_):
+                    normalized_medoid = hdb.medoids_[i]
+                    cluster_mask = hdb.labels_ == label
+                    cluster_indices = np.where(cluster_mask)[0]
+                    
+                    # Find the original embedding closest to the normalized medoid
+                    cluster_embeddings_norm = embeddings_normalized[cluster_mask]
+                    distances = np.sum((cluster_embeddings_norm - normalized_medoid)**2, axis=1)
+                    best_idx = np.argmin(distances)
+                    original_idx = cluster_indices[best_idx]
+                    
+                    # Store the original (non-normalized) embedding
+                    medoids_array[label] = embeddings[original_idx]
 
     return {"labels": hdb.labels_, "medoids": medoids_array}
 
