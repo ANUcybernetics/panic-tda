@@ -105,12 +105,12 @@ def get_global_cluster_details(
 ) -> Optional[Dict[str, any]]:
     """
     Get detailed cluster information for a specific embedding model globally.
-    
+
     Args:
         embedding_model: The embedding model name
         session: Database session
         limit: Maximum number of clusters to return (None for all)
-        
+
     Returns:
         Dictionary with cluster details or None if no clustering exists
     """
@@ -120,33 +120,32 @@ def get_global_cluster_details(
             ClusteringResult.embedding_model == embedding_model
         )
     ).first()
-    
+
     if not clustering_result:
         return None
-        
+
     # Get total assignments for this clustering result
     total_assignments = session.exec(
         select(func.count(EmbeddingCluster.id)).where(
             EmbeddingCluster.clustering_result_id == clustering_result.id
         )
     ).one()
-    
+
     # Count clusters and build cluster info
     cluster_counts_query = (
         select(
-            EmbeddingCluster.cluster_id,
-            func.count(EmbeddingCluster.id).label("count")
+            EmbeddingCluster.cluster_id, func.count(EmbeddingCluster.id).label("count")
         )
         .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
         .group_by(EmbeddingCluster.cluster_id)
         .order_by(func.count(EmbeddingCluster.id).desc())
     )
-    
+
     if limit:
         cluster_counts_query = cluster_counts_query.limit(limit)
-        
+
     cluster_counts = session.exec(cluster_counts_query).all()
-    
+
     # Build cluster details
     clusters = []
     for cluster_id, count in cluster_counts:
@@ -162,13 +161,14 @@ def get_global_cluster_details(
             })
         elif cluster_id == -1:
             clusters.append({"id": -1, "medoid_text": "OUTLIER", "size": count})
-            
+
     return {
         "embedding_model": embedding_model,
         "algorithm": clustering_result.algorithm,
         "parameters": clustering_result.parameters,
         "created_at": clustering_result.created_at,
-        "total_clusters": len(clustering_result.clusters) + (1 if any(c["id"] == -1 for c in clusters) else 0),
+        "total_clusters": len(clustering_result.clusters)
+        + (1 if any(c["id"] == -1 for c in clusters) else 0),
         "total_assignments": total_assignments,
         "clusters": clusters,
     }
@@ -194,7 +194,9 @@ def cluster_all_data(
     if embedding_model_id == "all":
         logger.info("Starting global clustering on all embeddings in the database")
     else:
-        logger.info(f"Starting clustering on embeddings for model: {embedding_model_id}")
+        logger.info(
+            f"Starting clustering on embeddings for model: {embedding_model_id}"
+        )
 
     # Check if clustering already exists
     if embedding_model_id == "all":
@@ -207,7 +209,11 @@ def cluster_all_data(
         ).first()
 
     if existing:
-        model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+        model_msg = (
+            "all models"
+            if embedding_model_id == "all"
+            else f"model {embedding_model_id}"
+        )
         logger.info(f"Clustering results already exist for {model_msg}")
         return {
             "status": "already_clustered",
@@ -226,10 +232,12 @@ def cluster_all_data(
             .where(Invocation.type == InvocationType.TEXT)
             .where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
         )
-        
+
         if embedding_model_id != "all":
-            count_query = count_query.where(Embedding.embedding_model == embedding_model_id)
-        
+            count_query = count_query.where(
+                Embedding.embedding_model == embedding_model_id
+            )
+
         count_query = count_query.group_by(Embedding.embedding_model)
 
         model_counts = session.exec(count_query).all()
@@ -248,16 +256,20 @@ def cluster_all_data(
         # Get total embedding count
         total_embeddings_query = select(func.count(Embedding.id))
         if embedding_model_id != "all":
-            total_embeddings_query = total_embeddings_query.select_from(Embedding).where(
-                Embedding.embedding_model == embedding_model_id
-            )
+            total_embeddings_query = total_embeddings_query.select_from(
+                Embedding
+            ).where(Embedding.embedding_model == embedding_model_id)
         total_embeddings = session.exec(total_embeddings_query).one()
         logger.info(f"Found {total_embeddings:,} total embeddings")
 
         embedding_models = [m[0] for m in model_counts]
         logger.info(f"Embedding models: {embedding_models}")
-        cluster_scope = "global" if embedding_model_id == "all" else f"model {embedding_model_id}"
-        logger.info(f"Running {cluster_scope} clustering with downsample factor {downsample}")
+        cluster_scope = (
+            "global" if embedding_model_id == "all" else f"model {embedding_model_id}"
+        )
+        logger.info(
+            f"Running {cluster_scope} clustering with downsample factor {downsample}"
+        )
 
         # Process each embedding model
         total_clusters = 0
@@ -341,7 +353,7 @@ def cluster_all_data(
             # Create embedding cluster assignments in batches to avoid memory issues
             batch_size = 10000
             assignments = []
-            
+
             for embedding_id, cluster_label in zip(
                 embedding_ids, cluster_result["labels"]
             ):
@@ -351,13 +363,13 @@ def cluster_all_data(
                     cluster_id=int(cluster_label),
                 )
                 assignments.append(embedding_cluster)
-                
+
                 # Add in batches
                 if len(assignments) >= batch_size:
                     session.bulk_save_objects(assignments)
                     session.flush()  # Flush instead of commit to stay in transaction
                     assignments = []
-            
+
             # Add any remaining assignments
             if assignments:
                 session.bulk_save_objects(assignments)
@@ -373,7 +385,7 @@ def cluster_all_data(
 
         # Commit all changes at once after all models are processed
         session.commit()
-        
+
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "
             f"clustered into {total_clusters:,} total clusters"
@@ -405,18 +417,18 @@ def delete_cluster_data(
 ) -> Dict[str, any]:
     """
     Delete clustering results from the database.
-    
+
     Args:
         session: Database session
         embedding_model_id: Specific embedding model to delete clusters for, or "all" for all models
-        
+
     Returns:
         Dictionary with deletion results summary
     """
     try:
         deleted_results = 0
         deleted_assignments = 0
-        
+
         # Build query for clustering results to delete
         if embedding_model_id == "all":
             results_to_delete = session.exec(select(ClusteringResult)).all()
@@ -426,16 +438,20 @@ def delete_cluster_data(
                     ClusteringResult.embedding_model == embedding_model_id
                 )
             ).all()
-            
+
         if not results_to_delete:
-            model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+            model_msg = (
+                "all models"
+                if embedding_model_id == "all"
+                else f"model {embedding_model_id}"
+            )
             return {
                 "status": "not_found",
                 "message": model_msg,
                 "deleted_results": 0,
                 "deleted_assignments": 0,
             }
-            
+
         # Delete associated EmbeddingCluster entries first (due to foreign key constraints)
         for result in results_to_delete:
             # Count assignments before deleting
@@ -445,7 +461,7 @@ def delete_cluster_data(
                 )
             ).one()
             deleted_assignments += assignments
-            
+
             # Delete assignments
             session.exec(
                 select(EmbeddingCluster).where(
@@ -458,26 +474,30 @@ def delete_cluster_data(
                 )
             ).all():
                 session.delete(cluster)
-                
+
         # Now delete the clustering results
         for result in results_to_delete:
             session.delete(result)
             deleted_results += 1
-            
+
         session.commit()
-        
-        model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+
+        model_msg = (
+            "all models"
+            if embedding_model_id == "all"
+            else f"model {embedding_model_id}"
+        )
         logger.info(
             f"Deleted {deleted_results} clustering result(s) and "
             f"{deleted_assignments} cluster assignments for {model_msg}"
         )
-        
+
         return {
             "status": "success",
             "deleted_results": deleted_results,
             "deleted_assignments": deleted_assignments,
         }
-        
+
     except Exception as e:
         logger.error(f"Error deleting cluster data: {str(e)}")
         session.rollback()

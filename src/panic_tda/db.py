@@ -22,7 +22,7 @@ from panic_tda.schemas import (
 
 def get_engine_from_connection_string(db_str, timeout=30):
     """Create an engine with configurable timeout.
-    
+
     Args:
         db_str: Database connection string
         timeout: SQLite timeout in seconds (default: 30)
@@ -50,9 +50,9 @@ def get_engine_from_connection_string(db_str, timeout=30):
 @contextmanager
 def get_session_from_connection_string(db_str, timeout=30):
     """Get a session from the connection string with pooling.
-    
+
     Args:
-        db_str: Database connection string  
+        db_str: Database connection string
         timeout: SQLite timeout in seconds (default: 30)
     """
     engine = get_engine_from_connection_string(db_str, timeout=timeout)

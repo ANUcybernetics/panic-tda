@@ -266,19 +266,21 @@ def add_cluster_labels(
     for model_name in df["embedding_model"].unique():
         # Filter to get only rows for this model
         model_df = df.filter(pl.col("embedding_model") == model_name)
-        
+
         # Apply downsampling within this model's data
         model_df_downsampled = (
             model_df.with_row_index("row_idx")
             .filter(pl.col("row_idx") % downsample == 0)
             .drop("row_idx")
         )
-        
+
         embedding_ids = model_df_downsampled["id"]
-        
+
         # Log the number of embeddings for this model
-        print(f"Model {model_name}: {len(model_df)} total, {len(embedding_ids)} after downsampling")
-        
+        print(
+            f"Model {model_name}: {len(model_df)} total, {len(embedding_ids)} after downsampling"
+        )
+
         # Skip if too few samples for clustering
         if len(embedding_ids) < 2:
             print(f"  Skipping {model_name} - too few samples for HDBSCAN")
