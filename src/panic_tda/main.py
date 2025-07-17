@@ -8,7 +8,6 @@ import typer
 
 import panic_tda.engine as engine
 from panic_tda.clustering_manager import (
-    get_cluster_details,
     get_global_cluster_details,
 )
 from panic_tda.db import (
@@ -700,35 +699,41 @@ def delete_clusters_command(
 ):
     """
     Delete clustering results from the database.
-    
+
     By default deletes all clustering results. You can specify a specific
     embedding model to delete only that model's clustering results.
     """
     # Confirmation prompt
     if not confirm:
-        model_msg = "ALL clustering results" if embedding_model_id == "all" else f"clustering results for model {embedding_model_id}"
+        model_msg = (
+            "ALL clustering results"
+            if embedding_model_id == "all"
+            else f"clustering results for model {embedding_model_id}"
+        )
         response = typer.confirm(f"Are you sure you want to delete {model_msg}?")
         if not response:
             typer.echo("Deletion cancelled.")
             raise typer.Exit()
-    
+
     # Create database connection
     db_str = f"sqlite:///{db_path}"
     logger.info(f"Connecting to database at {db_path}")
-    
+
     with get_session_from_connection_string(db_str) as session:
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import delete_cluster_data
-        
+
         result = delete_cluster_data(session, embedding_model_id)
-        
+
         if result["status"] == "success":
             typer.echo(
                 f"Successfully deleted {result['deleted_results']} clustering result(s) "
                 f"and {result['deleted_assignments']} cluster assignments."
             )
         elif result["status"] == "not_found":
-            typer.echo(f"No clustering results found for {result.get('message', 'specified criteria')}.")
+            typer.echo(
+                f"No clustering results found for {result.get('message', 'specified criteria')}."
+            )
         else:
             typer.echo(f"Deletion failed: {result.get('message', 'Unknown error')}")
 
