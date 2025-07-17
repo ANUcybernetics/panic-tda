@@ -5,7 +5,6 @@ from uuid import UUID
 from sqlmodel import select, Session, create_engine
 from panic_tda.clustering_manager import (
     cluster_all_data,
-    get_clustering_status,
     get_cluster_details,
 )
 from panic_tda.schemas import ExperimentConfig, ClusteringResult, EmbeddingCluster
@@ -164,56 +163,6 @@ def test_cluster_all_data_already_clustered(db_session):
     # Third clustering with force - should re-cluster
     result3 = cluster_all_data(db_session, downsample=1, force=True)
     assert result3["status"] == "success"
-
-
-def test_get_clustering_status(db_session):
-    """Test get_clustering_status function."""
-    # Create multiple experiments
-    configs = []
-    for i in range(2):
-        config = ExperimentConfig(
-            networks=[["DummyT2I", "DummyI2T"]],
-            seeds=[-1],
-            prompts=[f"test status {i}"],
-            embedding_models=["Dummy"],
-            max_length=30,
-        )
-        db_session.add(config)
-        db_session.commit()
-        db_session.refresh(config)
-        configs.append(config)
-
-    # Run experiments
-    db_url = str(db_session.get_bind().engine.url)
-    for config in configs:
-        perform_experiment(str(config.id), db_url)
-
-    # Get clustering status before clustering
-    status_before = get_clustering_status(db_session)
-
-    # Verify status for both experiments before clustering
-    for config in configs:
-        assert config.id in status_before
-        exp_status = status_before[config.id]
-        assert exp_status["experiment_id"] == config.id
-        assert exp_status["embedding_count"] == 15  # 15 I2T outputs per embedding model
-        assert exp_status["clustered_count"] == 0  # Not clustered yet
-        assert exp_status["is_fully_clustered"] is False
-
-    # Cluster all data
-    cluster_all_data(db_session, downsample=1, force=False)
-
-    # Get clustering status after clustering
-    status_after = get_clustering_status(db_session)
-
-    # Verify status for both experiments after clustering
-    for config in configs:
-        assert config.id in status_after
-        exp_status = status_after[config.id]
-        assert exp_status["experiment_id"] == config.id
-        assert exp_status["embedding_count"] == 15
-        assert exp_status["clustered_count"] == 15  # All clustered now
-        assert exp_status["is_fully_clustered"] is True
 
 
 def test_get_cluster_details(db_session):

@@ -26,50 +26,6 @@ from panic_tda.schemas import (
 logger = logging.getLogger(__name__)
 
 
-def get_clustering_status(session: Session) -> Dict[UUID, Dict[str, any]]:
-    """
-    Get clustering status for all experiments in the database.
-
-    Since clustering is now done globally, this provides experiment-level statistics
-    about embeddings but not clustering status per experiment.
-
-    Returns:
-        Dictionary mapping experiment IDs to their status information
-    """
-    status = {}
-
-    # Get all experiments
-    experiments = session.exec(select(ExperimentConfig)).all()
-
-    # Check if global clustering exists
-    global_clustering_results = session.exec(select(ClusteringResult)).all()
-
-    for exp in experiments:
-        # Get embedding count for this experiment
-        embedding_count = session.exec(
-            select(func.count(Embedding.id))
-            .join(Invocation)
-            .join(Run)
-            .where(Run.experiment_id == exp.id)
-        ).one()
-
-        # For backward compatibility, return experiment info
-        status[exp.id] = {
-            "experiment_id": exp.id,
-            "run_count": len(exp.runs) if exp.runs else 0,
-            "prompt_count": len(exp.prompts) if exp.prompts else 0,
-            "network_count": len(exp.networks) if exp.networks else 0,
-            "embedding_count": embedding_count,
-            "clustered_count": embedding_count if global_clustering_results else 0,
-            "clustering_models": [],  # Deprecated
-            "total_clusters": 0,  # Deprecated
-            "clustering_details": [],  # Deprecated
-            "is_fully_clustered": bool(global_clustering_results),
-        }
-
-    return status
-
-
 def get_cluster_details(
     experiment_id: UUID, embedding_model: str, session: Session
 ) -> Optional[Dict[str, any]]:
