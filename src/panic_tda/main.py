@@ -658,7 +658,8 @@ def cluster_embeddings_command(
     logger.info(f"Connecting to database at {db_path}")
     logger.info(f"Downsampling factor: {downsample}")
 
-    with get_session_from_connection_string(db_str) as session:
+    # Use a longer timeout for clustering operations (5 minutes)
+    with get_session_from_connection_string(db_str, timeout=300) as session:
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import cluster_all_data
 

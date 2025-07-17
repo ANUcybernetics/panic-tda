@@ -202,14 +202,15 @@ def cluster_all_data(
             from panic_tda.clustering import hdbscan
             import numpy as np
 
-            # Get or create clustering result
+            # Get or create clustering result within a no_autoflush block
             parameters = {
                 "cluster_selection_epsilon": 0.6,
                 "allow_single_cluster": True,
             }
-            clustering_result = create_or_get_clustering_result(
-                model_name, "hdbscan", parameters, session
-            )
+            with session.no_autoflush:
+                clustering_result = create_or_get_clustering_result(
+                    model_name, "hdbscan", parameters, session
+                )
 
             # Fetch embeddings
             embeddings_data = session.exec(embeddings_query).all()
@@ -248,10 +249,14 @@ def cluster_all_data(
                         "medoid_text": medoid_text,
                     })
 
-            # Update clustering result with clusters
-            clustering_result.clusters = clusters_info
+            # Update clustering result with clusters within no_autoflush block
+            with session.no_autoflush:
+                clustering_result.clusters = clusters_info
 
-            # Create embedding cluster assignments
+            # Create embedding cluster assignments in batches to avoid memory issues
+            batch_size = 10000
+            assignments = []
+            
             for embedding_id, cluster_label in zip(
                 embedding_ids, cluster_result["labels"]
             ):
@@ -260,10 +265,18 @@ def cluster_all_data(
                     clustering_result_id=clustering_result.id,
                     cluster_id=int(cluster_label),
                 )
-                session.add(embedding_cluster)
-
-            # Commit this model's clustering
-            session.commit()
+                assignments.append(embedding_cluster)
+                
+                # Add in batches
+                if len(assignments) >= batch_size:
+                    session.bulk_save_objects(assignments)
+                    session.flush()  # Flush instead of commit to stay in transaction
+                    assignments = []
+            
+            # Add any remaining assignments
+            if assignments:
+                session.bulk_save_objects(assignments)
+                session.flush()
 
             # Update counts
             clustered_embeddings += len(embedding_ids)
@@ -273,6 +286,9 @@ def cluster_all_data(
                 f"  Clustered {len(embedding_ids)} embeddings into {len(unique_labels)} clusters"
             )
 
+        # Commit all changes at once after all models are processed
+        session.commit()
+        
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "
             f"clustered into {total_clusters:,} total clusters"
@@ -288,6 +304,7 @@ def cluster_all_data(
 
     except Exception as e:
         logger.error(f"Error during global clustering: {str(e)}")
+        session.rollback()  # Rollback on error
         return {
             "status": "error",
             "message": str(e),

@@ -20,13 +20,19 @@ from panic_tda.schemas import (
 # helper functions for working with db_str: str values
 
 
-def get_engine_from_connection_string(db_str):
+def get_engine_from_connection_string(db_str, timeout=30):
+    """Create an engine with configurable timeout.
+    
+    Args:
+        db_str: Database connection string
+        timeout: SQLite timeout in seconds (default: 30)
+    """
     engine = create_engine(
         db_str,
         poolclass=QueuePool,
         pool_size=5,
         max_overflow=10,
-        connect_args={"timeout": 30},
+        connect_args={"timeout": timeout},
     )
 
     # Configure SQLite for better concurrency
@@ -42,9 +48,14 @@ def get_engine_from_connection_string(db_str):
 
 
 @contextmanager
-def get_session_from_connection_string(db_str):
-    """Get a session from the connection string with pooling"""
-    engine = get_engine_from_connection_string(db_str)
+def get_session_from_connection_string(db_str, timeout=30):
+    """Get a session from the connection string with pooling.
+    
+    Args:
+        db_str: Database connection string  
+        timeout: SQLite timeout in seconds (default: 30)
+    """
+    engine = get_engine_from_connection_string(db_str, timeout=timeout)
     session = Session(engine)
     try:
         yield session
