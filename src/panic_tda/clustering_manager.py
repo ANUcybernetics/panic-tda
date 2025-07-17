@@ -261,19 +261,19 @@ def cluster_all_data(
             vectors = [e[1] for e in embeddings_data]
             output_texts = [e[2] for e in embeddings_data]
 
-            # Stack vectors and perform clustering
-            vectors_array = np.vstack(vectors)
+            # Stack vectors and convert to float32 for memory efficiency
+            vectors_array = np.vstack(vectors).astype(np.float32)
             cluster_result = hdbscan(vectors_array)
 
             # Create cluster information
             unique_labels = sorted(set(cluster_result["labels"]))
             clusters_info = []
 
-            # Create mapping for medoid text
+            # Create mapping for medoid text (using float32 for consistency)
             vector_to_text = {}
             for i, (vec, text) in enumerate(zip(vectors, output_texts)):
                 if text:
-                    vector_to_text[tuple(vec.flatten())] = text
+                    vector_to_text[tuple(vec.astype(np.float32).flatten())] = text
 
             for label in unique_labels:
                 if label == -1:
