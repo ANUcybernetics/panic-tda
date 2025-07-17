@@ -20,3 +20,7 @@ embeddings? Or only those which will be "replaced" by the new clustering run? I
 think I'd prefer to remove the --force option from that command, and just have
 another top-level command for deleting cluster data (again, either for all
 embedding models or just for one).
+
+In addition to this, the cluster-details command still takes an `experiment_id`
+argument. This should be changed to `embedding_model_id` to better reflect what
+the argument is used for (again, with "all" being the default).
