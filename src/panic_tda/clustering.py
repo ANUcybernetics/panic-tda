@@ -2,7 +2,6 @@ from typing import List
 
 import numpy as np
 from sklearn.cluster import HDBSCAN, OPTICS
-from sklearn.metrics.pairwise import cosine_distances
 
 
 def hdbscan(embeddings: np.ndarray) -> dict:
@@ -23,47 +22,60 @@ def hdbscan(embeddings: np.ndarray) -> dict:
     n_samples = embeddings.shape[0]
     min_cluster_size = max(2, int(n_samples * 0.001))  # 0.1% of dataset size
     min_samples = max(2, int(n_samples * 0.001))  # same as above
-    # Cosine distance ranges from 0 to 2, so we need a smaller epsilon
+
+    # Normalize embeddings to unit length
+    # For unit vectors, Euclidean distance = sqrt(2 - 2*cos(theta))
+    # This is monotonic with cosine distance, so clustering results are equivalent
+    embeddings_normalized = embeddings / np.linalg.norm(
+        embeddings, axis=1, keepdims=True
+    )
+
+    # Euclidean distance between unit vectors ranges from 0 to 2
+    # Same as cosine distance range, so we can use the same epsilon
     cluster_selection_epsilon = 0.3
 
-    # Compute cosine distance matrix
-    distance_matrix = cosine_distances(embeddings)
-
-    # Configure and run HDBSCAN without store_centers since precomputed distances don't support it
+    # Configure and run HDBSCAN with Euclidean metric on normalized vectors
+    # This is equivalent to cosine distance but allows using store_centers
     hdbscan = HDBSCAN(
         min_cluster_size=min_cluster_size,
         min_samples=min_samples,
         cluster_selection_epsilon=cluster_selection_epsilon,
         allow_single_cluster=True,
-        metric="precomputed",
+        metric="euclidean",
+        store_centers="medoid",  # Get medoids directly from HDBSCAN
         n_jobs=-1,
     )
 
     # Fit the model and return the cluster labels
-    hdb = hdbscan.fit(distance_matrix)
+    hdb = hdbscan.fit(embeddings_normalized)
 
-    # Compute medoids manually for each cluster using cosine distances
-    unique_labels = np.unique(hdb.labels_)
-    unique_labels = unique_labels[unique_labels != -1]  # Remove noise label
+    # Get medoids from HDBSCAN and create a mapping from cluster label to medoid vector
+    medoids = {}
+    if hasattr(hdb, "medoids_") and hdb.medoids_ is not None:
+        # medoids_ contains indices of medoid points for each cluster
+        unique_labels = np.unique(hdb.labels_)
+        unique_labels = unique_labels[unique_labels != -1]  # Remove noise label
 
-    medoids = []
-    for label in unique_labels:
-        # Get indices of points in this cluster
-        cluster_indices = np.where(hdb.labels_ == label)[0]
+        for i, label in enumerate(unique_labels):
+            if i < len(hdb.medoids_):
+                medoid_idx = hdb.medoids_[i]
+                # Use original (non-normalized) embeddings for the medoid
+                medoids[label] = embeddings[medoid_idx]
 
-        # Get the distance submatrix for this cluster
-        cluster_distances = distance_matrix[np.ix_(cluster_indices, cluster_indices)]
+    # Convert to list format expected by clustering manager
+    medoids_list = (
+        [
+            medoids.get(i, np.zeros(embeddings.shape[1]))
+            for i in range(max(medoids.keys()) + 1)
+        ]
+        if medoids
+        else []
+    )
+    medoids_array = (
+        np.array(medoids_list) if medoids_list else np.empty((0, embeddings.shape[1]))
+    )
 
-        # Find the point with minimum sum of distances to all other points in the cluster
-        medoid_idx_in_cluster = np.argmin(cluster_distances.sum(axis=1))
-        medoid_idx = cluster_indices[medoid_idx_in_cluster]
-
-        # Get the actual embedding vector for the medoid
-        medoids.append(embeddings[medoid_idx])
-
-    medoids = np.array(medoids) if medoids else np.empty((0, embeddings.shape[1]))
-
-    return {"labels": hdb.labels_, "medoids": medoids}
+    return {"labels": hdb.labels_, "medoids": medoids_array}
 
 
 def optics(
