@@ -1,7 +1,7 @@
 ---
 id: task-07
 title: Investigate claude code crashes during database queries
-status: In Progress
+status: Done
 assignee: []
 created_date: "2025-07-16"
 labels: []
