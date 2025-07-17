@@ -9,6 +9,7 @@ import typer
 import panic_tda.engine as engine
 from panic_tda.clustering_manager import (
     get_cluster_details,
+    get_global_cluster_details,
 )
 from panic_tda.db import (
     count_invocations,
@@ -629,6 +630,10 @@ def script():
 
 @app.command("cluster-embeddings")
 def cluster_embeddings_command(
+    embedding_model_id: str = typer.Argument(
+        "all",
+        help="Embedding model ID to cluster (default: 'all' for all models)",
+    ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
         "--db-path",
@@ -640,18 +645,12 @@ def cluster_embeddings_command(
         "--downsample",
         help="Downsampling factor (1 = no downsampling, 10 = every 10th embedding)",
     ),
-    force: bool = typer.Option(
-        False,
-        "--force",
-        "-f",
-        help="Force re-clustering even if clustering results already exist",
-    ),
 ):
     """
-    Run clustering on all embeddings in the database.
+    Run clustering on embeddings in the database.
 
-    This command clusters all available embeddings across all experiments.
-    Use --force to re-cluster if clustering results already exist.
+    By default clusters all available embeddings across all experiments.
+    You can specify a specific embedding model to cluster only that model's embeddings.
     """
     # Create database connection
     db_str = f"sqlite:///{db_path}"
@@ -663,7 +662,7 @@ def cluster_embeddings_command(
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import cluster_all_data
 
-        result = cluster_all_data(session, downsample, force)
+        result = cluster_all_data(session, downsample, embedding_model_id)
 
         if result["status"] == "success":
             typer.echo(
@@ -674,21 +673,71 @@ def cluster_embeddings_command(
             )
         elif result["status"] == "already_clustered":
             typer.echo(
-                "All data already has clustering results. Use --force to re-cluster."
+                f"Data already has clustering results for {result.get('message', 'specified models')}."
             )
         else:
             typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
 
+@app.command("delete-clusters")
+def delete_clusters_command(
+    embedding_model_id: str = typer.Argument(
+        "all",
+        help="Embedding model ID to delete clusters for (default: 'all' for all models)",
+    ),
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    confirm: bool = typer.Option(
+        False,
+        "--confirm",
+        "-y",
+        help="Skip confirmation prompt",
+    ),
+):
+    """
+    Delete clustering results from the database.
+    
+    By default deletes all clustering results. You can specify a specific
+    embedding model to delete only that model's clustering results.
+    """
+    # Confirmation prompt
+    if not confirm:
+        model_msg = "ALL clustering results" if embedding_model_id == "all" else f"clustering results for model {embedding_model_id}"
+        response = typer.confirm(f"Are you sure you want to delete {model_msg}?")
+        if not response:
+            typer.echo("Deletion cancelled.")
+            raise typer.Exit()
+    
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+    
+    with get_session_from_connection_string(db_str) as session:
+        # Import here to avoid circular imports
+        from panic_tda.clustering_manager import delete_cluster_data
+        
+        result = delete_cluster_data(session, embedding_model_id)
+        
+        if result["status"] == "success":
+            typer.echo(
+                f"Successfully deleted {result['deleted_results']} clustering result(s) "
+                f"and {result['deleted_assignments']} cluster assignments."
+            )
+        elif result["status"] == "not_found":
+            typer.echo(f"No clustering results found for {result.get('message', 'specified criteria')}.")
+        else:
+            typer.echo(f"Deletion failed: {result.get('message', 'Unknown error')}")
+
+
 @app.command("cluster-details")
 def cluster_details_command(
-    experiment_id: str = typer.Argument(
+    embedding_model_id: str = typer.Argument(
         ...,
-        help="ID of the experiment",
-    ),
-    embedding_model: str = typer.Argument(
-        ...,
-        help="Name of the embedding model",
+        help="Embedding model ID to show cluster details for",
     ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -704,7 +753,7 @@ def cluster_details_command(
     ),
 ):
     """
-    Show detailed information about clusters for a specific experiment and embedding model.
+    Show detailed information about clusters for a specific embedding model.
 
     Lists all clusters with their medoid text and size, sorted by size.
     """
@@ -713,25 +762,17 @@ def cluster_details_command(
     logger.info(f"Connecting to database at {db_path}")
 
     with get_session_from_connection_string(db_str) as session:
-        # Validate experiment ID
-        try:
-            exp_uuid = UUID(experiment_id)
-        except ValueError:
-            logger.error(f"Invalid experiment ID format: {experiment_id}")
-            raise typer.Exit(code=1)
-
         # Get cluster details
-        details = get_cluster_details(exp_uuid, embedding_model, session)
+        details = get_global_cluster_details(embedding_model_id, session, limit)
 
         if not details:
             logger.error(
-                f"No clustering results found for experiment {experiment_id} with model {embedding_model}"
+                f"No clustering results found for embedding model {embedding_model_id}"
             )
             raise typer.Exit(code=1)
 
         # Print header
-        typer.echo(f"Clustering details for experiment {experiment_id}")
-        typer.echo(f"Embedding model: {embedding_model}")
+        typer.echo(f"Clustering details for embedding model: {embedding_model_id}")
         typer.echo(f"Algorithm: {details['algorithm']}")
         typer.echo(f"Parameters: {details['parameters']}")
         typer.echo(f"Created: {details['created_at']}")
@@ -739,11 +780,11 @@ def cluster_details_command(
         typer.echo(f"Total assignments: {details['total_assignments']}")
         typer.echo("")
 
-        # Print clusters
-        typer.echo(f"Top {min(limit, len(details['clusters']))} clusters by size:")
+        # Print clusters (already limited by the query)
+        typer.echo(f"Top {len(details['clusters'])} clusters by size:")
         typer.echo("-" * 80)
 
-        for i, cluster in enumerate(details["clusters"][:limit]):
+        for i, cluster in enumerate(details["clusters"]):
             text = cluster["medoid_text"]
             if len(text) > 60:
                 text = text[:57] + "..."

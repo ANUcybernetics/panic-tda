@@ -100,43 +100,119 @@ def get_cluster_details(
     }
 
 
+def get_global_cluster_details(
+    embedding_model: str, session: Session, limit: int = None
+) -> Optional[Dict[str, any]]:
+    """
+    Get detailed cluster information for a specific embedding model globally.
+    
+    Args:
+        embedding_model: The embedding model name
+        session: Database session
+        limit: Maximum number of clusters to return (None for all)
+        
+    Returns:
+        Dictionary with cluster details or None if no clustering exists
+    """
+    # Get global clustering result for this embedding model
+    clustering_result = session.exec(
+        select(ClusteringResult).where(
+            ClusteringResult.embedding_model == embedding_model
+        )
+    ).first()
+    
+    if not clustering_result:
+        return None
+        
+    # Get total assignments for this clustering result
+    total_assignments = session.exec(
+        select(func.count(EmbeddingCluster.id)).where(
+            EmbeddingCluster.clustering_result_id == clustering_result.id
+        )
+    ).one()
+    
+    # Count clusters and build cluster info
+    cluster_counts_query = (
+        select(
+            EmbeddingCluster.cluster_id,
+            func.count(EmbeddingCluster.id).label("count")
+        )
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        .group_by(EmbeddingCluster.cluster_id)
+        .order_by(func.count(EmbeddingCluster.id).desc())
+    )
+    
+    if limit:
+        cluster_counts_query = cluster_counts_query.limit(limit)
+        
+    cluster_counts = session.exec(cluster_counts_query).all()
+    
+    # Build cluster details
+    clusters = []
+    for cluster_id, count in cluster_counts:
+        # Find cluster info in the global clustering result
+        cluster_info = next(
+            (c for c in clustering_result.clusters if c["id"] == cluster_id), None
+        )
+        if cluster_info:
+            clusters.append({
+                "id": cluster_id,
+                "medoid_text": cluster_info.get("medoid_text", f"Cluster {cluster_id}"),
+                "size": count,
+            })
+        elif cluster_id == -1:
+            clusters.append({"id": -1, "medoid_text": "OUTLIER", "size": count})
+            
+    return {
+        "embedding_model": embedding_model,
+        "algorithm": clustering_result.algorithm,
+        "parameters": clustering_result.parameters,
+        "created_at": clustering_result.created_at,
+        "total_clusters": len(clustering_result.clusters) + (1 if any(c["id"] == -1 for c in clusters) else 0),
+        "total_assignments": total_assignments,
+        "clusters": clusters,
+    }
+
+
 def cluster_all_data(
-    session: Session, downsample: int = 1, force: bool = False
+    session: Session, downsample: int = 1, embedding_model_id: str = "all"
 ) -> Dict[str, any]:
     """
-    Cluster all embeddings in the database globally.
+    Cluster embeddings in the database globally.
 
-    This function loads all embeddings across all experiments and performs
-    clustering on the entire dataset, storing results with experiment_id=NULL.
+    This function loads embeddings across all experiments and performs
+    clustering on the dataset, storing results with experiment_id=NULL.
 
     Args:
         session: Database session
         downsample: Downsampling factor (1 = no downsampling)
-        force: If True, re-run clustering even if it was done before
+        embedding_model_id: Specific embedding model to cluster, or "all" for all models
 
     Returns:
         Dictionary with clustering results summary
     """
-    logger.info("Starting global clustering on all embeddings in the database")
+    if embedding_model_id == "all":
+        logger.info("Starting global clustering on all embeddings in the database")
+    else:
+        logger.info(f"Starting clustering on embeddings for model: {embedding_model_id}")
 
     # Check if clustering already exists
-    if not force:
+    if embedding_model_id == "all":
         existing = session.exec(select(ClusteringResult)).first()
-
-        if existing:
-            logger.info(
-                "Clustering results already exist. Use force=True to re-cluster."
-            )
-            return {
-                "status": "already_clustered",
-                "message": "Clustering results already exist",
-            }
     else:
-        # Delete existing clustering results if forcing
-        for cr in session.exec(select(ClusteringResult)).all():
-            session.delete(cr)
-        session.commit()
-        logger.info("Deleted existing clustering results")
+        existing = session.exec(
+            select(ClusteringResult).where(
+                ClusteringResult.embedding_model == embedding_model_id
+            )
+        ).first()
+
+    if existing:
+        model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+        logger.info(f"Clustering results already exist for {model_msg}")
+        return {
+            "status": "already_clustered",
+            "message": model_msg,
+        }
 
     try:
         # Query to get embedding counts per model with downsampling
@@ -149,8 +225,12 @@ def cluster_all_data(
             .join(Invocation, Embedding.invocation_id == Invocation.id)
             .where(Invocation.type == InvocationType.TEXT)
             .where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
-            .group_by(Embedding.embedding_model)
         )
+        
+        if embedding_model_id != "all":
+            count_query = count_query.where(Embedding.embedding_model == embedding_model_id)
+        
+        count_query = count_query.group_by(Embedding.embedding_model)
 
         model_counts = session.exec(count_query).all()
 
@@ -167,12 +247,17 @@ def cluster_all_data(
 
         # Get total embedding count
         total_embeddings_query = select(func.count(Embedding.id))
+        if embedding_model_id != "all":
+            total_embeddings_query = total_embeddings_query.select_from(Embedding).where(
+                Embedding.embedding_model == embedding_model_id
+            )
         total_embeddings = session.exec(total_embeddings_query).one()
         logger.info(f"Found {total_embeddings:,} total embeddings")
 
         embedding_models = [m[0] for m in model_counts]
         logger.info(f"Embedding models: {embedding_models}")
-        logger.info(f"Running global clustering with downsample factor {downsample}")
+        cluster_scope = "global" if embedding_model_id == "all" else f"model {embedding_model_id}"
+        logger.info(f"Running {cluster_scope} clustering with downsample factor {downsample}")
 
         # Process each embedding model
         total_clusters = 0
@@ -312,4 +397,93 @@ def cluster_all_data(
             "clustered_embeddings": 0,
             "total_clusters": 0,
             "embedding_models_count": 0,
+        }
+
+
+def delete_cluster_data(
+    session: Session, embedding_model_id: str = "all"
+) -> Dict[str, any]:
+    """
+    Delete clustering results from the database.
+    
+    Args:
+        session: Database session
+        embedding_model_id: Specific embedding model to delete clusters for, or "all" for all models
+        
+    Returns:
+        Dictionary with deletion results summary
+    """
+    try:
+        deleted_results = 0
+        deleted_assignments = 0
+        
+        # Build query for clustering results to delete
+        if embedding_model_id == "all":
+            results_to_delete = session.exec(select(ClusteringResult)).all()
+        else:
+            results_to_delete = session.exec(
+                select(ClusteringResult).where(
+                    ClusteringResult.embedding_model == embedding_model_id
+                )
+            ).all()
+            
+        if not results_to_delete:
+            model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+            return {
+                "status": "not_found",
+                "message": model_msg,
+                "deleted_results": 0,
+                "deleted_assignments": 0,
+            }
+            
+        # Delete associated EmbeddingCluster entries first (due to foreign key constraints)
+        for result in results_to_delete:
+            # Count assignments before deleting
+            assignments = session.exec(
+                select(func.count(EmbeddingCluster.id)).where(
+                    EmbeddingCluster.clustering_result_id == result.id
+                )
+            ).one()
+            deleted_assignments += assignments
+            
+            # Delete assignments
+            session.exec(
+                select(EmbeddingCluster).where(
+                    EmbeddingCluster.clustering_result_id == result.id
+                )
+            )
+            for cluster in session.exec(
+                select(EmbeddingCluster).where(
+                    EmbeddingCluster.clustering_result_id == result.id
+                )
+            ).all():
+                session.delete(cluster)
+                
+        # Now delete the clustering results
+        for result in results_to_delete:
+            session.delete(result)
+            deleted_results += 1
+            
+        session.commit()
+        
+        model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+        logger.info(
+            f"Deleted {deleted_results} clustering result(s) and "
+            f"{deleted_assignments} cluster assignments for {model_msg}"
+        )
+        
+        return {
+            "status": "success",
+            "deleted_results": deleted_results,
+            "deleted_assignments": deleted_assignments,
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting cluster data: {str(e)}")
+        session.rollback()
+        return {
+            "status": "error",
+            "message": str(e),
+            "deleted_results": 0,
+            "deleted_assignments": 0,
         }
