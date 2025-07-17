@@ -151,3 +151,5 @@ sqlite3 ./db/trajectory_data.sqlite "SELECT * FROM table;" > output.txt
    with open_session("./db/trajectory_data.sqlite") as session:
        runs = session.query(Run).limit(10).all()
    ```
+
+Also, **DO NOT** `tail` a file - this can causes crashes as well.
