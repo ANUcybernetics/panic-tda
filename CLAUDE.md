@@ -116,16 +116,24 @@ For detailed design rationale, see @DESIGN.md.
 
 ### SQLite3 CLI Crash Issue
 
-**CRITICAL**: Claude Code crashes with `std::bad_alloc` when running `sqlite3` CLI commands. This is a known issue (see [GitHub #3660](https://github.com/anthropics/claude-code/issues/3660)).
+**CRITICAL**: Claude Code crashes with `std::bad_alloc` when running `sqlite3`
+CLI commands. This is a known issue (see
+[GitHub #3660](https://github.com/anthropics/claude-code/issues/3660)).
 
-**DO NOT** run commands like:
+**DO NOT** run sqlite3 commands at all - even redirecting output still causes
+crashes:
+
 ```bash
+# DON'T DO THIS - IT WILL CRASH:
 sqlite3 ./db/trajectory_data.sqlite "SELECT * FROM table;"
+# DON'T DO THIS EITHER - STILL CRASHES:
+sqlite3 ./db/trajectory_data.sqlite "SELECT * FROM table;" > output.txt
 ```
 
 **INSTEAD**, use one of these workarounds:
 
 1. **Use Python's sqlite3 module**:
+
    ```python
    import sqlite3
    conn = sqlite3.connect('./db/trajectory_data.sqlite')
@@ -134,17 +142,12 @@ sqlite3 ./db/trajectory_data.sqlite "SELECT * FROM table;"
    conn.close()
    ```
 
-2. **Redirect sqlite3 output to file**:
-   ```bash
-   sqlite3 ./db/trajectory_data.sqlite "SELECT * FROM table;" > results.txt
-   head -20 results.txt
-   ```
+2. **Use the project's SQLModel infrastructure**:
 
-3. **Use the project's SQLModel infrastructure**:
    ```python
    from panic_tda.schemas import Run
    from panic_tda.engine import open_session
-   
+
    with open_session("./db/trajectory_data.sqlite") as session:
        runs = session.query(Run).limit(10).all()
    ```
