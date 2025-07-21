@@ -153,10 +153,13 @@ def test_cluster_all_data_already_clustered(db_session):
     result1 = cluster_all_data(db_session, downsample=1)
     assert result1["status"] == "success"
 
-    # Second clustering without force - should return already_clustered
+    # Second clustering - should create new clustering results (no longer returns already_clustered)
     result2 = cluster_all_data(db_session, downsample=1)
-    assert result2["status"] == "already_clustered"
-    assert result2["message"] == "all models"  # Since we're clustering all models
+    assert result2["status"] == "success"
+    
+    # Verify we now have multiple clustering results
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) >= 2  # Should have at least 2 clustering results
 
     # Delete existing clustering data
     from panic_tda.clustering_manager import delete_cluster_data
@@ -236,9 +239,13 @@ def test_clustering_persistence_across_sessions(db_session):
         # At least some of our embeddings should be in the clustering
         assert len(our_embedding_ids.intersection(assigned_embedding_ids)) > 0
 
-        # Verify attempting to cluster again returns already_clustered
+        # Verify attempting to cluster again creates new clustering results
         result2 = cluster_all_data(new_session, downsample=1)
-        assert result2["status"] == "already_clustered"
+        assert result2["status"] == "success"
+        
+        # Should now have multiple clustering results
+        clustering_results2 = new_session.exec(select(ClusteringResult)).all()
+        assert len(clustering_results2) > len(clustering_results)
 
 
 def test_cluster_all_data_multiple_models(db_session):

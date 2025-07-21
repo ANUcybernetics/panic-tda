@@ -281,10 +281,14 @@ def cluster_all_data(
             texts = [e[2] for e in embeddings_data]
             
             # Import clustering function here to avoid circular imports
-            from panic_tda.clustering import cluster_embeddings
+            from panic_tda.clustering import hdbscan
+            import numpy as np
+            
+            # Convert vectors to numpy array for clustering
+            vectors_array = np.array(vectors)
             
             # Perform clustering
-            cluster_result = cluster_embeddings(vectors)
+            cluster_result = hdbscan(vectors_array)
             
             if cluster_result is None:
                 logger.warning(f"  Clustering failed for model {model_name}")
@@ -304,20 +308,26 @@ def cluster_all_data(
             session.flush()  # Get the ID
             
             # Build cluster info
-            unique_labels = set(cluster_result["labels"])
+            unique_labels = sorted(set(cluster_result["labels"]))
             clusters_info = []
+            
+            # Create mapping for medoid text (using float32 for consistency)
+            vector_to_text = {}
+            for i, (vec, text) in enumerate(zip(vectors, texts)):
+                if text:
+                    vector_to_text[tuple(vec.astype(np.float32).flatten())] = text
             
             for label in unique_labels:
                 if label == OUTLIER_CLUSTER_ID:
-                    continue
-                    
-                # Find medoid text
-                indices = [i for i, l in enumerate(cluster_result["labels"]) if l == label]
-                if indices and "medoids" in cluster_result and label in cluster_result["medoids"]:
-                    medoid_idx = cluster_result["medoids"][label]
-                    medoid_text = texts[medoid_idx]
+                    continue  # Skip outliers in cluster info
                 else:
-                    medoid_text = texts[indices[0]] if indices else f"Cluster {label}"
+                    # Get the medoid vector for this cluster
+                    if label < len(cluster_result["medoids"]):
+                        medoid_vector = cluster_result["medoids"][label]
+                        medoid_key = tuple(medoid_vector.astype(np.float32).flatten())
+                        medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
+                    else:
+                        medoid_text = f"Cluster {label}"
                     
                 clusters_info.append({
                     "id": int(label),
