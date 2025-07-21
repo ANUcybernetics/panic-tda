@@ -715,12 +715,25 @@ def list_clusters_command(
         typer.echo(f"Found {len(results)} clustering result(s):")
         
         for result in results:
-            # Count total assignments
+            # Count total assignments and outliers
             assignments_count = session.exec(
                 select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == result.id
                 )
             ).one()
+            
+            # Count outlier assignments (cluster_id == -1)
+            outlier_count = session.exec(
+                select(func.count(EmbeddingCluster.id)).where(
+                    EmbeddingCluster.clustering_result_id == result.id,
+                    EmbeddingCluster.cluster_id == -1
+                )
+            ).one()
+            
+            outlier_percentage = (outlier_count / assignments_count * 100) if assignments_count > 0 else 0
+            
+            # Count regular clusters (excluding outliers)
+            regular_clusters = len([c for c in result.clusters if c.get("id") != -1])
             
             if verbose:
                 # Detailed output
@@ -729,15 +742,18 @@ def list_clusters_command(
                 typer.echo(f"  Algorithm: {result.algorithm}")
                 typer.echo(f"  Parameters: {result.parameters}")
                 typer.echo(f"  Created: {result.created_at}")
-                typer.echo(f"  Total Clusters: {len(result.clusters)}")
+                typer.echo(f"  Total Clusters: {regular_clusters}")
                 typer.echo(f"  Total Assignments: {assignments_count}")
+                typer.echo(f"  Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)")
             else:
-                # Simple output
+                # Simple output with cluster_selection_epsilon parameter
+                epsilon = result.parameters.get("cluster_selection_epsilon", "N/A")
                 typer.echo(
                     f"{result.id} - model: {result.embedding_model}, "
                     f"algorithm: {result.algorithm}, "
-                    f"clusters: {len(result.clusters)}, "
-                    f"assignments: {assignments_count}, "
+                    f"epsilon: {epsilon}, "
+                    f"clusters: {regular_clusters}, "
+                    f"outliers: {outlier_percentage:.1f}%, "
                     f"created: {result.created_at.strftime('%Y-%m-%d %H:%M')}"
                 )
 
