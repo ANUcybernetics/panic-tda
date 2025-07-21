@@ -433,3 +433,177 @@ def delete_cluster_data(
             "deleted_results": 0,
             "deleted_assignments": 0,
         }
+
+
+def list_clustering_results(session: Session) -> list[ClusteringResult]:
+    """
+    List all clustering results in the database.
+    
+    Args:
+        session: Database session
+        
+    Returns:
+        List of ClusteringResult objects ordered by creation date
+    """
+    return session.exec(
+        select(ClusteringResult).order_by(ClusteringResult.created_at.desc())
+    ).all()
+
+
+def get_clustering_result_by_id(clustering_id: UUID, session: Session) -> Optional[ClusteringResult]:
+    """
+    Get a specific clustering result by its ID.
+    
+    Args:
+        clustering_id: UUID of the clustering result
+        session: Database session
+        
+    Returns:
+        ClusteringResult object or None if not found
+    """
+    return session.get(ClusteringResult, clustering_id)
+
+
+def get_latest_clustering_result(session: Session) -> Optional[ClusteringResult]:
+    """
+    Get the most recently created clustering result.
+    
+    Args:
+        session: Database session
+        
+    Returns:
+        ClusteringResult object or None if no clustering exists
+    """
+    return session.exec(
+        select(ClusteringResult).order_by(ClusteringResult.created_at.desc())
+    ).first()
+
+
+def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, any]:
+    """
+    Delete a single clustering result and all its associated data.
+    
+    Args:
+        clustering_id: UUID of the clustering result to delete
+        session: Database session
+        
+    Returns:
+        Dictionary with deletion status and counts
+    """
+    try:
+        # Get the clustering result
+        result = session.get(ClusteringResult, clustering_id)
+        if not result:
+            return {
+                "status": "not_found",
+                "message": f"Clustering result with ID {clustering_id} not found",
+            }
+        
+        # Count assignments before deleting
+        assignments_count = session.exec(
+            select(func.count(EmbeddingCluster.id)).where(
+                EmbeddingCluster.clustering_result_id == result.id
+            )
+        ).one()
+        
+        # Delete assignments
+        for cluster in session.exec(
+            select(EmbeddingCluster).where(
+                EmbeddingCluster.clustering_result_id == result.id
+            )
+        ).all():
+            session.delete(cluster)
+            
+        # Delete the clustering result
+        session.delete(result)
+        session.commit()
+        
+        logger.info(
+            f"Deleted clustering result {clustering_id} and {assignments_count} assignments"
+        )
+        
+        return {
+            "status": "success",
+            "deleted_results": 1,
+            "deleted_assignments": assignments_count,
+        }
+        
+    except Exception as e:
+        logger.error(f"Error deleting clustering result {clustering_id}: {str(e)}")
+        session.rollback()
+        return {
+            "status": "error",
+            "message": str(e),
+            "deleted_results": 0,
+            "deleted_assignments": 0,
+        }
+
+
+def get_cluster_details_by_id(
+    clustering_id: UUID, session: Session, limit: int = None
+) -> Optional[Dict[str, any]]:
+    """
+    Get detailed cluster information for a specific clustering result by ID.
+    
+    Args:
+        clustering_id: UUID of the clustering result
+        session: Database session
+        limit: Maximum number of clusters to return (None for all)
+        
+    Returns:
+        Dictionary with cluster details or None if not found
+    """
+    # Get the clustering result
+    clustering_result = session.get(ClusteringResult, clustering_id)
+    if not clustering_result:
+        return None
+        
+    # Get total assignments for this clustering result
+    total_assignments = session.exec(
+        select(func.count(EmbeddingCluster.id)).where(
+            EmbeddingCluster.clustering_result_id == clustering_result.id
+        )
+    ).one()
+    
+    # Count clusters and build cluster info
+    cluster_counts_query = (
+        select(
+            EmbeddingCluster.cluster_id, func.count(EmbeddingCluster.id).label("count")
+        )
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        .group_by(EmbeddingCluster.cluster_id)
+        .order_by(func.count(EmbeddingCluster.id).desc())
+    )
+    
+    if limit:
+        cluster_counts_query = cluster_counts_query.limit(limit)
+        
+    cluster_counts = session.exec(cluster_counts_query).all()
+    
+    # Build cluster details
+    clusters = []
+    for cluster_id, count in cluster_counts:
+        # Find cluster info in the global clustering result
+        cluster_info = next(
+            (c for c in clustering_result.clusters if c["id"] == cluster_id), None
+        )
+        if cluster_info:
+            clusters.append({
+                "id": cluster_id,
+                "medoid_text": cluster_info.get("medoid_text", f"Cluster {cluster_id}"),
+                "size": count,
+            })
+        elif cluster_id == -1:
+            clusters.append({"id": -1, "medoid_text": "OUTLIER", "size": count})
+            
+    return {
+        "clustering_id": clustering_result.id,
+        "embedding_model": clustering_result.embedding_model,
+        "algorithm": clustering_result.algorithm,
+        "parameters": clustering_result.parameters,
+        "created_at": clustering_result.created_at,
+        "total_clusters": len(clustering_result.clusters)
+        + (1 if any(c["id"] == -1 for c in clusters) else 0),
+        "total_assignments": total_assignments,
+        "clusters": clusters,
+    }

@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 import typer
+from sqlmodel import Session, func, select
 
 import panic_tda.engine as engine
 from panic_tda.clustering_manager import (
@@ -29,7 +30,7 @@ from panic_tda.export import (
 from panic_tda.genai_models import get_output_type
 from panic_tda.genai_models import list_models as list_genai_models
 from panic_tda.local import paper_charts
-from panic_tda.schemas import ExperimentConfig
+from panic_tda.schemas import ExperimentConfig, EmbeddingCluster
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -679,11 +680,73 @@ def cluster_embeddings_command(
             typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
 
-@app.command("delete-clusters")
-def delete_clusters_command(
-    embedding_model_id: str = typer.Argument(
-        "all",
-        help="Embedding model ID to delete clusters for (default: 'all' for all models)",
+@app.command("list-clusters")
+def list_clusters_command(
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show full cluster details"
+    ),
+):
+    """
+    List all clustering results stored in the database.
+
+    Displays clustering result IDs and basic information about each clustering.
+    Use --verbose for more detailed output.
+    """
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    with get_session_from_connection_string(db_str) as session:
+        # Import here to avoid circular imports
+        from panic_tda.clustering_manager import list_clustering_results
+        
+        results = list_clustering_results(session)
+        
+        if not results:
+            typer.echo("No clustering results found in the database.")
+            return
+            
+        typer.echo(f"Found {len(results)} clustering result(s):")
+        
+        for result in results:
+            # Count total assignments
+            assignments_count = session.exec(
+                select(func.count(EmbeddingCluster.id)).where(
+                    EmbeddingCluster.clustering_result_id == result.id
+                )
+            ).one()
+            
+            if verbose:
+                # Detailed output
+                typer.echo(f"\nClustering Result ID: {result.id}")
+                typer.echo(f"  Embedding Model: {result.embedding_model}")
+                typer.echo(f"  Algorithm: {result.algorithm}")
+                typer.echo(f"  Parameters: {result.parameters}")
+                typer.echo(f"  Created: {result.created_at}")
+                typer.echo(f"  Total Clusters: {len(result.clusters)}")
+                typer.echo(f"  Total Assignments: {assignments_count}")
+            else:
+                # Simple output
+                typer.echo(
+                    f"{result.id} - model: {result.embedding_model}, "
+                    f"algorithm: {result.algorithm}, "
+                    f"clusters: {len(result.clusters)}, "
+                    f"assignments: {assignments_count}, "
+                    f"created: {result.created_at.strftime('%Y-%m-%d %H:%M')}"
+                )
+
+
+@app.command("delete-cluster")
+def delete_cluster_command(
+    clustering_id: str = typer.Argument(
+        ...,
+        help="ID of the clustering result to delete (use 'all' to delete all)",
     ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -691,59 +754,104 @@ def delete_clusters_command(
         "-d",
         help="Path to the SQLite database file",
     ),
-    confirm: bool = typer.Option(
+    force: bool = typer.Option(
         False,
-        "--confirm",
-        "-y",
+        "--force",
+        "-f",
         help="Skip confirmation prompt",
     ),
 ):
     """
-    Delete clustering results from the database.
+    Delete a clustering result and all associated data from the database.
 
-    By default deletes all clustering results. You can specify a specific
-    embedding model to delete only that model's clustering results.
+    This will permanently remove the clustering result and all its cluster assignments.
+    Use 'all' as the clustering ID to delete all clustering results.
     """
-    # Confirmation prompt
-    if not confirm:
-        model_msg = (
-            "ALL clustering results"
-            if embedding_model_id == "all"
-            else f"clustering results for model {embedding_model_id}"
-        )
-        response = typer.confirm(f"Are you sure you want to delete {model_msg}?")
-        if not response:
-            typer.echo("Deletion cancelled.")
-            raise typer.Exit()
-
     # Create database connection
     db_str = f"sqlite:///{db_path}"
     logger.info(f"Connecting to database at {db_path}")
 
     with get_session_from_connection_string(db_str) as session:
         # Import here to avoid circular imports
-        from panic_tda.clustering_manager import delete_cluster_data
+        from panic_tda.clustering_manager import (
+            delete_cluster_data, 
+            delete_single_cluster, 
+            get_clustering_result_by_id
+        )
 
-        result = delete_cluster_data(session, embedding_model_id)
-
-        if result["status"] == "success":
-            typer.echo(
-                f"Successfully deleted {result['deleted_results']} clustering result(s) "
-                f"and {result['deleted_assignments']} cluster assignments."
-            )
-        elif result["status"] == "not_found":
-            typer.echo(
-                f"No clustering results found for {result.get('message', 'specified criteria')}."
-            )
+        if clustering_id.lower() == "all":
+            # Delete all clusters
+            if not force:
+                response = typer.confirm(
+                    "Are you sure you want to delete ALL clustering results?"
+                )
+                if not response:
+                    typer.echo("Deletion cancelled.")
+                    raise typer.Exit()
+                    
+            result = delete_cluster_data(session, "all")
+            
+            if result["status"] == "success":
+                typer.echo(
+                    f"Successfully deleted {result['deleted_results']} clustering result(s) "
+                    f"and {result['deleted_assignments']} cluster assignments."
+                )
+            elif result["status"] == "not_found":
+                typer.echo("No clustering results found in the database.")
+            else:
+                typer.echo(f"Deletion failed: {result.get('message', 'Unknown error')}")
         else:
-            typer.echo(f"Deletion failed: {result.get('message', 'Unknown error')}")
+            # Delete single cluster
+            try:
+                cluster_uuid = UUID(clustering_id)
+            except ValueError:
+                logger.error(f"Invalid clustering ID format: {clustering_id}")
+                raise typer.Exit(code=1)
+                
+            # Get the clustering result to show details
+            clustering_result = get_clustering_result_by_id(cluster_uuid, session)
+            if not clustering_result:
+                logger.error(f"Clustering result with ID {clustering_id} not found")
+                raise typer.Exit(code=1)
+                
+            # Count assignments
+            assignments_count = session.exec(
+                select(func.count(EmbeddingCluster.id)).where(
+                    EmbeddingCluster.clustering_result_id == clustering_result.id
+                )
+            ).one()
+            
+            # Show details and confirm deletion
+            typer.echo(f"Clustering Result ID: {clustering_result.id}")
+            typer.echo(f"Embedding Model: {clustering_result.embedding_model}")
+            typer.echo(f"Algorithm: {clustering_result.algorithm}")
+            typer.echo(f"Created: {clustering_result.created_at}")
+            typer.echo(f"Clusters: {len(clustering_result.clusters)}")
+            typer.echo(f"Assignments: {assignments_count}")
+            
+            if not force:
+                confirm = typer.confirm(
+                    f"Are you sure you want to delete this clustering result?",
+                    default=False,
+                )
+                if not confirm:
+                    typer.echo("Deletion cancelled.")
+                    return
+                    
+            # Delete the clustering result
+            result = delete_single_cluster(cluster_uuid, session)
+            
+            if result["status"] == "success":
+                typer.echo(f"Clustering result {clustering_id} successfully deleted.")
+            else:
+                typer.echo(f"Failed to delete clustering result: {result.get('message', 'Unknown error')}")
 
 
-@app.command("cluster-details")
-def cluster_details_command(
-    embedding_model_id: str = typer.Argument(
-        ...,
-        help="Embedding model ID to show cluster details for",
+@app.command("cluster-status")
+def cluster_status_command(
+    clustering_id: str = typer.Argument(
+        None,
+        help="ID of the clustering result to check status for (defaults to the most recent)",
     ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -759,23 +867,46 @@ def cluster_details_command(
     ),
 ):
     """
-    Show detailed information about clusters for a specific embedding model.
+    Get the status of a clustering result.
 
-    Lists all clusters with their medoid text and size, sorted by size.
+    Shows detailed information about a clustering result, including all clusters
+    with their medoid text and size, sorted by size.
     """
     # Create database connection
     db_str = f"sqlite:///{db_path}"
     logger.info(f"Connecting to database at {db_path}")
 
     with get_session_from_connection_string(db_str) as session:
-        # Get cluster details
-        details = get_cluster_details(embedding_model_id, session, limit)
-
-        if not details:
-            logger.error(
-                f"No clustering results found for embedding model {embedding_model_id}"
-            )
-            raise typer.Exit(code=1)
+        # Import here to avoid circular imports
+        from panic_tda.clustering_manager import (
+            get_cluster_details_by_id,
+            get_latest_clustering_result
+        )
+        
+        details = None
+        
+        if clustering_id is None or clustering_id.lower() == "latest":
+            # Get the latest clustering result
+            clustering_result = get_latest_clustering_result(session)
+            if not clustering_result:
+                logger.error("No clustering results found in the database")
+                raise typer.Exit(code=1)
+            logger.info(f"Using latest clustering result with ID: {clustering_result.id}")
+            details = get_cluster_details_by_id(clustering_result.id, session, limit)
+        else:
+            # Validate UUID format
+            try:
+                cluster_uuid = UUID(clustering_id)
+            except ValueError:
+                logger.error(f"Invalid clustering ID format: {clustering_id}")
+                raise typer.Exit(code=1)
+                
+            # Get cluster details
+            details = get_cluster_details_by_id(cluster_uuid, session, limit)
+            
+            if not details:
+                logger.error(f"Clustering result with ID {clustering_id} not found")
+                raise typer.Exit(code=1)
 
         # Calculate outlier percentage
         outlier_cluster = next((c for c in details["clusters"] if c["id"] == -1), None)
@@ -786,7 +917,8 @@ def cluster_details_command(
         regular_clusters = [c for c in details["clusters"] if c["id"] != -1]
         
         # Print header
-        typer.echo(f"Clustering details for embedding model: {embedding_model_id}")
+        typer.echo(f"Clustering Result ID: {details['clustering_id']}")
+        typer.echo(f"Embedding Model: {details['embedding_model']}")
         typer.echo(f"Algorithm: {details['algorithm']}")
         typer.echo(f"Parameters: {details['parameters']}")
         typer.echo(f"Created: {details['created_at']}")
@@ -796,15 +928,16 @@ def cluster_details_command(
         typer.echo("")
 
         # Print clusters (already limited by the query)
-        typer.echo(f"Top {len(regular_clusters)} clusters by size:")
-        typer.echo("-" * 80)
+        if regular_clusters:
+            typer.echo(f"Top {len(regular_clusters)} clusters by size:")
+            typer.echo("-" * 80)
 
-        for i, cluster in enumerate(regular_clusters):
-            text = cluster["medoid_text"]
-            if len(text) > 60:
-                text = text[:57] + "..."
+            for i, cluster in enumerate(regular_clusters):
+                text = cluster["medoid_text"]
+                if len(text) > 60:
+                    text = text[:57] + "..."
 
-            typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
+                typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
 
 
 @app.command("export-db")
