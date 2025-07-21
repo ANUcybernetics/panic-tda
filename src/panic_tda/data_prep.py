@@ -430,6 +430,9 @@ def calculate_cluster_run_lengths(
         pl.col("rle_result").struct.field("value").alias("cluster_label"),
     ]).drop("rle_result")
 
+    # Sort by group columns to ensure consistent ordering
+    result_df = result_df.sort(group_cols)
+
     return result_df
 
 
@@ -673,16 +676,19 @@ def load_runs_from_cache() -> pl.DataFrame:
 
 def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
-    Add persistence diagram information to a runs DataFrame.
+    Add persistence entropy scores to a runs DataFrame.
+    
+    Only adds entropy values per homology dimension, without the full birth/death pair data.
+    For full persistence diagram data, use load_pd_df() instead.
 
     Args:
         df: DataFrame containing run data
         session: SQLModel database session
 
     Returns:
-        DataFrame with persistence diagram data added
+        DataFrame with persistence entropy data added
     """
-    print("Adding persistence diagram data to runs DataFrame...")
+    print("Adding persistence entropy data to runs DataFrame...")
 
     # Load all runs to get their PDs
     runs = list_runs(session)
@@ -694,60 +700,44 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
         if not run or not run.persistence_diagrams:
             continue
 
-        # Base run information
-        base_row = {
-            "run_id": run_id,
-        }
-
         for pd in run.persistence_diagrams:
-            row = base_row.copy()
-            row["persistence_diagram_id"] = str(pd.id)
-            row["embedding_model"] = pd.embedding_model
-            row["persistence_diagram_started_at"] = pd.started_at
-            row["persistence_diagram_completed_at"] = pd.completed_at
-            row["persistence_diagram_duration"] = pd.duration
-
-            # Only include persistence diagrams with diagram_data
-            if pd.diagram_data and "dgms" in pd.diagram_data:
-                # Process each dimension in the diagram data
-                for dim, dgm in enumerate(pd.diagram_data["dgms"]):
-                    # Add entropy for this dimension if available
-                    entropy_value = None
-                    if "entropy" in pd.diagram_data and dim < len(
-                        pd.diagram_data["entropy"]
-                    ):
-                        entropy_value = float(pd.diagram_data["entropy"][dim])
-
-                    # Create a row for each birth/death pair in this dimension
-                    for i, (birth, death) in enumerate(dgm):
-                        feature_row = row.copy()
-                        feature_row["homology_dimension"] = dim
-                        feature_row["feature_id"] = i
-                        feature_row["birth"] = float(birth)
-                        feature_row["death"] = float(death)
-                        feature_row["persistence"] = float(death - birth)
-
-                        # Add entropy for the dimension
-                        if entropy_value is not None:
-                            feature_row["entropy"] = entropy_value
-
-                        data.append(feature_row)
+            # Only process if we have entropy data
+            if pd.diagram_data and "entropy" in pd.diagram_data:
+                # Process each dimension's entropy
+                for dim, entropy_value in enumerate(pd.diagram_data["entropy"]):
+                    row = {
+                        "run_id": run_id,
+                        "persistence_diagram_id": str(pd.id),
+                        "embedding_model": pd.embedding_model,
+                        "homology_dimension": dim,
+                        "entropy": float(entropy_value),
+                    }
+                    data.append(row)
 
     # Create a polars DataFrame with explicit schema for numeric fields
     schema_overrides = {
         "homology_dimension": pl.Int64,
-        "feature_id": pl.Int64,
-        "birth": pl.Float64,
-        "death": pl.Float64,
-        "persistence": pl.Float64,
         "entropy": pl.Float64,
     }
 
-    pd_df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    entropy_df = pl.DataFrame(data, schema_overrides=schema_overrides)
+    
     # Join with the original runs DataFrame
-    result_df = df.join(pd_df, on="run_id", how="left")
+    result_df = df.join(entropy_df, on="run_id", how="left")
 
     return result_df
+
+
+def load_pd_from_cache() -> pl.DataFrame:
+    """
+    Load persistence diagram data from the cache file.
+
+    Returns:
+        A polars DataFrame containing all persistence diagram data from cache
+    """
+    cache_path = "output/cache/persistence_diagrams.parquet"
+    print(f"Loading persistence diagrams from cache: {cache_path}")
+    return pl.read_parquet(cache_path)
 
 
 def cache_dfs(
@@ -755,6 +745,7 @@ def cache_dfs(
     runs: bool = True,
     embeddings: bool = True,
     invocations: bool = True,
+    persistence_diagrams: bool = True,
 ) -> None:
     """
     Preload and cache dataframes.
@@ -764,6 +755,7 @@ def cache_dfs(
         runs: Whether to cache runs dataframe
         embeddings: Whether to cache embeddings dataframe
         invocations: Whether to cache invocations dataframe
+        persistence_diagrams: Whether to cache persistence diagrams dataframe
 
     Returns:
         None
@@ -832,6 +824,27 @@ def cache_dfs(
         cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
         print(
             f"Saved invocations ({invocations_df.shape[0]} rows, {invocations_df.shape[1]} columns) to cache: {cache_path}"
+        )
+        print(
+            f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
+        )
+        print(f"  Time taken: {naturaldelta(elapsed_time)}")
+
+    if persistence_diagrams:
+        print("Warming cache for persistence diagrams dataframe...")
+        cache_path = "output/cache/persistence_diagrams.parquet"
+
+        start_time = time.time()
+        pd_df = load_pd_df(session)
+        df_memory_size = pd_df.estimated_size() / (1024 * 1024)  # Convert to MB
+
+        # Save to cache (automatically overwrites if exists)
+        pd_df.write_parquet(cache_path)
+        elapsed_time = time.time() - start_time
+
+        cache_file_size = os.path.getsize(cache_path) / (1024 * 1024)  # Convert to MB
+        print(
+            f"Saved persistence diagrams ({pd_df.shape[0]} rows, {pd_df.shape[1]} columns) to cache: {cache_path}"
         )
         print(
             f"  Memory size: {df_memory_size:.2f} MB, Cache file size: {cache_file_size:.2f} MB"
@@ -930,6 +943,134 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     ])
 
     return df
+
+
+def load_pd_df(session: Session) -> pl.DataFrame:
+    """
+    Load all persistence diagram data from the database into a tidy polars DataFrame.
+    
+    Each row represents a single birth/death pair from a persistence diagram,
+    with full run context (initial_prompt, network) included via joins.
+    
+    Args:
+        session: SQLModel database session
+        
+    Returns:
+        A polars DataFrame containing persistence diagram data with columns:
+        - persistence_diagram_id, run_id, embedding_model
+        - homology_dimension, birth, death, persistence (calculated)
+        - initial_prompt, network (from joined run data)
+        - image_model, text_model (extracted from network)
+    """
+    print("Loading persistence diagram data from database...")
+    
+    # SQL query to extract persistence diagram data with run context
+    query = """
+    SELECT 
+        pd.id as persistence_diagram_id,
+        pd.run_id as run_id,
+        pd.embedding_model as embedding_model,
+        pd.started_at as started_at,
+        pd.completed_at as completed_at,
+        (pd.completed_at - pd.started_at) as duration,
+        run.initial_prompt as initial_prompt,
+        run.network as network,
+        run.experiment_id as experiment_id
+    FROM persistencediagram pd
+    JOIN run ON pd.run_id = run.id
+    WHERE run.initial_prompt NOT IN ('yeah', 'nah')
+        AND pd.diagram_data IS NOT NULL
+    """
+    
+    # Use polars to read directly from the database
+    db_url = _get_polars_db_uri(session)
+    pd_metadata_df = pl.read_database_uri(query=query, uri=db_url)
+    
+    # Format UUID columns
+    pd_metadata_df = format_uuid_columns(pd_metadata_df, ["persistence_diagram_id", "run_id", "experiment_id"])
+    
+    # Parse network from JSON string  
+    pd_metadata_df = pd_metadata_df.with_columns([
+        pl.col("network").str.json_decode().list.join("→").alias("network")
+    ])
+    
+    # Now we need to expand the diagram_data to create rows for each birth/death pair
+    # We'll fetch the actual persistence diagrams from the database
+    from panic_tda.schemas import PersistenceDiagram
+    from sqlmodel import select
+    
+    pd_ids = pd_metadata_df["persistence_diagram_id"].unique().to_list()
+    
+    # Build expanded data with birth/death pairs
+    expanded_data = []
+    
+    for pd_id in pd_ids:
+        # Get the persistence diagram from database
+        pd_obj = session.exec(
+            select(PersistenceDiagram).where(PersistenceDiagram.id == UUID(pd_id))
+        ).first()
+        
+        if not pd_obj or not pd_obj.diagram_data or "dgms" not in pd_obj.diagram_data:
+            continue
+            
+        # Get the metadata row for this PD
+        metadata_row = pd_metadata_df.filter(pl.col("persistence_diagram_id") == pd_id).to_dicts()[0]
+        
+        # Process each homology dimension
+        for dim, dgm in enumerate(pd_obj.diagram_data["dgms"]):
+            if not isinstance(dgm, np.ndarray) or len(dgm) == 0:
+                continue
+                
+            # Create a row for each birth/death pair
+            for birth, death in dgm:
+                row = metadata_row.copy()
+                row["homology_dimension"] = dim
+                row["birth"] = float(birth)
+                row["death"] = float(death) 
+                row["persistence"] = float(death - birth)
+                expanded_data.append(row)
+    
+    # Create the final DataFrame with explicit schema
+    schema_overrides = {
+        "homology_dimension": pl.Int64,
+        "birth": pl.Float64,
+        "death": pl.Float64,
+        "persistence": pl.Float64,
+    }
+    
+    pd_df = pl.DataFrame(expanded_data, schema_overrides=schema_overrides)
+    
+    # Extract image_model and text_model from network
+    def extract_models(network):
+        image_model = None
+        text_model = None
+        for model in network:
+            output_type = get_output_type(model)
+            if output_type == InvocationType.IMAGE and image_model is None:
+                image_model = model
+            elif output_type == InvocationType.TEXT and text_model is None:
+                text_model = model
+            if image_model is not None and text_model is not None:
+                break
+        return pl.Series([image_model, text_model])
+    
+    # Parse network string back to list and extract models
+    pd_df = pd_df.with_columns([
+        pl.col("network").str.split("→").alias("network_list")
+    ])
+    
+    pd_df = pd_df.with_columns([
+        pl.col("network_list")
+        .map_elements(extract_models, return_dtype=pl.List(pl.String))
+        .alias("models")
+    ])
+    
+    pd_df = pd_df.with_columns([
+        pl.col("models").list.get(0).alias("image_model"),
+        pl.col("models").list.get(1).alias("text_model"),
+    ]).drop(["models", "network_list"])
+    
+    return pd_df
 
 
 def prompt_category_mapper(initial_prompt: str) -> str:

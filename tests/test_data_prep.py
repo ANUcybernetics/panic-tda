@@ -18,6 +18,7 @@ from panic_tda.data_prep import (
     filter_top_n_clusters,
     load_embeddings_df,
     load_invocations_df,
+    load_pd_df,
     load_runs_df,
 )
 from panic_tda.db import list_runs
@@ -471,14 +472,7 @@ def test_load_runs_df(db_session):
         "num_invocations",
         "persistence_diagram_id",
         "embedding_model",
-        "persistence_diagram_started_at",
-        "persistence_diagram_completed_at",
-        "persistence_diagram_duration",
         "homology_dimension",
-        "feature_id",
-        "birth",
-        "death",
-        "persistence",
         "entropy",
     ]
 
@@ -509,14 +503,13 @@ def test_load_runs_df(db_session):
     assert first_row["text_model"] == "DummyI2T"
 
 
-def test_add_persistence_entropy(db_session):
-    """Test that add_persistence_entropy correctly adds persistence diagram data to runs DataFrame."""
-
+def test_load_pd_df(db_session):
+    """Test that load_pd_df correctly loads persistence diagram data."""
     # Create a test configuration with a longer run length
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1],
-        prompts=["test persistence data transfer"],
+        prompts=["test persistence diagram data loading"],
         embedding_models=["Dummy"],
         max_length=100,  # Longer run to get more interesting persistence diagrams
     )
@@ -530,126 +523,166 @@ def test_add_persistence_entropy(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Get the runs DataFrame
+    # Load the persistence diagram data
+    pd_df = load_pd_df(db_session)
+
+    # Verify we have rows in the DataFrame
+    assert pd_df.height > 0
+
+    # Check column names for required columns
+    required_columns = [
+        "persistence_diagram_id",
+        "run_id",
+        "embedding_model",
+        "homology_dimension",
+        "birth",
+        "death",
+        "persistence",
+        "initial_prompt",
+        "network",
+        "experiment_id",
+    ]
+
+    # Check that all required columns exist
+    for column in required_columns:
+        assert column in pd_df.columns, f"Column {column} missing from result"
+
+    # Filter for just this experiment
+    exp_df = pd_df.filter(pl.col("experiment_id") == str(config.id))
+    assert exp_df.height > 0
+
+    # Verify that persistence = death - birth (excluding infinite values)
+    persistence_check = exp_df.with_columns(
+        (pl.col("death") - pl.col("birth")).alias("calculated_persistence")
+    )
+    # Filter out rows with infinite persistence values for this check
+    finite_persistence = persistence_check.filter(pl.col("persistence").is_finite())
+    assert (
+        finite_persistence.filter(
+            (pl.col("persistence") - pl.col("calculated_persistence")).abs() > 1e-6
+        ).height
+        == 0
+    ), "Persistence values don't match death - birth calculation"
+
+    # Verify that infinite persistence corresponds to infinite death
+    infinite_persistence = persistence_check.filter(pl.col("persistence").is_infinite())
+    assert infinite_persistence.filter(~pl.col("death").is_infinite()).height == 0, (
+        "Infinite persistence should only occur with infinite death values"
+    )
+
+    # Check data types
+    assert pd_df["homology_dimension"].dtype == pl.Int64
+    assert pd_df["birth"].dtype == pl.Float64
+    assert pd_df["death"].dtype == pl.Float64
+    assert pd_df["persistence"].dtype == pl.Float64
+
+    # Verify we have data for different homology dimensions
+    dimensions = pd_df.select("homology_dimension").unique().to_series().to_list()
+    assert len(dimensions) > 0, "No homology dimensions found"
+
+    # Check that network is properly formatted as a string
+    network_values = pd_df.select("network").unique()
+    assert network_values.height > 0
+    assert all("→" in net for net in network_values.to_series().to_list())
+
+
+def test_add_persistence_entropy(db_session):
+    """Test that add_persistence_entropy correctly adds entropy scores to runs DataFrame."""
+
+    # Create a test configuration with a longer run length
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -1],
+        prompts=["test persistence entropy"],
+        embedding_models=["Dummy"],
+        max_length=100,  # Longer run to get more interesting persistence diagrams
+    )
+
+    # Save config to database to get an ID
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment to populate database
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Get the runs DataFrame - note this now includes entropy via add_persistence_entropy
     df = load_runs_df(db_session)
 
     # Verify we have rows in the DataFrame
     assert df.height > 0
 
-    # Check column names for persistence-related columns
-    persistence_columns = [
+    # Check that entropy-related columns exist after add_persistence_entropy
+    entropy_columns = [
         "persistence_diagram_id",
         "embedding_model",
-        "persistence_diagram_started_at",
-        "persistence_diagram_completed_at",
-        "persistence_diagram_duration",
         "homology_dimension",
-        "feature_id",
-        "birth",
-        "death",
-        "persistence",
         "entropy",
     ]
 
-    # Check that all persistence columns exist
-    for column in persistence_columns:
+    # Check that all entropy columns exist
+    for column in entropy_columns:
         assert column in df.columns, f"Column {column} missing from result"
 
     # Filter for just this experiment
     exp_df = df.filter(pl.col("experiment_id") == str(config.id))
 
-    # Get all runs associated with this experiment
+    # Verify we have entropy data
+    entropy_rows = exp_df.filter(pl.col("entropy").is_not_null())
+    assert entropy_rows.height > 0, "No entropy data found"
+
+    # Check that we have multiple homology dimensions
+    dimensions = (
+        entropy_rows.select("homology_dimension").unique().to_series().to_list()
+    )
+    assert len(dimensions) > 0, "No homology dimensions found"
+
+    # Verify entropy values are reasonable (non-negative)
+    assert entropy_rows.filter(pl.col("entropy") < 0).height == 0, (
+        "Found negative entropy values"
+    )
+
+    # Check that each persistence diagram has entropy for its dimensions
+    pd_ids = (
+        entropy_rows.select("persistence_diagram_id").unique().to_series().to_list()
+    )
+    for pd_id in pd_ids:
+        pd_rows = entropy_rows.filter(pl.col("persistence_diagram_id") == pd_id)
+        # Should have entropy for each dimension in the persistence diagram
+        assert pd_rows.height > 0
+
+    # Get all runs associated with this experiment for verification
     runs = list_runs(db_session)
 
-    # Check each persistence diagram in the database
+    # Verify that the entropy data matches what's in the database
     for run in runs:
+        if str(run.experiment_id) != str(config.id):
+            continue
         # Check each persistence diagram for this run
         for pd in run.persistence_diagrams:
             # Filter DataFrame rows for this persistence diagram
-            pd_rows = exp_df.filter(pl.col("persistence_diagram_id") == str(pd.id))
-            assert pd_rows.height > 0, f"No rows found for persistence diagram {pd.id}"
-
-            # Extract birth-death pairs from the persistence diagram
-            dgms = pd.diagram_data.get("dgms", [])
-
-            # Count the total number of birth-death pairs across all dimensions
-            total_bd_pairs = sum(
-                len(dim_dgm) for dim_dgm in dgms if isinstance(dim_dgm, np.ndarray)
+            pd_rows = entropy_rows.filter(
+                pl.col("persistence_diagram_id") == str(pd.id)
             )
-
-            # There should be one row in the DataFrame for each birth-death pair
-            assert pd_rows.height == total_bd_pairs, (
-                f"Expected {total_bd_pairs} rows for PD {pd.id}, got {pd_rows.height}"
-            )
-
-            # Check each homology dimension
-            for dim, dim_dgm in enumerate(dgms):
-                if not isinstance(dim_dgm, np.ndarray) or len(dim_dgm) == 0:
-                    continue
-
-                # Filter rows for this dimension
-                dim_rows = pd_rows.filter(pl.col("homology_dimension") == dim)
-                assert dim_rows.height == len(dim_dgm), (
-                    f"Expected {len(dim_dgm)} rows for dim {dim}, got {dim_rows.height}"
-                )
-
-                # Convert pd_rows to dict for easier comparison
-                rows_dict = {}
-                for i, row in enumerate(dim_rows.rows(named=True)):
-                    rows_dict[row["feature_id"]] = row
-
-                # Check each birth-death pair
-                for i, bd_pair in enumerate(dim_dgm):
-                    # Skip pairs with infinite death values
-                    if np.isinf(bd_pair[1]):
-                        continue
-
-                    # Find the matching row in the DataFrame
-                    found = False
-                    for feature_id, row in rows_dict.items():
-                        # Compare birth-death values with some tolerance for floating point
-                        if (
-                            abs(row["birth"] - bd_pair[0]) < 1e-6
-                            and abs(row["death"] - bd_pair[1]) < 1e-6
-                            and row["homology_dimension"] == dim
-                        ):
-                            found = True
-                            # Check persistence value
-                            assert (
-                                abs(row["persistence"] - (bd_pair[1] - bd_pair[0]))
-                                < 1e-6
-                            )
-                            break
-
-                    assert found, (
-                        f"Birth-death pair {bd_pair} for dim {dim} not found in DataFrame"
-                    )
 
             # Check entropy if available
-            if "entropy" in pd.diagram_data and pd.diagram_data["entropy"] is not None:
+            if (
+                pd.diagram_data
+                and "entropy" in pd.diagram_data
+                and pd.diagram_data["entropy"] is not None
+            ):
                 if isinstance(pd.diagram_data["entropy"], np.ndarray):
                     # If entropy is an array of values (one per dimension)
                     for dim, ent_val in enumerate(pd.diagram_data["entropy"]):
                         dim_rows = pd_rows.filter(pl.col("homology_dimension") == dim)
                         if dim_rows.height > 0:
-                            # Check each row individually to avoid scalar indexing issues
-                            for row in dim_rows.rows(named=True):
-                                if "entropy" in row and row["entropy"] is not None:
-                                    assert (
-                                        abs(float(row["entropy"]) - float(ent_val))
-                                        < 1e-6
-                                    )
-                elif isinstance(pd.diagram_data["entropy"], (float, int)):
-                    # If entropy is a single value for the entire diagram
-                    for row in pd_rows.rows(named=True):
-                        if "entropy" in row and row["entropy"] is not None:
-                            assert (
-                                abs(
-                                    float(row["entropy"])
-                                    - float(pd.diagram_data["entropy"])
-                                )
-                                < 1e-6
+                            # Should have exactly one row per dimension for entropy
+                            assert dim_rows.height == 1, (
+                                f"Expected 1 row for dim {dim}, got {dim_rows.height}"
                             )
+                            row = dim_rows.row(0, named=True)
+                            assert abs(float(row["entropy"]) - float(ent_val)) < 1e-6
 
 
 @pytest.mark.skip(

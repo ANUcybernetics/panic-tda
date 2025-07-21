@@ -1,7 +1,7 @@
 ---
 id: task-10
 title: change the way persistence diagram data is stored in runs_df
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-20"
 labels: []
@@ -42,3 +42,20 @@ can stay the same, because they only need the information that's (still) in the
 `runs_df`.
 
 Ensure all tests are updated accordingly.
+
+## Completion Notes
+
+Completed the refactoring as requested:
+
+1. Created new `load_pd_df()` function in @src/panic_tda/data_prep.py:945 that loads persistence diagram data into a dedicated DataFrame with birth/death/persistence columns
+2. Refactored `add_persistence_entropy()` in @src/panic_tda/data_prep.py:674 to only add entropy scores (per homology dimension) without birth/death data
+3. Added caching support for persistence diagrams via `load_pd_from_cache()` and updated `cache_dfs()`
+4. Updated visualization functions in datavis.py to accept pd_df parameter instead of runs_df
+5. Added comprehensive test for `load_pd_df()` in @tests/test_data_prep.py:512
+6. Updated all affected tests in test_datavis.py to use the new pd_df approach
+7. Extended `load_pd_df()` to include text_model and image_model columns needed for faceted visualizations
+
+The refactoring successfully separates concerns:
+- `runs_df` contains run-level data with entropy scores only
+- `pd_df` contains the detailed persistence diagram data (one row per birth/death pair)
+- Both DataFrames are cached using parquet format for performance

@@ -8,6 +8,7 @@ from panic_tda.data_prep import (
     add_persistence_entropy,
     load_embeddings_df,
     load_invocations_df,
+    load_pd_df,
     load_runs_df,
 )
 from panic_tda.datavis import (
@@ -108,21 +109,20 @@ def test_plot_persistence_diagram(db_session):
     # Setup a minimal experiment for persistence diagram
     setup_minimal_experiment(db_session)
 
-    # Load the necessary data
-    runs_df = load_runs_df(db_session)
-    runs_df = add_persistence_entropy(runs_df, db_session)
+    # Load the persistence diagram data
+    pd_df = load_pd_df(db_session)
 
     # Verify we have persistence diagram data
-    assert runs_df.height > 0
-    assert "homology_dimension" in runs_df.columns
-    assert "birth" in runs_df.columns
-    assert "persistence" in runs_df.columns
+    assert pd_df.height > 0
+    assert "homology_dimension" in pd_df.columns
+    assert "birth" in pd_df.columns
+    assert "persistence" in pd_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram.png"
 
     # Generate the plot
-    plot_persistence_diagram(runs_df, output_file)
+    plot_persistence_diagram(pd_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -132,23 +132,22 @@ def test_plot_persistence_diagram_faceted(db_session):
     # Setup an experiment with multiple networks for faceted diagram
     setup_persistence_experiment(db_session)
 
-    # Load the necessary data
-    runs_df = load_runs_df(db_session)
-    runs_df = add_persistence_entropy(runs_df, db_session)
+    # Load the persistence diagram data
+    pd_df = load_pd_df(db_session)
 
     # Verify we have persistence diagram data
-    assert runs_df.height > 0
-    assert "homology_dimension" in runs_df.columns
-    assert "birth" in runs_df.columns
-    assert "persistence" in runs_df.columns
-    assert "text_model" in runs_df.columns
-    assert "image_model" in runs_df.columns
+    assert pd_df.height > 0
+    assert "homology_dimension" in pd_df.columns
+    assert "birth" in pd_df.columns
+    assert "persistence" in pd_df.columns
+    assert "text_model" in pd_df.columns
+    assert "image_model" in pd_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram_faceted.png"
 
     # Generate the plot
-    plot_persistence_diagram_faceted(runs_df, output_file)
+    plot_persistence_diagram_faceted(pd_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -158,21 +157,21 @@ def test_plot_persistence_diagram_by_prompt(db_session):
     # Setup experiment with multiple prompts
     setup_persistence_experiment(db_session)
 
-    # Load the necessary data
-    runs_df = load_runs_df(db_session)
-    runs_df = add_persistence_entropy(runs_df, db_session)
+    # Load the persistence diagram data
+    pd_df = load_pd_df(db_session)
 
     # Verify we have persistence diagram data
-    assert runs_df.height > 0
-    assert "homology_dimension" in runs_df.columns
-    assert "birth" in runs_df.columns
-    assert "persistence" in runs_df.columns
-    assert "run_id" in runs_df.columns
+    assert pd_df.height > 0
+    assert "homology_dimension" in pd_df.columns
+    assert "birth" in pd_df.columns
+    assert "persistence" in pd_df.columns
+    assert "run_id" in pd_df.columns
+    assert "initial_prompt" in pd_df.columns
 
     # Define output file
     output_file = "output/test/persistence_diagram_by_prompt.png"
 
-    plot_persistence_diagram_by_prompt(runs_df, output_file)
+    plot_persistence_diagram_by_prompt(pd_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -186,11 +185,10 @@ def test_plot_persistence_entropy_by_prompt(db_session):
     runs_df = load_runs_df(db_session)
     runs_df = add_persistence_entropy(runs_df, db_session)
 
-    # Verify we have persistence diagram data
+    # Verify we have persistence entropy data
     assert runs_df.height > 0
     assert "homology_dimension" in runs_df.columns
-    assert "birth" in runs_df.columns
-    assert "persistence" in runs_df.columns
+    assert "entropy" in runs_df.columns
     assert "run_id" in runs_df.columns
 
     # Define output file

@@ -6,7 +6,7 @@ from sqlalchemy.orm import aliased
 from sqlmodel import Session, select
 
 from panic_tda.datavis import plot_cluster_example_images
-from panic_tda.export import export_timeline, export_video
+from panic_tda.export import export_video
 from panic_tda.schemas import Invocation, PersistenceDiagram, Run
 
 
@@ -1143,76 +1143,76 @@ def paper_charts(session: Session) -> None:
     # cache_dfs(session, runs=False, embeddings=True, invocations=False)
     # cache_dfs(session, runs=True, embeddings=True, invocations=True)
     #
-    # DATA SELECTION
-    selected_ids = TOP4_RUN_IDS
-    #
-    # EXAMPLE IMAGES
-    #
-    export_timeline(
-        run_ids=example_run_ids(session),
-        session=session,
-        images_per_run=5,
-        output_file="output/vis/paper/fig1.jpg",
-    )
-    ### INVOCATIONS
-    #
-    # from panic_tda.data_prep import load_invocations_from_cache
-    # from panic_tda.datavis import plot_invocation_duration
+    # # DATA SELECTION
+    # selected_ids = TOP4_RUN_IDS
+    # #
+    # # EXAMPLE IMAGES
+    # #
+    # export_timeline(
+    #     run_ids=example_run_ids(session),
+    #     session=session,
+    #     images_per_run=5,
+    #     output_file="output/vis/paper/fig1.jpg",
+    # )
+    # ### INVOCATIONS
+    # #
+    # # from panic_tda.data_prep import load_invocations_from_cache
+    # # from panic_tda.datavis import plot_invocation_duration
 
-    # invocations_df = load_invocations_from_cache()
-    # invocations_df = invocations_df.filter(pl.col("run_id").is_in(selected_ids))
+    # # invocations_df = load_invocations_from_cache()
+    # # invocations_df = invocations_df.filter(pl.col("run_id").is_in(selected_ids))
 
-    # plot_invocation_duration(invocations_df)
+    # # plot_invocation_duration(invocations_df)
 
-    # print(
-    #     f"Total unique initial_prompts in invocations_df: {invocations_df.select(pl.col('initial_prompt').n_unique()).item()}"
+    # # print(
+    # #     f"Total unique initial_prompts in invocations_df: {invocations_df.select(pl.col('initial_prompt').n_unique()).item()}"
+    # # )
+
+    # ### EMBEDDINGS
+    # #
+    # from panic_tda.data_prep import (
+    #     calculate_cluster_run_lengths,
+    #     load_embeddings_from_cache,
+    # )
+    # from panic_tda.datavis import (
+    #     create_label_map_df,
+    #     plot_cluster_bubblegrid,
+    #     plot_cluster_run_length_violin,
     # )
 
-    ### EMBEDDINGS
-    #
-    from panic_tda.data_prep import (
-        calculate_cluster_run_lengths,
-        load_embeddings_from_cache,
-    )
-    from panic_tda.datavis import (
-        create_label_map_df,
-        plot_cluster_bubblegrid,
-        plot_cluster_run_length_violin,
-    )
+    # embeddings_df = load_embeddings_from_cache()
 
-    embeddings_df = load_embeddings_from_cache()
+    # embeddings_df = embeddings_df.filter(
+    #     pl.col("run_id").is_in(selected_ids)
+    # ).with_columns(
+    #     pl.col("network").str.replace_all(" → ", "→", literal=True).alias("network")
+    # )
 
-    embeddings_df = embeddings_df.filter(
-        pl.col("run_id").is_in(selected_ids)
-    ).with_columns(
-        pl.col("network").str.replace_all(" → ", "→", literal=True).alias("network")
-    )
+    # label_df = create_label_map_df(embeddings_df)
 
-    label_df = create_label_map_df(embeddings_df)
+    # # plot_sense_check_histograms(embeddings_df)
+    # plot_cluster_bubblegrid(
+    #     embeddings_df.filter(pl.col("embedding_model") == "Nomic"),
+    #     label_df,
+    #     False,
+    #     "output/vis/paper/fig2.pdf",
+    # )
 
-    # plot_sense_check_histograms(embeddings_df)
-    plot_cluster_bubblegrid(
-        embeddings_df.filter(pl.col("embedding_model") == "Nomic"),
-        label_df,
-        False,
-        "output/vis/paper/fig2.pdf",
-    )
+    # plot_cluster_run_length_violin(
+    #     embeddings_df,
+    #     True,
+    #     "output/vis/paper/fig3.pdf",
+    # )
 
-    plot_cluster_run_length_violin(
-        embeddings_df,
-        True,
-        "output/vis/paper/fig3.pdf",
-    )
-
-    run_length_df = calculate_cluster_run_lengths(embeddings_df, True)
-    run_length_df = run_length_df.join(
-        label_df, on=["embedding_model", "cluster_label"], how="left"
-    )
-    print(
-        run_length_df.filter(
-            (pl.col("run_length") == 50) & (pl.col("cluster_label") != "OUTLIER")
-        ).sort("initial_prompt")
-    )
+    # run_length_df = calculate_cluster_run_lengths(embeddings_df, True)
+    # run_length_df = run_length_df.join(
+    #     label_df, on=["embedding_model", "cluster_label"], how="left"
+    # )
+    # print(
+    #     run_length_df.filter(
+    #         (pl.col("run_length") == 50) & (pl.col("cluster_label") != "OUTLIER")
+    #     ).sort("initial_prompt")
+    # )
     # print(
     #     run_length_df.group_by("embedding_model").agg([
     #         pl.col("run_length").quantile(0.25).alias("run_length_q25"),
@@ -1256,14 +1256,15 @@ def paper_charts(session: Session) -> None:
     ### RUNS
 
     from panic_tda.data_prep import load_runs_from_cache
-    from panic_tda.datavis import plot_persistence_entropy
 
     runs_df = load_runs_from_cache()
-    runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
+    print(runs_df.columns)
+    print(runs_df.head())
+    # runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
 
     # print(run_counts(runs_df, ["network"]))
 
-    plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
+    # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
 
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)

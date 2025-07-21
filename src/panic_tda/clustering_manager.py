@@ -10,14 +10,13 @@ from collections import defaultdict
 from typing import Dict, Optional
 from uuid import UUID
 
-from sqlmodel import Session, select, func
+from sqlmodel import Session, func, select
 
 # Removed dataframe-based imports
 from panic_tda.schemas import (
     ClusteringResult,
-    EmbeddingCluster,
     Embedding,
-    ExperimentConfig,
+    EmbeddingCluster,
     Invocation,
     InvocationType,
     Run,
@@ -295,9 +294,10 @@ def cluster_all_data(
             )
 
             # Fetch embeddings and cluster them
-            from panic_tda.data_prep import create_or_get_clustering_result
-            from panic_tda.clustering import hdbscan
             import numpy as np
+
+            from panic_tda.clustering import hdbscan
+            from panic_tda.data_prep import create_or_get_clustering_result
 
             # Get or create clustering result within a no_autoflush block
             parameters = {

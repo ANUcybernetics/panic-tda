@@ -137,18 +137,19 @@ def create_label_map_df(
     return map_df.select("embedding_model", "cluster_label", "cluster_index")
 
 
-def create_persistence_diagram_chart(df: pl.DataFrame):
+def create_persistence_diagram_chart(pd_df: pl.DataFrame):
     """
-    Create a base persistence diagram chart for a single run.
+    Create a base persistence diagram chart.
 
     Args:
-        df: DataFrame containing run data with persistence homology information
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data
+               with columns: birth, persistence, homology_dimension
 
     Returns:
         A plotnine plot object for the persistence diagram
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
+    pandas_df = pd_df.to_pandas()
 
     plot = (
         ggplot(
@@ -166,17 +167,17 @@ def create_persistence_diagram_chart(df: pl.DataFrame):
 
 
 def plot_persistence_diagram(
-    df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.png"
+    pd_df: pl.DataFrame, output_file: str = "output/vis/persistence_diagram.png"
 ) -> None:
     """
     Create and save a visualization of a single persistence diagram for the given DataFrame.
 
     Args:
-        df: DataFrame containing run data with persistence homology information
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data
         output_file: Path to save the visualization
     """
     # Create the chart
-    plot = create_persistence_diagram_chart(df)
+    plot = create_persistence_diagram_chart(pd_df)
 
     # Save plot with high resolution
     saved_file = save(plot, output_file)
@@ -185,7 +186,7 @@ def plot_persistence_diagram(
 
 
 def plot_persistence_diagram_faceted(
-    df: pl.DataFrame,
+    pd_df: pl.DataFrame,
     output_file: str = "output/vis/persistence_diagram.png",
 ) -> None:
     """
@@ -193,11 +194,11 @@ def plot_persistence_diagram_faceted(
     creating a grid of charts (one per run).
 
     Args:
-        df: DataFrame containing run data with persistence homology information
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data
         output_file: Path to save the visualization
     """
     # Create the base plot using the existing function
-    plot = create_persistence_diagram_chart(df)
+    plot = create_persistence_diagram_chart(pd_df)
 
     # Add faceting to the plot
     plot = (
@@ -212,7 +213,7 @@ def plot_persistence_diagram_faceted(
 
 
 def plot_persistence_diagram_by_prompt(
-    df: pl.DataFrame,
+    pd_df: pl.DataFrame,
     output_file: str = "output/vis/persistence_diagram.png",
 ) -> None:
     """
@@ -220,11 +221,11 @@ def plot_persistence_diagram_by_prompt(
     creating a grid of charts (one per prompt).
 
     Args:
-        df: DataFrame containing run data with persistence homology information
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data
         output_file: Path to save the visualization
     """
     # Convert polars DataFrame to pandas for plotnine
-    pandas_df = df.to_pandas()
+    pandas_df = pd_df.to_pandas()
 
     # Create the base plot with faceting by run_id
     plot = (

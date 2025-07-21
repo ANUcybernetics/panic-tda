@@ -1,14 +1,13 @@
 """Tests for the clustering manager functionality."""
 
-import pytest
-from uuid import UUID
-from sqlmodel import select, Session, create_engine
+from sqlmodel import Session, create_engine, select
+
 from panic_tda.clustering_manager import (
     cluster_all_data,
     get_cluster_details,
 )
-from panic_tda.schemas import ExperimentConfig, ClusteringResult, EmbeddingCluster
 from panic_tda.engine import perform_experiment
+from panic_tda.schemas import ClusteringResult, EmbeddingCluster, ExperimentConfig
 
 
 def test_cluster_all_data_no_downsampling(db_session):
@@ -34,7 +33,7 @@ def test_cluster_all_data_no_downsampling(db_session):
         perform_experiment(str(config.id), db_url)
 
     # Cluster all data with no downsampling
-    result = cluster_all_data(db_session, downsample=1, force=False)
+    result = cluster_all_data(db_session, downsample=1)
 
     # Verify successful clustering
     assert result["status"] == "success"
@@ -88,7 +87,7 @@ def test_cluster_all_data_with_downsampling(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Cluster all data with downsampling
-    result = cluster_all_data(db_session, downsample=2, force=False)
+    result = cluster_all_data(db_session, downsample=2)
 
     # Verify successful clustering
     assert result["status"] == "success"
@@ -124,7 +123,7 @@ def test_cluster_all_data_no_embeddings(db_session):
     db_session.commit()
 
     # Try to cluster - should handle gracefully
-    result = cluster_all_data(db_session, downsample=1, force=False)
+    result = cluster_all_data(db_session, downsample=1)
 
     # When there are no embeddings, the dataframe loading might fail
     assert result["status"] == "error"
@@ -152,16 +151,21 @@ def test_cluster_all_data_already_clustered(db_session):
     perform_experiment(str(config.id), db_url)
 
     # First clustering
-    result1 = cluster_all_data(db_session, downsample=1, force=False)
+    result1 = cluster_all_data(db_session, downsample=1)
     assert result1["status"] == "success"
 
     # Second clustering without force - should return already_clustered
-    result2 = cluster_all_data(db_session, downsample=1, force=False)
+    result2 = cluster_all_data(db_session, downsample=1)
     assert result2["status"] == "already_clustered"
-    assert "already exist" in result2["message"]
+    assert result2["message"] == "all models"  # Since we're clustering all models
 
-    # Third clustering with force - should re-cluster
-    result3 = cluster_all_data(db_session, downsample=1, force=True)
+    # Delete existing clustering data
+    from panic_tda.clustering_manager import delete_cluster_data
+    delete_result = delete_cluster_data(db_session)
+    assert delete_result["status"] == "success"
+    
+    # Third clustering after deletion - should re-cluster
+    result3 = cluster_all_data(db_session, downsample=1)
     assert result3["status"] == "success"
 
 
@@ -185,7 +189,7 @@ def test_get_cluster_details(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Cluster all data
-    cluster_all_data(db_session, downsample=1, force=False)
+    cluster_all_data(db_session, downsample=1)
 
     # Get cluster details for each embedding model
     for model in ["Dummy", "Dummy2"]:
@@ -238,7 +242,7 @@ def test_clustering_persistence_across_sessions(db_session):
     perform_experiment(str(experiment_id), db_url)
 
     # Cluster all data
-    result = cluster_all_data(db_session, downsample=1, force=False)
+    result = cluster_all_data(db_session, downsample=1)
     assert result["status"] == "success"
 
     # Commit and close session
@@ -285,7 +289,7 @@ def test_clustering_persistence_across_sessions(db_session):
         assert len(our_embedding_ids.intersection(assigned_embedding_ids)) > 0
 
         # Verify attempting to cluster again returns already_clustered
-        result2 = cluster_all_data(new_session, downsample=1, force=False)
+        result2 = cluster_all_data(new_session, downsample=1)
         assert result2["status"] == "already_clustered"
 
 
@@ -316,7 +320,7 @@ def test_cluster_all_data_multiple_models(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Cluster all data
-    result = cluster_all_data(db_session, downsample=1, force=False)
+    result = cluster_all_data(db_session, downsample=1)
 
     assert result["status"] == "success"
     # 1 seed * 3 prompts * 30 I2T outputs = 90 embeddings
