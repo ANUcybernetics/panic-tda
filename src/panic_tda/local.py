@@ -1138,9 +1138,15 @@ def paper_charts(session: Session) -> None:
     # pl.Config.set_tbl_rows(10)
     ### CACHING
     #
-    # from panic_tda.data_prep import cache_dfs
+    from panic_tda.data_prep import cache_dfs
 
-    # cache_dfs(session, runs=False, embeddings=True, invocations=False)
+    cache_dfs(
+        session,
+        runs=False,
+        embeddings=False,
+        invocations=False,
+        persistence_diagrams=True,
+    )
     # cache_dfs(session, runs=True, embeddings=True, invocations=True)
     #
     # # DATA SELECTION
@@ -1255,16 +1261,23 @@ def paper_charts(session: Session) -> None:
 
     ### RUNS
 
-    from panic_tda.data_prep import load_runs_from_cache
+    # from panic_tda.data_prep import load_runs_from_cache
 
-    runs_df = load_runs_from_cache()
-    print(runs_df.columns)
-    print(runs_df.head())
+    # runs_df = load_runs_from_cache()
+    # print(runs_df.columns)
+    # print(runs_df.head())
     # runs_df = runs_df.filter(pl.col("run_id").is_in(selected_ids))
 
     # print(run_counts(runs_df, ["network"]))
 
     # plot_persistence_entropy(runs_df, "output/vis/paper/fig4.pdf")
+
+    ### Persistence Diagram DF
+    from panic_tda.data_prep import load_pd_from_cache
+
+    pd_df = load_pd_from_cache()
+    print(pd_df.columns)
+    print(pd_df.head())
 
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)

@@ -617,35 +617,40 @@ def export_experiments(
 ) -> None:
     """
     Export a subset of experiments from source database to target database.
-    
+
     This function copies all data related to the specified experiments while
     maintaining referential integrity. It creates the target database and
     tables if they don't exist.
-    
+
     Args:
         source_db_str: Connection string for source database
-        target_db_str: Connection string for target database  
+        target_db_str: Connection string for target database
         experiment_ids: List of experiment UUIDs to export
         timeout: SQLite timeout in seconds (default: 30)
-        
+
     Raises:
         ValueError: If any experiment_ids are not found in source database
     """
     # Create target database and tables if needed
     create_db_and_tables(target_db_str)
-    
+
     # Convert string IDs to UUID objects
     experiment_uuids = [UUID(exp_id) for exp_id in experiment_ids]
-    
-    with get_session_from_connection_string(source_db_str, timeout=timeout) as source_session:
-        with get_session_from_connection_string(target_db_str, timeout=timeout) as target_session:
-            
+
+    with get_session_from_connection_string(
+        source_db_str, timeout=timeout
+    ) as source_session:
+        with get_session_from_connection_string(
+            target_db_str, timeout=timeout
+        ) as target_session:
             # Verify all experiments exist
             for exp_uuid in experiment_uuids:
                 exp_config = source_session.get(ExperimentConfig, exp_uuid)
                 if not exp_config:
-                    raise ValueError(f"Experiment {exp_uuid} not found in source database")
-            
+                    raise ValueError(
+                        f"Experiment {exp_uuid} not found in source database"
+                    )
+
             # 1. Copy ExperimentConfig records
             for exp_uuid in experiment_uuids:
                 exp_config = source_session.get(ExperimentConfig, exp_uuid)
@@ -661,15 +666,15 @@ def export_experiments(
                     completed_at=exp_config.completed_at,
                 )
                 target_session.add(new_config)
-            
+
             # Commit experiments first to satisfy FK constraints
             target_session.commit()
-            
+
             # 2. Get all runs for these experiments
             runs_query = select(Run).where(Run.experiment_id.in_(experiment_uuids))
             runs = source_session.exec(runs_query).all()
             run_ids = [run.id for run in runs]
-            
+
             # Copy Run records
             for run in runs:
                 new_run = Run(
@@ -682,16 +687,18 @@ def export_experiments(
                     stop_reason=run.stop_reason,
                 )
                 target_session.add(new_run)
-            
+
             # Commit runs before dependent tables
             target_session.commit()
-            
+
             # 3. Get all invocations for these runs
             if run_ids:
-                invocations_query = select(Invocation).where(Invocation.run_id.in_(run_ids))
+                invocations_query = select(Invocation).where(
+                    Invocation.run_id.in_(run_ids)
+                )
                 invocations = source_session.exec(invocations_query).all()
                 invocation_ids = [inv.id for inv in invocations]
-                
+
                 # Copy Invocation records
                 for inv in invocations:
                     new_inv = Invocation(
@@ -708,17 +715,17 @@ def export_experiments(
                         output_image_data=inv.output_image_data,
                     )
                     target_session.add(new_inv)
-                
+
                 # Commit invocations before embeddings
                 target_session.commit()
-                
+
                 # 4. Get all embeddings for these invocations
                 if invocation_ids:
                     embeddings_query = select(Embedding).where(
                         Embedding.invocation_id.in_(invocation_ids)
                     )
                     embeddings = source_session.exec(embeddings_query).all()
-                    
+
                     # Copy Embedding records
                     for emb in embeddings:
                         new_emb = Embedding(
@@ -728,16 +735,16 @@ def export_experiments(
                             vector=emb.vector,
                         )
                         target_session.add(new_emb)
-                    
+
                     # Commit embeddings
                     target_session.commit()
-                
+
                 # 5. Get all persistence diagrams for these runs
                 diagrams_query = select(PersistenceDiagram).where(
                     PersistenceDiagram.run_id.in_(run_ids)
                 )
                 diagrams = source_session.exec(diagrams_query).all()
-                
+
                 # Copy PersistenceDiagram records
                 for diag in diagrams:
                     new_diag = PersistenceDiagram(
@@ -749,6 +756,6 @@ def export_experiments(
                         diagram_data=diag.diagram_data,
                     )
                     target_session.add(new_diag)
-                
+
                 # Final commit for persistence diagrams
                 target_session.commit()

@@ -966,7 +966,7 @@ def load_pd_df(session: Session) -> pl.DataFrame:
 
     # SQL query to extract persistence diagram data with run context
     query = """
-    SELECT 
+    SELECT
         pd.id as persistence_diagram_id,
         pd.run_id as run_id,
         pd.embedding_model as embedding_model,
