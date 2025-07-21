@@ -4,9 +4,9 @@ from uuid import UUID
 
 import numpy as np
 import sqlalchemy
+from humanize.time import naturaldelta
 from sqlalchemy.pool import QueuePool
 from sqlmodel import Session, SQLModel, create_engine, func, select
-from humanize.time import naturaldelta
 
 from panic_tda.genai_models import estimated_time
 from panic_tda.schemas import (

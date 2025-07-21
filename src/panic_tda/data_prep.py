@@ -677,7 +677,7 @@ def load_runs_from_cache() -> pl.DataFrame:
 def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     Add persistence entropy scores to a runs DataFrame.
-    
+
     Only adds entropy values per homology dimension, without the full birth/death pair data.
     For full persistence diagram data, use load_pd_df() instead.
 
@@ -721,7 +721,7 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     }
 
     entropy_df = pl.DataFrame(data, schema_overrides=schema_overrides)
-    
+
     # Join with the original runs DataFrame
     result_df = df.join(entropy_df, on="run_id", how="left")
 
@@ -948,13 +948,13 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
 def load_pd_df(session: Session) -> pl.DataFrame:
     """
     Load all persistence diagram data from the database into a tidy polars DataFrame.
-    
+
     Each row represents a single birth/death pair from a persistence diagram,
     with full run context (initial_prompt, network) included via joins.
-    
+
     Args:
         session: SQLModel database session
-        
+
     Returns:
         A polars DataFrame containing persistence diagram data with columns:
         - persistence_diagram_id, run_id, embedding_model
@@ -963,7 +963,7 @@ def load_pd_df(session: Session) -> pl.DataFrame:
         - image_model, text_model (extracted from network)
     """
     print("Loading persistence diagram data from database...")
-    
+
     # SQL query to extract persistence diagram data with run context
     query = """
     SELECT 
@@ -981,55 +981,59 @@ def load_pd_df(session: Session) -> pl.DataFrame:
     WHERE run.initial_prompt NOT IN ('yeah', 'nah')
         AND pd.diagram_data IS NOT NULL
     """
-    
+
     # Use polars to read directly from the database
     db_url = _get_polars_db_uri(session)
     pd_metadata_df = pl.read_database_uri(query=query, uri=db_url)
-    
+
     # Format UUID columns
-    pd_metadata_df = format_uuid_columns(pd_metadata_df, ["persistence_diagram_id", "run_id", "experiment_id"])
-    
-    # Parse network from JSON string  
+    pd_metadata_df = format_uuid_columns(
+        pd_metadata_df, ["persistence_diagram_id", "run_id", "experiment_id"]
+    )
+
+    # Parse network from JSON string
     pd_metadata_df = pd_metadata_df.with_columns([
         pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
-    
+
     # Now we need to expand the diagram_data to create rows for each birth/death pair
     # We'll fetch the actual persistence diagrams from the database
     from panic_tda.schemas import PersistenceDiagram
     from sqlmodel import select
-    
+
     pd_ids = pd_metadata_df["persistence_diagram_id"].unique().to_list()
-    
+
     # Build expanded data with birth/death pairs
     expanded_data = []
-    
+
     for pd_id in pd_ids:
         # Get the persistence diagram from database
         pd_obj = session.exec(
             select(PersistenceDiagram).where(PersistenceDiagram.id == UUID(pd_id))
         ).first()
-        
+
         if not pd_obj or not pd_obj.diagram_data or "dgms" not in pd_obj.diagram_data:
             continue
-            
+
         # Get the metadata row for this PD
-        metadata_row = pd_metadata_df.filter(pl.col("persistence_diagram_id") == pd_id).to_dicts()[0]
-        
+        metadata_row = pd_metadata_df.filter(
+            pl.col("persistence_diagram_id") == pd_id
+        ).to_dicts()[0]
+
         # Process each homology dimension
         for dim, dgm in enumerate(pd_obj.diagram_data["dgms"]):
             if not isinstance(dgm, np.ndarray) or len(dgm) == 0:
                 continue
-                
+
             # Create a row for each birth/death pair
             for birth, death in dgm:
                 row = metadata_row.copy()
                 row["homology_dimension"] = dim
                 row["birth"] = float(birth)
-                row["death"] = float(death) 
+                row["death"] = float(death)
                 row["persistence"] = float(death - birth)
                 expanded_data.append(row)
-    
+
     # Create the final DataFrame with explicit schema
     schema_overrides = {
         "homology_dimension": pl.Int64,
@@ -1037,9 +1041,9 @@ def load_pd_df(session: Session) -> pl.DataFrame:
         "death": pl.Float64,
         "persistence": pl.Float64,
     }
-    
+
     pd_df = pl.DataFrame(expanded_data, schema_overrides=schema_overrides)
-    
+
     # Extract image_model and text_model from network
     def extract_models(network):
         image_model = None
@@ -1053,23 +1057,21 @@ def load_pd_df(session: Session) -> pl.DataFrame:
             if image_model is not None and text_model is not None:
                 break
         return pl.Series([image_model, text_model])
-    
+
     # Parse network string back to list and extract models
-    pd_df = pd_df.with_columns([
-        pl.col("network").str.split("→").alias("network_list")
-    ])
-    
+    pd_df = pd_df.with_columns([pl.col("network").str.split("→").alias("network_list")])
+
     pd_df = pd_df.with_columns([
         pl.col("network_list")
         .map_elements(extract_models, return_dtype=pl.List(pl.String))
         .alias("models")
     ])
-    
+
     pd_df = pd_df.with_columns([
         pl.col("models").list.get(0).alias("image_model"),
         pl.col("models").list.get(1).alias("text_model"),
     ]).drop(["models", "network_list"])
-    
+
     return pd_df
 
 

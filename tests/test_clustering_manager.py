@@ -161,9 +161,10 @@ def test_cluster_all_data_already_clustered(db_session):
 
     # Delete existing clustering data
     from panic_tda.clustering_manager import delete_cluster_data
+
     delete_result = delete_cluster_data(db_session)
     assert delete_result["status"] == "success"
-    
+
     # Third clustering after deletion - should re-cluster
     result3 = cluster_all_data(db_session, downsample=1)
     assert result3["status"] == "success"
