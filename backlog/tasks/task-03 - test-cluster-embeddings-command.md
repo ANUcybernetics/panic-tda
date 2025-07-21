@@ -47,8 +47,6 @@ If not, create new test(s) to test it.
      experiments
    - `test_cluster_all_experiments` - Tests batch clustering of multiple
      experiments (skipped due to session management issue)
-   - `test_get_cluster_details` - Tests retrieval of detailed cluster
-     information
    - `test_clustering_persistence_across_sessions` - Tests that clustering
      results persist across database sessions
 

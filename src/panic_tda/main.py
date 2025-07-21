@@ -8,11 +8,12 @@ import typer
 
 import panic_tda.engine as engine
 from panic_tda.clustering_manager import (
-    get_global_cluster_details,
+    get_cluster_details,
 )
 from panic_tda.db import (
     count_invocations,
     create_db_and_tables,
+    export_experiments,
     get_session_from_connection_string,
     latest_experiment,
     list_experiments,
@@ -768,7 +769,7 @@ def cluster_details_command(
 
     with get_session_from_connection_string(db_str) as session:
         # Get cluster details
-        details = get_global_cluster_details(embedding_model_id, session, limit)
+        details = get_cluster_details(embedding_model_id, session, limit)
 
         if not details:
             logger.error(
@@ -799,6 +800,74 @@ def cluster_details_command(
                 text = typer.style(text, fg=typer.colors.RED)
 
             typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
+
+
+@app.command("export-db")
+def export_db_command(
+    experiment_ids: list[str] = typer.Argument(
+        ...,
+        help="One or more Experiment IDs to export",
+    ),
+    target_db: Path = typer.Argument(
+        ...,
+        help="Path to the target SQLite database file",
+    ),
+    source_db: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--source-db",
+        "-s",
+        help="Path to the source SQLite database file",
+    ),
+    timeout: int = typer.Option(
+        30,
+        "--timeout",
+        "-t",
+        help="SQLite timeout in seconds",
+    ),
+):
+    """
+    Export a subset of experiments from one database to another.
+
+    This command copies all data related to the specified experiments while
+    maintaining referential integrity. It creates the target database and
+    tables if they don't exist.
+
+    Example:
+        panic-tda export-db experiment-id-1 experiment-id-2 target.db
+    """
+    # Create database connections
+    source_db_str = f"sqlite:///{source_db}"
+    target_db_str = f"sqlite:///{target_db}"
+
+    logger.info(f"Exporting {len(experiment_ids)} experiments")
+    logger.info(f"Source database: {source_db}")
+    logger.info(f"Target database: {target_db}")
+
+    try:
+        export_experiments(
+            source_db_str, target_db_str, experiment_ids, timeout=timeout
+        )
+
+        typer.echo(
+            f"Successfully exported {len(experiment_ids)} experiment(s) to {target_db}"
+        )
+
+        # Show summary of what was exported
+        with get_session_from_connection_string(target_db_str) as session:
+            experiments = list_experiments(session)
+            typer.echo(
+                f"\nTarget database now contains {len(experiments)} experiment(s):"
+            )
+            for exp in experiments:
+                run_count = len(exp.runs)
+                typer.echo(f"  - {exp.id}: {run_count} runs")
+
+    except ValueError as e:
+        logger.error(f"Export failed: {e}")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        logger.error(f"Unexpected error during export: {e}")
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":

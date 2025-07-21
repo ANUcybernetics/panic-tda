@@ -4,7 +4,6 @@ from sqlmodel import Session, create_engine, select
 
 from panic_tda.clustering_manager import (
     cluster_all_data,
-    get_cluster_details,
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ClusteringResult, EmbeddingCluster, ExperimentConfig
@@ -168,58 +167,6 @@ def test_cluster_all_data_already_clustered(db_session):
     # Third clustering after deletion - should re-cluster
     result3 = cluster_all_data(db_session, downsample=1)
     assert result3["status"] == "success"
-
-
-def test_get_cluster_details(db_session):
-    """Test get_cluster_details function."""
-    # Create test experiment
-    config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1],
-        prompts=["test cluster details"],
-        embedding_models=["Dummy", "Dummy2"],
-        max_length=40,
-    )
-
-    db_session.add(config)
-    db_session.commit()
-    db_session.refresh(config)
-
-    # Run experiment
-    db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(str(config.id), db_url)
-
-    # Cluster all data
-    cluster_all_data(db_session, downsample=1)
-
-    # Get cluster details for each embedding model
-    for model in ["Dummy", "Dummy2"]:
-        details = get_cluster_details(config.id, model, db_session)
-
-        assert details is not None
-        assert details["experiment_id"] == config.id
-        assert details["embedding_model"] == model
-        assert details["algorithm"] == "hdbscan"
-        assert (
-            details["total_assignments"] == 20
-        )  # 40 outputs / 2 models = 20 per model
-        assert details["total_clusters"] > 0
-
-        # Verify cluster information
-        assert len(details["clusters"]) > 0
-        for cluster in details["clusters"]:
-            assert "id" in cluster
-            assert "medoid_text" in cluster
-            assert "size" in cluster
-            assert cluster["size"] > 0
-
-        # Clusters should be sorted by size (descending)
-        sizes = [c["size"] for c in details["clusters"]]
-        assert sizes == sorted(sizes, reverse=True)
-
-    # Test with non-existent model
-    details_none = get_cluster_details(config.id, "NonExistentModel", db_session)
-    assert details_none is None
 
 
 def test_clustering_persistence_across_sessions(db_session):
