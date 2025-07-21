@@ -11,6 +11,7 @@ from uuid_v7.base import uuid7
 
 from panic_tda.db import (
     delete_invocation,
+    export_experiments,
     find_embedding_for_vector,
     get_engine_from_connection_string,
     incomplete_embeddings,
@@ -1192,3 +1193,213 @@ def test_list_completed_run_ids(db_session: Session):
 
     # Should return an empty list
     assert len(results) == 0
+
+
+def test_export_experiments(db_session: Session, tmp_path):
+    """Test the export_experiments function."""
+    # Create two experiment configs
+    experiment1 = ExperimentConfig(
+        networks=[["model1", "model2"]],
+        seeds=[42, 43],
+        prompts=["test prompt 1"],
+        embedding_models=["embedding_model_1"],
+        max_length=3,
+    )
+    
+    experiment2 = ExperimentConfig(
+        networks=[["model3"]],
+        seeds=[44],
+        prompts=["test prompt 2", "test prompt 3"],
+        embedding_models=["embedding_model_2"],
+        max_length=2,
+    )
+    
+    # Create runs for experiment1
+    run1_1 = Run(
+        experiment_id=experiment1.id,
+        initial_prompt="test prompt 1",
+        network=["model1", "model2"],
+        seed=42,
+        max_length=3,
+    )
+    
+    run1_2 = Run(
+        experiment_id=experiment1.id,
+        initial_prompt="test prompt 1",
+        network=["model1", "model2"],
+        seed=43,
+        max_length=3,
+    )
+    
+    # Create run for experiment2
+    run2_1 = Run(
+        experiment_id=experiment2.id,
+        initial_prompt="test prompt 2",
+        network=["model3"],
+        seed=44,
+        max_length=2,
+    )
+    
+    # Create invocations
+    invocation1 = Invocation(
+        run_id=run1_1.id,
+        model="model1",
+        type=InvocationType.TEXT,
+        seed=42,
+        sequence_number=0,
+        output_text="Output from model1",
+    )
+    
+    invocation2 = Invocation(
+        run_id=run1_2.id,
+        model="model1",
+        type=InvocationType.TEXT,
+        seed=43,
+        sequence_number=0,
+        output_text="Another output from model1",
+    )
+    
+    invocation3 = Invocation(
+        run_id=run2_1.id,
+        model="model3",
+        type=InvocationType.TEXT,
+        seed=44,
+        sequence_number=0,
+        output_text="Output from model3",
+    )
+    
+    # Create embeddings
+    embedding1 = Embedding(
+        invocation_id=invocation1.id,
+        embedding_model="embedding_model_1",
+        vector=np.array([0.1, 0.2, 0.3], dtype=np.float32),
+    )
+    
+    embedding2 = Embedding(
+        invocation_id=invocation2.id,
+        embedding_model="embedding_model_1",
+        vector=np.array([0.4, 0.5, 0.6], dtype=np.float32),
+    )
+    
+    embedding3 = Embedding(
+        invocation_id=invocation3.id,
+        embedding_model="embedding_model_2",
+        vector=np.array([0.7, 0.8, 0.9], dtype=np.float32),
+    )
+    
+    # Create persistence diagrams
+    diagram1 = PersistenceDiagram(
+        run_id=run1_1.id,
+        embedding_model="embedding_model_1",
+        generators=[np.array([[0.1, 0.5], [0.2, 0.7]])],
+    )
+    
+    diagram2 = PersistenceDiagram(
+        run_id=run2_1.id,
+        embedding_model="embedding_model_2",
+        generators=[np.array([[0.3, 0.6], [0.4, 0.8]])],
+    )
+    
+    # Add all to session
+    db_session.add(experiment1)
+    db_session.add(experiment2)
+    db_session.add(run1_1)
+    db_session.add(run1_2)
+    db_session.add(run2_1)
+    db_session.add(invocation1)
+    db_session.add(invocation2)
+    db_session.add(invocation3)
+    db_session.add(embedding1)
+    db_session.add(embedding2)
+    db_session.add(embedding3)
+    db_session.add(diagram1)
+    db_session.add(diagram2)
+    db_session.commit()
+    
+    # Test exporting only experiment1
+    source_db_str = str(db_session.get_bind().url)
+    target_db_path = tmp_path / "export_test.db"
+    target_db_str = f"sqlite:///{target_db_path}"
+    
+    export_experiments(
+        source_db_str,
+        target_db_str,
+        [str(experiment1.id)]
+    )
+    
+    # Verify the export by opening the target database
+    from panic_tda.db import get_session_from_connection_string, list_experiments
+    
+    with get_session_from_connection_string(target_db_str) as target_session:
+        # Check experiments
+        experiments = list_experiments(target_session)
+        assert len(experiments) == 1
+        assert experiments[0].id == experiment1.id
+        
+        # Check runs
+        from panic_tda.db import list_runs
+        runs = list_runs(target_session)
+        assert len(runs) == 2  # Only runs from experiment1
+        run_ids = {run.id for run in runs}
+        assert run1_1.id in run_ids
+        assert run1_2.id in run_ids
+        assert run2_1.id not in run_ids  # From experiment2, should not be exported
+        
+        # Check invocations
+        invocations = list_invocations(target_session)
+        assert len(invocations) == 2  # Only invocations from experiment1's runs
+        inv_ids = {inv.id for inv in invocations}
+        assert invocation1.id in inv_ids
+        assert invocation2.id in inv_ids
+        assert invocation3.id not in inv_ids
+        
+        # Check embeddings
+        embeddings = list_embeddings(target_session)
+        assert len(embeddings) == 2  # Only embeddings from experiment1's invocations
+        emb_ids = {emb.id for emb in embeddings}
+        assert embedding1.id in emb_ids
+        assert embedding2.id in emb_ids
+        assert embedding3.id not in emb_ids
+        
+        # Check persistence diagrams
+        from panic_tda.db import list_persistence_diagrams
+        diagrams = list_persistence_diagrams(target_session)
+        assert len(diagrams) == 1  # Only diagram from experiment1's runs
+        assert diagrams[0].id == diagram1.id
+    
+    # Test exporting multiple experiments
+    target_db_path2 = tmp_path / "export_test2.db"
+    target_db_str2 = f"sqlite:///{target_db_path2}"
+    
+    export_experiments(
+        source_db_str,
+        target_db_str2,
+        [str(experiment1.id), str(experiment2.id)]
+    )
+    
+    with get_session_from_connection_string(target_db_str2) as target_session:
+        experiments = list_experiments(target_session)
+        assert len(experiments) == 2
+        exp_ids = {exp.id for exp in experiments}
+        assert experiment1.id in exp_ids
+        assert experiment2.id in exp_ids
+        
+        runs = list_runs(target_session)
+        assert len(runs) == 3  # All runs
+        
+        invocations = list_invocations(target_session)
+        assert len(invocations) == 3  # All invocations
+        
+        embeddings = list_embeddings(target_session)
+        assert len(embeddings) == 3  # All embeddings
+        
+        diagrams = list_persistence_diagrams(target_session)
+        assert len(diagrams) == 2  # All diagrams
+    
+    # Test with non-existent experiment ID
+    with pytest.raises(ValueError, match="Experiment .* not found in source database"):
+        export_experiments(
+            source_db_str,
+            target_db_str,
+            [str(uuid7())]  # Non-existent UUID
+        )

@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from typing import List
 from uuid import UUID
 
 import numpy as np
@@ -606,3 +607,148 @@ def print_experiment_info(
     )
 
     print(status_report)
+
+
+def export_experiments(
+    source_db_str: str,
+    target_db_str: str,
+    experiment_ids: List[str],
+    timeout: int = 30,
+) -> None:
+    """
+    Export a subset of experiments from source database to target database.
+    
+    This function copies all data related to the specified experiments while
+    maintaining referential integrity. It creates the target database and
+    tables if they don't exist.
+    
+    Args:
+        source_db_str: Connection string for source database
+        target_db_str: Connection string for target database  
+        experiment_ids: List of experiment UUIDs to export
+        timeout: SQLite timeout in seconds (default: 30)
+        
+    Raises:
+        ValueError: If any experiment_ids are not found in source database
+    """
+    # Create target database and tables if needed
+    create_db_and_tables(target_db_str)
+    
+    # Convert string IDs to UUID objects
+    experiment_uuids = [UUID(exp_id) for exp_id in experiment_ids]
+    
+    with get_session_from_connection_string(source_db_str, timeout=timeout) as source_session:
+        with get_session_from_connection_string(target_db_str, timeout=timeout) as target_session:
+            
+            # Verify all experiments exist
+            for exp_uuid in experiment_uuids:
+                exp_config = source_session.get(ExperimentConfig, exp_uuid)
+                if not exp_config:
+                    raise ValueError(f"Experiment {exp_uuid} not found in source database")
+            
+            # 1. Copy ExperimentConfig records
+            for exp_uuid in experiment_uuids:
+                exp_config = source_session.get(ExperimentConfig, exp_uuid)
+                # Create new instance to avoid session conflicts
+                new_config = ExperimentConfig(
+                    id=exp_config.id,
+                    networks=exp_config.networks,
+                    seeds=exp_config.seeds,
+                    prompts=exp_config.prompts,
+                    max_length=exp_config.max_length,
+                    embedding_models=exp_config.embedding_models,
+                    started_at=exp_config.started_at,
+                    completed_at=exp_config.completed_at,
+                )
+                target_session.add(new_config)
+            
+            # Commit experiments first to satisfy FK constraints
+            target_session.commit()
+            
+            # 2. Get all runs for these experiments
+            runs_query = select(Run).where(Run.experiment_id.in_(experiment_uuids))
+            runs = source_session.exec(runs_query).all()
+            run_ids = [run.id for run in runs]
+            
+            # Copy Run records
+            for run in runs:
+                new_run = Run(
+                    id=run.id,
+                    experiment_id=run.experiment_id,
+                    network=run.network,
+                    seed=run.seed,
+                    initial_prompt=run.initial_prompt,
+                    max_length=run.max_length,
+                    stop_reason=run.stop_reason,
+                )
+                target_session.add(new_run)
+            
+            # Commit runs before dependent tables
+            target_session.commit()
+            
+            # 3. Get all invocations for these runs
+            if run_ids:
+                invocations_query = select(Invocation).where(Invocation.run_id.in_(run_ids))
+                invocations = source_session.exec(invocations_query).all()
+                invocation_ids = [inv.id for inv in invocations]
+                
+                # Copy Invocation records
+                for inv in invocations:
+                    new_inv = Invocation(
+                        id=inv.id,
+                        run_id=inv.run_id,
+                        sequence_number=inv.sequence_number,
+                        type=inv.type,
+                        model=inv.model,
+                        seed=inv.seed,
+                        started_at=inv.started_at,
+                        completed_at=inv.completed_at,
+                        input_invocation_id=inv.input_invocation_id,
+                        output_text=inv.output_text,
+                        output_image_data=inv.output_image_data,
+                    )
+                    target_session.add(new_inv)
+                
+                # Commit invocations before embeddings
+                target_session.commit()
+                
+                # 4. Get all embeddings for these invocations
+                if invocation_ids:
+                    embeddings_query = select(Embedding).where(
+                        Embedding.invocation_id.in_(invocation_ids)
+                    )
+                    embeddings = source_session.exec(embeddings_query).all()
+                    
+                    # Copy Embedding records
+                    for emb in embeddings:
+                        new_emb = Embedding(
+                            id=emb.id,
+                            invocation_id=emb.invocation_id,
+                            embedding_model=emb.embedding_model,
+                            vector=emb.vector,
+                        )
+                        target_session.add(new_emb)
+                    
+                    # Commit embeddings
+                    target_session.commit()
+                
+                # 5. Get all persistence diagrams for these runs
+                diagrams_query = select(PersistenceDiagram).where(
+                    PersistenceDiagram.run_id.in_(run_ids)
+                )
+                diagrams = source_session.exec(diagrams_query).all()
+                
+                # Copy PersistenceDiagram records
+                for diag in diagrams:
+                    new_diag = PersistenceDiagram(
+                        id=diag.id,
+                        run_id=diag.run_id,
+                        embedding_model=diag.embedding_model,
+                        started_at=diag.started_at,
+                        completed_at=diag.completed_at,
+                        diagram_data=diag.diagram_data,
+                    )
+                    target_session.add(new_diag)
+                
+                # Final commit for persistence diagrams
+                target_session.commit()
