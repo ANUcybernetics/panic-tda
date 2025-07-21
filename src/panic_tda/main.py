@@ -777,27 +777,32 @@ def cluster_details_command(
             )
             raise typer.Exit(code=1)
 
+        # Calculate outlier percentage
+        outlier_cluster = next((c for c in details["clusters"] if c["id"] == -1), None)
+        outlier_count = outlier_cluster["size"] if outlier_cluster else 0
+        outlier_percentage = (outlier_count / details["total_assignments"] * 100) if details["total_assignments"] > 0 else 0
+        
+        # Filter out outliers from regular clusters
+        regular_clusters = [c for c in details["clusters"] if c["id"] != -1]
+        
         # Print header
         typer.echo(f"Clustering details for embedding model: {embedding_model_id}")
         typer.echo(f"Algorithm: {details['algorithm']}")
         typer.echo(f"Parameters: {details['parameters']}")
         typer.echo(f"Created: {details['created_at']}")
-        typer.echo(f"Total clusters: {details['total_clusters']}")
+        typer.echo(f"Total clusters: {len(regular_clusters)}")
         typer.echo(f"Total assignments: {details['total_assignments']}")
+        typer.echo(f"Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)")
         typer.echo("")
 
         # Print clusters (already limited by the query)
-        typer.echo(f"Top {len(details['clusters'])} clusters by size:")
+        typer.echo(f"Top {len(regular_clusters)} clusters by size:")
         typer.echo("-" * 80)
 
-        for i, cluster in enumerate(details["clusters"]):
+        for i, cluster in enumerate(regular_clusters):
             text = cluster["medoid_text"]
             if len(text) > 60:
                 text = text[:57] + "..."
-
-            # Color code based on type
-            if cluster["id"] == -1:
-                text = typer.style(text, fg=typer.colors.RED)
 
             typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
 
