@@ -123,28 +123,6 @@ def cluster_all_data(
             f"Starting clustering on embeddings for model: {embedding_model_id}"
         )
 
-    # Check if clustering already exists
-    if embedding_model_id == "all":
-        existing = session.exec(select(ClusteringResult)).first()
-    else:
-        existing = session.exec(
-            select(ClusteringResult).where(
-                ClusteringResult.embedding_model == embedding_model_id
-            )
-        ).first()
-
-    if existing:
-        model_msg = (
-            "all models"
-            if embedding_model_id == "all"
-            else f"model {embedding_model_id}"
-        )
-        logger.info(f"Clustering results already exist for {model_msg}")
-        return {
-            "status": "already_clustered",
-            "message": model_msg,
-        }
-
     try:
         # Query to get embedding counts per model with downsampling
         # Note: TEXT invocations have odd sequence numbers (1, 3, 5, ...)

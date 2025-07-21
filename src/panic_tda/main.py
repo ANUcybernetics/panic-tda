@@ -672,10 +672,6 @@ def cluster_embeddings_command(
             typer.echo(
                 f"Created {result['total_clusters']:,} clusters across {result['embedding_models_count']} embedding models"
             )
-        elif result["status"] == "already_clustered":
-            typer.echo(
-                f"Data already has clustering results for {result.get('message', 'specified models')}."
-            )
         else:
             typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
