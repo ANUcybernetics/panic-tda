@@ -287,8 +287,9 @@ def cluster_all_data(
                 f"  Clustered {len(embedding_ids)} embeddings into {len(unique_labels)} clusters"
             )
 
-        # Commit all changes at once after all models are processed
-        session.commit()
+        # Note: Commit is handled by the session context manager
+        # Flush to ensure all objects are persisted to the current transaction
+        session.flush()
 
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "
@@ -384,7 +385,8 @@ def delete_cluster_data(
             session.delete(result)
             deleted_results += 1
 
-        session.commit()
+        # Flush to ensure deletions are persisted (commit handled by context manager)
+        session.flush()
 
         model_msg = (
             "all models"
@@ -494,7 +496,8 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
             
         # Delete the clustering result
         session.delete(result)
-        session.commit()
+        # Flush to ensure deletion is persisted (commit handled by context manager)
+        session.flush()
         
         logger.info(
             f"Deleted clustering result {clustering_id} and {assignments_count} assignments"
