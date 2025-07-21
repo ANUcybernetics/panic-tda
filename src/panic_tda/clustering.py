@@ -32,7 +32,7 @@ def hdbscan(embeddings: np.ndarray) -> dict:
 
     # Euclidean distance between unit vectors ranges from 0 to 2
     # Same as cosine distance range, so we can use the same epsilon
-    cluster_selection_epsilon = 0.3
+    cluster_selection_epsilon = 0.4
 
     # Configure and run HDBSCAN with Euclidean metric on normalized vectors
     # This is equivalent to cosine distance but allows using store_centers
