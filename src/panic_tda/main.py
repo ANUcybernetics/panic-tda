@@ -746,9 +746,9 @@ def list_clusters_command(
                 epsilon = result.parameters.get("cluster_selection_epsilon", "N/A")
                 typer.echo(
                     f"{result.id} - model: {result.embedding_model}, "
-                    f"algorithm: {result.algorithm}, "
                     f"epsilon: {epsilon}, "
                     f"clusters: {regular_clusters}, "
+                    f"assignments: {assignments_count:,}, "
                     f"outliers: {outlier_percentage:.1f}%, "
                     f"created: {result.created_at.strftime('%Y-%m-%d %H:%M')}"
                 )
