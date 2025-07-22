@@ -28,7 +28,7 @@ echo "To tail log file: tail -f $LOG_FILE"
 
 # Run the clustering in background with nohup
 # Without --force flag to preserve existing clustering results
-nohup uv run panic-tda cluster-embeddings --downsample $DOWNSAMPLE > "$LOG_FILE" 2>&1 &
+nohup uv run panic-tda cluster embeddings --downsample $DOWNSAMPLE > "$LOG_FILE" 2>&1 &
 
 # Print the background job PID
 echo "Started background job with PID: $!"

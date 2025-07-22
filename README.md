@@ -68,31 +68,26 @@ $ uv run panic-tda --help
 │ --help                        Show this message and exit.                                                           │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ perform-experiment   Run a panic-tda experiment defined in CONFIG_FILE.                                     │
-│ resume-experiment    Resume a panic-tda experiment by its UUID.                                             │
-│ list-experiments     List all experiments stored in the database.                                                   │
-│ experiment-status    Get the status of a panic-tda experiment.                                              │
-│ delete-experiment    Delete an experiment and all associated data from the database.                                │
-│ list-runs            List all runs stored in the database.                                                          │
-│ list-models          List all available genAI and embedding models with their output types.                         │
-│ export-video         Generate a mosaic video from all runs in one or more specified experiments.                    │
-│ doctor               Diagnose and optionally fix issues with an experiment's data.                                  │
-│ paper-charts         Generate charts for publication using data from specific experiments.                          │
+│ experiment     Manage experiments                                                                                   │
+│ run            Manage runs                                                                                          │
+│ cluster        Manage clustering                                                                                    │
+│ model          Manage models                                                                                        │
+│ export         Export data and visualizations                                                                       │
 │ script                                                                                                              │
 ╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 The most useful subcommands are:
 
-- `perform-experiment`: Run a panic-tda experiment defined in a configuration
+- `experiment perform`: Run a panic-tda experiment defined in a configuration
   file
-- `experiment-status`: Get the status of an experiment (% complete, broken down
+- `experiment show`: Get the status of an experiment (% complete, broken down
   by stage: invocation/embedding/persistence diagram)
-- `list-experiments`: List all experiments stored in the database, with options
+- `experiment list`: List all experiments stored in the database, with options
   for detailed output
-- `list-models`: List all the supported models (both genAI t2i/i2t and embedding
+- `model list`: List all the supported models (both genAI t2i/i2t and embedding
   models)
-- `export-video`: Export a "mosaic" from all the runs in a given experiment
+- `export video`: Export a "mosaic" from all the runs in a given experiment
 
 To run an experiment, you'll need to create a configuration file. Here's an
 example:
@@ -115,16 +110,16 @@ Then, to "run" the experiment:
 
 ```bash
 # Run an experiment with the above configuration
-uv run panic-tda perform-experiment experiment1.json
+uv run panic-tda experiment perform experiment1.json
 
 # check the status of the experiment
-uv run panic-tda experiment-status
+uv run panic-tda experiment show
 
 # List all expeiments in the database
-uv run panic-tda list-experiments
+uv run panic-tda experiment list
 
 # Export images from a specific experiment
-uv run panic-tda export-video 123e4567-e89b-12d3-a456-426614174000
+uv run panic-tda export video 123e4567-e89b-12d3-a456-426614174000
 ```
 
 If you're running it on a remote machine and kicking it off via ssh, you'll

@@ -19,7 +19,7 @@ echo "Starting experiment with config: $CONFIG_FILE"
 echo "To tail log file: tail -f $LOG_FILE"
 
 # Run the experiment in background with nohup
-nohup uv run panic-tda perform-experiment "$CONFIG_FILE" > "$LOG_FILE" 2>&1 &
+nohup uv run panic-tda experiment perform "$CONFIG_FILE" > "$LOG_FILE" 2>&1 &
 
 # Print the background job PID
 echo "Started background job with PID: $!"

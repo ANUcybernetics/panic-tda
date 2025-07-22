@@ -73,11 +73,11 @@ The project prioritizes:
 
 Main entry point is `panic-tda` (@src/panic_tda/main.py:79):
 
-- `perform-experiment`: Run experiments from config file
-- `experiment-status`: Check experiment progress
-- `list-experiments`: View all experiments in database
-- `export-video`: Generate mosaic visualizations
-- `paper-charts`: Create publication-ready figures
+- `experiment perform`: Run experiments from config file
+- `experiment show`: Check experiment progress
+- `experiment list`: View all experiments in database
+- `export video`: Generate mosaic visualizations
+- `export charts`: Create publication-ready figures
 
 ## Testing Approach
 
@@ -93,9 +93,9 @@ The project uses pytest with comprehensive test coverage:
 
 1. Install with uv: `uv pip install -e .`
 2. Create experiment config JSON (@README.md:100-109)
-3. Run experiment: `uv run panic-tda perform-experiment config.json`
-4. Monitor progress: `uv run panic-tda experiment-status`
-5. Export results: `uv run panic-tda export-video <experiment-id>`
+3. Run experiment: `uv run panic-tda experiment perform config.json`
+4. Monitor progress: `uv run panic-tda experiment show`
+5. Export results: `uv run panic-tda export video <experiment-id>`
 
 ## Key Insights
 
@@ -110,7 +110,7 @@ For detailed design rationale, see @DESIGN.md.
 
 ## Warnings and Gotchas
 
-- Don't ever run a clustering (e.g. `uv run panic-tda clustering-*`) command
+- Don't ever run a clustering (e.g. `uv run panic-tda cluster *`) command
   with output to stdout - it crashes claude code for some reason - redirect to a
   file
 

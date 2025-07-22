@@ -83,8 +83,25 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer()
 
+# Create subcommand groups
+experiment_app = typer.Typer()
+run_app = typer.Typer()
+cluster_app = typer.Typer()
+model_app = typer.Typer()
+export_app = typer.Typer()
 
-@app.command("perform-experiment")
+# Add subcommand groups to main app
+app.add_typer(experiment_app, name="experiment", help="Manage experiments")
+app.add_typer(experiment_app, name="experiments", help="Manage experiments (alias for experiment)", hidden=True)
+app.add_typer(run_app, name="run", help="Manage runs")
+app.add_typer(run_app, name="runs", help="Manage runs (alias for run)", hidden=True)
+app.add_typer(cluster_app, name="cluster", help="Manage clustering")
+app.add_typer(cluster_app, name="clusters", help="Manage clustering (alias for cluster)", hidden=True)
+app.add_typer(model_app, name="model", help="Manage models")
+app.add_typer(export_app, name="export", help="Export data and visualizations")
+
+
+@experiment_app.command("perform")
 def perform_experiment(
     config_file: Path = typer.Argument(
         ...,
@@ -161,7 +178,7 @@ def perform_experiment(
     logger.info(f"Experiment completed successfully. Results saved to {db_path}")
 
 
-@app.command("resume-experiment")
+@experiment_app.command("resume")
 def resume_experiment(
     experiment_id: str = typer.Argument(
         ...,
@@ -216,7 +233,7 @@ def resume_experiment(
     logger.info(f"Experiment resumeed successfully. Results saved to {db_path}")
 
 
-@app.command("list-experiments")
+@experiment_app.command("list")
 def list_experiments_command(
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -269,7 +286,7 @@ def list_experiments_command(
                 )
 
 
-@app.command("experiment-status")
+@experiment_app.command("show")
 def experiment_status(
     experiment_id: str = typer.Argument(
         None,
@@ -311,7 +328,7 @@ def experiment_status(
         print_experiment_info(experiment, session)
 
 
-@app.command("delete-experiment")
+@experiment_app.command("delete")
 def delete_experiment(
     experiment_id: str = typer.Argument(
         ...,
@@ -366,7 +383,7 @@ def delete_experiment(
             typer.echo(f"Failed to delete experiment {experiment_id}.")
 
 
-@app.command("list-runs")
+@run_app.command("list")
 def list_runs_command(
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -415,7 +432,7 @@ def list_runs_command(
         )
 
 
-@app.command("list-models")
+@model_app.command("list")
 def list_models():
     """
     List all available GenAI and embedding models with their output types.
@@ -447,7 +464,7 @@ def list_models():
         typer.echo(f"  {model_name}")
 
 
-@app.command("export-video")
+@export_app.command("video")
 def export_video_command(
     experiment_ids: list[str] = typer.Argument(
         ...,
@@ -552,7 +569,7 @@ def export_video_command(
         logger.info(f"Mosaic video successfully created at {output_file}")
 
 
-@app.command("doctor")
+@experiment_app.command("doctor")
 def doctor_command(
     experiment_id: str = typer.Argument(
         ...,
@@ -596,7 +613,7 @@ def doctor_command(
     logger.info("Experiment diagnostic completed")
 
 
-@app.command("paper-charts")
+@export_app.command("charts")
 def paper_charts_command(
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -629,7 +646,7 @@ def script():
         session
 
 
-@app.command("cluster-embeddings")
+@cluster_app.command("embeddings")
 def cluster_embeddings_command(
     embedding_model_id: str = typer.Argument(
         "all",
@@ -676,7 +693,7 @@ def cluster_embeddings_command(
             typer.echo(f"Clustering failed: {result.get('message', 'Unknown error')}")
 
 
-@app.command("list-clusters")
+@cluster_app.command("list")
 def list_clusters_command(
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
@@ -754,7 +771,7 @@ def list_clusters_command(
                 )
 
 
-@app.command("delete-cluster")
+@cluster_app.command("delete")
 def delete_cluster_command(
     clustering_id: str = typer.Argument(
         ...,
@@ -859,7 +876,7 @@ def delete_cluster_command(
                 typer.echo(f"Failed to delete clustering result: {result.get('message', 'Unknown error')}")
 
 
-@app.command("cluster-status")
+@cluster_app.command("show")
 def cluster_status_command(
     clustering_id: str = typer.Argument(
         None,
@@ -952,7 +969,7 @@ def cluster_status_command(
                 typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
 
 
-@app.command("export-db")
+@export_app.command("db")
 def export_db_command(
     experiment_ids: list[str] = typer.Argument(
         ...,
