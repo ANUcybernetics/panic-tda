@@ -50,8 +50,9 @@ def hdbscan(embeddings: np.ndarray) -> dict:
     hdb = hdbscan.fit(embeddings_normalized)
 
     # HDBSCAN returns medoid vectors directly when store_centers='medoid'
-    # The medoids are normalized vectors, but we need to match them back to original embeddings
+    # We'll return both the medoid vectors and their indices for easier mapping
     medoids_array = np.empty((0, embeddings.shape[1]))
+    medoid_indices = {}
 
     if hasattr(hdb, "medoids_") and hdb.medoids_ is not None and len(hdb.medoids_) > 0:
         # Get unique cluster labels (excluding noise)
@@ -78,10 +79,11 @@ def hdbscan(embeddings: np.ndarray) -> dict:
                     best_idx = np.argmin(distances)
                     original_idx = cluster_indices[best_idx]
 
-                    # Store the original (non-normalized) embedding
+                    # Store the original (non-normalized) embedding and its index
                     medoids_array[label] = embeddings[original_idx]
+                    medoid_indices[int(label)] = int(original_idx)
 
-    return {"labels": hdb.labels_, "medoids": medoids_array}
+    return {"labels": hdb.labels_, "medoids": medoids_array, "medoid_indices": medoid_indices}
 
 
 def optics(

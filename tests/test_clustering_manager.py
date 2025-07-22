@@ -1,12 +1,13 @@
 """Tests for the clustering manager functionality."""
 
+from uuid import UUID
 from sqlmodel import Session, create_engine, select
 
 from panic_tda.clustering_manager import (
     cluster_all_data,
 )
 from panic_tda.engine import perform_experiment
-from panic_tda.schemas import ClusteringResult, EmbeddingCluster, ExperimentConfig
+from panic_tda.schemas import ClusteringResult, Embedding, EmbeddingCluster, ExperimentConfig
 
 
 def test_cluster_all_data_no_downsampling(db_session):
@@ -246,6 +247,50 @@ def test_clustering_persistence_across_sessions(db_session):
         # Should now have multiple clustering results
         clustering_results2 = new_session.exec(select(ClusteringResult)).all()
         assert len(clustering_results2) > len(clustering_results)
+
+
+def test_medoid_embedding_id_stored(db_session):
+    """Test that medoid_embedding_id is stored for each cluster."""
+    # Use the same approach as test_cluster_all_data_multiple_models
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
+        seeds=[-1],
+        prompts=["test multiple models"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=15,
+    )
+
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run experiment to populate embeddings
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Cluster all data
+    result = cluster_all_data(db_session, downsample=1)
+    assert result["status"] == "success"
+
+    # Verify both models have clustering results with medoid_embedding_id
+    for model in ["Dummy", "Dummy2"]:
+        clustering_result = db_session.exec(
+            select(ClusteringResult).where(ClusteringResult.embedding_model == model)
+        ).first()
+        
+        assert clustering_result is not None
+        assert len(clustering_result.clusters) > 0
+        
+        # Check that each cluster has medoid_embedding_id
+        for cluster in clustering_result.clusters:
+            assert "medoid_embedding_id" in cluster
+            assert cluster["medoid_embedding_id"] is not None
+            
+            # Verify the embedding exists
+            embedding = db_session.exec(
+                select(Embedding).where(Embedding.id == UUID(cluster["medoid_embedding_id"]))
+            ).first()
+            assert embedding is not None
 
 
 def test_cluster_all_data_multiple_models(db_session):
