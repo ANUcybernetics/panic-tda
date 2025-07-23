@@ -47,8 +47,9 @@ from panic_tda.export import export_mosaic_image
 
 set_option("limitsize", False)
 
-matplotlib.rcParams["pdf.fonttype"] = 42  # For TrueType
-matplotlib.rcParams["ps.fonttype"] = 42  # For PostScript Type 1
+# these things required for IEEE SMC camera-ready
+# matplotlib.rcParams["pdf.fonttype"] = 42  # For TrueType
+# matplotlib.rcParams["ps.fonttype"] = 42  # For PostScript Type 1
 
 ## datavis
 
