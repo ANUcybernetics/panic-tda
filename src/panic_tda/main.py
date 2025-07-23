@@ -972,7 +972,8 @@ def cluster_status_command(
                 if len(text) > 60:
                     text = text[:57] + "..."
 
-                typer.echo(f"{i + 1:3d}. {text:<60} {cluster['size']:>6,} embeddings")
+                percentage = (cluster['size'] / details['total_assignments'] * 100) if details['total_assignments'] > 0 else 0
+                typer.echo(f"{i + 1:3d}. {text:<60} {percentage:>5.1f}%")
 
 
 @export_app.command("db")
