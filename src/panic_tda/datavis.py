@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from typing import Optional
 from uuid import UUID
 
 import matplotlib
@@ -1158,12 +1157,14 @@ def plot_cluster_example_images(
         invocation_ids = group["invocation_id"].head(num_examples).tolist()
         invocation_uuids = [UUID(id) for id in invocation_ids]
 
-        # Split into rows based on examples_per_row
-        rows = []
-        for i in range(0, len(invocation_uuids), examples_per_row):
-            rows.append(invocation_uuids[i:i + examples_per_row])
-        
-        cluster_examples[str(cluster_label)] = rows
+        # If we need to wrap rows, split the invocations into multiple rows
+        if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
+            # Split into multiple rows
+            for i in range(0, len(invocation_uuids), examples_per_row):
+                row_label = f"{cluster_label} ({i//examples_per_row + 1})"
+                cluster_examples[row_label] = invocation_uuids[i:i + examples_per_row]
+        else:
+            cluster_examples[str(cluster_label)] = invocation_uuids
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:
