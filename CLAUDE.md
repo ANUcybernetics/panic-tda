@@ -81,6 +81,8 @@ Main entry point is `panic-tda` (@src/panic_tda/main.py:79):
 
 ## Testing Approach
 
+tl;dr - run the full test suite in parallel with `uv run pytest -n auto`
+
 The project uses pytest with comprehensive test coverage:
 
 - **Unit tests** for all major components (@tests/)
@@ -110,9 +112,8 @@ For detailed design rationale, see @DESIGN.md.
 
 ## Warnings and Gotchas
 
-- Don't ever run a clustering (e.g. `uv run panic-tda cluster *`) command
-  with output to stdout - it crashes claude code for some reason - redirect to a
-  file
+- Don't ever run a clustering (e.g. `uv run panic-tda cluster *`) command with
+  output to stdout - it crashes claude code for some reason - redirect to a file
 
 ### SQLite3 CLI Crash Issue
 
