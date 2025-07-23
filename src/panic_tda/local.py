@@ -1344,6 +1344,26 @@ def artificial_futures_slides_charts(session: Session) -> None:
         output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
     )
 
+    # sample 20 runs at random, and then use export_timeline (with 10 images per run) to show some of the invocations from that run
+    from panic_tda.data_prep import load_runs_from_cache
+    from panic_tda.export import export_timeline
+
+    runs_df = load_runs_from_cache()
+
+    # Sample 20 random run IDs
+    random_run_ids = runs_df.sample(20).get_column("run_id").to_list()
+
+    # Convert to strings (assuming export_timeline expects string IDs)
+    random_run_ids_str = [str(run_id) for run_id in random_run_ids]
+
+    # Export timeline with 10 images per run
+    export_timeline(
+        run_ids=random_run_ids_str,
+        session=session,
+        images_per_run=10,
+        output_file="output/vis/random_runs_timeline.jpg",
+    )
+
 def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
@@ -1352,7 +1372,7 @@ def paper_charts(session: Session) -> None:
     # cache_dfs(
     #     session,
     #     runs=False,
-    #     embeddings=True,
+    #     embeddings=False,
     #     invocations=False,
     #     persistence_diagrams=False,
     # )
