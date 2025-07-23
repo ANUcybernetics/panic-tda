@@ -1131,9 +1131,13 @@ def cluster_counts(
     return embedding_counts
 
 
-def paper_charts(session: Session) -> None:
+def ieee_smc_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
+
+    TODO this has actually been modified a bit (for exploring new options), so
+    if we wanted to re-create the paper charts exactly you'd probably have to
+    un-comment some lines and re-comment some others.
     """
     # pl.Config.set_tbl_rows(10)
     ### CACHING
@@ -1281,3 +1285,48 @@ def paper_charts(session: Session) -> None:
 
     ### LEAVES AND DROPLETS
     # create_top_class_image_grids(embeddings_df, 3200, session)
+
+
+def artificial_futures_slides_charts(session: Session) -> None:
+    """
+    Generate charts for Ben's artificial futures slides.
+
+    TODO list:
+
+        - ridgeline plots for semantic drift (by network)
+        - (downsampled) run plots (grouped by initial prompt?)
+        - cluster examples (maybe add a "rows" param)
+        - cluster timelines (perhaps with "medoid image" as a marker)
+        - TDA entropy distributions
+    """
+    from panic_tda.data_prep import (
+        load_embeddings_from_cache
+    )
+
+    embeddings_df = load_embeddings_from_cache()
+    embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
+
+    # cluster examples
+    plot_cluster_example_images(
+        embeddings_df,
+        50,
+        "Nomic",
+        session,
+        # examples_per_row = 10,
+        output_file = "output/vis/cluster_examples_nomic.jpg",
+    )
+
+
+def paper_charts(session: Session) -> None:
+    """
+    Generate charts for paper publications.
+    """
+    # from panic_tda.data_prep import cache_dfs
+    # cache_dfs(
+    #     session,
+    #     runs=True,
+    #     embeddings=True,
+    #     invocations=True,
+    #     persistence_diagrams=True,
+    # )
+    artificial_futures_slides_charts(session)
