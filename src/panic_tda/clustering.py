@@ -4,12 +4,13 @@ import numpy as np
 from sklearn.cluster import HDBSCAN, OPTICS
 
 
-def hdbscan(embeddings: np.ndarray) -> dict:
+def hdbscan(embeddings: np.ndarray, epsilon: float = 0.4) -> dict:
     """
     Perform HDBSCAN clustering on a list of embeddings.
 
     Args:
         embeddings: ndarray of shape (n_samples, n_features)
+        epsilon: The epsilon value for cluster selection (default: 0.4)
         min_cluster_size: The minimum size of clusters
         min_samples: The number of samples in a neighborhood for a point to be considered a core point
                     (defaults to the same value as min_cluster_size if None)
@@ -32,7 +33,7 @@ def hdbscan(embeddings: np.ndarray) -> dict:
 
     # Euclidean distance between unit vectors ranges from 0 to 2
     # Same as cosine distance range, so we can use the same epsilon
-    cluster_selection_epsilon = 0.4
+    cluster_selection_epsilon = epsilon
 
     # Configure and run HDBSCAN with Euclidean metric on normalized vectors
     # This is equivalent to cosine distance but allows using store_centers

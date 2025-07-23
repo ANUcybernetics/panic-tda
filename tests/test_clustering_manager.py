@@ -53,7 +53,7 @@ def test_cluster_all_data_no_downsampling(db_session):
         assert cr.embedding_model in ["Dummy", "Dummy2"]
         assert cr.algorithm == "hdbscan"
         assert cr.parameters == {
-            "cluster_selection_epsilon": 0.6,
+            "cluster_selection_epsilon": 0.4,
             "allow_single_cluster": True,
         }
         assert len(cr.clusters) > 0  # Should have at least one cluster

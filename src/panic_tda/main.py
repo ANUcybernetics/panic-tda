@@ -663,6 +663,12 @@ def cluster_embeddings_command(
         "--downsample",
         help="Downsampling factor (1 = no downsampling, 10 = every 10th embedding)",
     ),
+    epsilon: float = typer.Option(
+        0.4,
+        "--epsilon",
+        "-e",
+        help="Epsilon value for HDBSCAN cluster selection (default: 0.4)",
+    ),
 ):
     """
     Run clustering on embeddings in the database.
@@ -680,7 +686,7 @@ def cluster_embeddings_command(
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import cluster_all_data
 
-        result = cluster_all_data(session, downsample, embedding_model_id)
+        result = cluster_all_data(session, downsample, embedding_model_id, epsilon)
 
         if result["status"] == "success":
             typer.echo(

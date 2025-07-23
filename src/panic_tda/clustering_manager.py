@@ -208,7 +208,7 @@ def get_cluster_details_by_id(
 
 
 def cluster_all_data(
-    session: Session, downsample: int = 1, embedding_model_id: str = "all"
+    session: Session, downsample: int = 1, embedding_model_id: str = "all", epsilon: float = 0.4
 ) -> Dict[str, any]:
     """
     Cluster embeddings in the database globally.
@@ -298,7 +298,7 @@ def cluster_all_data(
             vectors_array = np.array(vectors)
             
             # Perform clustering
-            cluster_result = hdbscan(vectors_array)
+            cluster_result = hdbscan(vectors_array, epsilon=epsilon)
             
             if cluster_result is None:
                 logger.warning(f"  Clustering failed for model {model_name}")
@@ -309,7 +309,7 @@ def cluster_all_data(
                 embedding_model=model_name,
                 algorithm="hdbscan",
                 parameters={
-                    "cluster_selection_epsilon": 0.6,
+                    "cluster_selection_epsilon": epsilon,
                     "allow_single_cluster": True,
                 },
                 clusters=[],  # Will be populated below
