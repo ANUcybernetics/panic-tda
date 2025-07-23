@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Optional
 from uuid import UUID
 
 import matplotlib
@@ -1119,6 +1120,7 @@ def plot_cluster_example_images(
     session: Session,
     examples_per_row: int = None,
     output_file: str = "output/vis/cluster_examples.jpg",
+    rescale: Optional[float] = None,
 ) -> None:
     """
     Create a mosaic image showing example images for each cluster.
@@ -1130,6 +1132,7 @@ def plot_cluster_example_images(
         session: Session object for database access
         examples_per_row: Maximum number of images per row before wrapping (default: num_examples)
         output_file: Path to save the visualization
+        rescale: Optional scaling factor for the output image dimensions (default: None)
     """
     # Set default examples_per_row if not provided
     if examples_per_row is None:
@@ -1166,7 +1169,7 @@ def plot_cluster_example_images(
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:
-        export_mosaic_image(cluster_examples, session, output_file=output_file)
+        export_mosaic_image(cluster_examples, session, output_file=output_file, rescale=rescale)
         logging.info(f"Saved cluster example images to {output_file}")
     else:
         logging.warning(

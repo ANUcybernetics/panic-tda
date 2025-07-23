@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import textwrap
 from io import BytesIO
-from typing import Dict, List
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
@@ -988,6 +988,7 @@ def export_mosaic_image(
     label_invocations: Dict[str, List[UUID]],
     session: Session,
     output_file: str,
+    rescale: Optional[float] = None,
 ) -> None:
     """
     Export a mosaic image where each row corresponds to a label and contains all images
@@ -997,6 +998,7 @@ def export_mosaic_image(
         label_invocations: Dictionary mapping labels to lists of Invocation UUIDs
         session: SQLModel Session for database operations
         output_file: Path to save the output mosaic image
+        rescale: Optional scaling factor for the output image dimensions (default: None)
         font_size: Font size for label text (default: 16)
     """
     # Ensure output directory exists
@@ -1060,6 +1062,13 @@ def export_mosaic_image(
         # Move down to the next row, adding the row gap
         row_y += IMAGE_SIZE + row_gap
 
+    # Apply rescaling if requested
+    if rescale is not None and rescale != 1.0:
+        new_width = int(mosaic_width * rescale)
+        new_height = int(mosaic_height * rescale)
+        mosaic = mosaic.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        logger.info(f"Rescaled mosaic from {mosaic_width}x{mosaic_height} to {new_width}x{new_height}")
+    
     # Save the final mosaic
     mosaic.save(output_file, format="JPEG", quality=95)
     logger.info(f"Mosaic image saved to: {output_file}")

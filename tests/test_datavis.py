@@ -388,6 +388,27 @@ def test_plot_cluster_example_images(db_session):
 
     # Verify wrapped file was created
     assert os.path.exists(output_file_wrapped), f"File was not created: {output_file_wrapped}"
+    
+    # Test with rescale parameter
+    output_file_rescaled = "output/test/cluster_examples_rescaled.jpg"
+    plot_cluster_example_images(
+        embeddings_df,
+        num_examples=2,
+        embedding_model=embedding_model,
+        session=db_session,
+        rescale=0.5,  # Scale down to half size
+        output_file=output_file_rescaled,
+    )
+    
+    # Verify rescaled file was created
+    assert os.path.exists(output_file_rescaled), f"File was not created: {output_file_rescaled}"
+    
+    # Verify that the rescaled image is smaller
+    from PIL import Image
+    original = Image.open(output_file)
+    rescaled = Image.open(output_file_rescaled)
+    assert rescaled.width == original.width // 2
+    assert rescaled.height == original.height // 2
 
 
 def test_plot_cluster_histograms(db_session):
