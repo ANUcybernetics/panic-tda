@@ -4,8 +4,8 @@ import polars as pl
 import pytest
 
 from panic_tda.data_prep import (
-    add_cluster_labels,
     add_persistence_entropy,
+    load_clusters_df,
     load_embeddings_df,
     load_invocations_df,
     load_pd_df,
@@ -287,19 +287,27 @@ def test_plot_cluster_run_lengths(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "cluster_label" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "cluster_label" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_run_lengths.pdf"
 
     # Generate the plot
-    plot_cluster_run_lengths(embeddings_df, output_file)
+    plot_cluster_run_lengths(df_with_clusters, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -311,14 +319,22 @@ def test_plot_cluster_run_length_violin(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Define output file
     output_file = "output/test/cluster_run_length_violin.pdf"
 
     # Generate the plot
     # Assuming plot_cluster_run_length_violin is imported
-    plot_cluster_run_length_violin(embeddings_df, output_file)
+    plot_cluster_run_length_violin(df_with_clusters, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -352,20 +368,28 @@ def test_plot_cluster_timelines(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have cluster timeline data
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "initial_prompt" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_timelines.pdf"
 
     # Generate the plot
-    label_df = create_label_map_df(embeddings_df)
-    plot_cluster_timelines(embeddings_df, label_df, output_file)
+    label_df = create_label_map_df(df_with_clusters)
+    plot_cluster_timelines(df_with_clusters, label_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -377,22 +401,30 @@ def test_plot_cluster_example_images(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "invocation_id" in embeddings_df.columns
-    assert "embedding_model" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "invocation_id" in df_with_clusters.columns
+    assert "embedding_model" in df_with_clusters.columns
 
     # Get the first embedding model for testing
-    embedding_model = embeddings_df.select("embedding_model").unique().to_series()[0]
+    embedding_model = df_with_clusters.select("embedding_model").unique().to_series()[0]
 
     # Define output file
     output_file = "output/test/cluster_examples.jpg"
 
     # Generate the plot
     plot_cluster_example_images(
-        embeddings_df,
+        df_with_clusters,
         num_examples=2,  # Reduced from 10 to 2 for faster tests
         embedding_model=embedding_model,
         session=db_session,
@@ -405,7 +437,7 @@ def test_plot_cluster_example_images(db_session):
     # Test with examples_per_row parameter
     output_file_wrapped = "output/test/cluster_examples_wrapped.jpg"
     plot_cluster_example_images(
-        embeddings_df,
+        df_with_clusters,
         num_examples=4,
         embedding_model=embedding_model,
         session=db_session,
@@ -421,7 +453,7 @@ def test_plot_cluster_example_images(db_session):
     # Test with rescale parameter
     output_file_rescaled = "output/test/cluster_examples_rescaled.jpg"
     plot_cluster_example_images(
-        embeddings_df,
+        df_with_clusters,
         num_examples=2,
         embedding_model=embedding_model,
         session=db_session,
@@ -449,19 +481,27 @@ def test_plot_cluster_histograms(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "initial_prompt" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_histograms.pdf"
 
     # Generate the plot
-    plot_cluster_histograms(embeddings_df, output_file)
+    plot_cluster_histograms(df_with_clusters, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -473,19 +513,27 @@ def test_plot_cluster_histograms_top_n(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "initial_prompt" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_histograms_top_n.pdf"
 
     # Generate the plot - using just 1 top cluster instead of 2 for faster test
-    plot_cluster_histograms_top_n(embeddings_df, 1, output_file=output_file)
+    plot_cluster_histograms_top_n(df_with_clusters, 1, output_file=output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -497,20 +545,28 @@ def test_plot_cluster_transitions(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "cluster_label" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "cluster_label" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_transitions.pdf"
 
     # Generate the plot
-    label_df = create_label_map_df(embeddings_df)
-    plot_cluster_transitions(embeddings_df, label_df, True, output_file)
+    label_df = create_label_map_df(df_with_clusters)
+    plot_cluster_transitions(df_with_clusters, label_df, True, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -609,29 +665,37 @@ def test_plot_cluster_bubblegrid(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
-    assert "cluster_label" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "initial_prompt" in df_with_clusters.columns
+    assert "cluster_label" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_bubblegrid.pdf"
 
     # Generate the label map
-    label_df = create_label_map_df(embeddings_df)
+    label_df = create_label_map_df(df_with_clusters)
 
     # without outliers
-    plot_cluster_bubblegrid(embeddings_df, label_df, False, output_file)
+    plot_cluster_bubblegrid(df_with_clusters, label_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_bubblegrid(embeddings_df, label_df, True, output_file)
+    plot_cluster_bubblegrid(df_with_clusters, label_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )
@@ -643,29 +707,37 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=1)
+    
+    # Join embeddings with clusters
+    df_with_clusters = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="left"
+    )
 
     # Verify we have the necessary columns
-    assert embeddings_df.height > 0
-    assert "run_id" in embeddings_df.columns
-    assert "sequence_number" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
-    assert "cluster_label" in embeddings_df.columns
+    assert df_with_clusters.height > 0
+    assert "run_id" in df_with_clusters.columns
+    assert "sequence_number" in df_with_clusters.columns
+    assert "initial_prompt" in df_with_clusters.columns
+    assert "cluster_label" in df_with_clusters.columns
 
     # Define output file
     output_file = "output/test/cluster_run_length_bubblegrid.pdf"
 
     # Generate the label map
-    label_df = create_label_map_df(embeddings_df)
+    label_df = create_label_map_df(df_with_clusters)
 
     # without outliers
-    plot_cluster_run_length_bubblegrid(embeddings_df, label_df, False, output_file)
+    plot_cluster_run_length_bubblegrid(df_with_clusters, label_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_run_length_bubblegrid(embeddings_df, label_df, True, output_file)
+    plot_cluster_run_length_bubblegrid(df_with_clusters, label_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )

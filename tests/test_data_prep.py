@@ -6,7 +6,6 @@ import polars.testing
 import pytest
 
 from panic_tda.data_prep import (
-    add_cluster_labels,
     add_semantic_drift,
     cache_dfs,
     calculate_cluster_run_lengths,
@@ -14,6 +13,7 @@ from panic_tda.data_prep import (
     calculate_semantic_drift,
     embed_initial_prompts,
     filter_top_n_clusters,
+    load_clusters_df,
     load_embeddings_df,
     load_invocations_df,
     load_pd_df,
@@ -168,8 +168,8 @@ def test_load_embeddings_df(db_session):
     assert len(text_row["text"]) > 0
 
 
-def test_add_cluster_labels(db_session):
-    """Test that add_cluster_labels properly adds clustering to embeddings."""
+def test_load_clusters_df(db_session):
+    """Test that load_clusters_df properly creates cluster assignments."""
 
     # Create a simple test configuration with minimal data
     config = ExperimentConfig(
@@ -189,47 +189,55 @@ def test_add_cluster_labels(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load embeddings
-    df = load_embeddings_df(db_session)
+    # Load clusters dataframe
+    clusters_df = load_clusters_df(db_session, downsample=1)
 
-    # Add cluster labels with smaller min_cluster_size to avoid hanging
-    df_with_clusters = add_cluster_labels(df, 1, db_session)
+    # Check that the expected columns exist
+    expected_columns = [
+        "clustering_result_id",
+        "embedding_id",
+        "embedding_model",
+        "cluster_id",
+        "cluster_label",
+        "run_id",
+        "sequence_number",
+        "invocation_id",
+        "algorithm",
+        "epsilon",
+    ]
+    assert all(col in clusters_df.columns for col in expected_columns)
+    assert set(clusters_df.columns) == set(expected_columns)
 
-    # Check that the cluster_label column was added
-    assert "cluster_label" in df_with_clusters.columns
-
-    # Check that each embedding has a cluster label assigned
-    assert df_with_clusters.filter(pl.col("cluster_label").is_null()).height == 0
+    # Check that each embedding has a cluster assignment
+    assert clusters_df.height == 100  # All embeddings should be present (no downsampling)
 
     # Check that cluster labels are strings
-    assert df_with_clusters.filter(
+    assert clusters_df.filter(
         pl.col("cluster_label").cast(pl.Utf8).is_not_null()
-    ).height == len(df_with_clusters)
+    ).height == len(clusters_df)
 
     # Check that cluster labels are non-empty strings
-    assert df_with_clusters.filter(
+    assert clusters_df.filter(
         pl.col("cluster_label").str.len_chars() > 0
-    ).height == len(df_with_clusters)
+    ).height == len(clusters_df)
 
-    # Check that each embedding model has its own set of clusters
-    dummy_clusters = (
-        df_with_clusters.filter(pl.col("embedding_model") == "Dummy")
-        .select("cluster_label")
-        .unique()
-    )
-    dummy2_clusters = (
-        df_with_clusters.filter(pl.col("embedding_model") == "Dummy2")
-        .select("cluster_label")
-        .unique()
-    )
+    # Check that each embedding model has its own clustering result
+    clustering_results = clusters_df.group_by(["embedding_model", "clustering_result_id"]).count()
+    assert clustering_results.height == 2  # One clustering result per embedding model
 
-    # Verify that both models have at least one cluster
-    assert dummy_clusters.height > 0
-    assert dummy2_clusters.height > 0
+    # Check algorithm and epsilon values
+    assert clusters_df.filter(pl.col("algorithm") == "hdbscan").height == clusters_df.height
+    assert clusters_df.filter(pl.col("epsilon") == 0.6).height == clusters_df.height
 
+    # Verify that cluster IDs are integers (including -1 for outliers)
+    assert clusters_df.select("cluster_id").dtypes[0] == pl.Int64
+
+    # Load embeddings to compare
+    embeddings_df = load_embeddings_df(db_session)
+    
     # Verify that all cluster labels are from the set of output texts
-    unique_labels = df_with_clusters.select("cluster_label").unique()
-    all_texts = df_with_clusters.select("text").unique()
+    unique_labels = clusters_df.select("cluster_label").unique()
+    all_texts = embeddings_df.select("text").unique()
 
     # Extract the unique texts and labels as sets for easier comparison
     text_set = set(all_texts.select("text").to_series().to_list())
@@ -241,14 +249,9 @@ def test_add_cluster_labels(db_session):
             f"Cluster label '{label}' not found in the set of output texts and is not 'OUTLIER'"
         )
 
-    # Another way to verify this is to check that each label is either a text or "OUTLIER"
-    assert all(label in text_set or label == "OUTLIER" for label in label_set), (
-        "Some cluster labels are neither from the set of outputs nor 'OUTLIER'"
-    )
 
-
-def test_add_cluster_labels_with_downsampling(db_session):
-    """Test that add_cluster_labels properly works with downsampling."""
+def test_load_clusters_df_with_downsampling(db_session):
+    """Test that load_clusters_df properly works with downsampling."""
 
     # Create a test configuration with more data to demonstrate downsampling
     config = ExperimentConfig(
@@ -268,62 +271,42 @@ def test_add_cluster_labels_with_downsampling(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load embeddings
-    df = load_embeddings_df(db_session)
-
-    # Record original size
-    original_size = df.height
-
-    # Add cluster labels with downsampling factor of 2
+    # Load clusters with downsampling factor of 2
     downsample = 2
-    df_with_clusters = add_cluster_labels(df, downsample, db_session)
+    clusters_df = load_clusters_df(db_session, downsample=downsample)
 
-    # Check that the cluster_label column was added
-    assert "cluster_label" in df_with_clusters.columns
+    # Check that the expected columns exist
+    expected_columns = [
+        "clustering_result_id",
+        "embedding_id",
+        "embedding_model",
+        "cluster_id",
+        "cluster_label",
+        "run_id",
+        "sequence_number",
+        "invocation_id",
+        "algorithm",
+        "epsilon",
+    ]
+    assert all(col in clusters_df.columns for col in expected_columns)
 
-    # With downsample=2, approximately half of the entries should have null cluster labels
-    null_labels_count = df_with_clusters.filter(
-        pl.col("cluster_label").is_null()
-    ).height
-    assert null_labels_count > 0, "Expected some null cluster labels with downsampling"
-    assert abs(null_labels_count - original_size / 2) < original_size * 0.1, (
-        "Expected approximately half null labels"
-    )
+    # With downsample=2, we should have approximately half the embeddings
+    assert clusters_df.height == 200 / downsample
 
-    assert (
-        df_with_clusters.filter(
-            ~pl.col("cluster_label").is_null()
-            & (pl.col("cluster_label").str.len_chars() > 0)
-        ).height
-        == 200 / downsample
-    )
+    # Check that each embedding model has clusters (considering downsampling)
+    dummy_clusters = clusters_df.filter(pl.col("embedding_model") == "Dummy")
+    dummy2_clusters = clusters_df.filter(pl.col("embedding_model") == "Dummy2")
 
-    # Check that each embedding model has its own set of clusters (only considering non-null labels)
-    dummy_clusters = (
-        df_with_clusters.filter(
-            (pl.col("embedding_model") == "Dummy")
-            & (~pl.col("cluster_label").is_null())
-        )
-        .select("cluster_label")
-        .unique()
-    )
-    dummy2_clusters = (
-        df_with_clusters.filter(
-            (pl.col("embedding_model") == "Dummy2")
-            & (~pl.col("cluster_label").is_null())
-        )
-        .select("cluster_label")
-        .unique()
-    )
-
-    # Verify that both models have at least one cluster
+    # Verify that both models have at least one cluster assignment
     assert dummy_clusters.height > 0
     assert dummy2_clusters.height > 0
 
+    # Load embeddings to compare
+    embeddings_df = load_embeddings_df(db_session)
+    
     # Verify that all cluster labels are from the set of output texts or "OUTLIER"
-    non_null_df = df_with_clusters.filter(~pl.col("cluster_label").is_null())
-    unique_labels = non_null_df.select("cluster_label").unique()
-    all_texts = df_with_clusters.select("text").unique()
+    unique_labels = clusters_df.select("cluster_label").unique()
+    all_texts = embeddings_df.select("text").unique()
 
     # Extract the unique texts and labels as sets for easier comparison
     text_set = set(all_texts.select("text").to_series().to_list())
@@ -334,9 +317,6 @@ def test_add_cluster_labels_with_downsampling(db_session):
         assert label in text_set or label == "OUTLIER", (
             f"Cluster label '{label}' not found in the set of output texts and is not 'OUTLIER'"
         )
-
-    # Verify that the output DataFrame has the same number of rows as input
-    assert df_with_clusters.height == original_size
 
 
 def test_initial_prompt_embeddings(db_session):
@@ -708,7 +688,7 @@ def test_cache_dfs(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    cache_dfs(db_session)
+    cache_dfs(db_session, clusters=False)  # Don't cache clusters in this test
     # Check that cache directory exists
     cache_dir = Path("output/cache")
 
@@ -813,12 +793,13 @@ def test_semantic_drift_with_known_values():
 def test_filter_top_n_clusters():
     """Test that filter_top_n_clusters properly filters and retains top clusters."""
 
-    # Create a synthetic DataFrame with embedding_model and cluster_label columns
-    # We don't need an actual experiment, just the minimal columns required
+    # Create a synthetic DataFrame that mimics the structure of clusters_df
+    # We need the columns that filter_top_n_clusters expects
     data = {
-        "id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(100)],
-        "initial_prompt": [f"Test prompt {i % 5 + 1}" for i in range(100)],
+        "clustering_result_id": ["result1"] * 60 + ["result2"] * 40,
+        "embedding_id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(100)],
         "embedding_model": ["Dummy"] * 60 + ["Dummy2"] * 40,
+        "cluster_id": list(range(100)),  # Unique cluster IDs
         "cluster_label": (
             # Dummy model clusters with varying frequencies
             ["cluster_A"] * 25  # Most common
@@ -833,6 +814,12 @@ def test_filter_top_n_clusters():
             + ["cluster_Z"] * 8  # Third most common
             + ["cluster_W"] * 2  # Fourth most common
         ),
+        "run_id": [f"run_{i % 10}" for i in range(100)],
+        "sequence_number": list(range(100)),
+        "invocation_id": [f"inv_{i}" for i in range(100)],
+        "algorithm": ["hdbscan"] * 100,
+        "epsilon": [0.6] * 100,
+        "initial_prompt": [f"Test prompt {i % 5 + 1}" for i in range(100)],
     }
 
     # Create the DataFrame
@@ -924,12 +911,13 @@ def test_filter_top_n_clusters():
 def test_calculate_cluster_transitions():
     """Test that calculate_cluster_transitions correctly identifies transitions between clusters."""
 
-    # Create a synthetic DataFrame with sequential invocations and cluster labels
-    # We'll set up a sequence of transitions between various clusters
+    # Create a synthetic DataFrame that mimics the structure expected by calculate_cluster_transitions
+    # The function expects a dataframe with at least: run_id, embedding_model, sequence_number, cluster_label
     data = {
-        "run_id": ["run1"] * 20,
+        "clustering_result_id": ["result1"] * 20,
+        "embedding_id": [f"emb_{i}" for i in range(20)],
         "embedding_model": ["model1"] * 20,
-        "sequence_number": list(range(1, 21)),  # 20 sequential invocations
+        "cluster_id": list(range(20)),
         "cluster_label": (
             ["cluster_A"] * 5  # First 5 invocations are in cluster A
             + ["cluster_B"] * 3  # Next 3 invocations are in cluster B
@@ -938,6 +926,11 @@ def test_calculate_cluster_transitions():
             + ["cluster_B"] * 4  # Then back to cluster B
             + ["cluster_A"] * 2  # Finally back to cluster A
         ),
+        "run_id": ["run1"] * 20,
+        "sequence_number": list(range(1, 21)),  # 20 sequential invocations
+        "invocation_id": [f"inv_{i}" for i in range(20)],
+        "algorithm": ["hdbscan"] * 20,
+        "epsilon": [0.6] * 20,
     }
 
     # Create the DataFrame
@@ -995,15 +988,21 @@ def test_calculate_cluster_transitions():
 
     # Test with multiple run_ids
     multi_run_data = {
-        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "clustering_result_id": ["result1"] * 20,
+        "embedding_id": [f"emb_{i}" for i in range(20)],
         "embedding_model": ["model1"] * 20,
-        "sequence_number": list(range(1, 11)) + list(range(1, 11)),  # 1-10 for each run
+        "cluster_id": list(range(20)),
         "cluster_label": (
             ["cluster_A"] * 5
             + ["cluster_B"] * 5  # run1: A->B
             + ["cluster_C"] * 5
             + ["cluster_D"] * 5  # run2: C->D
         ),
+        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "sequence_number": list(range(1, 11)) + list(range(1, 11)),  # 1-10 for each run
+        "invocation_id": [f"inv_{i}" for i in range(20)],
+        "algorithm": ["hdbscan"] * 20,
+        "epsilon": [0.6] * 20,
     }
 
     multi_run_df = pl.DataFrame(multi_run_data)
@@ -1041,9 +1040,10 @@ def test_calculate_cluster_transitions_include_outliers():
 
     # Create synthetic data with OUTLIER clusters
     data = {
-        "run_id": ["run1"] * 15,
+        "clustering_result_id": ["result1"] * 15,
+        "embedding_id": [f"emb_{i}" for i in range(15)],
         "embedding_model": ["model1"] * 15,
-        "sequence_number": list(range(1, 16)),  # 15 sequential invocations
+        "cluster_id": [-1 if i in [3,4,7,10,13] else i for i in range(15)],  # -1 for outliers
         "cluster_label": (
             ["cluster_A"] * 3  # First 3 invocations are in cluster A
             + ["OUTLIER"] * 2  # Next 2 are outliers
@@ -1053,6 +1053,11 @@ def test_calculate_cluster_transitions_include_outliers():
             + ["OUTLIER"] * 1  # Another outlier
             + ["cluster_A"] * 2  # Finally back to cluster A
         ),
+        "run_id": ["run1"] * 15,
+        "sequence_number": list(range(1, 16)),  # 15 sequential invocations
+        "invocation_id": [f"inv_{i}" for i in range(15)],
+        "algorithm": ["hdbscan"] * 15,
+        "epsilon": [0.6] * 15,
     }
 
     # Create the DataFrame
@@ -1146,13 +1151,12 @@ def test_calculate_cluster_transitions_include_outliers():
 def test_calculate_cluster_run_lengths():
     """Test that calculate_cluster_run_lengths correctly calculates run lengths."""
 
-    # Create a synthetic DataFrame with sequential invocations and cluster labels
+    # Create a synthetic DataFrame that mimics the structure expected by calculate_cluster_run_lengths
     data = {
-        "run_id": ["run1"] * 20,
+        "clustering_result_id": ["result1"] * 20,
+        "embedding_id": [f"emb_{i}" for i in range(20)],
         "embedding_model": ["model1"] * 20,
-        "initial_prompt": ["prompt1"] * 20,
-        "network": ["networkA"] * 20,
-        "sequence_number": list(range(1, 21)),
+        "cluster_id": list(range(20)),
         "cluster_label": (
             ["cluster_A"] * 5  # Run of 5 As
             + ["cluster_B"] * 3  # Run of 3 Bs
@@ -1161,6 +1165,13 @@ def test_calculate_cluster_run_lengths():
             + ["cluster_B"] * 4  # Run of 4 Bs
             + ["cluster_A"] * 2  # Run of 2 As
         ),
+        "run_id": ["run1"] * 20,
+        "sequence_number": list(range(1, 21)),
+        "invocation_id": [f"inv_{i}" for i in range(20)],
+        "algorithm": ["hdbscan"] * 20,
+        "epsilon": [0.6] * 20,
+        "initial_prompt": ["prompt1"] * 20,
+        "network": ["networkA"] * 20,
     }
 
     # Create the DataFrame
@@ -1217,17 +1228,23 @@ def test_calculate_cluster_run_lengths():
 
     # Test with multiple run_ids
     multi_run_data = {
-        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "clustering_result_id": ["result1"] * 20,
+        "embedding_id": [f"emb_{i}" for i in range(20)],
         "embedding_model": ["model1"] * 20,
-        "initial_prompt": ["prompt1"] * 10 + ["prompt2"] * 10,
-        "network": ["networkA"] * 10 + ["networkB"] * 10,
-        "sequence_number": list(range(1, 11)) + list(range(1, 11)),
+        "cluster_id": list(range(20)),
         "cluster_label": (
             ["cluster_A"] * 5
             + ["cluster_B"] * 5  # run1: A(5), B(5)
             + ["cluster_C"] * 7
             + ["cluster_D"] * 3  # run2: C(7), D(3)
         ),
+        "run_id": ["run1"] * 10 + ["run2"] * 10,
+        "sequence_number": list(range(1, 11)) + list(range(1, 11)),
+        "invocation_id": [f"inv_{i}" for i in range(20)],
+        "algorithm": ["hdbscan"] * 20,
+        "epsilon": [0.6] * 20,
+        "initial_prompt": ["prompt1"] * 10 + ["prompt2"] * 10,
+        "network": ["networkA"] * 10 + ["networkB"] * 10,
     }
 
     multi_run_df = pl.DataFrame(multi_run_data)
@@ -1260,11 +1277,10 @@ def test_calculate_cluster_run_lengths_include_outliers():
 
     # Create synthetic data with OUTLIER clusters
     data = {
-        "run_id": ["run1"] * 15,
+        "clustering_result_id": ["result1"] * 15,
+        "embedding_id": [f"emb_{i}" for i in range(15)],
         "embedding_model": ["model1"] * 15,
-        "initial_prompt": ["prompt_outlier_test"] * 15,
-        "network": ["network_outlier_test"] * 15,
-        "sequence_number": list(range(1, 16)),
+        "cluster_id": [-1 if i in [3,4,7,10,13] else i for i in range(15)],  # -1 for outliers
         "cluster_label": (
             ["cluster_A"] * 3  # Run of 3 As
             + ["OUTLIER"] * 2  # Run of 2 outliers
@@ -1274,6 +1290,13 @@ def test_calculate_cluster_run_lengths_include_outliers():
             + ["OUTLIER"] * 1  # Single outlier
             + ["cluster_A"] * 2  # Run of 2 As
         ),
+        "run_id": ["run1"] * 15,
+        "sequence_number": list(range(1, 16)),
+        "invocation_id": [f"inv_{i}" for i in range(15)],
+        "algorithm": ["hdbscan"] * 15,
+        "epsilon": [0.6] * 15,
+        "initial_prompt": ["prompt_outlier_test"] * 15,
+        "network": ["network_outlier_test"] * 15,
     }
 
     # Create the DataFrame
@@ -1356,12 +1379,12 @@ def test_calculate_cluster_run_lengths_include_outliers():
 def test_filter_top_n_clusters_by_model_and_network():
     """Test that filter_top_n_clusters properly filters with embedding_model and network grouping."""
 
-    # Create a synthetic DataFrame with embedding_model, network, and cluster_label columns
+    # Create a synthetic DataFrame that mimics the structure of clusters_df
     data = {
-        "id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(120)],
-        "initial_prompt": [f"Test prompt {i % 3 + 1}" for i in range(120)],
+        "clustering_result_id": ["result1"] * 60 + ["result2"] * 60,
+        "embedding_id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(120)],
         "embedding_model": (["Dummy"] * 60 + ["Dummy2"] * 60),
-        "network": (["Network1"] * 30 + ["Network2"] * 30) * 2,
+        "cluster_id": list(range(120)),
         "cluster_label": (
             # Dummy model, Network1 clusters
             ["cluster_A1"] * 15  # Most common
@@ -1383,6 +1406,12 @@ def test_filter_top_n_clusters_by_model_and_network():
             + ["cluster_Y2"] * 12  # Second most common
             + ["cluster_Z2"] * 0  # No instances
         ),
+        "run_id": [f"run_{i % 12}" for i in range(120)],
+        "sequence_number": list(range(120)),
+        "invocation_id": [f"inv_{i}" for i in range(120)],
+        "algorithm": ["hdbscan"] * 120,
+        "epsilon": [0.6] * 120,
+        "network": (["Network1"] * 30 + ["Network2"] * 30) * 2,
     }
 
     # Create the DataFrame
