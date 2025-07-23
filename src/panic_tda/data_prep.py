@@ -187,25 +187,25 @@ def fetch_and_cluster_vectors(
             assignment_map = {
                 str(a.embedding_id): a.cluster_id for a in existing_assignments
             }
-            
+
             # Get cluster texts from clustering_result
             cluster_text_map = {
                 c["id"]: c["medoid_text"] for c in clustering_result.clusters
             }
             cluster_text_map[-1] = "OUTLIER"
-            
+
             assignments = [
                 (
                     str(eid),
                     assignment_map[str(eid)],
-                    cluster_text_map[assignment_map[str(eid)]]
+                    cluster_text_map[assignment_map[str(eid)]],
                 )
                 for eid in embedding_ids
             ]
-            
+
             return {
                 "clustering_result_id": str(clustering_result.id),
-                "assignments": assignments
+                "assignments": assignments,
             }
 
         # Fetch embeddings and build a cache of vector -> text
@@ -268,14 +268,14 @@ def fetch_and_cluster_vectors(
         (
             str(eid),
             int(cluster_result["labels"][i]),
-            label_to_text[cluster_result["labels"][i]]
+            label_to_text[cluster_result["labels"][i]],
         )
         for i, eid in enumerate(embedding_ids)
     ]
-    
+
     return {
         "clustering_result_id": str(clustering_result.id),
-        "assignments": assignments
+        "assignments": assignments,
     }
 
 
@@ -302,49 +302,51 @@ def load_clusters_df(session: Session, downsample: int = 10) -> pl.DataFrame:
         - epsilon: HDBSCAN epsilon parameter
     """
     print("Loading clustering data...")
-    
+
     # First load embeddings metadata
     embeddings_df = load_embeddings_df(session)
-    
+
     # Process each embedding model globally
     cluster_data = []
-    
+
     for model_name in embeddings_df["embedding_model"].unique():
         # Filter to get only rows for this model
         model_df = embeddings_df.filter(pl.col("embedding_model") == model_name)
-        
+
         # Apply downsampling within this model's data
         model_df_downsampled = (
             model_df.with_row_index("row_idx")
             .filter(pl.col("row_idx") % downsample == 0)
             .drop("row_idx")
         )
-        
+
         embedding_ids = model_df_downsampled["id"]
-        
+
         # Log the number of embeddings for this model
         print(
             f"Model {model_name}: {len(model_df)} total, {len(embedding_ids)} after downsampling"
         )
-        
+
         # Skip if too few samples for clustering
         if len(embedding_ids) < 2:
             print(f"  Skipping {model_name} - too few samples for HDBSCAN")
             continue
-        
+
         # Get cluster assignments for this model's embeddings
         cluster_result = fetch_and_cluster_vectors(embedding_ids, model_name, session)
-        
+
         # cluster_result is a dict with clustering_result_id and assignments
         clustering_result_id = cluster_result["clustering_result_id"]
         assignments = cluster_result["assignments"]
-        
+
         # Create dataframe rows with full metadata
         rows = []
         for i, (embedding_id, cluster_id, cluster_label) in enumerate(assignments):
             # Get metadata from the downsampled dataframe
-            embedding_row = model_df_downsampled.filter(pl.col("id") == embedding_id).to_dicts()[0]
-            
+            embedding_row = model_df_downsampled.filter(
+                pl.col("id") == embedding_id
+            ).to_dicts()[0]
+
             row = {
                 "clustering_result_id": clustering_result_id,
                 "embedding_id": embedding_id,
@@ -358,12 +360,12 @@ def load_clusters_df(session: Session, downsample: int = 10) -> pl.DataFrame:
                 "epsilon": 0.6,
             }
             rows.append(row)
-        
+
         cluster_data.append(pl.DataFrame(rows))
-    
+
     # Commit all clustering operations atomically
     session.commit()
-    
+
     if cluster_data:
         return pl.concat(cluster_data)
     else:
@@ -388,7 +390,7 @@ def filter_top_n_clusters(
     """
     Filter a DataFrame to keep only the top n clusters within each
     group defined by group_by_cols.
-    
+
     Note: This function expects a DataFrame that already has cluster labels joined
     (e.g., the result of joining embeddings_df with clusters_df). It does not work
     directly with the separate clusters_df.
@@ -576,7 +578,7 @@ def calculate_semantic_drift(
 ) -> np.ndarray:
     """
     Calculate semantic drift (cosine distance) between each vector and a reference vector.
-    
+
     Uses the normalize-then-euclidean trick: for normalized unit vectors,
     euclidean distance is monotonic with cosine distance.
 
@@ -592,13 +594,13 @@ def calculate_semantic_drift(
         vectors_array, axis=1, keepdims=True
     )
     reference_normalized = reference_vector / np.linalg.norm(reference_vector)
-    
+
     # Calculate euclidean distance between normalized vectors
     # For unit vectors: euclidean_dist = sqrt(2 - 2*cos_similarity)
     # So euclidean distance is monotonic with cosine distance
     differences = vectors_normalized - reference_normalized
     distances = np.linalg.norm(differences, axis=1)
-    
+
     return distances
 
 
@@ -636,7 +638,7 @@ def fetch_and_calculate_drift(
 def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     Add semantic drift values to the embeddings DataFrame.
-    
+
     Calculates cosine distance from each embedding to the initial prompt's embedding
     using the normalize-then-euclidean approach for efficiency.
 
@@ -661,12 +663,6 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     )
 
     return df
-
-
-
-
-
-
 
 
 def load_runs_from_cache() -> pl.DataFrame:

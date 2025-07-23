@@ -209,7 +209,9 @@ def test_load_clusters_df(db_session):
     assert set(clusters_df.columns) == set(expected_columns)
 
     # Check that each embedding has a cluster assignment
-    assert clusters_df.height == 100  # All embeddings should be present (no downsampling)
+    assert (
+        clusters_df.height == 100
+    )  # All embeddings should be present (no downsampling)
 
     # Check that cluster labels are strings
     assert clusters_df.filter(
@@ -222,11 +224,17 @@ def test_load_clusters_df(db_session):
     ).height == len(clusters_df)
 
     # Check that each embedding model has its own clustering result
-    clustering_results = clusters_df.group_by(["embedding_model", "clustering_result_id"]).count()
+    clustering_results = clusters_df.group_by([
+        "embedding_model",
+        "clustering_result_id",
+    ]).count()
     assert clustering_results.height == 2  # One clustering result per embedding model
 
     # Check algorithm and epsilon values
-    assert clusters_df.filter(pl.col("algorithm") == "hdbscan").height == clusters_df.height
+    assert (
+        clusters_df.filter(pl.col("algorithm") == "hdbscan").height
+        == clusters_df.height
+    )
     assert clusters_df.filter(pl.col("epsilon") == 0.6).height == clusters_df.height
 
     # Verify that cluster IDs are integers (including -1 for outliers)
@@ -234,7 +242,7 @@ def test_load_clusters_df(db_session):
 
     # Load embeddings to compare
     embeddings_df = load_embeddings_df(db_session)
-    
+
     # Verify that all cluster labels are from the set of output texts
     unique_labels = clusters_df.select("cluster_label").unique()
     all_texts = embeddings_df.select("text").unique()
@@ -303,7 +311,7 @@ def test_load_clusters_df_with_downsampling(db_session):
 
     # Load embeddings to compare
     embeddings_df = load_embeddings_df(db_session)
-    
+
     # Verify that all cluster labels are from the set of output texts or "OUTLIER"
     unique_labels = clusters_df.select("cluster_label").unique()
     all_texts = embeddings_df.select("text").unique()
@@ -403,11 +411,11 @@ def test_add_semantic_drift(db_session):
     # All drift values should be non-negative
     assert df.height > 0
     assert (df["semantic_drift"] >= 0.0).all()
-    
+
     # Check that drift values are in reasonable range [0, 2]
     # (normalized euclidean distance for unit vectors is bounded by 2)
     assert (df["semantic_drift"] <= 2.0).all()
-    
+
     # Check we have variation in drift values (not all the same)
     unique_drifts = df.select("semantic_drift").unique()
     assert unique_drifts.height > 1, "Expected variation in semantic drift values"
@@ -706,88 +714,110 @@ def test_calculate_semantic_drift():
     """Test that calculate_semantic_drift correctly computes cosine distances using normalized vectors."""
 
     # Create test vectors with known cosine relationships
-    vectors = np.array([
-        [1, 0, 0],      # Unit vector along x-axis
-        [0, 1, 0],      # Unit vector along y-axis (orthogonal to v1)
-        [-1, 0, 0],     # Opposite direction to v1
-        [1, 1, 0],      # 45 degrees from v1 in xy-plane
-        [1, 0, 0],      # Same as v1 (should have 0 distance)
-        [2, 0, 0],      # Same direction as v1 but different magnitude
-    ], dtype=np.float32)
-    
+    vectors = np.array(
+        [
+            [1, 0, 0],  # Unit vector along x-axis
+            [0, 1, 0],  # Unit vector along y-axis (orthogonal to v1)
+            [-1, 0, 0],  # Opposite direction to v1
+            [1, 1, 0],  # 45 degrees from v1 in xy-plane
+            [1, 0, 0],  # Same as v1 (should have 0 distance)
+            [2, 0, 0],  # Same direction as v1 but different magnitude
+        ],
+        dtype=np.float32,
+    )
+
     reference = np.array([1, 0, 0], dtype=np.float32)  # Reference vector
-    
+
     # Calculate semantic drift
     distances = calculate_semantic_drift(vectors, reference)
-    
+
     # Expected distances (using normalized euclidean which is monotonic with cosine distance)
     # For normalized vectors: euclidean_dist = sqrt(2 - 2*cos_similarity)
     # cos_dist = 1 - cos_similarity, so:
     # - Same direction (cos_sim=1): euclidean=0
     # - Orthogonal (cos_sim=0): euclidean=sqrt(2)
     # - Opposite (cos_sim=-1): euclidean=2
-    
+
     # Check specific cases
     assert abs(distances[0]) < 1e-6, "Same vector should have 0 distance"
-    assert abs(distances[1] - np.sqrt(2)) < 1e-6, "Orthogonal vectors should have sqrt(2) distance"
+    assert abs(distances[1] - np.sqrt(2)) < 1e-6, (
+        "Orthogonal vectors should have sqrt(2) distance"
+    )
     assert abs(distances[2] - 2.0) < 1e-6, "Opposite vectors should have distance 2"
     assert abs(distances[3] - np.sqrt(2 - np.sqrt(2))) < 1e-6, "45 degree angle check"
     assert abs(distances[4]) < 1e-6, "Identical direction should have 0 distance"
-    assert abs(distances[5]) < 1e-6, "Same direction different magnitude should have 0 distance after normalization"
-    
+    assert abs(distances[5]) < 1e-6, (
+        "Same direction different magnitude should have 0 distance after normalization"
+    )
+
     # Test with a different reference vector
     reference2 = np.array([1, 1, 1], dtype=np.float32)
     distances2 = calculate_semantic_drift(vectors, reference2)
-    
+
     # All distances should be non-negative
     assert np.all(distances2 >= 0), "All distances should be non-negative"
-    assert np.all(distances2 <= 2), "All distances should be <= 2 for normalized vectors"
+    assert np.all(distances2 <= 2), (
+        "All distances should be <= 2 for normalized vectors"
+    )
 
 
 def test_semantic_drift_with_known_values():
     """Test semantic drift calculation with specific known values for validation."""
-    
+
     # Test 1: Identical vectors should have 0 drift
     v1 = np.array([1, 2, 3], dtype=np.float32)
     result = calculate_semantic_drift(np.array([v1]), v1)
-    assert abs(result[0]) < 1e-6, f"Identical vectors should have 0 drift, got {result[0]}"
-    
+    assert abs(result[0]) < 1e-6, (
+        f"Identical vectors should have 0 drift, got {result[0]}"
+    )
+
     # Test 2: Scaled versions of the same vector should have 0 drift (after normalization)
     v2 = np.array([2, 4, 6], dtype=np.float32)  # 2x v1
     result = calculate_semantic_drift(np.array([v2]), v1)
     assert abs(result[0]) < 1e-6, f"Scaled vectors should have 0 drift, got {result[0]}"
-    
+
     # Test 3: Orthogonal vectors
     v3 = np.array([1, 0, 0], dtype=np.float32)
     v4 = np.array([0, 1, 0], dtype=np.float32)
     result = calculate_semantic_drift(np.array([v4]), v3)
     # For orthogonal normalized vectors, euclidean distance = sqrt(2)
-    assert abs(result[0] - np.sqrt(2)) < 1e-6, f"Orthogonal vectors should have sqrt(2) drift, got {result[0]}"
-    
+    assert abs(result[0] - np.sqrt(2)) < 1e-6, (
+        f"Orthogonal vectors should have sqrt(2) drift, got {result[0]}"
+    )
+
     # Test 4: Opposite vectors
     v5 = np.array([1, 0, 0], dtype=np.float32)
     v6 = np.array([-1, 0, 0], dtype=np.float32)
     result = calculate_semantic_drift(np.array([v6]), v5)
     # For opposite normalized vectors, euclidean distance = 2
-    assert abs(result[0] - 2.0) < 1e-6, f"Opposite vectors should have drift 2, got {result[0]}"
-    
+    assert abs(result[0] - 2.0) < 1e-6, (
+        f"Opposite vectors should have drift 2, got {result[0]}"
+    )
+
     # Test 5: Multiple vectors at once
-    vectors = np.array([
-        [1, 0, 0],    # Same as reference
-        [0, 1, 0],    # Orthogonal
-        [-1, 0, 0],   # Opposite
-        [1, 1, 0],    # 45 degrees
-    ], dtype=np.float32)
+    vectors = np.array(
+        [
+            [1, 0, 0],  # Same as reference
+            [0, 1, 0],  # Orthogonal
+            [-1, 0, 0],  # Opposite
+            [1, 1, 0],  # 45 degrees
+        ],
+        dtype=np.float32,
+    )
     reference = np.array([1, 0, 0], dtype=np.float32)
-    
+
     results = calculate_semantic_drift(vectors, reference)
-    
+
     assert abs(results[0]) < 1e-6, "First vector (same as ref) should have 0 drift"
-    assert abs(results[1] - np.sqrt(2)) < 1e-6, "Second vector (orthogonal) should have sqrt(2) drift"
+    assert abs(results[1] - np.sqrt(2)) < 1e-6, (
+        "Second vector (orthogonal) should have sqrt(2) drift"
+    )
     assert abs(results[2] - 2.0) < 1e-6, "Third vector (opposite) should have drift 2"
     # For 45 degree angle: cos(45°) = 1/sqrt(2), so euclidean = sqrt(2 - 2/sqrt(2)) = sqrt(2 - sqrt(2))
     expected_45_drift = np.sqrt(2 - np.sqrt(2))
-    assert abs(results[3] - expected_45_drift) < 1e-6, f"45 degree vector should have drift {expected_45_drift}, got {results[3]}"
+    assert abs(results[3] - expected_45_drift) < 1e-6, (
+        f"45 degree vector should have drift {expected_45_drift}, got {results[3]}"
+    )
 
 
 def test_filter_top_n_clusters():
@@ -1043,7 +1073,9 @@ def test_calculate_cluster_transitions_include_outliers():
         "clustering_result_id": ["result1"] * 15,
         "embedding_id": [f"emb_{i}" for i in range(15)],
         "embedding_model": ["model1"] * 15,
-        "cluster_id": [-1 if i in [3,4,7,10,13] else i for i in range(15)],  # -1 for outliers
+        "cluster_id": [
+            -1 if i in [3, 4, 7, 10, 13] else i for i in range(15)
+        ],  # -1 for outliers
         "cluster_label": (
             ["cluster_A"] * 3  # First 3 invocations are in cluster A
             + ["OUTLIER"] * 2  # Next 2 are outliers
@@ -1280,7 +1312,9 @@ def test_calculate_cluster_run_lengths_include_outliers():
         "clustering_result_id": ["result1"] * 15,
         "embedding_id": [f"emb_{i}" for i in range(15)],
         "embedding_model": ["model1"] * 15,
-        "cluster_id": [-1 if i in [3,4,7,10,13] else i for i in range(15)],  # -1 for outliers
+        "cluster_id": [
+            -1 if i in [3, 4, 7, 10, 13] else i for i in range(15)
+        ],  # -1 for outliers
         "cluster_label": (
             ["cluster_A"] * 3  # Run of 3 As
             + ["OUTLIER"] * 2  # Run of 2 outliers

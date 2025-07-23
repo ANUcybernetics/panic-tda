@@ -1339,9 +1339,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Create ridgeline plot for semantic drift by network
     from panic_tda.datavis import plot_semantic_drift
+
     plot_semantic_drift(
-        embeddings_df,
-        output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
+        embeddings_df, output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
     )
 
     # sample 20 runs at random, and then use export_timeline (with 10 images per run) to show some of the invocations from that run
@@ -1350,7 +1350,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     runs_df = load_runs_from_cache()
     # Filter to only rows where initial prompt is "a red circle on a black background"
-    filtered_runs_df = runs_df.filter(pl.col("initial_prompt") == "a red circle on a black background")
+    filtered_runs_df = runs_df.filter(
+        pl.col("initial_prompt") == "a red circle on a black background"
+    )
 
     # Sample 20 random run IDs
     random_run_ids = filtered_runs_df.get_column("run_id").unique().to_list()
@@ -1366,6 +1368,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         output_file="output/vis/random_runs_timeline.jpg",
         rescale=0.5,
     )
+
 
 def paper_charts(session: Session) -> None:
     """

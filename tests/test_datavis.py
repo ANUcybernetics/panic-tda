@@ -204,11 +204,11 @@ def test_plot_semantic_drift():
     """Test the plot_semantic_drift function with synthetic data."""
     import numpy as np
     from panic_tda.datavis import plot_semantic_drift
-    
+
     # Create synthetic test data
     np.random.seed(42)
     data = []
-    
+
     # Generate data for 2 networks with different drift patterns
     for network in ["T2I→I2T", "T2I→I2T→T2I"]:
         for seq_num in range(100):
@@ -221,9 +221,9 @@ def test_plot_semantic_drift():
                 # Oscillating drift pattern
                 base_drift = 0.4 + 0.3 * np.sin(seq_num / 10)
                 noise = np.random.normal(0, 0.08)
-            
+
             drift_value = max(0, min(1, base_drift + noise))
-            
+
             data.append({
                 "network": network,
                 "sequence_number": seq_num,
@@ -232,25 +232,25 @@ def test_plot_semantic_drift():
                 "embedding_model": "TestModel",
                 "run_id": f"run_{network}_{seq_num % 5}",  # 5 runs per network
             })
-    
+
     # Create DataFrame
     test_df = pl.DataFrame(data)
-    
+
     # Verify the data structure
     assert test_df.height == 200  # 100 sequences * 2 networks
     assert "network" in test_df.columns
     assert "sequence_number" in test_df.columns
     assert "semantic_drift" in test_df.columns
-    
+
     # Define output file
     output_file = "output/test/semantic_drift_ridgeline.pdf"
-    
+
     # Generate the plot
     plot_semantic_drift(test_df, output_file)
-    
+
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
-    
+
     # Clean up
     os.remove(output_file)
 
@@ -288,13 +288,13 @@ def test_plot_cluster_run_lengths(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -320,13 +320,13 @@ def test_plot_cluster_run_length_violin(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Define output file
@@ -369,13 +369,13 @@ def test_plot_cluster_timelines(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have cluster timeline data
@@ -402,13 +402,13 @@ def test_plot_cluster_example_images(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -482,13 +482,13 @@ def test_plot_cluster_histograms(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -514,13 +514,13 @@ def test_plot_cluster_histograms_top_n(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -546,13 +546,13 @@ def test_plot_cluster_transitions(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -666,13 +666,13 @@ def test_plot_cluster_bubblegrid(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
@@ -708,13 +708,13 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
     clusters_df = load_clusters_df(db_session, downsample=1)
-    
+
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
         clusters_df.select(["embedding_id", "cluster_label"]),
         left_on="id",
         right_on="embedding_id",
-        how="left"
+        how="left",
     )
 
     # Verify we have the necessary columns
