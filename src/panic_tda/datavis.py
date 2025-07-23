@@ -1117,6 +1117,7 @@ def plot_cluster_example_images(
     num_examples: int,
     embedding_model: str,
     session: Session,
+    examples_per_row: int = None,
     output_file: str = "output/vis/cluster_examples.jpg",
 ) -> None:
     """
@@ -1126,8 +1127,13 @@ def plot_cluster_example_images(
         df: DataFrame containing embedding data with cluster_label and invocation_id
         num_examples: Number of example images to include for each cluster
         embedding_model: The embedding model to filter by
+        session: Session object for database access
+        examples_per_row: Maximum number of images per row before wrapping (default: num_examples)
         output_file: Path to save the visualization
     """
+    # Set default examples_per_row if not provided
+    if examples_per_row is None:
+        examples_per_row = num_examples
 
     # Filter dataframe to get only rows with the specified embedding model
     # and where cluster_label is not null and not0
@@ -1147,7 +1153,16 @@ def plot_cluster_example_images(
     for cluster_label, group in pandas_df.groupby("cluster_label"):
         # Get the first num_examples invocation_ids
         invocation_ids = group["invocation_id"].head(num_examples).tolist()
-        cluster_examples[str(cluster_label)] = [UUID(id) for id in invocation_ids]
+        invocation_uuids = [UUID(id) for id in invocation_ids]
+
+        # If we need to wrap rows, split the invocations into multiple rows
+        if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
+            # Split into multiple rows
+            for i in range(0, len(invocation_uuids), examples_per_row):
+                row_label = f"{cluster_label} ({i//examples_per_row + 1})"
+                cluster_examples[row_label] = invocation_uuids[i:i + examples_per_row]
+        else:
+            cluster_examples[str(cluster_label)] = invocation_uuids
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:

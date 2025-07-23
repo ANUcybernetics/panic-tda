@@ -375,6 +375,20 @@ def test_plot_cluster_example_images(db_session):
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
+    # Test with examples_per_row parameter
+    output_file_wrapped = "output/test/cluster_examples_wrapped.jpg"
+    plot_cluster_example_images(
+        embeddings_df,
+        num_examples=4,
+        embedding_model=embedding_model,
+        session=db_session,
+        examples_per_row=2,  # Force wrapping after 2 images
+        output_file=output_file_wrapped,
+    )
+
+    # Verify wrapped file was created
+    assert os.path.exists(output_file_wrapped), f"File was not created: {output_file_wrapped}"
+
 
 def test_plot_cluster_histograms(db_session):
     # Setup the experiment with cluster data

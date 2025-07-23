@@ -36,7 +36,6 @@ Completed the task by:
      across all experiments
    - Updated get_clustering_status to return deprecated/empty values for
      clustering fields
-   - Updated get_cluster_details to return None with a deprecation warning
 
 3. **Updated data_prep.py**:
 
