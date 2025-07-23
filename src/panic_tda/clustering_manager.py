@@ -6,8 +6,7 @@ monitor clustering progress, and retrieve clustering results.
 """
 
 import logging
-from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from sqlmodel import Session, func, select
@@ -18,7 +17,6 @@ from panic_tda.schemas import (
     EmbeddingCluster,
     Invocation,
     InvocationType,
-    Run,
 )
 
 logger = logging.getLogger(__name__)

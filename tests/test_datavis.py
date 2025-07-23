@@ -1,7 +1,6 @@
 import os
 
 import polars as pl
-import pytest
 
 from panic_tda.data_prep import (
     add_persistence_entropy,
@@ -203,7 +202,6 @@ def test_plot_persistence_entropy_by_prompt(db_session):
 def test_plot_semantic_drift():
     """Test the plot_semantic_drift function with synthetic data."""
     import numpy as np
-    from panic_tda.datavis import plot_semantic_drift
 
     # Create synthetic test data
     np.random.seed(42)

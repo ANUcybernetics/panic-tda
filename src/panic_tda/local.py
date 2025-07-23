@@ -1301,7 +1301,6 @@ def artificial_futures_slides_charts(session: Session) -> None:
     """
     from panic_tda.data_prep import (
         load_embeddings_from_cache,
-        add_semantic_drift,
     )
 
     embeddings_df = load_embeddings_from_cache()

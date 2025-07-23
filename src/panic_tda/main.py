@@ -5,12 +5,9 @@ from pathlib import Path
 from uuid import UUID
 
 import typer
-from sqlmodel import Session, func, select
+from sqlmodel import func, select
 
 import panic_tda.engine as engine
-from panic_tda.clustering_manager import (
-    get_cluster_details,
-)
 from panic_tda.db import (
     count_invocations,
     create_db_and_tables,
@@ -882,7 +879,7 @@ def delete_cluster_command(
 
             if not force:
                 confirm = typer.confirm(
-                    f"Are you sure you want to delete this clustering result?",
+                    "Are you sure you want to delete this clustering result?",
                     default=False,
                 )
                 if not confirm:

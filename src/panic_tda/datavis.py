@@ -4,7 +4,6 @@ import os
 from typing import Optional
 from uuid import UUID
 
-import matplotlib
 import pandas as pd
 import polars as pl
 from plotnine import (
@@ -17,22 +16,16 @@ from plotnine import (
     geom_area,
     geom_bar,
     geom_boxplot,
-    geom_density,
-    geom_hline,
     geom_line,
     geom_point,
     geom_text,
     geom_violin,
     ggplot,
     labs,
-    position_nudge,
     scale_color_brewer,
-    scale_fill_brewer,
-    scale_fill_gradient,
     scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
-    scale_y_discrete,
     theme,
 )
 from plotnine.options import set_option
