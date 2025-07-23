@@ -1306,14 +1306,36 @@ def artificial_futures_slides_charts(session: Session) -> None:
     embeddings_df = load_embeddings_from_cache()
     embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
 
+    # Filter out rows with no cluster or outlier cluster marker
+    embeddings_df = embeddings_df.filter(
+        (pl.col("cluster_label").is_not_null()) &
+        (pl.col("cluster_label") != "OUTLIER")
+    )
+
+    # Get top 10 most popular clusters
+    top_clusters = (
+        embeddings_df
+        .group_by("cluster_label")
+        .agg(pl.len().alias("count"))
+        .sort("count", descending=True)
+        .head(10)
+        .select("cluster_label")
+    )
+
+    # Filter to only top 10 clusters
+    embeddings_df = embeddings_df.filter(
+        pl.col("cluster_label").is_in(top_clusters.get_column("cluster_label"))
+    )
+
     # cluster examples
     plot_cluster_example_images(
         embeddings_df,
-        50,
+        500,
         "Nomic",
         session,
-        # examples_per_row = 10,
+        examples_per_row = 100,
         output_file = "output/vis/cluster_examples_nomic.jpg",
+        rescale = 0.25
     )
 
 
