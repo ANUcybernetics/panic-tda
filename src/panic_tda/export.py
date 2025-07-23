@@ -985,7 +985,7 @@ def export_timeline(
 
 
 def export_mosaic_image(
-    label_invocations: Dict[str, List[UUID]],
+    label_invocations: Dict[str, List[List[UUID]]],
     session: Session,
     output_file: str,
     rescale: Optional[float] = None,
@@ -995,11 +995,11 @@ def export_mosaic_image(
     associated with that label.
 
     Args:
-        label_invocations: Dictionary mapping labels to lists of Invocation UUIDs
+        label_invocations: Dictionary mapping labels to lists of lists of Invocation UUIDs
+                          (multiple rows per label, with only one label shown per cluster)
         session: SQLModel Session for database operations
         output_file: Path to save the output mosaic image
         rescale: Optional scaling factor for the output image dimensions (default: None)
-        font_size: Font size for label text (default: 16)
     """
     # Ensure output directory exists
     output_dir = os.path.dirname(output_file)
@@ -1010,57 +1010,58 @@ def export_mosaic_image(
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     font = ImageFont.truetype(font_path, font_size)
 
-    # Determine dimensions
+    # Calculate dimensions
+    total_rows = sum(len(rows) for rows in label_invocations.values())
     n_labels = len(label_invocations)
-    # Verify all lists have the same length and get that length
-    list_lengths = [len(invs) for invs in label_invocations.values()]
-    if not all(length == list_lengths[0] for length in list_lengths):
-        logger.warning(
-            "Not all label lists have the same length. Using maximum length."
-        )
-    n_images_per_row = max(list_lengths)
-
+    n_images_per_row = max(
+        len(row) for rows in label_invocations.values() for row in rows
+    )
+    
     # Calculate label area height (font size + padding)
     label_height = font_size + 10
-
-    # Define row gap as 2x the font size
+    
+    # Define row gap as 2x the font size (only between different clusters)
     row_gap = 2 * font_size
-
+    
     # Calculate dimensions of the entire mosaic
     mosaic_width = n_images_per_row * IMAGE_SIZE
-    # Add row gaps between rows (n_labels - 1 gaps)
+    # Height includes: label for each cluster + image rows + gaps between clusters
     mosaic_height = (
-        n_labels * (IMAGE_SIZE + label_height) + (n_labels - 1) * row_gap
-        if n_labels > 1
-        else n_labels * (IMAGE_SIZE + label_height)
+        n_labels * label_height +  # One label per cluster
+        total_rows * IMAGE_SIZE +   # All image rows
+        (n_labels - 1) * row_gap    # Gaps between clusters only
     )
 
     # Create canvas for the mosaic
     mosaic = Image.new("RGB", (mosaic_width, mosaic_height), (255, 255, 255))
     draw = ImageDraw.Draw(mosaic)
 
-    # For each label, create a row of images with the label above
+    # For each cluster, draw label once then all rows without gaps
     row_y = 0
-    for label, invocation_uuids in label_invocations.items():
-        # Draw label
+    for cluster_idx, (label, rows) in enumerate(label_invocations.items()):
+        # Draw label for this cluster
         draw.text((10, row_y), label, font=font, fill=(0, 0, 0))
-
-        # Move down to start the image row
         row_y += label_height
-
-        # Place each image in the row
-        for i, inv_uuid in enumerate(invocation_uuids):
-            if i >= n_images_per_row:
-                break  # Only include up to n_images_per_row images
-
-            # Read invocation from database
-            invocation = read_invocation(inv_uuid, session)
-            x_offset = i * IMAGE_SIZE
-            # the image is actually the output of the previous invocation
-            mosaic.paste(invocation.input_invocation.output, (x_offset, row_y))
-
-        # Move down to the next row, adding the row gap
-        row_y += IMAGE_SIZE + row_gap
+        
+        # Draw all rows for this cluster (no gaps between rows of same cluster)
+        for row_invocations in rows:
+            # Place each image in the row
+            for i, inv_uuid in enumerate(row_invocations):
+                if i >= n_images_per_row:
+                    break  # Only include up to n_images_per_row images
+                
+                # Read invocation from database
+                invocation = read_invocation(inv_uuid, session)
+                x_offset = i * IMAGE_SIZE
+                # the image is actually the output of the previous invocation
+                mosaic.paste(invocation.input_invocation.output, (x_offset, row_y))
+            
+            # Move down to next row (no gap within cluster)
+            row_y += IMAGE_SIZE
+        
+        # Add row gap after cluster (except for last cluster)
+        if cluster_idx < len(label_invocations) - 1:
+            row_y += row_gap
 
     # Apply rescaling if requested
     if rescale is not None and rescale != 1.0:
