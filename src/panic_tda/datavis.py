@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+from typing import Optional
 from uuid import UUID
 
 import matplotlib
+import pandas as pd
 import polars as pl
 from plotnine import (
     aes,
@@ -12,18 +14,25 @@ from plotnine import (
     element_text,
     facet_grid,
     facet_wrap,
+    geom_area,
     geom_bar,
     geom_boxplot,
+    geom_density,
+    geom_hline,
     geom_line,
     geom_point,
     geom_text,
     geom_violin,
     ggplot,
     labs,
+    position_nudge,
     scale_color_brewer,
+    scale_fill_brewer,
+    scale_fill_gradient,
     scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
+    scale_y_discrete,
     theme,
 )
 from plotnine.options import set_option
@@ -449,59 +458,113 @@ def plot_semantic_drift(
     df: pl.DataFrame, output_file: str = "output/vis/semantic_drift.pdf"
 ) -> None:
     """
-    Create a line plot showing semantic drift over sequence number,
-    faceted by initial prompt and model.
+    Create a ridgeline plot showing cosine semantic drift,
+    with rows binned by sequence number and columns faceted by network.
 
     Args:
-        df: DataFrame containing embedding data with semantic_drift and sequence_number
+        df: DataFrame containing embedding data with drift_cosine and sequence_number
         output_file: Path to save the visualization
     """
-    # Scale drift columns between 1.0 and 10.0
-    # df = df.with_columns(
-    #     (
-    #         1.0
-    #         + (pl.col("drift_euclid") - pl.col("drift_euclid").min())
-    #         * 9.0
-    #         / (pl.col("drift_euclid").max() - pl.col("drift_euclid").min())
-    #     ).alias("drift_euclid")
-    # ).with_columns(
-    #     (
-    #         1.0
-    #         + (pl.col("drift_cosine") - pl.col("drift_cosine").min())
-    #         * 9.0
-    #         / (pl.col("drift_cosine").max() - pl.col("drift_cosine").min())
-    #     ).alias("drift_cosine")
-    # )
-
-    # Unpivot the drift columns
-    pandas_df = df.unpivot(
-        ["drift_euclid", "drift_cosine"],
-        index=list(set(df.columns) - set(["drift_euclid", "drift_cosine"])),
-        variable_name="drift_metric",
-        value_name="drift_value",
-    ).to_pandas()
-
-    # Create a single chart with faceting
+    import numpy as np
+    from scipy.stats import gaussian_kde
+    
+    # Create 10 evenly spaced bins using qcut for equal-sized bins
+    n_bins = 10
+    bin_labels = [f"{i*10}-{(i+1)*10}%" for i in range(n_bins)]
+    
+    # Bin sequence_number into discrete quantiles
+    df = df.with_columns(
+        pl.col("sequence_number")
+        .qcut(quantiles=n_bins, labels=bin_labels)
+        .alias("sequence_bin")
+    )
+    
+    # Convert to pandas for processing
+    pandas_df = df.to_pandas()
+    
+    # Create density data for ridgeline plot
+    ridge_data = []
+    x_grid = np.linspace(0, 1, 200)  # Grid for density evaluation
+    
+    # Process each network and bin combination
+    for network in pandas_df['network'].unique():
+        for i, bin_label in enumerate(bin_labels):
+            # Get data for this bin and network
+            bin_data = pandas_df[
+                (pandas_df['network'] == network) & 
+                (pandas_df['sequence_bin'] == bin_label)
+            ]['drift_cosine'].values
+            
+            if len(bin_data) > 1:
+                # Calculate density
+                kde = gaussian_kde(bin_data, bw_method=0.3)
+                density = kde(x_grid)
+                
+                # Scale and offset density for ridgeline effect
+                y_offset = i  # Base y position
+                # Scale density to fit within ~80% of the space between ridges
+                density_scaled = density * 0.8 / density.max() if density.max() > 0 else density * 0.8
+                
+                # Create data points for the ridge
+                for j, (x, d) in enumerate(zip(x_grid, density_scaled)):
+                    ridge_data.append({
+                        'x': x,
+                        'y': y_offset + d,
+                        'y_base': y_offset,
+                        'sequence_bin': bin_label,
+                        'sequence_bin_num': i,
+                        'network': network,
+                        'density': d
+                    })
+    
+    # Create DataFrame for plotting
+    ridge_df = pd.DataFrame(ridge_data)
+    
+    # Create ordered categorical for proper display
+    ridge_df['sequence_bin'] = pd.Categorical(
+        ridge_df['sequence_bin'], 
+        categories=bin_labels[::-1],  # Reverse for top-to-bottom
+        ordered=True
+    )
+    
+    # Create the ridgeline plot
     plot = (
-        ggplot(
-            pandas_df,
-            aes(
-                x="sequence_number",
-                y="drift_value",
-                # size="drift_value",
-                color="initial_prompt",
-            ),
+        ggplot(ridge_df, aes(x='x', y='y', group='sequence_bin'))
+        # Draw the ridge areas with no fill, just black outline
+        + geom_area(
+            position="identity",
+            fill="white",
+            color="black",
+            size=0.5,
         )
-        + geom_line()
-        # + scale_color_manual(values=["black", "red"])
-        + labs(x="sequence number", y="semantic drift")
-        + facet_grid(
-            "initial_prompt + drift_metric + embedding_model ~",
+        # Add baseline
+        + geom_line(
+            aes(y='y_base'),
+            color="gray",
+            size=0.3,
+            alpha=0.5,
+        )
+        + scale_y_continuous(
+            breaks=list(range(n_bins)),
+            labels=bin_labels[::-1],
+            expand=(0.01, 0),
+        )
+        + scale_x_continuous(
+            expand=(0.01, 0),
+            limits=(0, 1),
+        )
+        + labs(x="cosine drift", y="sequence progress")
+        + facet_wrap(
+            "~ network",
             labeller="label_context",
+            ncol=2,
         )
         + theme(
-            figure_size=(20, 10),
-            strip_text=element_text(size=10),
+            figure_size=(12, 8),
+            strip_text=element_text(size=12),
+            panel_grid_major=element_blank(),
+            panel_background=element_blank(),
+            axis_ticks_major_y=element_blank(),
         )
     )
 
@@ -1160,11 +1223,13 @@ def plot_cluster_example_images(
         # If we need to wrap rows, split the invocations into multiple rows
         if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
             # Split into multiple rows
+            rows = []
             for i in range(0, len(invocation_uuids), examples_per_row):
-                row_label = f"{cluster_label} ({i // examples_per_row + 1})"
-                cluster_examples[row_label] = invocation_uuids[i : i + examples_per_row]
+                rows.append(invocation_uuids[i : i + examples_per_row])
+            cluster_examples[str(cluster_label)] = rows
         else:
-            cluster_examples[str(cluster_label)] = invocation_uuids
+            # Even for single row, wrap in a list to maintain consistent structure
+            cluster_examples[str(cluster_label)] = [invocation_uuids]
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:

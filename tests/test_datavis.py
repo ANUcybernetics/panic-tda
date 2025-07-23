@@ -200,32 +200,59 @@ def test_plot_persistence_entropy_by_prompt(db_session):
     assert os.path.exists(output_file), f"File was not created: {output_file}"
 
 
-@pytest.mark.skip(
-    reason="Not using semantic drift atm, so it's not in the mock db (and therefore skip this test)"
-)
-def test_plot_semantic_drift(db_session):
-    # Setup a minimal experiment
-    setup_minimal_experiment(db_session)
-
-    # Load the necessary data
-    embeddings_df = load_embeddings_df(db_session)
-    embeddings_df = add_cluster_labels(embeddings_df, 1, db_session)
-
-    # Verify we have semantic dispersion data
-    assert embeddings_df.height > 0
-    assert "sequence_number" in embeddings_df.columns
-    assert "run_id" in embeddings_df.columns
-    assert "initial_prompt" in embeddings_df.columns
-    assert "embedding_model" in embeddings_df.columns
-
+def test_plot_semantic_drift():
+    """Test the plot_semantic_drift function with synthetic data."""
+    import numpy as np
+    from panic_tda.datavis import plot_semantic_drift
+    
+    # Create synthetic test data
+    np.random.seed(42)
+    data = []
+    
+    # Generate data for 2 networks with different drift patterns
+    for network in ["T2I→I2T", "T2I→I2T→T2I"]:
+        for seq_num in range(100):
+            # Create different drift patterns for each network
+            if network == "T2I→I2T":
+                # Gradual increase in drift
+                base_drift = seq_num / 100 * 0.8
+                noise = np.random.normal(0, 0.05)
+            else:
+                # Oscillating drift pattern
+                base_drift = 0.4 + 0.3 * np.sin(seq_num / 10)
+                noise = np.random.normal(0, 0.08)
+            
+            drift_value = max(0, min(1, base_drift + noise))
+            
+            data.append({
+                "network": network,
+                "sequence_number": seq_num,
+                "drift_cosine": drift_value,
+                "initial_prompt": "test prompt",
+                "embedding_model": "TestModel",
+                "run_id": f"run_{network}_{seq_num % 5}",  # 5 runs per network
+            })
+    
+    # Create DataFrame
+    test_df = pl.DataFrame(data)
+    
+    # Verify the data structure
+    assert test_df.height == 200  # 100 sequences * 2 networks
+    assert "network" in test_df.columns
+    assert "sequence_number" in test_df.columns
+    assert "drift_cosine" in test_df.columns
+    
     # Define output file
-    output_file = "output/test/semantic_drift.pdf"
-
+    output_file = "output/test/semantic_drift_ridgeline.pdf"
+    
     # Generate the plot
-    plot_semantic_drift(embeddings_df, output_file)
-
+    plot_semantic_drift(test_df, output_file)
+    
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
+    
+    # Clean up
+    os.remove(output_file)
 
 
 def test_plot_persistence_entropy(db_session):

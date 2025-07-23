@@ -1312,11 +1312,6 @@ def artificial_futures_slides_charts(session: Session) -> None:
         (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
 
-    print(embeddings_df.head())
-    import sys
-
-    sys.exit()
-
     # Get top 10 most popular clusters
     top_clusters = (
         embeddings_df.group_by("cluster_label")
@@ -1342,6 +1337,12 @@ def artificial_futures_slides_charts(session: Session) -> None:
         rescale=0.25,
     )
 
+    # Create ridgeline plot for semantic drift by network
+    from panic_tda.datavis import plot_semantic_drift
+    plot_semantic_drift(
+        embeddings_df,
+        output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
+    )
 
 def paper_charts(session: Session) -> None:
     """
