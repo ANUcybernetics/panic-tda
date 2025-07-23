@@ -1161,14 +1161,16 @@ def plot_cluster_example_images(
         if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
             # Split into multiple rows
             for i in range(0, len(invocation_uuids), examples_per_row):
-                row_label = f"{cluster_label} ({i//examples_per_row + 1})"
-                cluster_examples[row_label] = invocation_uuids[i:i + examples_per_row]
+                row_label = f"{cluster_label} ({i // examples_per_row + 1})"
+                cluster_examples[row_label] = invocation_uuids[i : i + examples_per_row]
         else:
             cluster_examples[str(cluster_label)] = invocation_uuids
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:
-        export_mosaic_image(cluster_examples, session, output_file=output_file, rescale=rescale)
+        export_mosaic_image(
+            cluster_examples, session, output_file=output_file, rescale=rescale
+        )
         logging.info(f"Saved cluster example images to {output_file}")
     else:
         logging.warning(

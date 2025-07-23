@@ -84,7 +84,11 @@ def hdbscan(embeddings: np.ndarray, epsilon: float = 0.4) -> dict:
                     medoids_array[label] = embeddings[original_idx]
                     medoid_indices[int(label)] = int(original_idx)
 
-    return {"labels": hdb.labels_, "medoids": medoids_array, "medoid_indices": medoid_indices}
+    return {
+        "labels": hdb.labels_,
+        "medoids": medoids_array,
+        "medoid_indices": medoid_indices,
+    }
 
 
 def optics(

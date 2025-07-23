@@ -7,7 +7,12 @@ from panic_tda.clustering_manager import (
     cluster_all_data,
 )
 from panic_tda.engine import perform_experiment
-from panic_tda.schemas import ClusteringResult, Embedding, EmbeddingCluster, ExperimentConfig
+from panic_tda.schemas import (
+    ClusteringResult,
+    Embedding,
+    EmbeddingCluster,
+    ExperimentConfig,
+)
 
 
 def test_cluster_all_data_no_downsampling(db_session):
@@ -157,7 +162,7 @@ def test_cluster_all_data_already_clustered(db_session):
     # Second clustering - should create new clustering results (no longer returns already_clustered)
     result2 = cluster_all_data(db_session, downsample=1)
     assert result2["status"] == "success"
-    
+
     # Verify we now have multiple clustering results
     clustering_results = db_session.exec(select(ClusteringResult)).all()
     assert len(clustering_results) >= 2  # Should have at least 2 clustering results
@@ -243,7 +248,7 @@ def test_clustering_persistence_across_sessions(db_session):
         # Verify attempting to cluster again creates new clustering results
         result2 = cluster_all_data(new_session, downsample=1)
         assert result2["status"] == "success"
-        
+
         # Should now have multiple clustering results
         clustering_results2 = new_session.exec(select(ClusteringResult)).all()
         assert len(clustering_results2) > len(clustering_results)
@@ -277,18 +282,20 @@ def test_medoid_embedding_id_stored(db_session):
         clustering_result = db_session.exec(
             select(ClusteringResult).where(ClusteringResult.embedding_model == model)
         ).first()
-        
+
         assert clustering_result is not None
         assert len(clustering_result.clusters) > 0
-        
+
         # Check that each cluster has medoid_embedding_id
         for cluster in clustering_result.clusters:
             assert "medoid_embedding_id" in cluster
             assert cluster["medoid_embedding_id"] is not None
-            
+
             # Verify the embedding exists
             embedding = db_session.exec(
-                select(Embedding).where(Embedding.id == UUID(cluster["medoid_embedding_id"]))
+                select(Embedding).where(
+                    Embedding.id == UUID(cluster["medoid_embedding_id"])
+                )
             ).first()
             assert embedding is not None
 

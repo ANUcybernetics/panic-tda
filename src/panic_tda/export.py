@@ -1016,20 +1016,20 @@ def export_mosaic_image(
     n_images_per_row = max(
         len(row) for rows in label_invocations.values() for row in rows
     )
-    
+
     # Calculate label area height (font size + padding)
     label_height = font_size + 10
-    
+
     # Define row gap as 2x the font size (only between different clusters)
     row_gap = 2 * font_size
-    
+
     # Calculate dimensions of the entire mosaic
     mosaic_width = n_images_per_row * IMAGE_SIZE
     # Height includes: label for each cluster + image rows + gaps between clusters
     mosaic_height = (
-        n_labels * label_height +  # One label per cluster
-        total_rows * IMAGE_SIZE +   # All image rows
-        (n_labels - 1) * row_gap    # Gaps between clusters only
+        n_labels * label_height  # One label per cluster
+        + total_rows * IMAGE_SIZE  # All image rows
+        + (n_labels - 1) * row_gap  # Gaps between clusters only
     )
 
     # Create canvas for the mosaic
@@ -1042,23 +1042,23 @@ def export_mosaic_image(
         # Draw label for this cluster
         draw.text((10, row_y), label, font=font, fill=(0, 0, 0))
         row_y += label_height
-        
+
         # Draw all rows for this cluster (no gaps between rows of same cluster)
         for row_invocations in rows:
             # Place each image in the row
             for i, inv_uuid in enumerate(row_invocations):
                 if i >= n_images_per_row:
                     break  # Only include up to n_images_per_row images
-                
+
                 # Read invocation from database
                 invocation = read_invocation(inv_uuid, session)
                 x_offset = i * IMAGE_SIZE
                 # the image is actually the output of the previous invocation
                 mosaic.paste(invocation.input_invocation.output, (x_offset, row_y))
-            
+
             # Move down to next row (no gap within cluster)
             row_y += IMAGE_SIZE
-        
+
         # Add row gap after cluster (except for last cluster)
         if cluster_idx < len(label_invocations) - 1:
             row_y += row_gap
@@ -1068,8 +1068,10 @@ def export_mosaic_image(
         new_width = int(mosaic_width * rescale)
         new_height = int(mosaic_height * rescale)
         mosaic = mosaic.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        logger.info(f"Rescaled mosaic from {mosaic_width}x{mosaic_height} to {new_width}x{new_height}")
-    
+        logger.info(
+            f"Rescaled mosaic from {mosaic_width}x{mosaic_height} to {new_width}x{new_height}"
+        )
+
     # Save the final mosaic
     mosaic.save(output_file, format="JPEG", quality=95)
     logger.info(f"Mosaic image saved to: {output_file}")

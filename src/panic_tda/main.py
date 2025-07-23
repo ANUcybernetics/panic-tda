@@ -92,11 +92,21 @@ export_app = typer.Typer()
 
 # Add subcommand groups to main app
 app.add_typer(experiment_app, name="experiment", help="Manage experiments")
-app.add_typer(experiment_app, name="experiments", help="Manage experiments (alias for experiment)", hidden=True)
+app.add_typer(
+    experiment_app,
+    name="experiments",
+    help="Manage experiments (alias for experiment)",
+    hidden=True,
+)
 app.add_typer(run_app, name="run", help="Manage runs")
 app.add_typer(run_app, name="runs", help="Manage runs (alias for run)", hidden=True)
 app.add_typer(cluster_app, name="cluster", help="Manage clustering")
-app.add_typer(cluster_app, name="clusters", help="Manage clustering (alias for cluster)", hidden=True)
+app.add_typer(
+    cluster_app,
+    name="clusters",
+    help="Manage clustering (alias for cluster)",
+    hidden=True,
+)
 app.add_typer(model_app, name="model", help="Manage models")
 app.add_typer(export_app, name="export", help="Export data and visualizations")
 
@@ -724,15 +734,15 @@ def list_clusters_command(
     with get_session_from_connection_string(db_str) as session:
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import list_clustering_results
-        
+
         results = list_clustering_results(session)
-        
+
         if not results:
             typer.echo("No clustering results found in the database.")
             return
-            
+
         typer.echo(f"Found {len(results)} clustering result(s):")
-        
+
         for result in results:
             # Count total assignments and outliers
             assignments_count = session.exec(
@@ -740,20 +750,24 @@ def list_clusters_command(
                     EmbeddingCluster.clustering_result_id == result.id
                 )
             ).one()
-            
+
             # Count outlier assignments (cluster_id == -1)
             outlier_count = session.exec(
                 select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == result.id,
-                    EmbeddingCluster.cluster_id == -1
+                    EmbeddingCluster.cluster_id == -1,
                 )
             ).one()
-            
-            outlier_percentage = (outlier_count / assignments_count * 100) if assignments_count > 0 else 0
-            
+
+            outlier_percentage = (
+                (outlier_count / assignments_count * 100)
+                if assignments_count > 0
+                else 0
+            )
+
             # Count regular clusters (excluding outliers)
             regular_clusters = len([c for c in result.clusters if c.get("id") != -1])
-            
+
             if verbose:
                 # Detailed output
                 typer.echo(f"\nClustering Result ID: {result.id}")
@@ -763,7 +777,9 @@ def list_clusters_command(
                 typer.echo(f"  Created: {result.created_at}")
                 typer.echo(f"  Total Clusters: {regular_clusters}")
                 typer.echo(f"  Total Assignments: {assignments_count}")
-                typer.echo(f"  Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)")
+                typer.echo(
+                    f"  Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)"
+                )
             else:
                 # Simple output with cluster_selection_epsilon parameter
                 epsilon = result.parameters.get("cluster_selection_epsilon", "N/A")
@@ -809,9 +825,9 @@ def delete_cluster_command(
     with get_session_from_connection_string(db_str) as session:
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import (
-            delete_cluster_data, 
-            delete_single_cluster, 
-            get_clustering_result_by_id
+            delete_cluster_data,
+            delete_single_cluster,
+            get_clustering_result_by_id,
         )
 
         if clustering_id.lower() == "all":
@@ -823,9 +839,9 @@ def delete_cluster_command(
                 if not response:
                     typer.echo("Deletion cancelled.")
                     raise typer.Exit()
-                    
+
             result = delete_cluster_data(session, "all")
-            
+
             if result["status"] == "success":
                 typer.echo(
                     f"Successfully deleted {result['deleted_results']} clustering result(s) "
@@ -842,20 +858,20 @@ def delete_cluster_command(
             except ValueError:
                 logger.error(f"Invalid clustering ID format: {clustering_id}")
                 raise typer.Exit(code=1)
-                
+
             # Get the clustering result to show details
             clustering_result = get_clustering_result_by_id(cluster_uuid, session)
             if not clustering_result:
                 logger.error(f"Clustering result with ID {clustering_id} not found")
                 raise typer.Exit(code=1)
-                
+
             # Count assignments
             assignments_count = session.exec(
                 select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == clustering_result.id
                 )
             ).one()
-            
+
             # Show details and confirm deletion
             typer.echo(f"Clustering Result ID: {clustering_result.id}")
             typer.echo(f"Embedding Model: {clustering_result.embedding_model}")
@@ -863,7 +879,7 @@ def delete_cluster_command(
             typer.echo(f"Created: {clustering_result.created_at}")
             typer.echo(f"Clusters: {len(clustering_result.clusters)}")
             typer.echo(f"Assignments: {assignments_count}")
-            
+
             if not force:
                 confirm = typer.confirm(
                     f"Are you sure you want to delete this clustering result?",
@@ -872,14 +888,16 @@ def delete_cluster_command(
                 if not confirm:
                     typer.echo("Deletion cancelled.")
                     return
-                    
+
             # Delete the clustering result
             result = delete_single_cluster(cluster_uuid, session)
-            
+
             if result["status"] == "success":
                 typer.echo(f"Clustering result {clustering_id} successfully deleted.")
             else:
-                typer.echo(f"Failed to delete clustering result: {result.get('message', 'Unknown error')}")
+                typer.echo(
+                    f"Failed to delete clustering result: {result.get('message', 'Unknown error')}"
+                )
 
 
 @cluster_app.command("show")
@@ -915,18 +933,20 @@ def cluster_status_command(
         # Import here to avoid circular imports
         from panic_tda.clustering_manager import (
             get_cluster_details_by_id,
-            get_latest_clustering_result
+            get_latest_clustering_result,
         )
-        
+
         details = None
-        
+
         if clustering_id is None or clustering_id.lower() == "latest":
             # Get the latest clustering result
             clustering_result = get_latest_clustering_result(session)
             if not clustering_result:
                 logger.error("No clustering results found in the database")
                 raise typer.Exit(code=1)
-            logger.info(f"Using latest clustering result with ID: {clustering_result.id}")
+            logger.info(
+                f"Using latest clustering result with ID: {clustering_result.id}"
+            )
             details = get_cluster_details_by_id(clustering_result.id, session, limit)
         else:
             # Validate UUID format
@@ -935,10 +955,10 @@ def cluster_status_command(
             except ValueError:
                 logger.error(f"Invalid clustering ID format: {clustering_id}")
                 raise typer.Exit(code=1)
-                
+
             # Get cluster details
             details = get_cluster_details_by_id(cluster_uuid, session, limit)
-            
+
             if not details:
                 logger.error(f"Clustering result with ID {clustering_id} not found")
                 raise typer.Exit(code=1)
@@ -946,11 +966,15 @@ def cluster_status_command(
         # Calculate outlier percentage
         outlier_cluster = next((c for c in details["clusters"] if c["id"] == -1), None)
         outlier_count = outlier_cluster["size"] if outlier_cluster else 0
-        outlier_percentage = (outlier_count / details["total_assignments"] * 100) if details["total_assignments"] > 0 else 0
-        
+        outlier_percentage = (
+            (outlier_count / details["total_assignments"] * 100)
+            if details["total_assignments"] > 0
+            else 0
+        )
+
         # Filter out outliers from regular clusters
         regular_clusters = [c for c in details["clusters"] if c["id"] != -1]
-        
+
         # Print header
         typer.echo(f"Clustering Result ID: {details['clustering_id']}")
         typer.echo(f"Embedding Model: {details['embedding_model']}")
@@ -959,7 +983,9 @@ def cluster_status_command(
         typer.echo(f"Created: {details['created_at']}")
         typer.echo(f"Total clusters: {len(regular_clusters)}")
         typer.echo(f"Total assignments: {details['total_assignments']}")
-        typer.echo(f"Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)")
+        typer.echo(
+            f"Outliers: {outlier_percentage:.1f}% ({outlier_count:,} embeddings)"
+        )
         typer.echo("")
 
         # Print clusters (already limited by the query)
@@ -972,7 +998,11 @@ def cluster_status_command(
                 if len(text) > 60:
                     text = text[:57] + "..."
 
-                percentage = (cluster['size'] / details['total_assignments'] * 100) if details['total_assignments'] > 0 else 0
+                percentage = (
+                    (cluster["size"] / details["total_assignments"] * 100)
+                    if details["total_assignments"] > 0
+                    else 0
+                )
                 typer.echo(f"{i + 1:3d}. {text:<60} {percentage:>5.1f}%")
 
 

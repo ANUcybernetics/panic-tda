@@ -30,13 +30,11 @@ OUTLIER_LABEL = "OUTLIER"
 
 
 def _build_cluster_details(
-    clustering_result: ClusteringResult,
-    session: Session,
-    limit: Optional[int] = None
+    clustering_result: ClusteringResult, session: Session, limit: Optional[int] = None
 ) -> Dict[str, any]:
     """
     Build cluster details dictionary from a clustering result.
-    
+
     This is a shared helper to avoid code duplication.
     """
     # Get total assignments
@@ -45,33 +43,32 @@ def _build_cluster_details(
             EmbeddingCluster.clustering_result_id == clustering_result.id
         )
     ).one()
-    
+
     # Count clusters and build cluster info
     cluster_counts_query = (
         select(
-            EmbeddingCluster.cluster_id, 
-            func.count(EmbeddingCluster.id).label("count")
+            EmbeddingCluster.cluster_id, func.count(EmbeddingCluster.id).label("count")
         )
         .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
         .group_by(EmbeddingCluster.cluster_id)
         .order_by(func.count(EmbeddingCluster.id).desc())
     )
-    
+
     if limit:
         cluster_counts_query = cluster_counts_query.limit(limit)
-        
+
     cluster_counts = session.exec(cluster_counts_query).all()
-    
+
     # Build cluster details
     clusters = []
     cluster_map = {c["id"]: c for c in clustering_result.clusters}
-    
+
     for cluster_id, count in cluster_counts:
         if cluster_id == OUTLIER_CLUSTER_ID:
             clusters.append({
                 "id": OUTLIER_CLUSTER_ID,
                 "medoid_text": OUTLIER_LABEL,
-                "size": count
+                "size": count,
             })
         elif cluster_id in cluster_map:
             cluster_data = cluster_map[cluster_id]
@@ -81,19 +78,23 @@ def _build_cluster_details(
                 "medoid_embedding_id": cluster_data["medoid_embedding_id"],
                 "size": count,
             }
-            
+
             # Add invocation details if available
-            embedding = session.get(Embedding, UUID(cluster_data["medoid_embedding_id"]))
+            embedding = session.get(
+                Embedding, UUID(cluster_data["medoid_embedding_id"])
+            )
             if embedding and embedding.invocation:
                 cluster_info["medoid_invocation_id"] = str(embedding.invocation.id)
                 cluster_info["medoid_run_id"] = str(embedding.invocation.run_id)
-                    
+
             clusters.append(cluster_info)
-    
+
     # Count regular clusters (excluding outliers)
-    regular_cluster_count = len([c for c in clustering_result.clusters if c.get("id") != OUTLIER_CLUSTER_ID])
+    regular_cluster_count = len([
+        c for c in clustering_result.clusters if c.get("id") != OUTLIER_CLUSTER_ID
+    ])
     has_outliers = any(c["id"] == OUTLIER_CLUSTER_ID for c in clusters)
-    
+
     return {
         "clustering_id": clustering_result.id,
         "embedding_model": clustering_result.embedding_model,
@@ -109,7 +110,7 @@ def _build_cluster_details(
 def _is_text_invocation_sampled(sequence_number: int, downsample: int) -> bool:
     """
     Check if a TEXT invocation should be included based on downsampling.
-    
+
     TEXT invocations have odd sequence numbers (1, 3, 5, ...).
     We downsample by selecting every Nth TEXT invocation.
     """
@@ -120,7 +121,9 @@ def _is_text_invocation_sampled(sequence_number: int, downsample: int) -> bool:
     return text_index % downsample == 0
 
 
-def _bulk_insert_with_flush(session: Session, objects: List, batch_size: int = BATCH_SIZE):
+def _bulk_insert_with_flush(
+    session: Session, objects: List, batch_size: int = BATCH_SIZE
+):
     """
     Insert objects in batches with periodic flushes to avoid memory issues.
     """
@@ -131,17 +134,14 @@ def _bulk_insert_with_flush(session: Session, objects: List, batch_size: int = B
             session.bulk_save_objects(batch)
             session.flush()
             batch = []
-    
+
     # Insert remaining objects
     if batch:
         session.bulk_save_objects(batch)
         session.flush()
 
 
-def _get_embeddings_query(
-    model_name: str, 
-    downsample: int = 1
-):
+def _get_embeddings_query(model_name: str, downsample: int = 1):
     """
     Build a query for embeddings with optional downsampling.
     """
@@ -152,11 +152,11 @@ def _get_embeddings_query(
         .where(Embedding.embedding_model == model_name)
         .where(Invocation.type == InvocationType.TEXT)
     )
-    
+
     if downsample > 1:
         # Apply downsampling filter
         query = query.where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
-    
+
     return query.order_by(Invocation.sequence_number)
 
 
@@ -165,12 +165,12 @@ def get_cluster_details(
 ) -> Optional[Dict[str, any]]:
     """
     Get detailed cluster information for a specific embedding model globally.
-    
+
     Args:
         embedding_model: The embedding model name
         session: Database session
         limit: Maximum number of clusters to return (None for all)
-        
+
     Returns:
         Dictionary with cluster details or None if no clustering exists
     """
@@ -179,10 +179,10 @@ def get_cluster_details(
             ClusteringResult.embedding_model == embedding_model
         )
     ).first()
-    
+
     if not clustering_result:
         return None
-        
+
     return _build_cluster_details(clustering_result, session, limit)
 
 
@@ -191,42 +191,49 @@ def get_cluster_details_by_id(
 ) -> Optional[Dict[str, any]]:
     """
     Get detailed cluster information for a specific clustering result by ID.
-    
+
     Args:
         clustering_id: UUID of the clustering result
         session: Database session
         limit: Maximum number of clusters to return (None for all)
-        
+
     Returns:
         Dictionary with cluster details or None if not found
     """
     clustering_result = session.get(ClusteringResult, clustering_id)
     if not clustering_result:
         return None
-        
+
     return _build_cluster_details(clustering_result, session, limit)
 
 
 def cluster_all_data(
-    session: Session, downsample: int = 1, embedding_model_id: str = "all", epsilon: float = 0.4
+    session: Session,
+    downsample: int = 1,
+    embedding_model_id: str = "all",
+    epsilon: float = 0.4,
 ) -> Dict[str, any]:
     """
     Cluster embeddings in the database globally.
-    
+
     This function loads embeddings across all experiments and performs
     clustering on the dataset, storing results with experiment_id=NULL.
-    
+
     Args:
         session: Database session
         downsample: Downsampling factor (1 = no downsampling)
         embedding_model_id: Specific embedding model to cluster, or "all" for all models
-        
+
     Returns:
         Dictionary with clustering results summary
     """
-    scope = "all embeddings" if embedding_model_id == "all" else f"model: {embedding_model_id}"
+    scope = (
+        "all embeddings"
+        if embedding_model_id == "all"
+        else f"model: {embedding_model_id}"
+    )
     logger.info(f"Starting global clustering on {scope} in the database")
-    
+
     try:
         # Build base query for counting embeddings
         count_query = (
@@ -235,16 +242,20 @@ def cluster_all_data(
             .join(Invocation, Embedding.invocation_id == Invocation.id)
             .where(Invocation.type == InvocationType.TEXT)
         )
-        
+
         # Apply downsampling and model filters
         if downsample > 1:
-            count_query = count_query.where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
+            count_query = count_query.where(
+                ((Invocation.sequence_number - 1) / 2) % downsample == 0
+            )
         if embedding_model_id != "all":
-            count_query = count_query.where(Embedding.embedding_model == embedding_model_id)
-            
+            count_query = count_query.where(
+                Embedding.embedding_model == embedding_model_id
+            )
+
         count_query = count_query.group_by(Embedding.embedding_model)
         model_counts = session.exec(count_query).all()
-        
+
         if not model_counts:
             return {
                 "status": "error",
@@ -254,7 +265,7 @@ def cluster_all_data(
                 "total_clusters": 0,
                 "embedding_models_count": 0,
             }
-        
+
         # Get total embedding count
         total_query = select(func.count(Embedding.id))
         if embedding_model_id != "all":
@@ -262,48 +273,50 @@ def cluster_all_data(
                 Embedding.embedding_model == embedding_model_id
             )
         total_embeddings = session.exec(total_query).one()
-        
+
         logger.info(f"Found {total_embeddings:,} total embeddings")
         logger.info(f"Embedding models: {[m[0] for m in model_counts]}")
         logger.info(f"Running clustering with downsample factor {downsample}")
-        
+
         # Process each embedding model
         total_clusters = 0
         clustered_embeddings = 0
-        
+
         for model_name, count in model_counts:
             logger.info(f"Model {model_name}: {count} embeddings after downsampling")
-            
+
             # Skip models with insufficient samples
             if count < 2:
                 logger.info(f"  Skipping {model_name} - too few samples for HDBSCAN")
                 continue
-                
+
             # Get embeddings for this model
-            embeddings_data = session.exec(_get_embeddings_query(model_name, downsample)).all()
-            
+            embeddings_data = session.exec(
+                _get_embeddings_query(model_name, downsample)
+            ).all()
+
             if not embeddings_data:
                 logger.warning(f"  No embeddings found for model {model_name}")
                 continue
-                
+
             embedding_ids = [e[0] for e in embeddings_data]
             vectors = [e[1] for e in embeddings_data]
             texts = [e[2] for e in embeddings_data]
-            
+
             # Import clustering function here to avoid circular imports
             from panic_tda.clustering import hdbscan
             import numpy as np
-            
+
             # Convert vectors to numpy array for clustering
             vectors_array = np.array(vectors)
-            
+
             # Perform clustering
             cluster_result = hdbscan(vectors_array, epsilon=epsilon)
-            
+
             if cluster_result is None:
                 logger.warning(f"  Clustering failed for model {model_name}")
                 continue
-                
+
             # Create clustering result record
             clustering_result = ClusteringResult(
                 embedding_model=model_name,
@@ -316,29 +329,29 @@ def cluster_all_data(
             )
             session.add(clustering_result)
             session.flush()  # Get the ID
-            
+
             # Build cluster info using medoid indices
             medoid_indices = cluster_result.get("medoid_indices", {})
             clusters_info = []
-            
+
             for label, medoid_idx in medoid_indices.items():
                 if label == OUTLIER_CLUSTER_ID:
                     continue  # Skip outliers in cluster info
-                    
+
                 # Direct index lookup - no vector matching needed
                 medoid_text = texts[medoid_idx]
                 medoid_embedding_id = embedding_ids[medoid_idx]
-                
+
                 clusters_info.append({
                     "id": int(label),
                     "medoid_text": medoid_text,
-                    "medoid_embedding_id": str(medoid_embedding_id)
+                    "medoid_embedding_id": str(medoid_embedding_id),
                 })
-            
+
             # Update clustering result
             with session.no_autoflush:
                 clustering_result.clusters = clusters_info
-            
+
             # Create embedding cluster assignments
             assignments = [
                 EmbeddingCluster(
@@ -346,29 +359,31 @@ def cluster_all_data(
                     clustering_result_id=clustering_result.id,
                     cluster_id=int(cluster_label),
                 )
-                for embedding_id, cluster_label in zip(embedding_ids, cluster_result["labels"])
+                for embedding_id, cluster_label in zip(
+                    embedding_ids, cluster_result["labels"]
+                )
             ]
-            
+
             _bulk_insert_with_flush(session, assignments)
-            
+
             # Update counts
             clustered_embeddings += len(embedding_ids)
             unique_labels = set(cluster_result["labels"])
             has_outliers = OUTLIER_CLUSTER_ID in unique_labels
             total_clusters += len(clusters_info) + (1 if has_outliers else 0)
-            
+
             logger.info(
                 f"  Clustered {len(embedding_ids)} embeddings into {len(unique_labels)} clusters"
             )
-        
+
         # Ensure all changes are flushed (commit handled by context manager)
         session.flush()
-        
+
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "
             f"clustered into {total_clusters:,} total clusters"
         )
-        
+
         return {
             "status": "success",
             "total_embeddings": total_embeddings,
@@ -376,7 +391,7 @@ def cluster_all_data(
             "total_clusters": total_clusters,
             "embedding_models_count": len(model_counts),
         }
-        
+
     except Exception as e:
         logger.error(f"Error during global clustering: {str(e)}")
         session.rollback()
@@ -395,11 +410,11 @@ def delete_cluster_data(
 ) -> Dict[str, any]:
     """
     Delete clustering results from the database.
-    
+
     Args:
         session: Database session
         embedding_model_id: Specific embedding model to delete clusters for, or "all" for all models
-        
+
     Returns:
         Dictionary with deletion results summary
     """
@@ -408,19 +423,23 @@ def delete_cluster_data(
         query = select(ClusteringResult)
         if embedding_model_id != "all":
             query = query.where(ClusteringResult.embedding_model == embedding_model_id)
-            
+
         results_to_delete = session.exec(query).all()
-        
+
         if not results_to_delete:
-            model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+            model_msg = (
+                "all models"
+                if embedding_model_id == "all"
+                else f"model {embedding_model_id}"
+            )
             return {
                 "status": "not_found",
                 "message": model_msg,
             }
-        
+
         deleted_results = 0
         deleted_assignments = 0
-        
+
         # Delete associated EmbeddingCluster entries first
         for result in results_to_delete:
             # Count and delete assignments
@@ -429,9 +448,9 @@ def delete_cluster_data(
                     EmbeddingCluster.clustering_result_id == result.id
                 )
             ).one()
-            
+
             deleted_assignments += assignment_count
-            
+
             # Delete all assignments for this result
             session.exec(
                 select(EmbeddingCluster).where(
@@ -444,26 +463,30 @@ def delete_cluster_data(
                 )
             ).all():
                 session.delete(cluster)
-            
+
             # Delete the clustering result
             session.delete(result)
             deleted_results += 1
-        
+
         # Flush deletions (commit handled by context manager)
         session.flush()
-        
-        model_msg = "all models" if embedding_model_id == "all" else f"model {embedding_model_id}"
+
+        model_msg = (
+            "all models"
+            if embedding_model_id == "all"
+            else f"model {embedding_model_id}"
+        )
         logger.info(
             f"Deleted {deleted_results} clustering result(s) and "
             f"{deleted_assignments} cluster assignments for {model_msg}"
         )
-        
+
         return {
             "status": "success",
             "deleted_results": deleted_results,
             "deleted_assignments": deleted_assignments,
         }
-        
+
     except Exception as e:
         logger.error(f"Error deleting cluster data: {str(e)}")
         session.rollback()
@@ -478,11 +501,11 @@ def delete_cluster_data(
 def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, any]:
     """
     Delete a single clustering result and all its associated data.
-    
+
     Args:
         clustering_id: UUID of the clustering result to delete
         session: Database session
-        
+
     Returns:
         Dictionary with deletion status and counts
     """
@@ -493,14 +516,14 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
                 "status": "not_found",
                 "message": f"Clustering result with ID {clustering_id} not found",
             }
-        
+
         # Count assignments
         assignments_count = session.exec(
             select(func.count(EmbeddingCluster.id)).where(
                 EmbeddingCluster.clustering_result_id == result.id
             )
         ).one()
-        
+
         # Delete assignments
         for cluster in session.exec(
             select(EmbeddingCluster).where(
@@ -508,23 +531,23 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
             )
         ).all():
             session.delete(cluster)
-            
+
         # Delete the clustering result
         session.delete(result)
-        
+
         # Flush deletion (commit handled by context manager)
         session.flush()
-        
+
         logger.info(
             f"Deleted clustering result {clustering_id} and {assignments_count} assignments"
         )
-        
+
         return {
             "status": "success",
             "deleted_results": 1,
             "deleted_assignments": assignments_count,
         }
-        
+
     except Exception as e:
         logger.error(f"Error deleting clustering result {clustering_id}: {str(e)}")
         session.rollback()
@@ -539,10 +562,10 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
 def list_clustering_results(session: Session) -> List[ClusteringResult]:
     """
     List all clustering results in the database.
-    
+
     Args:
         session: Database session
-        
+
     Returns:
         List of ClusteringResult objects ordered by creation date
     """
@@ -551,14 +574,16 @@ def list_clustering_results(session: Session) -> List[ClusteringResult]:
     ).all()
 
 
-def get_clustering_result_by_id(clustering_id: UUID, session: Session) -> Optional[ClusteringResult]:
+def get_clustering_result_by_id(
+    clustering_id: UUID, session: Session
+) -> Optional[ClusteringResult]:
     """
     Get a specific clustering result by its ID.
-    
+
     Args:
         clustering_id: UUID of the clustering result
         session: Database session
-        
+
     Returns:
         ClusteringResult object or None if not found
     """
@@ -568,10 +593,10 @@ def get_clustering_result_by_id(clustering_id: UUID, session: Session) -> Option
 def get_latest_clustering_result(session: Session) -> Optional[ClusteringResult]:
     """
     Get the most recently created clustering result.
-    
+
     Args:
         session: Database session
-        
+
     Returns:
         ClusteringResult object or None if no clustering exists
     """
@@ -581,30 +606,30 @@ def get_latest_clustering_result(session: Session) -> Optional[ClusteringResult]
 
 
 def get_medoid_invocation(
-    cluster_id: int,
-    clustering_result_id: UUID,
-    session: Session
+    cluster_id: int, clustering_result_id: UUID, session: Session
 ) -> Optional[Invocation]:
     """
     Get the invocation that produced the medoid for a specific cluster.
-    
+
     Args:
         cluster_id: The cluster ID
         clustering_result_id: UUID of the clustering result
         session: Database session
-        
+
     Returns:
         Invocation object for the medoid
     """
     clustering_result = session.get(ClusteringResult, clustering_result_id)
     if not clustering_result:
         return None
-        
+
     # Find cluster by ID
-    cluster_info = next((c for c in clustering_result.clusters if c["id"] == cluster_id), None)
+    cluster_info = next(
+        (c for c in clustering_result.clusters if c["id"] == cluster_id), None
+    )
     if not cluster_info:
         return None
-        
+
     # Get the embedding and its invocation
     embedding = session.get(Embedding, UUID(cluster_info["medoid_embedding_id"]))
     return embedding.invocation if embedding else None

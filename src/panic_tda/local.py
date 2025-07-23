@@ -1300,7 +1300,8 @@ def artificial_futures_slides_charts(session: Session) -> None:
         - TDA entropy distributions
     """
     from panic_tda.data_prep import (
-        load_embeddings_from_cache
+        load_embeddings_from_cache,
+        add_semantic_drift_cosine,
     )
 
     embeddings_df = load_embeddings_from_cache()
@@ -1308,14 +1309,17 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Filter out rows with no cluster or outlier cluster marker
     embeddings_df = embeddings_df.filter(
-        (pl.col("cluster_label").is_not_null()) &
-        (pl.col("cluster_label") != "OUTLIER")
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
+
+    print(embeddings_df.head())
+    import sys
+
+    sys.exit()
 
     # Get top 10 most popular clusters
     top_clusters = (
-        embeddings_df
-        .group_by("cluster_label")
+        embeddings_df.group_by("cluster_label")
         .agg(pl.len().alias("count"))
         .sort("count", descending=True)
         .head(10)
@@ -1333,9 +1337,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
         500,
         "Nomic",
         session,
-        examples_per_row = 100,
-        output_file = "output/vis/cluster_examples_nomic.jpg",
-        rescale = 0.25
+        examples_per_row=100,
+        output_file="output/vis/cluster_examples_nomic.jpg",
+        rescale=0.25,
     )
 
 
@@ -1346,9 +1350,9 @@ def paper_charts(session: Session) -> None:
     # from panic_tda.data_prep import cache_dfs
     # cache_dfs(
     #     session,
-    #     runs=True,
+    #     runs=False,
     #     embeddings=True,
-    #     invocations=True,
-    #     persistence_diagrams=True,
+    #     invocations=False,
+    #     persistence_diagrams=False,
     # )
     artificial_futures_slides_charts(session)
