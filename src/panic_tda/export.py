@@ -731,6 +731,7 @@ def export_timeline(
     images_per_run: int,
     output_file: str,
     prompt_order: list[str] = None,
+    rescale: Optional[float] = None,
 ) -> None:
     """
     Export a timeline image showing the progression of multiple runs, organized by
@@ -742,6 +743,7 @@ def export_timeline(
         images_per_run: Number of evenly-spaced images to show from each run
         output_file: Path to save the output image
         prompt_order: Optional custom ordering for prompts (default: alphabetical)
+        rescale: Optional scaling factor for the output image dimensions (default: None)
     """
     # Setup output directory
     output_dir = os.path.dirname(output_file)
@@ -978,6 +980,15 @@ def export_timeline(
                         if invocation.output is not None:
                             x_offset = col_start + img_idx * IMAGE_SIZE
                             canvas.paste(invocation.output, (x_offset, y_offset))
+
+    # Apply rescaling if requested
+    if rescale is not None and rescale != 1.0:
+        new_width = int(canvas_width * rescale)
+        new_height = int(canvas_height * rescale)
+        canvas = canvas.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        logger.info(
+            f"Rescaled timeline from {canvas_width}x{canvas_height} to {new_width}x{new_height}"
+        )
 
     # Save the final image
     canvas.save(output_file, format="JPEG", quality=95)
