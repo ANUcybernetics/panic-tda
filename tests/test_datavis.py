@@ -227,7 +227,7 @@ def test_plot_semantic_drift():
             data.append({
                 "network": network,
                 "sequence_number": seq_num,
-                "drift_cosine": drift_value,
+                "semantic_drift": drift_value,
                 "initial_prompt": "test prompt",
                 "embedding_model": "TestModel",
                 "run_id": f"run_{network}_{seq_num % 5}",  # 5 runs per network
@@ -240,7 +240,7 @@ def test_plot_semantic_drift():
     assert test_df.height == 200  # 100 sequences * 2 networks
     assert "network" in test_df.columns
     assert "sequence_number" in test_df.columns
-    assert "drift_cosine" in test_df.columns
+    assert "semantic_drift" in test_df.columns
     
     # Define output file
     output_file = "output/test/semantic_drift_ridgeline.pdf"

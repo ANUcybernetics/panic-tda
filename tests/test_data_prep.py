@@ -7,13 +7,11 @@ import pytest
 
 from panic_tda.data_prep import (
     add_cluster_labels,
-    add_semantic_drift_cosine,
-    add_semantic_drift_euclid,
+    add_semantic_drift,
     cache_dfs,
     calculate_cluster_run_lengths,
     calculate_cluster_transitions,
-    calculate_cosine_distance,
-    calculate_euclidean_distances,
+    calculate_semantic_drift,
     embed_initial_prompts,
     filter_top_n_clusters,
     load_embeddings_df,
@@ -414,20 +412,25 @@ def test_add_semantic_drift(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load embeddings (inc. semantic drift measures)
+    # Load embeddings and add semantic drift
     df = load_embeddings_df(db_session)
-    df = add_semantic_drift_euclid(df, db_session)
-    df = add_semantic_drift_cosine(df, db_session)
+    df = add_semantic_drift(df, db_session)
 
-    # Check that the drift columns were added
-    assert "drift_euclid" in df.columns
-    assert "drift_cosine" in df.columns
+    # Check that the drift column was added
+    assert "semantic_drift" in df.columns
 
     # Check that drift values are calculated properly
     # All drift values should be non-negative
     assert df.height > 0
-    assert (df["drift_euclid"] >= 0.0).all()
-    assert (df["drift_cosine"] >= 0.0).all()
+    assert (df["semantic_drift"] >= 0.0).all()
+    
+    # Check that drift values are in reasonable range [0, 2]
+    # (normalized euclidean distance for unit vectors is bounded by 2)
+    assert (df["semantic_drift"] <= 2.0).all()
+    
+    # Check we have variation in drift values (not all the same)
+    unique_drifts = df.select("semantic_drift").unique()
+    assert unique_drifts.height > 1, "Expected variation in semantic drift values"
 
 
 def test_load_runs_df(db_session):
@@ -719,137 +722,92 @@ def test_cache_dfs(db_session):
     )
 
 
-def test_calculate_euclidean_distances():
-    """Test that calculate_euclidean_distances correctly computes Euclidean distances."""
+def test_calculate_semantic_drift():
+    """Test that calculate_semantic_drift correctly computes cosine distances using normalized vectors."""
 
-    # Create vectors with known distances
-    vectors = {
-        "v1": np.array([0, 0, 0], dtype=np.float32),  # Origin
-        "v2": np.array([1, 0, 0], dtype=np.float32),  # Unit distance along x-axis
-        "v3": np.array([0, 3, 0], dtype=np.float32),  # 3 units along y-axis
-        "v4": np.array([0, 0, 5], dtype=np.float32),  # 5 units along z-axis
-        "v5": np.array([1, 1, 1], dtype=np.float32),  # sqrt(3) from origin
-    }
-
-    # Expected distances from origin (v1)
-    expected_distances = {
-        "v1": 0.0,  # Distance to self should be 0
-        "v2": 1.0,  # Unit distance
-        "v3": 3.0,  # 3 units distance
-        "v4": 5.0,  # 5 units distance
-        "v5": np.sqrt(3),  # sqrt(1^2 + 1^2 + 1^2) = sqrt(3)
-    }
-
-    # Calculate distances using the function
-    computed_distances = calculate_euclidean_distances(
-        vectors["v1"],
-        [vectors["v1"], vectors["v2"], vectors["v3"], vectors["v4"], vectors["v5"]],
-    )
-
-    # Assert computed distances match expected with small tolerance for floating-point errors
-    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5"]):
-        assert abs(computed_distances[i] - expected_distances[key]) < 1e-6, (
-            f"Distance for {key} incorrect. Expected {expected_distances[key]}, got {computed_distances[i]}"
-        )
-
-    # Test with some other vector as reference
-    reference = vectors["v5"]  # [1, 1, 1]
-
-    # Calculate expected distances from v5 to others
-    expected_from_v5 = {
-        "v1": np.sqrt(3),  # sqrt((1-0)^2 + (1-0)^2 + (1-0)^2)
-        "v2": np.sqrt(2),  # sqrt((1-1)^2 + (1-0)^2 + (1-0)^2)
-        "v3": np.sqrt(6),  # sqrt((1-0)^2 + (1-3)^2 + (1-0)^2)
-        "v4": np.sqrt(18),  # sqrt((1-0)^2 + (1-0)^2 + (1-5)^2)
-        "v5": 0.0,  # Distance to self should be 0
-    }
-
-    # Calculate distances using the function
-    computed_from_v5 = calculate_euclidean_distances(
-        reference,
-        [vectors["v1"], vectors["v2"], vectors["v3"], vectors["v4"], vectors["v5"]],
-    )
-
-    # Assert computed distances match expected with small tolerance for floating-point errors
-    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5"]):
-        assert np.isclose(computed_from_v5[i], expected_from_v5[key]), (
-            f"Distance from v5 to {key} incorrect. Expected {expected_from_v5[key]}, got {computed_from_v5[i]}"
-        )
+    # Create test vectors with known cosine relationships
+    vectors = np.array([
+        [1, 0, 0],      # Unit vector along x-axis
+        [0, 1, 0],      # Unit vector along y-axis (orthogonal to v1)
+        [-1, 0, 0],     # Opposite direction to v1
+        [1, 1, 0],      # 45 degrees from v1 in xy-plane
+        [1, 0, 0],      # Same as v1 (should have 0 distance)
+        [2, 0, 0],      # Same direction as v1 but different magnitude
+    ], dtype=np.float32)
+    
+    reference = np.array([1, 0, 0], dtype=np.float32)  # Reference vector
+    
+    # Calculate semantic drift
+    distances = calculate_semantic_drift(vectors, reference)
+    
+    # Expected distances (using normalized euclidean which is monotonic with cosine distance)
+    # For normalized vectors: euclidean_dist = sqrt(2 - 2*cos_similarity)
+    # cos_dist = 1 - cos_similarity, so:
+    # - Same direction (cos_sim=1): euclidean=0
+    # - Orthogonal (cos_sim=0): euclidean=sqrt(2)
+    # - Opposite (cos_sim=-1): euclidean=2
+    
+    # Check specific cases
+    assert abs(distances[0]) < 1e-6, "Same vector should have 0 distance"
+    assert abs(distances[1] - np.sqrt(2)) < 1e-6, "Orthogonal vectors should have sqrt(2) distance"
+    assert abs(distances[2] - 2.0) < 1e-6, "Opposite vectors should have distance 2"
+    assert abs(distances[3] - np.sqrt(2 - np.sqrt(2))) < 1e-6, "45 degree angle check"
+    assert abs(distances[4]) < 1e-6, "Identical direction should have 0 distance"
+    assert abs(distances[5]) < 1e-6, "Same direction different magnitude should have 0 distance after normalization"
+    
+    # Test with a different reference vector
+    reference2 = np.array([1, 1, 1], dtype=np.float32)
+    distances2 = calculate_semantic_drift(vectors, reference2)
+    
+    # All distances should be non-negative
+    assert np.all(distances2 >= 0), "All distances should be non-negative"
+    assert np.all(distances2 <= 2), "All distances should be <= 2 for normalized vectors"
 
 
-def test_calculate_cosine_distance():
-    """Test that calculate_cosine_distance correctly computes cosine distances."""
-
-    # Create vectors with known cosine distances
-    vectors = {
-        "v1": np.array([1, 0, 0], dtype=np.float32),  # Unit vector along x-axis
-        "v2": np.array([0, 1, 0], dtype=np.float32),  # Unit vector along y-axis
-        "v3": np.array([0, 0, 1], dtype=np.float32),  # Unit vector along z-axis
-        "v4": np.array([1, 1, 0], dtype=np.float32),  # Vector in xy-plane
-        "v5": np.array([-1, 0, 0], dtype=np.float32),  # Opposite to v1
-        "v6": np.array([1, 1, 1], dtype=np.float32),  # Equal components
-    }
-
-    # Expected cosine distances from v1 (normalized to unit length)
-    expected_distances = {
-        "v1": 0.0,  # Same direction, distance should be 0
-        "v2": 1.0,  # Orthogonal, distance should be 1
-        "v3": 1.0,  # Orthogonal, distance should be 1
-        "v4": 1 - 1 / np.sqrt(2),  # cosine distance = 1 - 0.7071 ≈ 0.2929
-        "v5": 2.0,  # Opposite direction, distance should be 2
-        "v6": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
-    }
-
-    # Calculate distances using the function
-    computed_distances = calculate_cosine_distance(
-        np.array([
-            vectors["v1"],
-            vectors["v2"],
-            vectors["v3"],
-            vectors["v4"],
-            vectors["v5"],
-            vectors["v6"],
-        ]),
-        vectors["v1"],
-    )
-
-    # Assert computed distances match expected with small tolerance for floating-point errors
-    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5", "v6"]):
-        assert np.isclose(computed_distances[i], expected_distances[key]), (
-            f"Cosine distance for {key} incorrect. Expected {expected_distances[key]}, got {computed_distances[i]}"
-        )
-
-    # Test with some other vector as reference
-    reference = vectors["v6"]  # [1, 1, 1]
-
-    # Calculate expected cosine distances from v6 to others
-    expected_from_v6 = {
-        "v1": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
-        "v2": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
-        "v3": 1 - 1 / np.sqrt(3),  # cosine distance = 1 - 0.5774 ≈ 0.4226
-        "v4": 1 - 2 / np.sqrt(6),  # cosine distance = 1 - 0.8165 ≈ 0.1835
-        "v5": 1 - (-1) / np.sqrt(3),  # cosine distance = 1 - (-0.5774) ≈ 1.5774
-        "v6": 0.0,  # Distance to self should be 0
-    }
-
-    # Calculate distances using the function
-    computed_from_v6 = calculate_cosine_distance(
-        np.array([
-            vectors["v1"],
-            vectors["v2"],
-            vectors["v3"],
-            vectors["v4"],
-            vectors["v5"],
-            vectors["v6"],
-        ]),
-        reference,
-    )
-
-    # Assert computed distances match expected with small tolerance for floating-point errors
-    for i, key in enumerate(["v1", "v2", "v3", "v4", "v5", "v6"]):
-        assert np.isclose(computed_from_v6[i], expected_from_v6[key]), (
-            f"Cosine distance from v6 to {key} incorrect. Expected {expected_from_v6[key]}, got {computed_from_v6[i]}"
-        )
+def test_semantic_drift_with_known_values():
+    """Test semantic drift calculation with specific known values for validation."""
+    
+    # Test 1: Identical vectors should have 0 drift
+    v1 = np.array([1, 2, 3], dtype=np.float32)
+    result = calculate_semantic_drift(np.array([v1]), v1)
+    assert abs(result[0]) < 1e-6, f"Identical vectors should have 0 drift, got {result[0]}"
+    
+    # Test 2: Scaled versions of the same vector should have 0 drift (after normalization)
+    v2 = np.array([2, 4, 6], dtype=np.float32)  # 2x v1
+    result = calculate_semantic_drift(np.array([v2]), v1)
+    assert abs(result[0]) < 1e-6, f"Scaled vectors should have 0 drift, got {result[0]}"
+    
+    # Test 3: Orthogonal vectors
+    v3 = np.array([1, 0, 0], dtype=np.float32)
+    v4 = np.array([0, 1, 0], dtype=np.float32)
+    result = calculate_semantic_drift(np.array([v4]), v3)
+    # For orthogonal normalized vectors, euclidean distance = sqrt(2)
+    assert abs(result[0] - np.sqrt(2)) < 1e-6, f"Orthogonal vectors should have sqrt(2) drift, got {result[0]}"
+    
+    # Test 4: Opposite vectors
+    v5 = np.array([1, 0, 0], dtype=np.float32)
+    v6 = np.array([-1, 0, 0], dtype=np.float32)
+    result = calculate_semantic_drift(np.array([v6]), v5)
+    # For opposite normalized vectors, euclidean distance = 2
+    assert abs(result[0] - 2.0) < 1e-6, f"Opposite vectors should have drift 2, got {result[0]}"
+    
+    # Test 5: Multiple vectors at once
+    vectors = np.array([
+        [1, 0, 0],    # Same as reference
+        [0, 1, 0],    # Orthogonal
+        [-1, 0, 0],   # Opposite
+        [1, 1, 0],    # 45 degrees
+    ], dtype=np.float32)
+    reference = np.array([1, 0, 0], dtype=np.float32)
+    
+    results = calculate_semantic_drift(vectors, reference)
+    
+    assert abs(results[0]) < 1e-6, "First vector (same as ref) should have 0 drift"
+    assert abs(results[1] - np.sqrt(2)) < 1e-6, "Second vector (orthogonal) should have sqrt(2) drift"
+    assert abs(results[2] - 2.0) < 1e-6, "Third vector (opposite) should have drift 2"
+    # For 45 degree angle: cos(45°) = 1/sqrt(2), so euclidean = sqrt(2 - 2/sqrt(2)) = sqrt(2 - sqrt(2))
+    expected_45_drift = np.sqrt(2 - np.sqrt(2))
+    assert abs(results[3] - expected_45_drift) < 1e-6, f"45 degree vector should have drift {expected_45_drift}, got {results[3]}"
 
 
 def test_filter_top_n_clusters():

@@ -462,7 +462,7 @@ def plot_semantic_drift(
     with rows binned by sequence number and columns faceted by network.
 
     Args:
-        df: DataFrame containing embedding data with drift_cosine and sequence_number
+        df: DataFrame containing embedding data with semantic_drift and sequence_number
         output_file: Path to save the visualization
     """
     import numpy as np
@@ -493,7 +493,7 @@ def plot_semantic_drift(
             bin_data = pandas_df[
                 (pandas_df['network'] == network) & 
                 (pandas_df['sequence_bin'] == bin_label)
-            ]['drift_cosine'].values
+            ]['semantic_drift'].values
             
             if len(bin_data) > 1:
                 # Calculate density

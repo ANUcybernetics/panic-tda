@@ -490,31 +490,44 @@ def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]
     return embeddings_dict
 
 
-def calculate_euclidean_distances(
+def calculate_semantic_drift(
     vectors_array: np.ndarray, reference_vector: np.ndarray
 ) -> np.ndarray:
     """
-    Calculate Euclidean distances between each vector in an array and a reference vector.
+    Calculate semantic drift (cosine distance) between each vector and a reference vector.
+    
+    Uses the normalize-then-euclidean trick: for normalized unit vectors,
+    euclidean distance is monotonic with cosine distance.
 
     Args:
         vectors_array: 2D array where each row is a vector
         reference_vector: The reference vector to calculate distances from
 
     Returns:
-        1D array of Euclidean distances
+        1D array of cosine distances (0 = identical, 2 = opposite)
     """
-    differences = vectors_array - reference_vector
+    # Normalize vectors to unit length
+    vectors_normalized = vectors_array / np.linalg.norm(
+        vectors_array, axis=1, keepdims=True
+    )
+    reference_normalized = reference_vector / np.linalg.norm(reference_vector)
+    
+    # Calculate euclidean distance between normalized vectors
+    # For unit vectors: euclidean_dist = sqrt(2 - 2*cos_similarity)
+    # So euclidean distance is monotonic with cosine distance
+    differences = vectors_normalized - reference_normalized
     distances = np.linalg.norm(differences, axis=1)
+    
     return distances
 
 
-def fetch_and_calculate_drift_euclid(
+def fetch_and_calculate_drift(
     embedding_ids: pl.Series,
     initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
     session: Session,
 ) -> pl.Series:
     """
-    Fetch embedding vectors from the database and calculate drift from the embedded initial prompt.
+    Fetch embedding vectors from the database and calculate semantic drift from the embedded initial prompt.
 
     Args:
         embedding_ids: A Series containing embedding IDs
@@ -522,7 +535,7 @@ def fetch_and_calculate_drift_euclid(
         session: SQLModel database session
 
     Returns:
-        A Series of euclidean distances between each vector and the embedded initial prompt
+        A Series of semantic drift values (cosine distances via normalized euclidean)
     """
     # Get vectors from database
     embeddings = [
@@ -533,16 +546,18 @@ def fetch_and_calculate_drift_euclid(
         (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
     ]
 
-    # Stack the vectors and calculate distances
+    # Stack the vectors and calculate semantic drift
     vectors = np.vstack([embedding.vector for embedding in embeddings])
-    distances = calculate_euclidean_distances(vectors, initial_vector)
+    distances = calculate_semantic_drift(vectors, initial_vector)
     return pl.Series(distances)
 
 
-def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFrame:
+def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
-    Add semantic drift values to the embeddings DataFrame by fetching vectors on demand
-    and calculating drift from the embedded initial prompt.
+    Add semantic drift values to the embeddings DataFrame.
+    
+    Calculates cosine distance from each embedding to the initial prompt's embedding
+    using the normalize-then-euclidean approach for efficiency.
 
     Args:
         df: DataFrame containing embedding metadata (without vectors)
@@ -553,113 +568,24 @@ def add_semantic_drift_euclid(df: pl.DataFrame, session: Session) -> pl.DataFram
     """
     initial_prompt_vectors = embed_initial_prompts(session)
 
-    # Add vectors column using map_elements
+    # Add semantic drift column using map_batches
     df = df.with_columns(
         pl.col("id")
         .map_batches(
-            lambda embedding_ids: fetch_and_calculate_drift_euclid(
+            lambda embedding_ids: fetch_and_calculate_drift(
                 embedding_ids, initial_prompt_vectors, session
             ),
         )
-        .alias("drift_euclid")
+        .alias("semantic_drift")
     )
 
     return df
 
 
-def calculate_cosine_distance(
-    vectors_array: np.ndarray, reference_vector: np.ndarray
-) -> np.ndarray:
-    """
-    Calculate cosine distances between each vector in an array and a reference vector.
-
-    Args:
-        vectors_array: 2D array where each row is a vector
-        reference_vector: The reference vector to calculate distances from
-
-    Returns:
-        1D array of cosine distances
-    """
-    # Check for vector equality with the reference vector
-    equal_vectors = np.all(vectors_array == reference_vector, axis=1)
-
-    # Calculate norms
-    vector_norms = np.linalg.norm(vectors_array, axis=1)
-    reference_norm = np.linalg.norm(reference_vector)
-
-    # Calculate dot products with the reference vector
-    dot_products = np.sum(vectors_array * reference_vector, axis=1)
-
-    # Calculate cosine similarity directly for all vectors (no need to check for zero norms)
-    norm_products = vector_norms * reference_norm
-    cosine_similarities = dot_products / norm_products
-    distances = 1.0 - cosine_similarities
-
-    # Set distance to 0 for identical vectors
-    distances[equal_vectors] = 0.0
-
-    return distances
 
 
-def fetch_and_calculate_drift_cosine(
-    embedding_ids: pl.Series,
-    initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
-    session: Session,
-) -> pl.Series:
-    """
-    Fetch embedding vectors from the database and calculate cosine drift from the embedded initial prompt.
-
-    Args:
-        embedding_ids: A Series containing embedding IDs
-        initial_prompt_vectors: Dictionary mapping (initial_prompt, embedding_model) tuples to vectors
-        session: SQLModel database session
-
-    Returns:
-        A Series of cosine distances between each vector and the embedded initial prompt
-    """
-    # Get vectors from database
-    embeddings = [
-        read_embedding(UUID(embedding_id), session) for embedding_id in embedding_ids
-    ]
-
-    # Get the initial vector once from the first embedding
-    first_embedding = embeddings[0]
-    initial_vector = initial_prompt_vectors[
-        (first_embedding.invocation.run.initial_prompt, first_embedding.embedding_model)
-    ]
-
-    # Stack the vectors and calculate distances
-    vectors = np.vstack([embedding.vector for embedding in embeddings])
-    distances = calculate_cosine_distance(vectors, initial_vector)
-
-    return pl.Series(distances)
 
 
-def add_semantic_drift_cosine(df: pl.DataFrame, session: Session) -> pl.DataFrame:
-    """
-    Add semantic drift values using cosine distance to the embeddings DataFrame by fetching
-    vectors on demand and calculating drift from the embedded initial prompt.
-
-    Args:
-        df: DataFrame containing embedding metadata (without vectors)
-        session: SQLModel database session for fetching vectors
-
-    Returns:
-        DataFrame with semantic drift values added using cosine distance
-    """
-    initial_prompt_vectors = embed_initial_prompts(session)
-
-    # Add vectors column using map_elements
-    df = df.with_columns(
-        pl.col("id")
-        .map_batches(
-            lambda embedding_ids: fetch_and_calculate_drift_cosine(
-                embedding_ids, initial_prompt_vectors, session
-            ),
-        )
-        .alias("drift_cosine")
-    )
-    return df
 
 
 def load_runs_from_cache() -> pl.DataFrame:
@@ -791,7 +717,7 @@ def cache_dfs(
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
         embeddings_df = add_cluster_labels(embeddings_df, 10, session)
-        embeddings_df = add_semantic_drift_cosine(embeddings_df, session)
+        embeddings_df = add_semantic_drift(embeddings_df, session)
 
         df_memory_size = embeddings_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
