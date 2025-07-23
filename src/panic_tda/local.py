@@ -1349,9 +1349,11 @@ def artificial_futures_slides_charts(session: Session) -> None:
     from panic_tda.export import export_timeline
 
     runs_df = load_runs_from_cache()
+    # Filter to only rows where initial prompt is "a red circle on a black background"
+    filtered_runs_df = runs_df.filter(pl.col("initial_prompt") == "a red circle on a black background")
 
     # Sample 20 random run IDs
-    random_run_ids = runs_df.sample(20).get_column("run_id").to_list()
+    random_run_ids = filtered_runs_df.get_column("run_id").unique().to_list()
 
     # Convert to strings (assuming export_timeline expects string IDs)
     random_run_ids_str = [str(run_id) for run_id in random_run_ids]
@@ -1360,8 +1362,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
     export_timeline(
         run_ids=random_run_ids_str,
         session=session,
-        images_per_run=10,
+        images_per_run=6,
         output_file="output/vis/random_runs_timeline.jpg",
+        rescale=0.5,
     )
 
 def paper_charts(session: Session) -> None:
