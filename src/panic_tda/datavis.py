@@ -468,44 +468,47 @@ def plot_semantic_drift(
     """
     import numpy as np
     from scipy.stats import gaussian_kde
-    
+
     # Create 10 evenly spaced bins using qcut for equal-sized bins
     n_bins = 10
     bin_labels = [f"{i*10}-{(i+1)*10}%" for i in range(n_bins)]
-    
+
     # Bin sequence_number into discrete quantiles
     df = df.with_columns(
         pl.col("sequence_number")
         .qcut(quantiles=n_bins, labels=bin_labels)
         .alias("sequence_bin")
     )
-    
+
     # Convert to pandas for processing
     pandas_df = df.to_pandas()
-    
+
     # Create density data for ridgeline plot
     ridge_data = []
-    x_grid = np.linspace(0, 1, 200)  # Grid for density evaluation
-    
+    # Get the actual range of semantic drift values
+    min_drift = df['semantic_drift'].min()
+    max_drift = df['semantic_drift'].max()
+    x_grid = np.linspace(min_drift, max_drift, 200)  # Grid for density evaluation
+
     # Process each network and bin combination
     for network in pandas_df['network'].unique():
         for i, bin_label in enumerate(bin_labels):
             # Get data for this bin and network
             bin_data = pandas_df[
-                (pandas_df['network'] == network) & 
+                (pandas_df['network'] == network) &
                 (pandas_df['sequence_bin'] == bin_label)
             ]['semantic_drift'].values
-            
+
             if len(bin_data) > 1:
                 # Calculate density
                 kde = gaussian_kde(bin_data, bw_method=0.3)
                 density = kde(x_grid)
-                
+
                 # Scale and offset density for ridgeline effect
                 y_offset = i  # Base y position
                 # Scale density to fit within ~80% of the space between ridges
                 density_scaled = density * 0.8 / density.max() if density.max() > 0 else density * 0.8
-                
+
                 # Create data points for the ridge
                 for j, (x, d) in enumerate(zip(x_grid, density_scaled)):
                     ridge_data.append({
@@ -517,17 +520,17 @@ def plot_semantic_drift(
                         'network': network,
                         'density': d
                     })
-    
+
     # Create DataFrame for plotting
     ridge_df = pd.DataFrame(ridge_data)
-    
+
     # Create ordered categorical for proper display
     ridge_df['sequence_bin'] = pd.Categorical(
-        ridge_df['sequence_bin'], 
+        ridge_df['sequence_bin'],
         categories=bin_labels[::-1],  # Reverse for top-to-bottom
         ordered=True
     )
-    
+
     # Create the ridgeline plot
     plot = (
         ggplot(ridge_df, aes(x='x', y='y', group='sequence_bin'))
@@ -552,7 +555,7 @@ def plot_semantic_drift(
         )
         + scale_x_continuous(
             expand=(0.01, 0),
-            limits=(0, 1),
+            limits=(min_drift, max_drift),
         )
         + labs(x="cosine drift", y="sequence progress")
         + facet_wrap(
