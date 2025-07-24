@@ -1294,8 +1294,6 @@ def artificial_futures_slides_charts(session: Session) -> None:
     TODO list:
 
         - ridgeline plots for semantic drift (by network)
-        - cluster examples (maybe add a "rows" param)
-        - cluster timelines (perhaps with "medoid image" as a marker)
         - TDA entropy distributions
     """
     from panic_tda.data_prep import (
@@ -1318,19 +1316,17 @@ def artificial_futures_slides_charts(session: Session) -> None:
         .sort("count", descending=True)
         .head(10)
     )
-    
+
     top_cluster_labels = cluster_counts.get_column("cluster_label")
 
     # Filter to only top 10 clusters
     embeddings_df = embeddings_df.filter(
         pl.col("cluster_label").is_in(top_cluster_labels)
     )
-    
+
     # Join with cluster counts to add count column, then sort by count descending
     embeddings_df = embeddings_df.join(
-        cluster_counts,
-        on="cluster_label",
-        how="left"
+        cluster_counts, on="cluster_label", how="left"
     ).sort("count", descending=True)
 
     # cluster examples
@@ -1343,7 +1339,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         output_file="output/vis/cluster_examples_nomic.jpg",
         rescale=0.25,
     )
-    
+
     # Print top 10 clusters table
     # Get total count of non-outlier embeddings for percentage calculation
     total_non_outlier = (
@@ -1355,17 +1351,16 @@ def artificial_futures_slides_charts(session: Session) -> None:
         )
         .height
     )
-    
+
     # Create table with rank, cluster label, and percentage
     top_clusters_table = (
-        cluster_counts
-        .with_row_index("rank", offset=1)  # Add rank column starting at 1
+        cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
         .with_columns(
             (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
         )
         .select(["rank", "cluster_label", "percentage"])
     )
-    
+
     print("\nTop 10 Clusters (Nomic embeddings):")
     # Set polars to not truncate strings
     with pl.Config(fmt_str_lengths=1000):
