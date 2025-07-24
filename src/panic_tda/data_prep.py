@@ -132,6 +132,8 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         - run_id, sequence_number, invocation_id: For easy joining
         - algorithm: Clustering algorithm used
         - epsilon: HDBSCAN epsilon parameter (if applicable)
+        - initial_prompt: The initial prompt for the run
+        - network: The network configuration for the run
     """
     print("Loading clustering data...")
 
@@ -146,11 +148,15 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         cr.parameters as parameters,
         e.invocation_id as invocation_id,
         i.run_id as run_id,
-        i.sequence_number as sequence_number
+        i.sequence_number as sequence_number,
+        r.initial_prompt as initial_prompt,
+        r.network as network
     FROM embeddingcluster ec
     JOIN clusteringresult cr ON ec.clustering_result_id = cr.id
     JOIN embedding e ON ec.embedding_id = e.id
     JOIN invocation i ON e.invocation_id = i.id
+    JOIN run r ON i.run_id = r.id
+    WHERE r.initial_prompt NOT IN ('yeah', 'nah')
     ORDER BY cr.embedding_model, i.run_id, i.sequence_number
     """
 
@@ -205,6 +211,11 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         pl.struct(["clustering_result_id", "cluster_id"])
         .map_elements(get_cluster_label, return_dtype=pl.Utf8)
         .alias("cluster_label")
+    ])
+
+    # Parse network from JSON string to create network_path column
+    df = df.with_columns([
+        pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
 
     # Drop the parameters column as we've extracted what we need
