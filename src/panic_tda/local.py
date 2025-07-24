@@ -1306,7 +1306,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
     runs_df = load_runs_from_cache()
     embeddings_df = load_embeddings_from_cache()
     clusters_df = load_clusters_from_cache().filter(
-        pl.col("clustering_result_id") == "068817c8-db24-718e-8ed2-ae791d154443"
+        pl.col("clustering_result_id") == "06880c96-9739-7b67-b0d2-e6bfdab61aaf"
     )
 
     # Filter embeddings to Nomic model
