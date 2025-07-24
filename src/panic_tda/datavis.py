@@ -1215,8 +1215,8 @@ def plot_cluster_example_images(
     # Convert to pandas for easier groupby operations
     pandas_df = filtered_df.to_pandas()
 
-    # Group by cluster_label - sorted to maintain consistent order
-    for cluster_label, group in pandas_df.groupby("cluster_label", sort=True):
+    # Group by cluster_label - preserve the order of first appearance in the dataframe
+    for cluster_label, group in pandas_df.groupby("cluster_label", sort=False):
         # Get the first num_examples invocation_ids
         invocation_ids = group["invocation_id"].head(num_examples).tolist()
         invocation_uuids = [UUID(id) for id in invocation_ids]

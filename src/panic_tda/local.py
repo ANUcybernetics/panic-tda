@@ -1311,19 +1311,27 @@ def artificial_futures_slides_charts(session: Session) -> None:
         )
     )
 
-    # Get top 10 most popular clusters
-    top_clusters = (
+    # Get top 10 most popular clusters with their counts
+    cluster_counts = (
         embeddings_df.group_by("cluster_label")
         .agg(pl.len().alias("count"))
         .sort("count", descending=True)
         .head(10)
-        .select("cluster_label")
     )
+    
+    top_cluster_labels = cluster_counts.get_column("cluster_label")
 
     # Filter to only top 10 clusters
     embeddings_df = embeddings_df.filter(
-        pl.col("cluster_label").is_in(top_clusters.get_column("cluster_label"))
+        pl.col("cluster_label").is_in(top_cluster_labels)
     )
+    
+    # Join with cluster counts to add count column, then sort by count descending
+    embeddings_df = embeddings_df.join(
+        cluster_counts,
+        on="cluster_label",
+        how="left"
+    ).sort("count", descending=True)
 
     # cluster examples
     plot_cluster_example_images(
