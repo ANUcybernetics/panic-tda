@@ -334,9 +334,13 @@ def cluster_all_data(
             # Import clustering function here to avoid circular imports
             from panic_tda.clustering import hdbscan
             import numpy as np
+            from datetime import datetime
 
             # Convert vectors to numpy array for clustering
             vectors_array = np.array(vectors)
+
+            # Record start time BEFORE clustering
+            start_time = datetime.utcnow()
 
             # Perform clustering
             cluster_result = hdbscan(vectors_array, epsilon=epsilon)
@@ -346,11 +350,10 @@ def cluster_all_data(
                 continue
 
             # Create clustering result record
-            from datetime import datetime
             clustering_result = ClusteringResult(
                 embedding_model=model_name,
                 algorithm="hdbscan",
-                started_at=datetime.utcnow(),
+                started_at=start_time,
                 parameters={
                     "cluster_selection_epsilon": epsilon,
                     "allow_single_cluster": True,
