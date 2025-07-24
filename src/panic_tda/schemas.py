@@ -7,7 +7,7 @@ from uuid import UUID
 import numpy as np
 from PIL import Image
 from pydantic import model_validator
-from sqlalchemy import Column, LargeBinary, TypeDecorator
+from sqlalchemy import Column, LargeBinary, TypeDecorator, UniqueConstraint
 from sqlmodel import JSON, Field, Relationship, SQLModel
 from uuid_v7.base import uuid7
 
@@ -641,6 +641,11 @@ class EmbeddingCluster(SQLModel, table=True):
     This join table allows an embedding to belong to different clusters
     in different clustering results.
     """
+
+    __table_args__ = (
+        UniqueConstraint("embedding_id", "clustering_result_id", 
+                       name="unique_embedding_clustering"),
+    )
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
 

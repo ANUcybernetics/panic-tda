@@ -1305,16 +1305,19 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Load all dataframes from cache at the top
     runs_df = load_runs_from_cache()
     embeddings_df = load_embeddings_from_cache()
-    clusters_df = load_clusters_from_cache().filter(
-        pl.col("clustering_result_id") == "06880c96-9739-7b67-b0d2-e6bfdab61aaf"
-    )
+    clusters_df = load_clusters_from_cache()
 
     # Filter embeddings to Nomic model
     embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
+    
+    # Filter clusters to only those with Nomic embeddings
+    clusters_df = clusters_df.filter(pl.col("embedding_model") == "Nomic")
 
     # Join embeddings with clusters to get cluster labels
+    # First deduplicate clusters_df to avoid multiple rows per embedding
+    unique_clusters = clusters_df.select(["embedding_id", "cluster_id", "cluster_label"]).unique()
     embeddings_df = embeddings_df.join(
-        clusters_df.select(["embedding_id", "cluster_id", "cluster_label"]),
+        unique_clusters,
         left_on="id",
         right_on="embedding_id",
         how="inner"
@@ -1341,10 +1344,10 @@ def artificial_futures_slides_charts(session: Session) -> None:
         pl.col("cluster_label").is_in(top_cluster_labels)
     )
 
-    # Join with cluster counts to add count column, then sort by count descending
+    # Join with cluster counts to add count column (but don't sort the entire df)
     embeddings_df = embeddings_df.join(
         cluster_counts, on="cluster_label", how="left"
-    ).sort("count", descending=True)
+    )
 
     # cluster examples
     plot_cluster_example_images(
@@ -1427,13 +1430,13 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.data_prep import cache_dfs
 
-    # cache_dfs(
-    #     session,
-    #     runs=False,
-    #     embeddings=False,
-    #     invocations=False,
-    #     persistence_diagrams=False,
-    #     clusters=True,
-    # )
+    cache_dfs(
+        session,
+        runs=False,
+        embeddings=False,
+        invocations=False,
+        persistence_diagrams=False,
+        clusters=True,
+    )
 
     artificial_futures_slides_charts(session)

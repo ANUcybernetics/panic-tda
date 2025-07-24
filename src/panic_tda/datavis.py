@@ -1212,25 +1212,43 @@ def plot_cluster_example_images(
     # Group by cluster_label and collect the first num_examples invocation_ids for each
     cluster_examples = []
 
+    # If the dataframe has a 'count' column, use it to order clusters by their count
+    if "count" in filtered_df.columns:
+        # Get unique clusters ordered by count (descending)
+        cluster_order = (
+            filtered_df.select(["cluster_label", "count"])
+            .unique()
+            .sort("count", descending=True)
+            .get_column("cluster_label")
+            .to_list()
+        )
+    else:
+        # Otherwise, get unique cluster labels in order of their first appearance
+        pandas_df = filtered_df.to_pandas()
+        cluster_order = pandas_df["cluster_label"].drop_duplicates().tolist()
+
     # Convert to pandas for easier groupby operations
     pandas_df = filtered_df.to_pandas()
+    
+    # Group by cluster_label and process in the desired order
+    grouped = pandas_df.groupby("cluster_label")
+    for cluster_label in cluster_order:
+        if cluster_label in grouped.groups:
+            group = grouped.get_group(cluster_label)
+            # Get the first num_examples invocation_ids
+            invocation_ids = group["invocation_id"].head(num_examples).tolist()
+            invocation_uuids = [UUID(id) for id in invocation_ids]
 
-    # Group by cluster_label - preserve the order of first appearance in the dataframe
-    for cluster_label, group in pandas_df.groupby("cluster_label", sort=False):
-        # Get the first num_examples invocation_ids
-        invocation_ids = group["invocation_id"].head(num_examples).tolist()
-        invocation_uuids = [UUID(id) for id in invocation_ids]
-
-        # If we need to wrap rows, split the invocations into multiple rows
-        if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
-            # Split into multiple rows
-            rows = []
-            for i in range(0, len(invocation_uuids), examples_per_row):
-                rows.append(invocation_uuids[i : i + examples_per_row])
-            cluster_examples.append((str(cluster_label), rows))
-        else:
-            # Even for single row, wrap in a list to maintain consistent structure
-            cluster_examples.append((str(cluster_label), [invocation_uuids]))
+            # If we need to wrap rows, split the invocations into multiple rows
+            if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
+                # Split into multiple rows
+                rows = []
+                for i in range(0, len(invocation_uuids), examples_per_row):
+                    rows.append(invocation_uuids[i : i + examples_per_row])
+                cluster_examples.append((str(cluster_label), rows))
+            else:
+                # Even for single row, wrap in a list to maintain consistent structure
+                cluster_examples.append((str(cluster_label), [invocation_uuids]))
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:
