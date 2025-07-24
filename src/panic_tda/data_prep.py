@@ -157,7 +157,7 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     # Use polars to read directly from the database
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
-    
+
 
     # Format UUID columns
     df = format_uuid_columns(df, ["clustering_result_id", "embedding_id", "invocation_id", "run_id"])
@@ -167,7 +167,7 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     df = df.with_columns([
         pl.col("parameters").str.json_decode().alias("params_struct")
     ])
-    
+
     # Now extract epsilon if it exists, otherwise use None
     df = df.with_columns([
         pl.when(pl.col("params_struct").is_not_null())
@@ -179,28 +179,28 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     # Get cluster labels from ClusteringResult
     # First, get unique clustering results
     clustering_ids = df["clustering_result_id"].unique().to_list()
-    
+
     # Build a mapping of (clustering_result_id, cluster_id) to cluster_label
     label_mapping = {}
-    
+
     for clustering_id in clustering_ids:
         clustering_result = session.exec(
             select(ClusteringResult).where(ClusteringResult.id == UUID(clustering_id))
         ).first()
-        
+
         if clustering_result and clustering_result.clusters:
             # Map cluster IDs to their medoid text
             for cluster in clustering_result.clusters:
                 label_mapping[(clustering_id, cluster["id"])] = cluster["medoid_text"]
-        
+
         # Always add the outlier mapping
         label_mapping[(clustering_id, -1)] = "OUTLIER"
-    
+
     # Add cluster labels to the dataframe
     def get_cluster_label(row):
         key = (row["clustering_result_id"], row["cluster_id"])
         return label_mapping.get(key, f"Cluster {row['cluster_id']}")
-    
+
     df = df.with_columns([
         pl.struct(["clustering_result_id", "cluster_id"])
         .map_elements(get_cluster_label, return_dtype=pl.Utf8)

@@ -469,7 +469,7 @@ def plot_semantic_drift(
     # Bin sequence_number into discrete quantiles
     df = df.with_columns(
         pl.col("sequence_number")
-        .qcut(quantiles=n_bins, labels=bin_labels)
+        .qcut(quantiles=n_bins, labels=bin_labels, allow_duplicates=True)
         .alias("sequence_bin")
     )
 

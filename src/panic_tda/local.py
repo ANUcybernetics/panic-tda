@@ -1297,17 +1297,20 @@ def artificial_futures_slides_charts(session: Session) -> None:
         - TDA entropy distributions
     """
     from panic_tda.data_prep import (
+        load_runs_from_cache,
         load_embeddings_from_cache,
         load_clusters_from_cache,
     )
 
-    # Load embeddings and clusters separately
-    embeddings_df = load_embeddings_from_cache().filter(pl.col("embedding_model") == "Nomic")
-
-    # Load clusters and filter to the specific clustering result
+    # Load all dataframes from cache at the top
+    runs_df = load_runs_from_cache()
+    embeddings_df = load_embeddings_from_cache()
     clusters_df = load_clusters_from_cache().filter(
         pl.col("clustering_result_id") == "068817c8-db24-718e-8ed2-ae791d154443"
     )
+
+    # Filter embeddings to Nomic model
+    embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
 
     # Join embeddings with clusters to get cluster labels
     embeddings_df = embeddings_df.join(
@@ -1376,15 +1379,27 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Create ridgeline plot for semantic drift by network
     from panic_tda.datavis import plot_semantic_drift
 
+    # For ridgeline plot, use full embeddings data (not filtered by top clusters)
+    # to ensure we have enough data points for quantile binning
+    # Use the embeddings_df loaded at the top (already filtered to Nomic)
+    full_embeddings_df = embeddings_df
+
+    # Join with clusters to filter to our specific clustering run
+    ridgeline_df = full_embeddings_df.join(
+        clusters_df.select(["embedding_id"]).unique(),
+        left_on="id",
+        right_on="embedding_id",
+        how="inner"
+    )
+
     plot_semantic_drift(
-        embeddings_df, output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
+        ridgeline_df, output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
     )
 
     # sample 20 runs at random, and then use export_timeline (with 10 images per run) to show some of the invocations from that run
-    from panic_tda.data_prep import load_runs_from_cache
     from panic_tda.export import export_timeline
 
-    runs_df = load_runs_from_cache()
+    # Use the runs_df loaded at the top
     # Filter to only rows where initial prompt is "a red circle on a black background"
     filtered_runs_df = runs_df.filter(
         pl.col("initial_prompt") == "a red circle on a black background"
@@ -1412,13 +1427,13 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.data_prep import cache_dfs
 
-    cache_dfs(
-        session,
-        runs=False,
-        embeddings=False,
-        invocations=False,
-        persistence_diagrams=False,
-        clusters=True,
-    )
+    # cache_dfs(
+    #     session,
+    #     runs=False,
+    #     embeddings=False,
+    #     invocations=False,
+    #     persistence_diagrams=False,
+    #     clusters=True,
+    # )
 
     artificial_futures_slides_charts(session)
