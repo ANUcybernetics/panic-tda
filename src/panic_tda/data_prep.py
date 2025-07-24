@@ -635,12 +635,125 @@ def fetch_and_calculate_drift(
     return pl.Series(distances)
 
 
+def batch_fetch_embeddings(
+    embedding_ids: list[str], session: Session
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Batch fetch embeddings from the database using SQL.
+
+    Args:
+        embedding_ids: List of embedding IDs to fetch
+        session: SQLModel database session
+
+    Returns:
+        Dictionary mapping embedding ID to embedding data including vector
+    """
+    from panic_tda.schemas import Embedding
+    from sqlmodel import select
+    
+    # Convert string IDs to UUIDs
+    uuid_ids = [UUID(eid) for eid in embedding_ids]
+    
+    # Use SQLModel query with in_ operator
+    statement = (
+        select(Embedding)
+        .where(Embedding.id.in_(uuid_ids))
+    )
+    
+    embeddings = session.exec(statement).all()
+    
+    # Convert to dictionary with all necessary data
+    embeddings_dict = {}
+    for embedding in embeddings:
+        embeddings_dict[str(embedding.id)] = {
+            'vector': embedding.vector,
+            'embedding_model': embedding.embedding_model,
+            'initial_prompt': embedding.invocation.run.initial_prompt
+        }
+    
+    return embeddings_dict
+
+
+def calculate_semantic_drift_batch(
+    run_group: pl.DataFrame,
+    initial_prompt_vectors: Dict[Tuple[str, str], np.ndarray],
+    session: Session,
+) -> pl.DataFrame:
+    """
+    Calculate semantic drift for a group of embeddings from the same run.
+
+    Args:
+        run_group: DataFrame group containing embeddings from a single run
+        initial_prompt_vectors: Cached initial prompt embeddings
+        session: Database session
+
+    Returns:
+        DataFrame with semantic_drift column added
+    """
+    # Extract embedding IDs
+    embedding_ids = run_group["id"].to_list()
+    
+    if not embedding_ids:
+        return run_group.with_columns(pl.lit(None).alias("semantic_drift"))
+    
+    # Batch fetch all embeddings for this run
+    embeddings_data = batch_fetch_embeddings(embedding_ids, session)
+    
+    # Get the initial prompt and embedding model from the first row
+    first_row = run_group.row(0, named=True)
+    initial_prompt = first_row["initial_prompt"]
+    embedding_model = first_row["embedding_model"]
+    
+    # Get the initial prompt vector
+    initial_vector = initial_prompt_vectors.get((initial_prompt, embedding_model))
+    if initial_vector is None:
+        return run_group.with_columns(pl.lit(None).alias("semantic_drift"))
+    
+    # Stack all vectors and calculate drift in one operation
+    vectors = []
+    drift_values = []
+    
+    for embedding_id in embedding_ids:
+        embedding_data = embeddings_data.get(embedding_id)
+        if embedding_data and embedding_data['vector'] is not None:
+            vectors.append(embedding_data['vector'])
+        else:
+            # Handle missing embeddings
+            drift_values.append(None)
+            continue
+    
+    if vectors:
+        # Vectorized calculation for all embeddings at once
+        vectors_array = np.vstack(vectors)
+        distances = calculate_semantic_drift(vectors_array, initial_vector)
+        
+        # Merge distances with None values for missing embeddings
+        distance_idx = 0
+        final_drift_values = []
+        for i, embedding_id in enumerate(embedding_ids):
+            if i < len(drift_values) and drift_values[i] is None:
+                final_drift_values.append(None)
+            else:
+                final_drift_values.append(float(distances[distance_idx]))
+                distance_idx += 1
+    else:
+        final_drift_values = [None] * len(embedding_ids)
+    
+    # Add semantic drift column
+    return run_group.with_columns(
+        pl.Series("semantic_drift", final_drift_values)
+    )
+
+
 def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     Add semantic drift values to the embeddings DataFrame.
 
     Calculates cosine distance from each embedding to the initial prompt's embedding
-    using the normalize-then-euclidean approach for efficiency.
+    using the normalize-then-euclidean approach for efficiency. Now optimized to:
+    - Batch fetch embeddings by run_id to minimize DB queries
+    - Use vectorized numpy operations for all distance calculations
+    - Cache initial prompt embeddings to avoid redundant computation
 
     Args:
         df: DataFrame containing embedding metadata (without vectors)
@@ -649,20 +762,32 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     Returns:
         DataFrame with semantic drift values added
     """
+    # Pre-compute all initial prompt embeddings once
     initial_prompt_vectors = embed_initial_prompts(session)
-
-    # Add semantic drift column using map_batches
-    df = df.with_columns(
-        pl.col("id")
-        .map_batches(
-            lambda embedding_ids: fetch_and_calculate_drift(
-                embedding_ids, initial_prompt_vectors, session
-            ),
+    
+    # Group by run_id and embedding_model for efficient batch processing
+    # This ensures all embeddings from the same run are processed together
+    grouped = df.group_by(["run_id", "embedding_model"], maintain_order=True)
+    
+    # Process each group and calculate semantic drift
+    result_dfs = []
+    for (run_id, embedding_model), group_df in grouped:
+        # Process this run's embeddings as a batch
+        group_with_drift = calculate_semantic_drift_batch(
+            group_df, initial_prompt_vectors, session
         )
-        .alias("semantic_drift")
-    )
-
-    return df
+        result_dfs.append(group_with_drift)
+    
+    # Concatenate all results back together, maintaining original order
+    if result_dfs:
+        result_df = pl.concat(result_dfs)
+        # Sort by the original order to maintain consistency
+        # Assuming df has some inherent ordering we want to preserve
+        result_df = result_df.sort(["run_id", "sequence_number"])
+    else:
+        result_df = df.with_columns(pl.lit(None).alias("semantic_drift"))
+    
+    return result_df
 
 
 def load_runs_from_cache() -> pl.DataFrame:
