@@ -1309,7 +1309,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Filter embeddings to Nomic model
     embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
-    
+
     # Filter clusters to only those with Nomic embeddings
     clusters_df = clusters_df.filter(pl.col("embedding_model") == "Nomic")
 
@@ -1374,9 +1374,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         .select(["rank", "cluster_label", "percentage"])
     )
 
-    print("\nTop 10 Clusters (Nomic embeddings):")
-
-    # print table as md (for marp slides)
+    # print "top 10 clusters" table as md (for marp slides)
     # markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
     # print(markdown_table)
 
@@ -1431,13 +1429,13 @@ def paper_charts(session: Session) -> None:
     """
     from panic_tda.data_prep import cache_dfs
 
-    cache_dfs(
-        session,
-        runs=False,
-        embeddings=False,
-        invocations=False,
-        persistence_diagrams=False,
-        clusters=True,
-    )
+    # cache_dfs(
+    #     session,
+    #     runs=False,
+    #     embeddings=False,
+    #     invocations=False,
+    #     persistence_diagrams=False,
+    #     clusters=True,
+    # )
 
     artificial_futures_slides_charts(session)
