@@ -1381,13 +1381,8 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Create ridgeline plot for semantic drift by network
     from panic_tda.datavis import plot_semantic_drift
 
-    # For ridgeline plot, use full embeddings data (not filtered by top clusters)
-    # to ensure we have enough data points for quantile binning
-    # Use the embeddings_df loaded at the top (already filtered to Nomic)
-    full_embeddings_df = embeddings_df
-
     # Join with clusters to filter to our specific clustering run
-    ridgeline_df = full_embeddings_df.join(
+    ridgeline_df = embeddings_df.join(
         clusters_df.select(["embedding_id"]).unique(),
         left_on="id",
         right_on="embedding_id",
