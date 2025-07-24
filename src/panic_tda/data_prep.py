@@ -16,7 +16,7 @@ from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import ClusteringResult, EmbeddingCluster, InvocationType
 
 # because I like to see the data
-pl.Config.set_tbl_rows(1000)
+# pl.Config.set_tbl_rows(1000)
 
 
 def format_uuid_columns(df: pl.DataFrame, columns: list[str]) -> pl.DataFrame:
