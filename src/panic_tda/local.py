@@ -1375,10 +1375,10 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     print("\nTop 10 Clusters (Nomic embeddings):")
-    # Set polars to not truncate strings
-    # Convert to markdown table format
-    markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
-    print(markdown_table)
+
+    # print table as md (for marp slides)
+    # markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
+    # print(markdown_table)
 
     # Create ridgeline plot for semantic drift by network
     from panic_tda.datavis import plot_semantic_drift
