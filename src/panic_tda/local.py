@@ -1349,12 +1349,12 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # cluster examples
     plot_cluster_example_images(
         embeddings_df,
-        500,
+        180,
         "Nomic",
         session,
-        examples_per_row=100,
+        examples_per_row=60,
         output_file="output/vis/cluster_examples_nomic.jpg",
-        rescale=0.25,
+        rescale=0.5,
     )
 
     # Print top 10 clusters table
