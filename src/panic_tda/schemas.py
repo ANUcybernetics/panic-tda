@@ -596,6 +596,8 @@ class ClusteringResult(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = Field(default=None)
+    completed_at: Optional[datetime] = Field(default=None)
 
     embedding_model: str = Field(..., description="Embedding model used for clustering")
     algorithm: str = Field(
@@ -616,6 +618,20 @@ class ClusteringResult(SQLModel, table=True):
         back_populates="clustering_result",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
+
+    @property
+    def duration(self) -> float:
+        """
+        Calculate the duration of the clustering computation in seconds.
+
+        Returns:
+            Duration in seconds between started_at and completed_at timestamps,
+            or 0.0 if either timestamp is missing
+        """
+        if self.started_at is None or self.completed_at is None:
+            return 0.0
+        delta = self.completed_at - self.started_at
+        return delta.total_seconds()
 
 
 class EmbeddingCluster(SQLModel, table=True):

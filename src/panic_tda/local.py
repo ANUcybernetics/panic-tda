@@ -1403,12 +1403,14 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    # from panic_tda.data_prep import cache_dfs
-    # cache_dfs(
-    #     session,
-    #     runs=False,
-    #     embeddings=False,
-    #     invocations=False,
-    #     persistence_diagrams=False,
-    # )
+    from panic_tda.data_prep import cache_dfs
+
+    cache_dfs(
+        session,
+        runs=True,
+        embeddings=True,
+        invocations=True,
+        persistence_diagrams=True,
+        clusters=True,
+    )
     artificial_futures_slides_charts(session)

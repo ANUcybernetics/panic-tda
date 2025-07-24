@@ -99,6 +99,9 @@ def _build_cluster_details(
         "algorithm": clustering_result.algorithm,
         "parameters": clustering_result.parameters,
         "created_at": clustering_result.created_at,
+        "started_at": clustering_result.started_at,
+        "completed_at": clustering_result.completed_at,
+        "duration": clustering_result.duration,
         "total_clusters": regular_cluster_count + (1 if has_outliers else 0),
         "total_assignments": total_assignments,
         "clusters": clusters,
@@ -316,9 +319,11 @@ def cluster_all_data(
                 continue
 
             # Create clustering result record
+            from datetime import datetime
             clustering_result = ClusteringResult(
                 embedding_model=model_name,
                 algorithm="hdbscan",
+                started_at=datetime.utcnow(),
                 parameters={
                     "cluster_selection_epsilon": epsilon,
                     "allow_single_cluster": True,
@@ -363,6 +368,9 @@ def cluster_all_data(
             ]
 
             _bulk_insert_with_flush(session, assignments)
+
+            # Mark clustering as completed
+            clustering_result.completed_at = datetime.utcnow()
 
             # Update counts
             clustered_embeddings += len(embedding_ids)
