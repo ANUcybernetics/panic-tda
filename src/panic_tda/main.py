@@ -900,6 +900,55 @@ def delete_cluster_command(
                 )
 
 
+@cluster_app.command("reset")
+def reset_clusters_command(
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Skip confirmation prompt",
+    ),
+):
+    """
+    Delete all clustering results from the database.
+
+    This will permanently remove all clustering results and their associated data.
+    """
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    with get_session_from_connection_string(db_str) as session:
+        # Import here to avoid circular imports
+        from panic_tda.clustering_manager import delete_cluster_data
+
+        if not force:
+            response = typer.confirm(
+                "Are you sure you want to delete ALL clustering results?"
+            )
+            if not response:
+                typer.echo("Reset cancelled.")
+                raise typer.Exit()
+
+        result = delete_cluster_data(session, "all")
+
+        if result["status"] == "success":
+            typer.echo(
+                f"Successfully deleted {result['deleted_results']} clustering result(s) "
+                f"and {result['deleted_assignments']} cluster assignments."
+            )
+        elif result["status"] == "not_found":
+            typer.echo("No clustering results found in the database.")
+        else:
+            typer.echo(f"Reset failed: {result.get('message', 'Unknown error')}")
+
+
 @cluster_app.command("show")
 def cluster_status_command(
     clustering_id: str = typer.Argument(
