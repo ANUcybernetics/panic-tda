@@ -25,6 +25,7 @@ from panic_tda.engine import (
     perform_experiment,
 )
 from panic_tda.schemas import ExperimentConfig
+from panic_tda.clustering_manager import cluster_all_data
 
 
 def test_load_invocations_df(db_session):
@@ -189,8 +190,14 @@ def test_load_clusters_df(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
+    # Run clustering on the embeddings
+    cluster_all_data(db_session, downsample=1)
+    
+    # Commit the transaction to ensure data is persisted
+    db_session.commit()
+
     # Load clusters dataframe
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    clusters_df = load_clusters_df(db_session)
 
     # Check that the expected columns exist
     expected_columns = [
@@ -235,7 +242,7 @@ def test_load_clusters_df(db_session):
         clusters_df.filter(pl.col("algorithm") == "hdbscan").height
         == clusters_df.height
     )
-    assert clusters_df.filter(pl.col("epsilon") == 0.6).height == clusters_df.height
+    assert clusters_df.filter(pl.col("epsilon") == 0.4).height == clusters_df.height
 
     # Verify that cluster IDs are integers (including -1 for outliers)
     assert clusters_df.select("cluster_id").dtypes[0] == pl.Int64
@@ -279,9 +286,15 @@ def test_load_clusters_df_with_downsampling(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    # Load clusters with downsampling factor of 2
+    # Run clustering with downsampling factor of 2
     downsample = 2
-    clusters_df = load_clusters_df(db_session, downsample=downsample)
+    cluster_all_data(db_session, downsample=downsample)
+    
+    # Commit the transaction to ensure data is persisted
+    db_session.commit()
+
+    # Load clusters dataframe
+    clusters_df = load_clusters_df(db_session)
 
     # Check that the expected columns exist
     expected_columns = [
@@ -299,7 +312,9 @@ def test_load_clusters_df_with_downsampling(db_session):
     assert all(col in clusters_df.columns for col in expected_columns)
 
     # With downsample=2, we should have approximately half the embeddings
-    assert clusters_df.height == 200 / downsample
+    # Each run produces 100 text outputs, so 100 embeddings per model
+    # With 2 models and downsample=2, we should have ~100 total cluster assignments
+    assert clusters_df.height == 100
 
     # Check that each embedding model has clusters (considering downsampling)
     dummy_clusters = clusters_df.filter(pl.col("embedding_model") == "Dummy")

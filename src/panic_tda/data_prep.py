@@ -107,188 +107,20 @@ def load_clusters_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def create_or_get_clustering_result(
-    embedding_model: str, algorithm: str, parameters: dict, session: Session
-) -> ClusteringResult:
+
+
+
+
+def load_clusters_df(session: Session) -> pl.DataFrame:
     """
-    Create or retrieve a clustering result for the given parameters.
-    Does not commit - caller is responsible for transaction management.
+    Load clustering results from the database.
 
-    Args:
-        embedding_model: The embedding model name
-        algorithm: The clustering algorithm name
-        parameters: The algorithm parameters
-        session: Database session
-
-    Returns:
-        ClusteringResult instance
-    """
-    # Check if we already have this clustering result
-    existing = session.exec(
-        select(ClusteringResult)
-        .where(ClusteringResult.embedding_model == embedding_model)
-        .where(ClusteringResult.algorithm == algorithm)
-    ).first()
-
-    if existing:
-        return existing
-
-    # Create new clustering result
-    clustering_result = ClusteringResult(
-        embedding_model=embedding_model, algorithm=algorithm, parameters=parameters
-    )
-    session.add(clustering_result)
-    # No commit - let caller handle transaction
-    return clustering_result
-
-
-def fetch_and_cluster_vectors(
-    embedding_ids: pl.Series, embedding_model: str, session: Session
-) -> Dict[str, Any]:
-    """
-    Fetch embedding vectors from the database, stack them, and perform global clustering.
-
-    This function clusters embeddings globally across all experiments, storing results
-    with experiment_id=NULL in the database.
-
-    Args:
-        embedding_ids: A Series containing embedding IDs
-        embedding_model: The embedding model name
-        session: SQLModel database session
-
-    Returns:
-        Dictionary containing:
-        - clustering_result_id: UUID of the clustering result
-        - assignments: List of tuples (embedding_id, cluster_id, cluster_label)
-    """
-    # Check if we have any embeddings to process
-    if len(embedding_ids) == 0:
-        return {"clustering_result_id": None, "assignments": []}
-
-    # Start a transaction for atomic operations
-    with session.begin_nested():
-        # Get or create global clustering result (experiment_id=None)
-        parameters = {"cluster_selection_epsilon": 0.6, "allow_single_cluster": True}
-        clustering_result = create_or_get_clustering_result(
-            embedding_model, "hdbscan", parameters, session
-        )
-
-        # Check if we already have cluster assignments for these embeddings
-        existing_assignments = session.exec(
-            select(EmbeddingCluster)
-            .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
-            .where(
-                EmbeddingCluster.embedding_id.in_([UUID(eid) for eid in embedding_ids])
-            )
-        ).all()
-
-        if len(existing_assignments) == len(embedding_ids):
-            # We already have all assignments, use them
-            assignment_map = {
-                str(a.embedding_id): a.cluster_id for a in existing_assignments
-            }
-
-            # Get cluster texts from clustering_result
-            cluster_text_map = {
-                c["id"]: c["medoid_text"] for c in clustering_result.clusters
-            }
-            cluster_text_map[-1] = "OUTLIER"
-
-            assignments = [
-                (
-                    str(eid),
-                    assignment_map[str(eid)],
-                    cluster_text_map[assignment_map[str(eid)]],
-                )
-                for eid in embedding_ids
-            ]
-
-            return {
-                "clustering_result_id": str(clustering_result.id),
-                "assignments": assignments,
-            }
-
-        # Fetch embeddings and build a cache of vector -> text
-        embeddings = [
-            read_embedding(UUID(embedding_id), session)
-            for embedding_id in embedding_ids
-        ]
-        vectors = [embedding.vector for embedding in embeddings]
-
-        # Create a cache mapping vectors to their corresponding text
-        vector_to_text = {}
-        for embedding in embeddings:
-            # Convert vector to a hashable tuple for dictionary key
-            vector_key = tuple(embedding.vector.flatten())
-            if embedding.invocation and embedding.invocation.output_text:
-                vector_to_text[vector_key] = embedding.invocation.output_text
-
-        # Perform clustering on the vectors
-        vectors_array = np.vstack(vectors)
-        cluster_result = hdbscan(vectors_array)
-
-        # Create cluster information
-        unique_labels = sorted(set(cluster_result["labels"]))
-        clusters_info = []
-        label_to_text = {}
-
-        for label in unique_labels:
-            if label == -1:
-                label_to_text[label] = "OUTLIER"
-            else:
-                # Get the medoid vector for this cluster
-                medoid_vector = cluster_result["medoids"][label]
-                medoid_key = tuple(medoid_vector.flatten())
-                medoid_text = vector_to_text.get(medoid_key, f"Cluster {label}")
-
-                clusters_info.append({
-                    "id": int(label),  # Convert numpy int to Python int
-                    "medoid_text": medoid_text,
-                })
-                label_to_text[label] = medoid_text
-
-        # Update clustering result with clusters
-        clustering_result.clusters = clusters_info
-
-        # Create embedding cluster assignments
-        for i, (embedding_id, cluster_label) in enumerate(
-            zip(embedding_ids, cluster_result["labels"])
-        ):
-            embedding_cluster = EmbeddingCluster(
-                embedding_id=UUID(embedding_id),
-                clustering_result_id=clustering_result.id,
-                cluster_id=int(cluster_label),
-            )
-            session.add(embedding_cluster)
-
-        # Transaction will be committed when exiting the with block
-
-    # Create result with assignments
-    assignments = [
-        (
-            str(eid),
-            int(cluster_result["labels"][i]),
-            label_to_text[cluster_result["labels"][i]],
-        )
-        for i, eid in enumerate(embedding_ids)
-    ]
-
-    return {
-        "clustering_result_id": str(clustering_result.id),
-        "assignments": assignments,
-    }
-
-
-def load_clusters_df(session: Session, downsample: int = 10) -> pl.DataFrame:
-    """
-    Load or create clustering results for all embeddings.
-
-    This function processes embeddings globally across all experiments,
-    creating clustering results if they don't exist.
+    This function reads existing clustering results and their assignments,
+    joining with embedding and invocation data to provide a comprehensive view
+    of cluster assignments.
 
     Args:
         session: SQLModel database session
-        downsample: If > 1, only process every nth embedding (e.g., 2 means every other embedding)
 
     Returns:
         DataFrame containing cluster assignments with columns:
@@ -299,89 +131,86 @@ def load_clusters_df(session: Session, downsample: int = 10) -> pl.DataFrame:
         - cluster_label: Text representation (medoid text or "OUTLIER")
         - run_id, sequence_number, invocation_id: For easy joining
         - algorithm: Clustering algorithm used
-        - epsilon: HDBSCAN epsilon parameter
+        - epsilon: HDBSCAN epsilon parameter (if applicable)
     """
     print("Loading clustering data...")
 
-    # First load embeddings metadata
-    embeddings_df = load_embeddings_df(session)
+    # SQL query to join clustering data with embedding and invocation metadata
+    query = """
+    SELECT
+        ec.clustering_result_id as clustering_result_id,
+        ec.embedding_id as embedding_id,
+        cr.embedding_model as embedding_model,
+        ec.cluster_id as cluster_id,
+        cr.algorithm as algorithm,
+        cr.parameters as parameters,
+        e.invocation_id as invocation_id,
+        i.run_id as run_id,
+        i.sequence_number as sequence_number
+    FROM embeddingcluster ec
+    JOIN clusteringresult cr ON ec.clustering_result_id = cr.id
+    JOIN embedding e ON ec.embedding_id = e.id
+    JOIN invocation i ON e.invocation_id = i.id
+    ORDER BY cr.embedding_model, i.run_id, i.sequence_number
+    """
 
-    # Process each embedding model globally
-    cluster_data = []
+    # Use polars to read directly from the database
+    db_url = _get_polars_db_uri(session)
+    df = pl.read_database_uri(query=query, uri=db_url)
+    
 
-    for model_name in embeddings_df["embedding_model"].unique():
-        # Filter to get only rows for this model
-        model_df = embeddings_df.filter(pl.col("embedding_model") == model_name)
+    # Format UUID columns
+    df = format_uuid_columns(df, ["clustering_result_id", "embedding_id", "invocation_id", "run_id"])
 
-        # Apply downsampling within this model's data
-        model_df_downsampled = (
-            model_df.with_row_index("row_idx")
-            .filter(pl.col("row_idx") % downsample == 0)
-            .drop("row_idx")
-        )
+    # Extract epsilon from parameters JSON if present
+    # First decode the JSON
+    df = df.with_columns([
+        pl.col("parameters").str.json_decode().alias("params_struct")
+    ])
+    
+    # Now extract epsilon if it exists, otherwise use None
+    df = df.with_columns([
+        pl.when(pl.col("params_struct").is_not_null())
+        .then(pl.col("params_struct").struct.field("cluster_selection_epsilon"))
+        .otherwise(None)
+        .alias("epsilon")
+    ]).drop("params_struct")
 
-        embedding_ids = model_df_downsampled["id"]
+    # Get cluster labels from ClusteringResult
+    # First, get unique clustering results
+    clustering_ids = df["clustering_result_id"].unique().to_list()
+    
+    # Build a mapping of (clustering_result_id, cluster_id) to cluster_label
+    label_mapping = {}
+    
+    for clustering_id in clustering_ids:
+        clustering_result = session.exec(
+            select(ClusteringResult).where(ClusteringResult.id == UUID(clustering_id))
+        ).first()
+        
+        if clustering_result and clustering_result.clusters:
+            # Map cluster IDs to their medoid text
+            for cluster in clustering_result.clusters:
+                label_mapping[(clustering_id, cluster["id"])] = cluster["medoid_text"]
+        
+        # Always add the outlier mapping
+        label_mapping[(clustering_id, -1)] = "OUTLIER"
+    
+    # Add cluster labels to the dataframe
+    def get_cluster_label(row):
+        key = (row["clustering_result_id"], row["cluster_id"])
+        return label_mapping.get(key, f"Cluster {row['cluster_id']}")
+    
+    df = df.with_columns([
+        pl.struct(["clustering_result_id", "cluster_id"])
+        .map_elements(get_cluster_label, return_dtype=pl.Utf8)
+        .alias("cluster_label")
+    ])
 
-        # Log the number of embeddings for this model
-        print(
-            f"Model {model_name}: {len(model_df)} total, {len(embedding_ids)} after downsampling"
-        )
+    # Drop the parameters column as we've extracted what we need
+    df = df.drop("parameters")
 
-        # Skip if too few samples for clustering
-        if len(embedding_ids) < 2:
-            print(f"  Skipping {model_name} - too few samples for HDBSCAN")
-            continue
-
-        # Get cluster assignments for this model's embeddings
-        cluster_result = fetch_and_cluster_vectors(embedding_ids, model_name, session)
-
-        # cluster_result is a dict with clustering_result_id and assignments
-        clustering_result_id = cluster_result["clustering_result_id"]
-        assignments = cluster_result["assignments"]
-
-        # Create dataframe rows with full metadata
-        rows = []
-        for i, (embedding_id, cluster_id, cluster_label) in enumerate(assignments):
-            # Get metadata from the downsampled dataframe
-            embedding_row = model_df_downsampled.filter(
-                pl.col("id") == embedding_id
-            ).to_dicts()[0]
-
-            row = {
-                "clustering_result_id": clustering_result_id,
-                "embedding_id": embedding_id,
-                "embedding_model": model_name,
-                "cluster_id": cluster_id,
-                "cluster_label": cluster_label,
-                "run_id": embedding_row["run_id"],
-                "sequence_number": embedding_row["sequence_number"],
-                "invocation_id": embedding_row["invocation_id"],
-                "algorithm": "hdbscan",
-                "epsilon": 0.6,
-            }
-            rows.append(row)
-
-        cluster_data.append(pl.DataFrame(rows))
-
-    # Commit all clustering operations atomically
-    session.commit()
-
-    if cluster_data:
-        return pl.concat(cluster_data)
-    else:
-        # Return empty dataframe with correct schema
-        return pl.DataFrame({
-            "clustering_result_id": [],
-            "embedding_id": [],
-            "embedding_model": [],
-            "cluster_id": [],
-            "cluster_label": [],
-            "run_id": [],
-            "sequence_number": [],
-            "invocation_id": [],
-            "algorithm": [],
-            "epsilon": [],
-        })
+    return df
 
 
 def filter_top_n_clusters(
@@ -650,18 +479,18 @@ def batch_fetch_embeddings(
     """
     from panic_tda.schemas import Embedding
     from sqlmodel import select
-    
+
     # Convert string IDs to UUIDs
     uuid_ids = [UUID(eid) for eid in embedding_ids]
-    
+
     # Use SQLModel query with in_ operator
     statement = (
         select(Embedding)
         .where(Embedding.id.in_(uuid_ids))
     )
-    
+
     embeddings = session.exec(statement).all()
-    
+
     # Convert to dictionary with all necessary data
     embeddings_dict = {}
     for embedding in embeddings:
@@ -670,7 +499,7 @@ def batch_fetch_embeddings(
             'embedding_model': embedding.embedding_model,
             'initial_prompt': embedding.invocation.run.initial_prompt
         }
-    
+
     return embeddings_dict
 
 
@@ -692,27 +521,27 @@ def calculate_semantic_drift_batch(
     """
     # Extract embedding IDs
     embedding_ids = run_group["id"].to_list()
-    
+
     if not embedding_ids:
         return run_group.with_columns(pl.lit(None).alias("semantic_drift"))
-    
+
     # Batch fetch all embeddings for this run
     embeddings_data = batch_fetch_embeddings(embedding_ids, session)
-    
+
     # Get the initial prompt and embedding model from the first row
     first_row = run_group.row(0, named=True)
     initial_prompt = first_row["initial_prompt"]
     embedding_model = first_row["embedding_model"]
-    
+
     # Get the initial prompt vector
     initial_vector = initial_prompt_vectors.get((initial_prompt, embedding_model))
     if initial_vector is None:
         return run_group.with_columns(pl.lit(None).alias("semantic_drift"))
-    
+
     # Stack all vectors and calculate drift in one operation
     vectors = []
     drift_values = []
-    
+
     for embedding_id in embedding_ids:
         embedding_data = embeddings_data.get(embedding_id)
         if embedding_data and embedding_data['vector'] is not None:
@@ -721,12 +550,12 @@ def calculate_semantic_drift_batch(
             # Handle missing embeddings
             drift_values.append(None)
             continue
-    
+
     if vectors:
         # Vectorized calculation for all embeddings at once
         vectors_array = np.vstack(vectors)
         distances = calculate_semantic_drift(vectors_array, initial_vector)
-        
+
         # Merge distances with None values for missing embeddings
         distance_idx = 0
         final_drift_values = []
@@ -738,7 +567,7 @@ def calculate_semantic_drift_batch(
                 distance_idx += 1
     else:
         final_drift_values = [None] * len(embedding_ids)
-    
+
     # Add semantic drift column
     return run_group.with_columns(
         pl.Series("semantic_drift", final_drift_values)
@@ -764,11 +593,11 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     """
     # Pre-compute all initial prompt embeddings once
     initial_prompt_vectors = embed_initial_prompts(session)
-    
+
     # Group by run_id and embedding_model for efficient batch processing
     # This ensures all embeddings from the same run are processed together
     grouped = df.group_by(["run_id", "embedding_model"], maintain_order=True)
-    
+
     # Process each group and calculate semantic drift
     result_dfs = []
     for (run_id, embedding_model), group_df in grouped:
@@ -777,7 +606,7 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
             group_df, initial_prompt_vectors, session
         )
         result_dfs.append(group_with_drift)
-    
+
     # Concatenate all results back together, maintaining original order
     if result_dfs:
         result_df = pl.concat(result_dfs)
@@ -786,7 +615,7 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
         result_df = result_df.sort(["run_id", "sequence_number"])
     else:
         result_df = df.with_columns(pl.lit(None).alias("semantic_drift"))
-    
+
     return result_df
 
 
@@ -986,7 +815,7 @@ def cache_dfs(
         cache_path = "output/cache/clusters.parquet"
 
         start_time = time.time()
-        clusters_df = load_clusters_df(session, downsample=10)
+        clusters_df = load_clusters_df(session)
         df_memory_size = clusters_df.estimated_size() / (1024 * 1024)  # Convert to MB
 
         # Save to cache (automatically overwrites if exists)

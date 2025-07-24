@@ -33,6 +33,7 @@ from panic_tda.datavis import (
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
+from panic_tda.clustering_manager import cluster_all_data
 
 
 def setup_minimal_experiment(db_session):
@@ -285,7 +286,10 @@ def test_plot_cluster_run_lengths(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -317,7 +321,10 @@ def test_plot_cluster_run_length_violin(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -366,7 +373,10 @@ def test_plot_cluster_timelines(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -399,7 +409,10 @@ def test_plot_cluster_example_images(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -479,7 +492,10 @@ def test_plot_cluster_histograms(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -511,7 +527,10 @@ def test_plot_cluster_histograms_top_n(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -543,7 +562,10 @@ def test_plot_cluster_transitions(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -663,7 +685,10 @@ def test_plot_cluster_bubblegrid(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(
@@ -705,7 +730,10 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
 
     # Load the necessary data
     embeddings_df = load_embeddings_df(db_session)
-    clusters_df = load_clusters_df(db_session, downsample=1)
+    # Run clustering
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+    clusters_df = load_clusters_df(db_session)
 
     # Join embeddings with clusters
     df_with_clusters = embeddings_df.join(

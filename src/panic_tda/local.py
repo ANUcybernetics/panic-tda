@@ -1298,15 +1298,29 @@ def artificial_futures_slides_charts(session: Session) -> None:
     """
     from panic_tda.data_prep import (
         load_embeddings_from_cache,
+        load_clusters_from_cache,
     )
 
-    embeddings_df = (
-        load_embeddings_from_cache()
-        .filter(pl.col("embedding_model") == "Nomic")
-        .filter(
-            (pl.col("cluster_label").is_not_null())
-            & (pl.col("cluster_label") != "OUTLIER")
-        )
+    # Load embeddings and clusters separately
+    embeddings_df = load_embeddings_from_cache().filter(pl.col("embedding_model") == "Nomic")
+
+    # Load clusters and filter to the specific clustering result
+    clusters_df = load_clusters_from_cache().filter(
+        pl.col("clustering_result_id") == "068817c8-db24-718e-8ed2-ae791d154443"
+    )
+
+    # Join embeddings with clusters to get cluster labels
+    embeddings_df = embeddings_df.join(
+        clusters_df.select(["embedding_id", "cluster_id", "cluster_label"]),
+        left_on="id",
+        right_on="embedding_id",
+        how="inner"
+    )
+
+    # Filter out outliers
+    embeddings_df = embeddings_df.filter(
+        (pl.col("cluster_label").is_not_null())
+        & (pl.col("cluster_label") != "OUTLIER")
     )
 
     # Get top 10 most popular clusters with their counts
@@ -1342,15 +1356,8 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Print top 10 clusters table
     # Get total count of non-outlier embeddings for percentage calculation
-    total_non_outlier = (
-        load_embeddings_from_cache()
-        .filter(pl.col("embedding_model") == "Nomic")
-        .filter(
-            (pl.col("cluster_label").is_not_null())
-            & (pl.col("cluster_label") != "OUTLIER")
-        )
-        .height
-    )
+    # Use the already joined embeddings_df to get the total count
+    total_non_outlier = embeddings_df.height
 
     # Create table with rank, cluster label, and percentage
     top_clusters_table = (
@@ -1407,10 +1414,11 @@ def paper_charts(session: Session) -> None:
 
     cache_dfs(
         session,
-        runs=True,
-        embeddings=True,
-        invocations=True,
-        persistence_diagrams=True,
+        runs=False,
+        embeddings=False,
+        invocations=False,
+        persistence_diagrams=False,
         clusters=True,
     )
+
     artificial_futures_slides_charts(session)
