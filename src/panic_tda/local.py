@@ -1294,7 +1294,6 @@ def artificial_futures_slides_charts(session: Session) -> None:
     TODO list:
 
         - ridgeline plots for semantic drift (by network)
-        - (downsampled) run plots (grouped by initial prompt?)
         - cluster examples (maybe add a "rows" param)
         - cluster timelines (perhaps with "medoid image" as a marker)
         - TDA entropy distributions
@@ -1365,7 +1364,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         run_ids=red_circle_run_ids_str,
         session=session,
         images_per_run=7,
-        output_file="output/vis/red_circle_timeline.jpg",
+        output_file="output/vis/red_circle_timelines.jpg",
         rescale=0.5,
     )
 

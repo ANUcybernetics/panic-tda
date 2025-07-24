@@ -1210,13 +1210,13 @@ def plot_cluster_example_images(
     )
 
     # Group by cluster_label and collect the first num_examples invocation_ids for each
-    cluster_examples = {}
+    cluster_examples = []
 
     # Convert to pandas for easier groupby operations
     pandas_df = filtered_df.to_pandas()
 
-    # Group by cluster_label
-    for cluster_label, group in pandas_df.groupby("cluster_label"):
+    # Group by cluster_label - sorted to maintain consistent order
+    for cluster_label, group in pandas_df.groupby("cluster_label", sort=True):
         # Get the first num_examples invocation_ids
         invocation_ids = group["invocation_id"].head(num_examples).tolist()
         invocation_uuids = [UUID(id) for id in invocation_ids]
@@ -1227,10 +1227,10 @@ def plot_cluster_example_images(
             rows = []
             for i in range(0, len(invocation_uuids), examples_per_row):
                 rows.append(invocation_uuids[i : i + examples_per_row])
-            cluster_examples[str(cluster_label)] = rows
+            cluster_examples.append((str(cluster_label), rows))
         else:
             # Even for single row, wrap in a list to maintain consistent structure
-            cluster_examples[str(cluster_label)] = [invocation_uuids]
+            cluster_examples.append((str(cluster_label), [invocation_uuids]))
 
     # Use export_mosaic_image to create the visualization
     if cluster_examples:

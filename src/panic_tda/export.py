@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import textwrap
 from io import BytesIO
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont
@@ -996,7 +996,7 @@ def export_timeline(
 
 
 def export_mosaic_image(
-    label_invocations: Dict[str, List[List[UUID]]],
+    label_invocations: List[Tuple[str, List[List[UUID]]]],
     session: Session,
     output_file: str,
     rescale: Optional[float] = None,
@@ -1006,7 +1006,8 @@ def export_mosaic_image(
     associated with that label.
 
     Args:
-        label_invocations: Dictionary mapping labels to lists of lists of Invocation UUIDs
+        label_invocations: List of tuples (label, rows) where rows is a list of lists of 
+                          Invocation UUIDs. The order of the outer list is preserved in the output.
                           (multiple rows per label, with only one label shown per cluster)
         session: SQLModel Session for database operations
         output_file: Path to save the output mosaic image
@@ -1022,10 +1023,10 @@ def export_mosaic_image(
     font = ImageFont.truetype(font_path, font_size)
 
     # Calculate dimensions
-    total_rows = sum(len(rows) for rows in label_invocations.values())
+    total_rows = sum(len(rows) for label, rows in label_invocations)
     n_labels = len(label_invocations)
     n_images_per_row = max(
-        len(row) for rows in label_invocations.values() for row in rows
+        len(row) for label, rows in label_invocations for row in rows
     )
 
     # Calculate label area height (font size + padding)
@@ -1049,7 +1050,7 @@ def export_mosaic_image(
 
     # For each cluster, draw label once then all rows without gaps
     row_y = 0
-    for cluster_idx, (label, rows) in enumerate(label_invocations.items()):
+    for cluster_idx, (label, rows) in enumerate(label_invocations):
         # Draw label for this cluster
         draw.text((10, row_y), label, font=font, fill=(0, 0, 0))
         row_y += label_height
