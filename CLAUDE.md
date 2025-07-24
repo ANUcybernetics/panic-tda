@@ -15,6 +15,7 @@ through semantic space.
 - to execute ad-hoc python code but in the correct context (including db
   session) add code to `script()` in @src/panic_tda/main.py, then run it with
   `uv run panic-tda script` (and remove the code when done)
+- always do the above (use `script()` rather than `uv run python -c ...`)
 - run the full test suite in parallel with `uv run pytest -n auto` (including
   slow tests: `uv run pytest -m slow`)
 - don't use try/except for anything outside the top-level functions: it's fine
