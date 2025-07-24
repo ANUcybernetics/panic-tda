@@ -1303,12 +1303,13 @@ def artificial_futures_slides_charts(session: Session) -> None:
         load_embeddings_from_cache,
     )
 
-    embeddings_df = load_embeddings_from_cache()
-    embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
-
-    # Filter out rows with no cluster or outlier cluster marker
-    embeddings_df = embeddings_df.filter(
-        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
+    embeddings_df = (
+        load_embeddings_from_cache()
+        .filter(pl.col("embedding_model") == "Nomic")
+        .filter(
+            (pl.col("cluster_label").is_not_null())
+            & (pl.col("cluster_label") != "OUTLIER")
+        )
     )
 
     # Get top 10 most popular clusters
