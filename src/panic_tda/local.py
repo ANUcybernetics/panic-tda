@@ -1343,6 +1343,33 @@ def artificial_futures_slides_charts(session: Session) -> None:
         output_file="output/vis/cluster_examples_nomic.jpg",
         rescale=0.25,
     )
+    
+    # Print top 10 clusters table
+    # Get total count of non-outlier embeddings for percentage calculation
+    total_non_outlier = (
+        load_embeddings_from_cache()
+        .filter(pl.col("embedding_model") == "Nomic")
+        .filter(
+            (pl.col("cluster_label").is_not_null())
+            & (pl.col("cluster_label") != "OUTLIER")
+        )
+        .height
+    )
+    
+    # Create table with rank, cluster label, and percentage
+    top_clusters_table = (
+        cluster_counts
+        .with_row_index("rank", offset=1)  # Add rank column starting at 1
+        .with_columns(
+            (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
+        )
+        .select(["rank", "cluster_label", "percentage"])
+    )
+    
+    print("\nTop 10 Clusters (Nomic embeddings):")
+    # Set polars to not truncate strings
+    with pl.Config(fmt_str_lengths=1000):
+        print(top_clusters_table)
 
     # Create ridgeline plot for semantic drift by network
     from panic_tda.datavis import plot_semantic_drift
