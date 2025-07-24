@@ -1355,17 +1355,17 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     # Sample 20 random run IDs
-    random_run_ids = filtered_runs_df.get_column("run_id").unique().to_list()
+    red_circle_run_ids = filtered_runs_df.get_column("run_id").unique().to_list()
 
     # Convert to strings (assuming export_timeline expects string IDs)
-    random_run_ids_str = [str(run_id) for run_id in random_run_ids]
+    red_circle_run_ids_str = [str(run_id) for run_id in red_circle_run_ids]
 
     # Export timeline with 10 images per run
     export_timeline(
-        run_ids=random_run_ids_str,
+        run_ids=red_circle_run_ids_str,
         session=session,
-        images_per_run=6,
-        output_file="output/vis/random_runs_timeline.jpg",
+        images_per_run=7,
+        output_file="output/vis/red_circle_timeline.jpg",
         rescale=0.5,
     )
 
