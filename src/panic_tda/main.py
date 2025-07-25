@@ -650,7 +650,26 @@ def script():
     logger.info("Connecting to database to process all experiments...")
 
     with get_session_from_connection_string(db_str) as session:
-        session
+        # Fix invalid UUID values in the database
+        from sqlalchemy import text
+        
+        print("Deleting rows with invalid UUID values...")
+        
+        # Delete from EmbeddingCluster where embedding_id is not a valid string
+        result = session.exec(text("""
+            DELETE FROM embeddingcluster
+            WHERE typeof(embedding_id) != 'text'
+               OR typeof(clustering_result_id) != 'text'
+               OR typeof(cluster_id) != 'text'
+        """))
+        session.commit()
+        print(f"Deleted invalid rows from EmbeddingCluster table")
+        
+        # Now try the delete operation
+        from panic_tda.clustering_manager import delete_cluster_data
+        print("\nAttempting cluster reset...")
+        result = delete_cluster_data(session, 'all')
+        print(f"Result: {result}")
 
 
 @cluster_app.command("embeddings")

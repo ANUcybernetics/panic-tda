@@ -317,9 +317,26 @@ def cluster_all_data(
                 logger.warning(f"  No embeddings found for model {model_name}")
                 continue
 
-            embedding_ids = [e[0] for e in embeddings_data]
-            vectors = [e[1] for e in embeddings_data]
-            texts = [e[2] for e in embeddings_data]
+            # Extract and validate data
+            embedding_ids = []
+            vectors = []
+            texts = []
+            
+            for e in embeddings_data:
+                embedding_id, vector, text = e
+                
+                # Validate embedding_id is a valid UUID string
+                if not isinstance(embedding_id, str) or len(embedding_id) != 36:
+                    logger.warning(f"  Skipping invalid embedding ID: {embedding_id} (type: {type(embedding_id)})")
+                    continue
+                    
+                embedding_ids.append(embedding_id)
+                vectors.append(vector)
+                texts.append(text)
+            
+            if not embedding_ids:
+                logger.warning(f"  No valid embeddings found for model {model_name}")
+                continue
 
             # Import clustering function here to avoid circular imports
             from panic_tda.clustering import hdbscan
@@ -473,6 +490,7 @@ def delete_cluster_data(
             query = query.where(ClusteringResult.embedding_model == embedding_model_id)
 
         results_to_delete = session.exec(query).all()
+        logger.debug(f"Found {len(results_to_delete)} clustering results to delete")
 
         if not results_to_delete:
             model_msg = (
@@ -482,39 +500,26 @@ def delete_cluster_data(
             )
             return {
                 "status": "not_found",
-                "message": model_msg,
+                "message": f"No clustering results found for {model_msg}",
             }
 
-        deleted_results = 0
-        deleted_assignments = 0
+        deleted_results = len(results_to_delete)
 
-        # Delete associated EmbeddingCluster entries first
-        for result in results_to_delete:
-            # Count and delete assignments
+        # Count total assignments before deletion (for reporting)
+        total_assignments = 0
+        for i, result in enumerate(results_to_delete):
+            logger.debug(f"Processing result {i+1}/{deleted_results}: {result.id}")
             assignment_count = session.exec(
                 select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == result.id
                 )
             ).one()
+            logger.debug(f"Assignment count type: {type(assignment_count)}, value: {assignment_count}")
+            total_assignments += int(assignment_count or 0)
 
-            deleted_assignments += assignment_count
-
-            # Delete all assignments for this result
-            session.exec(
-                select(EmbeddingCluster).where(
-                    EmbeddingCluster.clustering_result_id == result.id
-                )
-            )
-            for cluster in session.exec(
-                select(EmbeddingCluster).where(
-                    EmbeddingCluster.clustering_result_id == result.id
-                )
-            ).all():
-                session.delete(cluster)
-
-            # Delete the clustering result
+        # Delete the clustering results - cascades will handle related tables
+        for result in results_to_delete:
             session.delete(result)
-            deleted_results += 1
 
         # Flush deletions (commit handled by context manager)
         session.flush()
@@ -526,17 +531,19 @@ def delete_cluster_data(
         )
         logger.info(
             f"Deleted {deleted_results} clustering result(s) and "
-            f"{deleted_assignments} cluster assignments for {model_msg}"
+            f"{total_assignments} cluster assignments for {model_msg}"
         )
 
         return {
             "status": "success",
             "deleted_results": deleted_results,
-            "deleted_assignments": deleted_assignments,
+            "deleted_assignments": total_assignments,
         }
 
     except Exception as e:
+        import traceback
         logger.error(f"Error deleting cluster data: {str(e)}")
+        logger.error(f"Full traceback:\n{traceback.format_exc()}")
         session.rollback()
         return {
             "status": "error",
