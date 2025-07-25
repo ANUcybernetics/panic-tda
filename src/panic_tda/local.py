@@ -1396,9 +1396,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         how="inner",
     )
 
-    plot_semantic_drift(
-        ridgeline_df, output_file="output/vis/semantic_drift_ridgeline_nomic.pdf"
-    )
+    plot_semantic_drift(ridgeline_df, output_file="output/vis/semantic-drift.pdf")
 
     # sample 20 runs at random, and then use export_timeline (with 10 images per run) to show some of the invocations from that run
     from panic_tda.export import export_timeline
@@ -1420,7 +1418,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         run_ids=red_circle_run_ids_str,
         session=session,
         images_per_run=7,
-        output_file="output/vis/red_circle_timelines.jpg",
+        output_file="output/vis/red-circle-runs.jpg",
         rescale=0.5,
     )
 
