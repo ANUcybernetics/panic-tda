@@ -1229,7 +1229,7 @@ def plot_cluster_example_images(
 
     # Convert to pandas for easier groupby operations
     pandas_df = filtered_df.to_pandas()
-    
+
     # Group by cluster_label and process in the desired order
     grouped = pandas_df.groupby("cluster_label")
     for cluster_label in cluster_order:
@@ -1240,7 +1240,10 @@ def plot_cluster_example_images(
             invocation_uuids = [UUID(id) for id in invocation_ids]
 
             # If we need to wrap rows, split the invocations into multiple rows
-            if examples_per_row < num_examples and len(invocation_uuids) > examples_per_row:
+            if (
+                examples_per_row < num_examples
+                and len(invocation_uuids) > examples_per_row
+            ):
                 # Split into multiple rows
                 rows = []
                 for i in range(0, len(invocation_uuids), examples_per_row):

@@ -782,7 +782,9 @@ def list_clusters_command(
             else:
                 # Simple output with cluster_selection_epsilon parameter
                 epsilon = result.parameters.get("cluster_selection_epsilon", "N/A")
-                duration_str = f"{result.duration:.1f}s" if result.duration > 0 else "N/A"
+                duration_str = (
+                    f"{result.duration:.1f}s" if result.duration > 0 else "N/A"
+                )
                 typer.echo(
                     f"{result.id} - model: {result.embedding_model}, "
                     f"epsilon: {epsilon}, "
@@ -1031,7 +1033,7 @@ def cluster_status_command(
         typer.echo(f"Parameters: {details['parameters']}")
         typer.echo(f"Started: {details['started_at']}")
         typer.echo(f"Completed: {details['completed_at']}")
-        duration = details.get('duration', 0)
+        duration = details.get("duration", 0)
         duration_str = f"{duration:.1f} seconds" if duration > 0 else "N/A"
         typer.echo(f"Duration: {duration_str}")
         typer.echo(f"Total clusters: {len(regular_clusters)}")

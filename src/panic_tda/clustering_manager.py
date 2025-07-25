@@ -130,7 +130,7 @@ def _bulk_insert_with_flush(
     Handles unique constraint violations by skipping duplicates.
     """
     from sqlalchemy.exc import IntegrityError
-    
+
     batch = []
     for obj in objects:
         batch.append(obj)

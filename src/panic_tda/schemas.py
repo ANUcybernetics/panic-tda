@@ -643,8 +643,9 @@ class EmbeddingCluster(SQLModel, table=True):
     """
 
     __table_args__ = (
-        UniqueConstraint("embedding_id", "clustering_result_id", 
-                       name="unique_embedding_clustering"),
+        UniqueConstraint(
+            "embedding_id", "clustering_result_id", name="unique_embedding_clustering"
+        ),
     )
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)

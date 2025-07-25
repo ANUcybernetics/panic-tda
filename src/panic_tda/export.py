@@ -1006,7 +1006,7 @@ def export_mosaic_image(
     associated with that label.
 
     Args:
-        label_invocations: List of tuples (label, rows) where rows is a list of lists of 
+        label_invocations: List of tuples (label, rows) where rows is a list of lists of
                           Invocation UUIDs. The order of the outer list is preserved in the output.
                           (multiple rows per label, with only one label shown per cluster)
         session: SQLModel Session for database operations

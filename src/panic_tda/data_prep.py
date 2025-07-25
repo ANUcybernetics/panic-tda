@@ -106,12 +106,6 @@ def load_clusters_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-
-
-
-
-
-
 def load_clusters_df(session: Session) -> pl.DataFrame:
     """
     Load clustering results from the database.
@@ -165,9 +159,10 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
 
-
     # Format UUID columns
-    df = format_uuid_columns(df, ["clustering_result_id", "embedding_id", "invocation_id", "run_id"])
+    df = format_uuid_columns(
+        df, ["clustering_result_id", "embedding_id", "invocation_id", "run_id"]
+    )
 
     # Extract epsilon from parameters JSON if present
     # First decode the JSON
@@ -365,49 +360,56 @@ def calculate_cluster_bigrams(
 ) -> pl.DataFrame:
     """
     Calculate cluster bigrams from a clusters DataFrame.
-    
+
     Considers the cluster sequence for a given run and creates bigrams
     (e.g., for sequence ABBC: AB, BB, BC). Bigrams are only calculated
     within runs, not across runs.
-    
+
     Args:
         df: DataFrame containing cluster assignments with columns:
             clustering_result_id, run_id, sequence_number, cluster_label
         include_outliers: Whether to include "OUTLIER" clusters (default: False)
-    
+
     Returns:
         DataFrame with columns: clustering_result_id, run_id, from_cluster, to_cluster
     """
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
-    
+
     # Additionally filter out outliers if not requested to include them
     if not include_outliers:
         filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
-    
+
     # Sort by clustering_result_id, run_id, and sequence_number to ensure proper ordering
-    filtered_df = filtered_df.sort(["clustering_result_id", "run_id", "sequence_number"])
-    
+    filtered_df = filtered_df.sort([
+        "clustering_result_id",
+        "run_id",
+        "sequence_number",
+    ])
+
     # Create bigrams within each run
     bigrams_list = []
-    
+
     # Group by clustering_result_id and run_id to process each run separately
-    for (clustering_result_id, run_id), group in filtered_df.group_by(["clustering_result_id", "run_id"]):
+    for (clustering_result_id, run_id), group in filtered_df.group_by([
+        "clustering_result_id",
+        "run_id",
+    ]):
         # Sort group by sequence_number to ensure proper order
         group = group.sort("sequence_number")
-        
+
         # Get the cluster labels as a list
         cluster_labels = group["cluster_label"].to_list()
-        
+
         # Create bigrams from the sequence
-        for i in range(len(cluster_labels) - 1):
+        for i in range(len(cluster_labels) - 0):
             bigrams_list.append({
                 "clustering_result_id": clustering_result_id,
                 "run_id": run_id,
                 "from_cluster": cluster_labels[i],
-                "to_cluster": cluster_labels[i + 1]
+                "to_cluster": cluster_labels[i + 1],
             })
-    
+
     # Create the bigrams dataframe
     if bigrams_list:
         cluster_bigrams_df = pl.DataFrame(bigrams_list)
@@ -418,10 +420,10 @@ def calculate_cluster_bigrams(
                 "clustering_result_id": pl.Utf8,
                 "run_id": pl.Utf8,
                 "from_cluster": pl.Utf8,
-                "to_cluster": pl.Utf8
+                "to_cluster": pl.Utf8,
             }
         )
-    
+
     return cluster_bigrams_df
 
 
@@ -554,17 +556,15 @@ def batch_fetch_embeddings(
     Returns:
         Dictionary mapping embedding ID to embedding data including vector
     """
-    from panic_tda.schemas import Embedding
     from sqlmodel import select
+
+    from panic_tda.schemas import Embedding
 
     # Convert string IDs to UUIDs
     uuid_ids = [UUID(eid) for eid in embedding_ids]
 
     # Use SQLModel query with in_ operator
-    statement = (
-        select(Embedding)
-        .where(Embedding.id.in_(uuid_ids))
-    )
+    statement = select(Embedding).where(Embedding.id.in_(uuid_ids))
 
     embeddings = session.exec(statement).all()
 
@@ -572,9 +572,9 @@ def batch_fetch_embeddings(
     embeddings_dict = {}
     for embedding in embeddings:
         embeddings_dict[str(embedding.id)] = {
-            'vector': embedding.vector,
-            'embedding_model': embedding.embedding_model,
-            'initial_prompt': embedding.invocation.run.initial_prompt
+            "vector": embedding.vector,
+            "embedding_model": embedding.embedding_model,
+            "initial_prompt": embedding.invocation.run.initial_prompt,
         }
 
     return embeddings_dict
@@ -621,8 +621,8 @@ def calculate_semantic_drift_batch(
 
     for embedding_id in embedding_ids:
         embedding_data = embeddings_data.get(embedding_id)
-        if embedding_data and embedding_data['vector'] is not None:
-            vectors.append(embedding_data['vector'])
+        if embedding_data and embedding_data["vector"] is not None:
+            vectors.append(embedding_data["vector"])
         else:
             # Handle missing embeddings
             drift_values.append(None)
@@ -646,9 +646,7 @@ def calculate_semantic_drift_batch(
         final_drift_values = [None] * len(embedding_ids)
 
     # Add semantic drift column
-    return run_group.with_columns(
-        pl.Series("semantic_drift", final_drift_values)
-    )
+    return run_group.with_columns(pl.Series("semantic_drift", final_drift_values))
 
 
 def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
@@ -1055,8 +1053,9 @@ def load_pd_df(session: Session) -> pl.DataFrame:
 
     # Now we need to expand the diagram_data to create rows for each birth/death pair
     # We'll fetch the actual persistence diagrams from the database
-    from panic_tda.schemas import PersistenceDiagram
     from sqlmodel import select
+
+    from panic_tda.schemas import PersistenceDiagram
 
     pd_ids = pd_metadata_df["persistence_diagram_id"].unique().to_list()
 

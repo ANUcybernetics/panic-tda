@@ -193,7 +193,7 @@ def test_load_clusters_df(db_session):
 
     # Run clustering on the embeddings
     cluster_all_data(db_session, downsample=1)
-    
+
     # Commit the transaction to ensure data is persisted
     db_session.commit()
 
@@ -292,7 +292,7 @@ def test_load_clusters_df_with_downsampling(db_session):
     # Run clustering with downsampling factor of 2
     downsample = 2
     cluster_all_data(db_session, downsample=downsample)
-    
+
     # Commit the transaction to ensure data is persisted
     db_session.commit()
 
@@ -1536,65 +1536,102 @@ def test_filter_top_n_clusters_by_model_and_network():
 
 def test_calculate_cluster_bigrams():
     """Test that calculate_cluster_bigrams correctly creates bigrams from cluster sequences."""
-    
+
     # Create synthetic data representing a few runs with cluster sequences
     data = {
         "clustering_result_id": (
-            ["result1"] * 4 +   # run1
-            ["result1"] * 5 +   # run2
-            ["result1"] * 6 +   # run3
-            ["result1"] * 3 +   # run4
-            ["result2"] * 3 +   # run5
-            ["result2"] * 1 +   # run6
-            ["result2"] * 11 +  # run7
-            ["result2"] * 2     # run8
+            ["result1"] * 4  # run1
+            + ["result1"] * 5  # run2
+            + ["result1"] * 6  # run3
+            + ["result1"] * 3  # run4
+            + ["result2"] * 3  # run5
+            + ["result2"] * 1  # run6
+            + ["result2"] * 11  # run7
+            + ["result2"] * 2  # run8
         ),
         "embedding_id": [f"emb_{i}" for i in range(35)],
         "embedding_model": ["model1"] * 20 + ["model2"] * 15,
         "cluster_id": list(range(35)),
         "cluster_label": (
             # Run 1: A->B->B->C
-            ["cluster_A", "cluster_B", "cluster_B", "cluster_C"] +
+            ["cluster_A", "cluster_B", "cluster_B", "cluster_C"]
+            +
             # Run 2: D->E->F->E->D
-            ["cluster_D", "cluster_E", "cluster_F", "cluster_E", "cluster_D"] +
+            ["cluster_D", "cluster_E", "cluster_F", "cluster_E", "cluster_D"]
+            +
             # Run 3: A->A->A->B->C->C
-            ["cluster_A", "cluster_A", "cluster_A", "cluster_B", "cluster_C", "cluster_C"] +
+            [
+                "cluster_A",
+                "cluster_A",
+                "cluster_A",
+                "cluster_B",
+                "cluster_C",
+                "cluster_C",
+            ]
+            +
             # Run 4: G->H->I
-            ["cluster_G", "cluster_H", "cluster_I"] +
+            ["cluster_G", "cluster_H", "cluster_I"]
+            +
             # Run 5: X->Y->Z (for result2)
-            ["cluster_X", "cluster_Y", "cluster_Z"] +
+            ["cluster_X", "cluster_Y", "cluster_Z"]
+            +
             # Run 6: Single element (no bigrams)
-            ["cluster_W"] +
+            ["cluster_W"]
+            +
             # Run 7: P->Q->P->Q->P->Q->P->Q->P->Q->P
-            ["cluster_P", "cluster_Q", "cluster_P", "cluster_Q", "cluster_P", 
-             "cluster_Q", "cluster_P", "cluster_Q", "cluster_P", "cluster_Q", "cluster_P"] +
+            [
+                "cluster_P",
+                "cluster_Q",
+                "cluster_P",
+                "cluster_Q",
+                "cluster_P",
+                "cluster_Q",
+                "cluster_P",
+                "cluster_Q",
+                "cluster_P",
+                "cluster_Q",
+                "cluster_P",
+            ]
+            +
             # Run 8: Two elements
             ["cluster_M", "cluster_N"]
         ),
         "run_id": (
-            ["run1"] * 4 + ["run2"] * 5 + ["run3"] * 6 + ["run4"] * 3 + 
-            ["run5"] * 3 + ["run6"] * 1 + ["run7"] * 11 + ["run8"] * 2
+            ["run1"] * 4
+            + ["run2"] * 5
+            + ["run3"] * 6
+            + ["run4"] * 3
+            + ["run5"] * 3
+            + ["run6"] * 1
+            + ["run7"] * 11
+            + ["run8"] * 2
         ),
         "sequence_number": (
-            list(range(1, 5)) + list(range(1, 6)) + list(range(1, 7)) + 
-            list(range(1, 4)) + list(range(3, 6)) + [1] + list(range(1, 12)) + list(range(1, 3))
+            list(range(1, 5))
+            + list(range(1, 6))
+            + list(range(1, 7))
+            + list(range(1, 4))
+            + list(range(3, 6))
+            + [1]
+            + list(range(1, 12))
+            + list(range(1, 3))
         ),
         "invocation_id": [f"inv_{i}" for i in range(35)],
         "algorithm": ["hdbscan"] * 35,
         "epsilon": [0.6] * 35,
     }
-    
+
     # Create the DataFrame
     df = pl.DataFrame(data)
-    
+
     # Apply the function
     bigrams_df = calculate_cluster_bigrams(df)
-    
+
     # Check that the output is a DataFrame with the correct columns
     assert isinstance(bigrams_df, pl.DataFrame)
     expected_columns = ["clustering_result_id", "run_id", "from_cluster", "to_cluster"]
     assert set(bigrams_df.columns) == set(expected_columns)
-    
+
     # Expected bigrams for each run:
     # Run 1: A->B, B->B, B->C
     # Run 2: D->E, E->F, F->E, E->D
@@ -1604,13 +1641,18 @@ def test_calculate_cluster_bigrams():
     # Run 6: (no bigrams - single element)
     # Run 7: P->Q (5 times), Q->P (5 times)
     # Run 8: M->N
-    
+
     # Convert to dictionary for easier testing
     bigrams_dict = {}
     for row in bigrams_df.iter_rows(named=True):
-        key = (row["clustering_result_id"], row["run_id"], row["from_cluster"], row["to_cluster"])
+        key = (
+            row["clustering_result_id"],
+            row["run_id"],
+            row["from_cluster"],
+            row["to_cluster"],
+        )
         bigrams_dict[key] = bigrams_dict.get(key, 0) + 1
-    
+
     # Check specific expected bigrams
     expected_bigrams = {
         ("result1", "run1", "cluster_A", "cluster_B"): 1,
@@ -1632,21 +1674,21 @@ def test_calculate_cluster_bigrams():
         ("result2", "run7", "cluster_Q", "cluster_P"): 5,
         ("result2", "run8", "cluster_M", "cluster_N"): 1,
     }
-    
+
     for bigram, expected_count in expected_bigrams.items():
         assert bigram in bigrams_dict, f"Expected bigram {bigram} not found"
         assert bigrams_dict[bigram] == expected_count, (
             f"Expected count {expected_count} for bigram {bigram}, got {bigrams_dict[bigram]}"
         )
-    
+
     # Check that run6 (single element) produces no bigrams
     run6_bigrams = bigrams_df.filter(pl.col("run_id") == "run6")
     assert run6_bigrams.height == 0, "Single-element run should produce no bigrams"
-    
+
     # Check that run8 produces one bigram
     run8_bigrams = bigrams_df.filter(pl.col("run_id") == "run8")
     assert run8_bigrams.height == 1, "Run8 should produce one bigram"
-    
+
     # Check total number of bigrams
     # Run1: 3, Run2: 4, Run3: 5, Run4: 2, Run5: 2, Run6: 0, Run7: 10, Run8: 1
     expected_total = 3 + 4 + 5 + 2 + 2 + 0 + 10 + 1
@@ -1657,7 +1699,7 @@ def test_calculate_cluster_bigrams():
 
 def test_calculate_cluster_bigrams_with_outliers():
     """Test that calculate_cluster_bigrams correctly handles outliers."""
-    
+
     # Create synthetic data with outliers
     data = {
         "clustering_result_id": ["result1"] * 10,
@@ -1665,8 +1707,16 @@ def test_calculate_cluster_bigrams_with_outliers():
         "embedding_model": ["model1"] * 10,
         "cluster_id": [-1, 0, 1, -1, 2, 3, -1, -1, 4, 5],
         "cluster_label": [
-            "OUTLIER", "cluster_A", "cluster_B", "OUTLIER", "cluster_C",
-            "cluster_D", "OUTLIER", "OUTLIER", "cluster_E", "cluster_F"
+            "OUTLIER",
+            "cluster_A",
+            "cluster_B",
+            "OUTLIER",
+            "cluster_C",
+            "cluster_D",
+            "OUTLIER",
+            "OUTLIER",
+            "cluster_E",
+            "cluster_F",
         ],
         "run_id": ["run1"] * 10,
         "sequence_number": list(range(1, 11)),
@@ -1674,18 +1724,18 @@ def test_calculate_cluster_bigrams_with_outliers():
         "algorithm": ["hdbscan"] * 10,
         "epsilon": [0.6] * 10,
     }
-    
+
     df = pl.DataFrame(data)
-    
+
     # Test with include_outliers=False
     bigrams_filtered = calculate_cluster_bigrams(df, include_outliers=False)
-    
+
     # Expected bigrams without outliers: A->B, B->C, C->D, D->E, E->F
     filtered_dict = {}
     for row in bigrams_filtered.iter_rows(named=True):
         key = (row["from_cluster"], row["to_cluster"])
         filtered_dict[key] = filtered_dict.get(key, 0) + 1
-    
+
     expected_filtered = {
         ("cluster_A", "cluster_B"): 1,
         ("cluster_B", "cluster_C"): 1,
@@ -1693,26 +1743,26 @@ def test_calculate_cluster_bigrams_with_outliers():
         ("cluster_D", "cluster_E"): 1,
         ("cluster_E", "cluster_F"): 1,
     }
-    
+
     assert len(filtered_dict) == len(expected_filtered), (
         f"Expected {len(expected_filtered)} unique bigrams without outliers, got {len(filtered_dict)}"
     )
-    
+
     for bigram, count in expected_filtered.items():
         assert bigram in filtered_dict, f"Expected bigram {bigram} not found"
         assert filtered_dict[bigram] == count, (
             f"Expected count {count} for bigram {bigram}, got {filtered_dict[bigram]}"
         )
-    
+
     # Test with include_outliers=True
     bigrams_unfiltered = calculate_cluster_bigrams(df, include_outliers=True)
-    
+
     # Expected bigrams with outliers included
     unfiltered_dict = {}
     for row in bigrams_unfiltered.iter_rows(named=True):
         key = (row["from_cluster"], row["to_cluster"])
         unfiltered_dict[key] = unfiltered_dict.get(key, 0) + 1
-    
+
     expected_unfiltered = {
         ("OUTLIER", "cluster_A"): 1,
         ("cluster_A", "cluster_B"): 1,
@@ -1724,11 +1774,11 @@ def test_calculate_cluster_bigrams_with_outliers():
         ("OUTLIER", "cluster_E"): 1,
         ("cluster_E", "cluster_F"): 1,
     }
-    
+
     assert len(unfiltered_dict) == len(expected_unfiltered), (
         f"Expected {len(expected_unfiltered)} unique bigrams with outliers, got {len(unfiltered_dict)}"
     )
-    
+
     for bigram, count in expected_unfiltered.items():
         assert bigram in unfiltered_dict, f"Expected bigram {bigram} not found"
         assert unfiltered_dict[bigram] == count, (
@@ -1738,7 +1788,7 @@ def test_calculate_cluster_bigrams_with_outliers():
 
 def test_calculate_cluster_bigrams_empty():
     """Test that calculate_cluster_bigrams handles empty DataFrames correctly."""
-    
+
     # Create empty DataFrame with correct schema
     empty_df = pl.DataFrame(
         schema={
@@ -1754,15 +1804,19 @@ def test_calculate_cluster_bigrams_empty():
             "epsilon": pl.Float64,
         }
     )
-    
+
     # Calculate bigrams
     bigrams_df = calculate_cluster_bigrams(empty_df)
-    
+
     # Should return empty DataFrame with correct schema
     assert bigrams_df.height == 0
-    assert set(bigrams_df.columns) == {"clustering_result_id", "run_id", "from_cluster", "to_cluster"}
+    assert set(bigrams_df.columns) == {
+        "clustering_result_id",
+        "run_id",
+        "from_cluster",
+        "to_cluster",
+    }
     assert bigrams_df.schema["clustering_result_id"] == pl.Utf8
     assert bigrams_df.schema["run_id"] == pl.Utf8
     assert bigrams_df.schema["from_cluster"] == pl.Utf8
     assert bigrams_df.schema["to_cluster"] == pl.Utf8
-
