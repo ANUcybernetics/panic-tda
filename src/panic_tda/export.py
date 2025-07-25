@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import textwrap
 from io import BytesIO
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from PIL import Image, ImageDraw, ImageFont

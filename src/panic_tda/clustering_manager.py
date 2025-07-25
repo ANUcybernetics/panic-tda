@@ -138,7 +138,7 @@ def _bulk_insert_with_flush(
             try:
                 session.bulk_save_objects(batch)
                 session.flush()
-            except IntegrityError as e:
+            except IntegrityError:
                 # If we get a unique constraint violation, fall back to individual inserts
                 session.rollback()
                 for item in batch:
@@ -156,7 +156,7 @@ def _bulk_insert_with_flush(
         try:
             session.bulk_save_objects(batch)
             session.flush()
-        except IntegrityError as e:
+        except IntegrityError:
             # If we get a unique constraint violation, fall back to individual inserts
             session.rollback()
             for item in batch:

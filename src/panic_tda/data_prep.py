@@ -9,11 +9,10 @@ import ray
 from humanize.time import naturaldelta
 from sqlmodel import Session, select
 
-from panic_tda.clustering import hdbscan
 from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
-from panic_tda.schemas import ClusteringResult, EmbeddingCluster, InvocationType
+from panic_tda.schemas import ClusteringResult, InvocationType
 
 # because I like to see the data
 # pl.Config.set_tbl_rows(1000)

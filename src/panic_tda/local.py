@@ -1297,9 +1297,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
         - TDA entropy distributions
     """
     from panic_tda.data_prep import (
-        load_runs_from_cache,
-        load_embeddings_from_cache,
         load_clusters_from_cache,
+        load_embeddings_from_cache,
+        load_runs_from_cache,
     )
 
     # Load all dataframes from cache at the top
@@ -1315,18 +1315,18 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Join embeddings with clusters to get cluster labels
     # First deduplicate clusters_df to avoid multiple rows per embedding
-    unique_clusters = clusters_df.select(["embedding_id", "cluster_id", "cluster_label"]).unique()
+    unique_clusters = clusters_df.select([
+        "embedding_id",
+        "cluster_id",
+        "cluster_label",
+    ]).unique()
     embeddings_df = embeddings_df.join(
-        unique_clusters,
-        left_on="id",
-        right_on="embedding_id",
-        how="inner"
+        unique_clusters, left_on="id", right_on="embedding_id", how="inner"
     )
 
     # Filter out outliers
     embeddings_df = embeddings_df.filter(
-        (pl.col("cluster_label").is_not_null())
-        & (pl.col("cluster_label") != "OUTLIER")
+        (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
 
     # Get top 10 most popular clusters with their counts
@@ -1345,9 +1345,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     # Join with cluster counts to add count column (but don't sort the entire df)
-    embeddings_df = embeddings_df.join(
-        cluster_counts, on="cluster_label", how="left"
-    )
+    embeddings_df = embeddings_df.join(cluster_counts, on="cluster_label", how="left")
 
     # cluster examples
     plot_cluster_example_images(
@@ -1363,18 +1361,16 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Print top 10 clusters table
     # Get total count of non-outlier embeddings for percentage calculation
     # Use the already joined embeddings_df to get the total count
-    total_non_outlier = embeddings_df.height
-
-    # Create table with rank, cluster label, and percentage
-    top_clusters_table = (
-        cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
-        .with_columns(
-            (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
-        )
-        .select(["rank", "cluster_label", "percentage"])
-    )
 
     # print "top 10 clusters" table as md (for marp slides)
+    # total_non_outlier = embeddings_df.height
+    # top_clusters_table = (
+    #     cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
+    #     .with_columns(
+    #         (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
+    #     )
+    #     .select(["rank", "cluster_label", "percentage"])
+    # )
     # markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
     # print(markdown_table)
 
@@ -1386,7 +1382,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         clusters_df.select(["embedding_id"]).unique(),
         left_on="id",
         right_on="embedding_id",
-        how="inner"
+        how="inner",
     )
 
     plot_semantic_drift(
@@ -1422,7 +1418,6 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
-    from panic_tda.data_prep import cache_dfs
 
     # cache_dfs(
     #     session,
