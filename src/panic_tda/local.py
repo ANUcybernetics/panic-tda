@@ -1293,8 +1293,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     TODO list:
 
-        - ridgeline plots for semantic drift (by network)
-        - TDA entropy distributions
+        - bigram charts (most popular transitions, by network)
+        - most popular cluster (in each decile, grouped by prompt - or a subset of the prompts)
+        - persistence entropy violin plots (maybe need to re-do? or just use a figure from the paper)
     """
     from panic_tda.data_prep import (
         load_clusters_from_cache,
