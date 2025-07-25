@@ -293,9 +293,7 @@ def test_medoid_embedding_id_stored(db_session):
 
                 # Verify the embedding exists
                 embedding = db_session.exec(
-                    select(Embedding).where(
-                        Embedding.id == cluster.medoid_embedding_id
-                    )
+                    select(Embedding).where(Embedding.id == cluster.medoid_embedding_id)
                 ).first()
                 assert embedding is not None
 

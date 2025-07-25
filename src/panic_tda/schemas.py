@@ -657,17 +657,22 @@ class Cluster(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid7, primary_key=True)
 
     clustering_result_id: UUID = Field(foreign_key="clusteringresult.id", index=True)
-    cluster_id: int = Field(..., description="Numeric cluster identifier (-1 for outliers)")
-    medoid_embedding_id: Optional[UUID] = Field(
-        default=None, foreign_key="embedding.id", index=True,
-        description="FK to the medoid embedding (null for outliers)"
+    cluster_id: int = Field(
+        ..., description="Numeric cluster identifier (-1 for outliers)"
     )
-    
+    medoid_embedding_id: Optional[UUID] = Field(
+        default=None,
+        foreign_key="embedding.id",
+        index=True,
+        description="FK to the medoid embedding (null for outliers)",
+    )
+
     # Cluster properties
     size: int = Field(default=0, description="Number of embeddings in this cluster")
     properties: Dict[str, Any] = Field(
-        default_factory=dict, sa_type=JSON, 
-        description="Additional cluster metadata (e.g., density, stability)"
+        default_factory=dict,
+        sa_type=JSON,
+        description="Additional cluster metadata (e.g., density, stability)",
     )
 
     # Relationships
