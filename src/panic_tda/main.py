@@ -27,7 +27,7 @@ from panic_tda.export import (
 from panic_tda.genai_models import get_output_type
 from panic_tda.genai_models import list_models as list_genai_models
 from panic_tda.local import paper_charts
-from panic_tda.schemas import ExperimentConfig, EmbeddingCluster
+from panic_tda.schemas import ExperimentConfig, EmbeddingCluster, Cluster
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -748,11 +748,13 @@ def list_clusters_command(
                 )
             ).one()
 
-            # Count outlier assignments (cluster_id == -1)
+            # Count outlier assignments through the Cluster table
             outlier_count = session.exec(
-                select(func.count(EmbeddingCluster.id)).where(
+                select(func.count(EmbeddingCluster.id))
+                .join(Cluster, EmbeddingCluster.cluster_id == Cluster.id)
+                .where(
                     EmbeddingCluster.clustering_result_id == result.id,
-                    EmbeddingCluster.cluster_id == -1,
+                    Cluster.cluster_id == -1,  # -1 is the outlier cluster ID
                 )
             ).one()
 
@@ -762,8 +764,8 @@ def list_clusters_command(
                 else 0
             )
 
-            # Count regular clusters (excluding outliers)
-            regular_clusters = len([c for c in result.clusters if c.get("id") != -1])
+            # Count regular clusters (excluding outliers) using the cluster_records relationship
+            regular_clusters = len([c for c in result.cluster_records if c.cluster_id != -1])
 
             if verbose:
                 # Detailed output
