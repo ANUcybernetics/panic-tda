@@ -1358,10 +1358,6 @@ def artificial_futures_slides_charts(session: Session) -> None:
         rescale=0.5,
     )
 
-    # Print top 10 clusters table
-    # Get total count of non-outlier embeddings for percentage calculation
-    # Use the already joined embeddings_df to get the total count
-
     # print "top 10 clusters" table as md (for marp slides)
     # total_non_outlier = embeddings_df.height
     # top_clusters_table = (
