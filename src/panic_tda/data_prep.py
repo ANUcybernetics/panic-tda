@@ -110,6 +110,8 @@ def load_clusters_from_cache() -> pl.DataFrame:
 
 
 
+
+
 def load_clusters_df(session: Session) -> pl.DataFrame:
     """
     Load clustering results from the database.
@@ -356,6 +358,71 @@ def calculate_cluster_run_lengths(
     result_df = result_df.sort(group_cols)
 
     return result_df
+
+
+def calculate_cluster_bigrams(
+    df: pl.DataFrame, include_outliers: bool = False
+) -> pl.DataFrame:
+    """
+    Calculate cluster bigrams from a clusters DataFrame.
+    
+    Considers the cluster sequence for a given run and creates bigrams
+    (e.g., for sequence ABBC: AB, BB, BC). Bigrams are only calculated
+    within runs, not across runs.
+    
+    Args:
+        df: DataFrame containing cluster assignments with columns:
+            clustering_result_id, run_id, sequence_number, cluster_label
+        include_outliers: Whether to include "OUTLIER" clusters (default: False)
+    
+    Returns:
+        DataFrame with columns: clustering_result_id, run_id, from_cluster, to_cluster
+    """
+    # Filter out null cluster labels
+    filtered_df = df.filter(pl.col("cluster_label").is_not_null())
+    
+    # Additionally filter out outliers if not requested to include them
+    if not include_outliers:
+        filtered_df = filtered_df.filter(pl.col("cluster_label") != "OUTLIER")
+    
+    # Sort by clustering_result_id, run_id, and sequence_number to ensure proper ordering
+    filtered_df = filtered_df.sort(["clustering_result_id", "run_id", "sequence_number"])
+    
+    # Create bigrams within each run
+    bigrams_list = []
+    
+    # Group by clustering_result_id and run_id to process each run separately
+    for (clustering_result_id, run_id), group in filtered_df.group_by(["clustering_result_id", "run_id"]):
+        # Sort group by sequence_number to ensure proper order
+        group = group.sort("sequence_number")
+        
+        # Get the cluster labels as a list
+        cluster_labels = group["cluster_label"].to_list()
+        
+        # Create bigrams from the sequence
+        for i in range(len(cluster_labels) - 1):
+            bigrams_list.append({
+                "clustering_result_id": clustering_result_id,
+                "run_id": run_id,
+                "from_cluster": cluster_labels[i],
+                "to_cluster": cluster_labels[i + 1]
+            })
+    
+    # Create the bigrams dataframe
+    if bigrams_list:
+        cluster_bigrams_df = pl.DataFrame(bigrams_list)
+    else:
+        # Return empty dataframe with correct schema if no bigrams
+        cluster_bigrams_df = pl.DataFrame(
+            schema={
+                "clustering_result_id": pl.Utf8,
+                "run_id": pl.Utf8,
+                "from_cluster": pl.Utf8,
+                "to_cluster": pl.Utf8
+            }
+        )
+    
+    return cluster_bigrams_df
 
 
 def embed_initial_prompts(session: Session) -> Dict[Tuple[str, str], np.ndarray]:

@@ -1307,11 +1307,18 @@ def artificial_futures_slides_charts(session: Session) -> None:
     embeddings_df = load_embeddings_from_cache()
     clusters_df = load_clusters_from_cache()
 
+    # Clustering result ID to use for filtering
+    CLUSTERING_RESULT_ID = (
+        "06882381-8ed8-7903-9b7f-e1bbc4c517f0"  # Most recent Nomic clustering
+    )
+
     # Filter embeddings to Nomic model
     embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
 
-    # Filter clusters to only those with Nomic embeddings
-    clusters_df = clusters_df.filter(pl.col("embedding_model") == "Nomic")
+    # Filter clusters to only the specified clustering result
+    clusters_df = clusters_df.filter(
+        pl.col("clustering_result_id") == CLUSTERING_RESULT_ID
+    )
 
     # Join embeddings with clusters to get cluster labels
     # First deduplicate clusters_df to avoid multiple rows per embedding
@@ -1350,12 +1357,20 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # cluster examples
     plot_cluster_example_images(
         embeddings_df,
+        24,
+        "Nomic",
+        session,
+        output_file="output/vis/cluster-examples-1.jpg",
+        rescale=0.5,
+    )
+    plot_cluster_example_images(
+        embeddings_df,
         180,
         "Nomic",
         session,
         examples_per_row=60,
-        output_file="output/vis/cluster_examples_nomic.jpg",
-        rescale=0.5,
+        output_file="output/vis/cluster-examples-2.jpg",
+        rescale=0.25,
     )
 
     # print "top 10 clusters" table as md (for marp slides)
