@@ -651,7 +651,7 @@ def script():
 
     with get_session_from_connection_string(db_str) as session:
         # Add your script code here
-        pass
+        session
 
 
 @cluster_app.command("embeddings")
