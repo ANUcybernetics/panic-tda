@@ -1422,6 +1422,33 @@ def artificial_futures_slides_charts(session: Session) -> None:
         rescale=0.5,
     )
 
+    # Calculate cluster bigrams and print top 10 most common bigrams by network
+    from panic_tda.data_prep import calculate_cluster_bigrams
+
+    # Calculate bigrams for all clusters
+    bigrams_df = calculate_cluster_bigrams(clusters_df, include_outliers=False)
+
+    # Join with runs to get network information
+    bigrams_with_network = bigrams_df.join(
+        runs_df.select(["run_id", "network"]), on="run_id", how="inner"
+    )
+
+    # Count bigrams by network
+    bigram_counts = (
+        bigrams_with_network.group_by(["network", "from_cluster", "to_cluster"])
+        .agg(pl.count().alias("count"))
+        .sort(["network", "count"], descending=[False, True])
+    )
+
+    # Print top 10 bigrams for each network
+    print("\nTop 10 most common cluster bigrams by network:")
+    print("=" * 60)
+
+    for network in bigram_counts.get_column("network").unique().sort():
+        network_bigrams = bigram_counts.filter(pl.col("network") == network).head(10)
+        print(f"\nNetwork: {network}")
+        print(network_bigrams.select(["from_cluster", "to_cluster", "count"]))
+
 
 def paper_charts(session: Session) -> None:
     """

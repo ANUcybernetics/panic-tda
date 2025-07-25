@@ -607,13 +607,18 @@ class ClusteringResult(SQLModel, table=True):
         default_factory=dict, sa_type=JSON, description="Algorithm parameters"
     )
 
-    # Cluster information
+    # Cluster information (deprecated - kept for migration compatibility)
     clusters: List[Dict[str, Any]] = Field(
         default_factory=list,
         sa_type=JSON,
-        description="List of clusters with their properties (id, medoid_text, etc.)",
+        description="DEPRECATED: List of clusters with their properties",
     )
 
+    # Relationships
+    cluster_records: List["Cluster"] = Relationship(
+        back_populates="clustering_result",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
     embedding_clusters: List["EmbeddingCluster"] = Relationship(
         back_populates="clustering_result",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
@@ -634,6 +639,45 @@ class ClusteringResult(SQLModel, table=True):
         return delta.total_seconds()
 
 
+class Cluster(SQLModel, table=True):
+    """
+    Represents an individual cluster within a clustering result.
+
+    This class stores information about a single cluster, including its medoid
+    embedding (if applicable) and other properties. Outlier clusters (cluster_id = -1)
+    will have no medoid_embedding reference.
+    """
+
+    __table_args__ = (
+        UniqueConstraint(
+            "clustering_result_id", "cluster_id", name="unique_cluster_per_result"
+        ),
+    )
+
+    id: UUID = Field(default_factory=uuid7, primary_key=True)
+
+    clustering_result_id: UUID = Field(foreign_key="clusteringresult.id", index=True)
+    cluster_id: int = Field(..., description="Numeric cluster identifier (-1 for outliers)")
+    medoid_embedding_id: Optional[UUID] = Field(
+        default=None, foreign_key="embedding.id", index=True,
+        description="FK to the medoid embedding (null for outliers)"
+    )
+    
+    # Cluster properties
+    size: int = Field(default=0, description="Number of embeddings in this cluster")
+    properties: Dict[str, Any] = Field(
+        default_factory=dict, sa_type=JSON, 
+        description="Additional cluster metadata (e.g., density, stability)"
+    )
+
+    # Relationships
+    clustering_result: ClusteringResult = Relationship(back_populates="cluster_records")
+    medoid_embedding: Optional[Embedding] = Relationship()
+    embedding_assignments: List["EmbeddingCluster"] = Relationship(
+        back_populates="cluster"
+    )
+
+
 class EmbeddingCluster(SQLModel, table=True):
     """
     Maps embeddings to their cluster assignments in a specific clustering result.
@@ -652,12 +696,14 @@ class EmbeddingCluster(SQLModel, table=True):
 
     embedding_id: UUID = Field(foreign_key="embedding.id", index=True)
     clustering_result_id: UUID = Field(foreign_key="clusteringresult.id", index=True)
-    cluster_id: int = Field(..., description="Cluster identifier (or -1 for outliers)")
+    cluster_id: UUID = Field(foreign_key="cluster.id", index=True)
 
+    # Relationships
     embedding: Embedding = Relationship(back_populates="cluster_assignments")
     clustering_result: ClusteringResult = Relationship(
         back_populates="embedding_clusters"
     )
+    cluster: "Cluster" = Relationship(back_populates="embedding_assignments")
 
 
 class PersistenceDiagram(SQLModel, table=True):

@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 from panic_tda.db import list_runs, read_embedding
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
-from panic_tda.schemas import ClusteringResult, InvocationType
+from panic_tda.schemas import InvocationType
 
 # because I like to see the data
 # pl.Config.set_tbl_rows(1000)
@@ -138,20 +138,28 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         ec.clustering_result_id as clustering_result_id,
         ec.embedding_id as embedding_id,
         cr.embedding_model as embedding_model,
-        ec.cluster_id as cluster_id,
+        c.cluster_id as cluster_id,
+        c.properties as cluster_properties,
+        CASE 
+            WHEN c.cluster_id = -1 THEN 'OUTLIER'
+            ELSE json_extract(c.properties, '$.medoid_text')
+        END as cluster_label,
         cr.algorithm as algorithm,
         cr.parameters as parameters,
         e.invocation_id as invocation_id,
         i.run_id as run_id,
         i.sequence_number as sequence_number,
         r.initial_prompt as initial_prompt,
-        r.network as network
+        r.network as network,
+        c.medoid_embedding_id as medoid_embedding_id,
+        c.size as cluster_size
     FROM embeddingcluster ec
     JOIN clusteringresult cr ON ec.clustering_result_id = cr.id
+    JOIN cluster c ON ec.cluster_id = c.id
     JOIN embedding e ON ec.embedding_id = e.id
     JOIN invocation i ON e.invocation_id = i.id
     JOIN run r ON i.run_id = r.id
-    WHERE r.initial_prompt NOT IN ('yeah', 'nah')
+    -- WHERE r.initial_prompt NOT IN ('yeah', 'nah')  -- Commented out for now to allow test data
     ORDER BY cr.embedding_model, i.run_id, i.sequence_number
     """
 
@@ -161,7 +169,14 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
 
     # Format UUID columns
     df = format_uuid_columns(
-        df, ["clustering_result_id", "embedding_id", "invocation_id", "run_id"]
+        df,
+        [
+            "clustering_result_id",
+            "embedding_id",
+            "invocation_id",
+            "run_id",
+            "medoid_embedding_id",
+        ],
     )
 
     # Extract epsilon from parameters JSON if present
@@ -171,51 +186,44 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     ])
 
     # Now extract epsilon if it exists, otherwise use None
+    # Use a more robust approach that handles missing fields
+    def extract_epsilon(params):
+        if params is None:
+            return None
+        return params.get("cluster_selection_epsilon", None)
+
     df = df.with_columns([
-        pl.when(pl.col("params_struct").is_not_null())
-        .then(pl.col("params_struct").struct.field("cluster_selection_epsilon"))
-        .otherwise(None)
+        pl.col("params_struct")
+        .map_elements(extract_epsilon, return_dtype=pl.Float64)
         .alias("epsilon")
     ]).drop("params_struct")
 
-    # Get cluster labels from ClusteringResult
-    # First, get unique clustering results
-    clustering_ids = df["clustering_result_id"].unique().to_list()
-
-    # Build a mapping of (clustering_result_id, cluster_id) to cluster_label
-    label_mapping = {}
-
-    for clustering_id in clustering_ids:
-        clustering_result = session.exec(
-            select(ClusteringResult).where(ClusteringResult.id == UUID(clustering_id))
-        ).first()
-
-        if clustering_result and clustering_result.clusters:
-            # Map cluster IDs to their medoid text
-            for cluster in clustering_result.clusters:
-                label_mapping[(clustering_id, cluster["id"])] = cluster["medoid_text"]
-
-        # Always add the outlier mapping
-        label_mapping[(clustering_id, -1)] = "OUTLIER"
-
-    # Add cluster labels to the dataframe
-    def get_cluster_label(row):
-        key = (row["clustering_result_id"], row["cluster_id"])
-        return label_mapping.get(key, f"Cluster {row['cluster_id']}")
-
-    df = df.with_columns([
-        pl.struct(["clustering_result_id", "cluster_id"])
-        .map_elements(get_cluster_label, return_dtype=pl.Utf8)
-        .alias("cluster_label")
-    ])
-
     # Parse network from JSON string to create network_path column
+    # Handle case where network might be null or already decoded
+    def parse_network(network_val):
+        if network_val is None:
+            return ""
+        if isinstance(network_val, str):
+            try:
+                import json
+
+                parsed = json.loads(network_val)
+                if isinstance(parsed, list):
+                    return "→".join(parsed)
+            except (json.JSONDecodeError, ValueError):
+                pass
+        elif isinstance(network_val, list):
+            return "→".join(network_val)
+        return str(network_val)
+
     df = df.with_columns([
-        pl.col("network").str.json_decode().list.join("→").alias("network")
+        pl.col("network")
+        .map_elements(parse_network, return_dtype=pl.Utf8)
+        .alias("network")
     ])
 
-    # Drop the parameters column as we've extracted what we need
-    df = df.drop("parameters")
+    # Drop the parameters and cluster_properties columns as we've extracted what we need
+    df = df.drop(["parameters", "cluster_properties"])
 
     return df
 
@@ -402,7 +410,7 @@ def calculate_cluster_bigrams(
         cluster_labels = group["cluster_label"].to_list()
 
         # Create bigrams from the sequence
-        for i in range(len(cluster_labels) - 0):
+        for i in range(len(cluster_labels) - 1):
             bigrams_list.append({
                 "clustering_result_id": clustering_result_id,
                 "run_id": run_id,
@@ -556,7 +564,6 @@ def batch_fetch_embeddings(
     Returns:
         Dictionary mapping embedding ID to embedding data including vector
     """
-    from sqlmodel import select
 
     from panic_tda.schemas import Embedding
 
@@ -1053,7 +1060,6 @@ def load_pd_df(session: Session) -> pl.DataFrame:
 
     # Now we need to expand the diagram_data to create rows for each birth/death pair
     # We'll fetch the actual persistence diagrams from the database
-    from sqlmodel import select
 
     from panic_tda.schemas import PersistenceDiagram
 

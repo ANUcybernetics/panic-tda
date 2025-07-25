@@ -1,6 +1,5 @@
 """Tests for the clustering manager functionality."""
 
-from uuid import UUID
 from sqlmodel import Session, create_engine, select
 
 from panic_tda.clustering_manager import (
@@ -61,7 +60,8 @@ def test_cluster_all_data_no_downsampling(db_session):
             "cluster_selection_epsilon": 0.4,
             "allow_single_cluster": True,
         }
-        assert len(cr.clusters) > 0  # Should have at least one cluster
+        # Check that cluster records were created in the new structure
+        assert len(cr.cluster_records) > 0  # Should have at least one cluster
 
         # Verify embedding assignments exist
         assignments = db_session.exec(
@@ -284,20 +284,20 @@ def test_medoid_embedding_id_stored(db_session):
         ).first()
 
         assert clustering_result is not None
-        assert len(clustering_result.clusters) > 0
+        assert len(clustering_result.cluster_records) > 0
 
-        # Check that each cluster has medoid_embedding_id
-        for cluster in clustering_result.clusters:
-            assert "medoid_embedding_id" in cluster
-            assert cluster["medoid_embedding_id"] is not None
+        # Check that each cluster has medoid_embedding_id (except outliers)
+        for cluster in clustering_result.cluster_records:
+            if cluster.cluster_id != -1:  # Not an outlier
+                assert cluster.medoid_embedding_id is not None
 
-            # Verify the embedding exists
-            embedding = db_session.exec(
-                select(Embedding).where(
-                    Embedding.id == UUID(cluster["medoid_embedding_id"])
-                )
-            ).first()
-            assert embedding is not None
+                # Verify the embedding exists
+                embedding = db_session.exec(
+                    select(Embedding).where(
+                        Embedding.id == cluster.medoid_embedding_id
+                    )
+                ).first()
+                assert embedding is not None
 
 
 def test_cluster_all_data_multiple_models(db_session):

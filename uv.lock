@@ -959,6 +959,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
+    { name = "alembic" },
     { name = "altair" },
     { name = "connectorx" },
     { name = "diffusers" },
@@ -1004,6 +1005,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", specifier = ">=1.4.0" },
+    { name = "alembic", specifier = ">=1.16.4" },
     { name = "altair", specifier = ">=5.5.0" },
     { name = "connectorx", specifier = ">=0.4.2" },
     { name = "diffusers", specifier = ">=0.32.2" },

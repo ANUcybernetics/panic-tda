@@ -214,6 +214,8 @@ def test_load_clusters_df(db_session):
         "epsilon",
         "initial_prompt",
         "network",
+        "medoid_embedding_id",
+        "cluster_size",
     ]
     assert all(col in clusters_df.columns for col in expected_columns)
     assert set(clusters_df.columns) == set(expected_columns)
