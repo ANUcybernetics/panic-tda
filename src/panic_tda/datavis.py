@@ -478,9 +478,9 @@ def plot_semantic_drift(
 
     # Create density data for ridgeline plot
     ridge_data = []
-    # Get the actual range of semantic drift values
-    min_drift = df["semantic_drift"].min()
-    max_drift = df["semantic_drift"].max()
+    # Use full cosine distance range [0, 2]
+    min_drift = 0
+    max_drift = 2
     x_grid = np.linspace(min_drift, max_drift, 200)  # Grid for density evaluation
 
     # Process each network and bin combination
@@ -552,7 +552,7 @@ def plot_semantic_drift(
         )
         + scale_x_continuous(
             expand=(0.01, 0),
-            limits=(min_drift, max_drift),
+            limits=(0, 2),  # Full cosine distance range
         )
         + labs(x="cosine drift", y="sequence progress")
         + facet_wrap(
