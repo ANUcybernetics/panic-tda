@@ -325,10 +325,17 @@ def cluster_all_data(
             for e in embeddings_data:
                 embedding_id, vector, text = e
                 
-                # Validate embedding_id is a valid UUID string
-                if not isinstance(embedding_id, str) or len(embedding_id) != 36:
-                    logger.warning(f"  Skipping invalid embedding ID: {embedding_id} (type: {type(embedding_id)})")
-                    continue
+                # Validate embedding_id - it should be a UUID object or convertible to one
+                if not isinstance(embedding_id, UUID):
+                    if isinstance(embedding_id, str) and len(embedding_id) == 36:
+                        try:
+                            embedding_id = UUID(embedding_id)
+                        except ValueError:
+                            logger.warning(f"  Skipping invalid embedding ID: {embedding_id} (not a valid UUID)")
+                            continue
+                    else:
+                        logger.warning(f"  Skipping invalid embedding ID: {embedding_id} (type: {type(embedding_id)})")
+                        continue
                     
                 embedding_ids.append(embedding_id)
                 vectors.append(vector)
