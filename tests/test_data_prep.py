@@ -702,14 +702,14 @@ def test_add_persistence_entropy(db_session):
     reason="This will blow away the real cache, which is probably not what you want."
 )
 def test_cache_dfs(db_session):
-    """Test that cache_dfs successfully writes DataFrames to Parquet files."""
+    """Test end-to-end pipeline: experiment → clustering → caching → loading from cache."""
 
     # 1. Setup: Create config, run experiment
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test caching dataframes"],
-        embedding_models=["Dummy"],
+        embedding_models=["Dummy", "Dummy2"],
         max_length=100,  # Keep it small for testing
     )
     db_session.add(config)
@@ -718,7 +718,19 @@ def test_cache_dfs(db_session):
     db_url = str(db_session.get_bind().engine.url)
     perform_experiment(str(config.id), db_url)
 
-    cache_dfs(db_session, clusters=False)  # Don't cache clusters in this test
+    # 2. Run clustering on the embeddings
+    cluster_all_data(db_session, downsample=1)
+    db_session.commit()
+
+    # 3. Load data from database before caching
+    runs_df_before = load_runs_df(db_session)
+    invocations_df_before = load_invocations_df(db_session)
+    embeddings_df_before = load_embeddings_df(db_session)
+    clusters_df_before = load_clusters_df(db_session)
+
+    # 4. Cache all dataframes including clusters
+    cache_dfs(db_session, clusters=True)
+    
     # Check that cache directory exists
     cache_dir = Path("output/cache")
 
@@ -729,6 +741,66 @@ def test_cache_dfs(db_session):
     )
     assert (cache_dir / "embeddings.parquet").exists(), (
         "Embeddings cache file not found"
+    )
+    assert (cache_dir / "clusters.parquet").exists(), (
+        "Clusters cache file not found"
+    )
+
+    # 5. Load dataframes from cache
+    runs_df_cached = pl.read_parquet(cache_dir / "runs.parquet")
+    invocations_df_cached = pl.read_parquet(cache_dir / "invocations.parquet")
+    embeddings_df_cached = pl.read_parquet(cache_dir / "embeddings.parquet")
+    clusters_df_cached = pl.read_parquet(cache_dir / "clusters.parquet")
+
+    # 6. Verify cached data matches original data
+    # Note: We need to handle potential column order differences
+    pl.testing.assert_frame_equal(
+        runs_df_before.sort(["run_id", "embedding_model", "homology_dimension"]),
+        runs_df_cached.sort(["run_id", "embedding_model", "homology_dimension"]),
+        check_column_order=False,
+        check_row_order=False,
+    )
+
+    pl.testing.assert_frame_equal(
+        invocations_df_before.sort("id"),
+        invocations_df_cached.sort("id"),
+        check_column_order=False,
+        check_row_order=False,
+    )
+
+    pl.testing.assert_frame_equal(
+        embeddings_df_before.sort("id"),
+        embeddings_df_cached.sort("id"),
+        check_column_order=False,
+        check_row_order=False,
+    )
+
+    pl.testing.assert_frame_equal(
+        clusters_df_before.sort(["embedding_id", "embedding_model"]),
+        clusters_df_cached.sort(["embedding_id", "embedding_model"]),
+        check_column_order=False,
+        check_row_order=False,
+    )
+
+    # 7. Verify data integrity
+    # Check that we have the expected number of records
+    assert runs_df_cached.height > 0, "No runs found in cache"
+    assert invocations_df_cached.height == 100, "Expected 100 invocations"
+    assert embeddings_df_cached.height == 100, "Expected 100 embeddings (50 per model)"
+    assert clusters_df_cached.height == 100, "Expected 100 cluster assignments"
+
+    # Check that clustering results are present and valid
+    assert clusters_df_cached["cluster_label"].is_not_null().all(), (
+        "Found null cluster labels"
+    )
+    assert clusters_df_cached.filter(pl.col("algorithm") == "hdbscan").height == 100, (
+        "All clusters should use hdbscan algorithm"
+    )
+    
+    # Verify both embedding models have clustering results
+    models_in_clusters = clusters_df_cached["embedding_model"].unique().sort()
+    assert models_in_clusters.to_list() == ["Dummy", "Dummy2"], (
+        f"Expected both embedding models in clusters, got {models_in_clusters.to_list()}"
     )
 
 
