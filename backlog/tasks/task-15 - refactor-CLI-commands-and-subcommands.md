@@ -31,6 +31,7 @@ commands in the documentation (e.g. @README.md, @DESIGN.md).
 ## Progress
 
 Completed:
+
 - Created hierarchical command groups (experiment, run, cluster, model, export)
 - Migrated all commands to appropriate subcommands:
   - `perform-experiment` → `experiment perform`
@@ -50,4 +51,5 @@ Completed:
   - `cluster-status` → `cluster show`
 - Added plural aliases (experiments, runs, clusters) that work as aliases
 - Updated documentation in README.md and CLAUDE.md
-- Updated shell scripts (perform-experiment.sh, perform-clustering.sh, run-doctor.sh)
+- Updated shell scripts (perform-experiment.sh, perform-clustering.sh,
+  run-doctor.sh)
