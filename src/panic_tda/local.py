@@ -1198,7 +1198,7 @@ def ieee_smc_charts(session: Session) -> None:
 
     # # With the new approach, many visualization functions only need the session!
     # # They load the clusters data internally.
-    
+
     # # plot_sense_check_histograms(embeddings_df)  # This one still needs embeddings
     # plot_cluster_bubblegrid(
     #     session,  # Just pass the session - no DataFrame needed!
@@ -1461,12 +1461,14 @@ def artificial_futures_slides_charts(session: Session) -> None:
     print("=" * 60)
     print(top_bigrams_by_network)
 
+    from panic_tda.datavis import plot_cluster_bubblegrid
+
     plot_cluster_bubblegrid(
-        cluster_df,
-        label_df,
+        clusters_df,
         False,
-        "output/vis/paper/fig2.pdf",
+        "output/vis/cluster-bubblegrid.pdf",
     )
+
 
 def paper_charts(session: Session) -> None:
     """

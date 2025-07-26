@@ -288,11 +288,14 @@ def test_plot_cluster_run_lengths(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_run_lengths.pdf"
 
-    # Generate the plot - now just pass the session!
-    plot_cluster_run_lengths(db_session, output_file)
+    # Generate the plot - now pass the clusters dataframe!
+    plot_cluster_run_lengths(clusters_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -306,11 +309,14 @@ def test_plot_cluster_run_length_violin(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_run_length_violin.pdf"
 
-    # Generate the plot - now just pass the session!
-    plot_cluster_run_length_violin(db_session, output_file)
+    # Generate the plot - now pass the clusters dataframe!
+    plot_cluster_run_length_violin(clusters_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -366,8 +372,8 @@ def test_plot_cluster_timelines(db_session):
     # Define output file
     output_file = "output/test/cluster_timelines.pdf"
 
-    # Generate the plot - now pass session instead of label_df
-    plot_cluster_timelines(df_with_clusters, db_session, output_file)
+    # Generate the plot - now pass clusters_df instead of session
+    plot_cluster_timelines(df_with_clusters, clusters_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -464,11 +470,14 @@ def test_plot_cluster_histograms(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_histograms.pdf"
 
-    # Generate the plot - now just pass the session!
-    plot_cluster_histograms(db_session, output_file)
+    # Generate the plot - now pass the clusters dataframe!
+    plot_cluster_histograms(clusters_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -517,11 +526,14 @@ def test_plot_cluster_transitions(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_transitions.pdf"
 
-    # Generate the plot - now just pass the session!
-    plot_cluster_transitions(db_session, True, output_file)
+    # Generate the plot - now pass the clusters dataframe!
+    plot_cluster_transitions(clusters_df, True, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -538,8 +550,11 @@ def test_create_label_map_df(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
-    # Test create_label_map_df function with session
-    label_map_df = create_label_map_df(db_session)
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+    
+    # Test create_label_map_df function with clusters dataframe
+    label_map_df = create_label_map_df(clusters_df)
 
     # Validate the output DataFrame
     assert isinstance(label_map_df, pl.DataFrame)
@@ -574,17 +589,20 @@ def test_plot_cluster_bubblegrid(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_bubblegrid.pdf"
 
-    # without outliers - now just pass the session!
-    plot_cluster_bubblegrid(db_session, False, output_file)
+    # without outliers - now pass the clusters dataframe!
+    plot_cluster_bubblegrid(clusters_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_bubblegrid(db_session, True, output_file)
+    plot_cluster_bubblegrid(clusters_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )
@@ -598,17 +616,20 @@ def test_plot_cluster_run_length_bubblegrid(db_session):
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
+    # Load clusters data
+    clusters_df = load_clusters_df(db_session)
+
     # Define output file
     output_file = "output/test/cluster_run_length_bubblegrid.pdf"
 
-    # without outliers - now pass session instead of df and label_df!
-    plot_cluster_run_length_bubblegrid(db_session, False, output_file)
+    # without outliers - now pass clusters dataframe!
+    plot_cluster_run_length_bubblegrid(clusters_df, False, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (without outliers): {output_file}"
     )
 
     # with outliers
-    plot_cluster_run_length_bubblegrid(db_session, True, output_file)
+    plot_cluster_run_length_bubblegrid(clusters_df, True, output_file)
     assert os.path.exists(output_file), (
         f"File was not created (with outliers): {output_file}"
     )

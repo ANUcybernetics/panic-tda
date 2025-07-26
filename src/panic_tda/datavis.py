@@ -70,37 +70,40 @@ def save(plot, filename: str) -> str:
 
 
 def create_label_map_df(
-    session: Session,
+    clusters_df: pl.DataFrame,
     print_mapping: bool = False,
     output_path: str = "output/vis/cluster_label_map.tex",
 ) -> pl.DataFrame:
     """
     Creates a mapping of cluster labels to sequential integer indices.
 
-    This function loads the clusters data and creates a mapping where each unique 
-    cluster gets a sequential integer index starting from 1. Outliers (cluster_id == -1) 
-    are excluded from the mapping. Clusters are ordered by size (largest first) within 
+    This function takes clusters data and creates a mapping where each unique
+    cluster gets a sequential integer index starting from 1. Outliers (cluster_id == -1)
+    are excluded from the mapping. Clusters are ordered by size (largest first) within
     each embedding model.
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data
         print_mapping: If True, print the mapping to console
         output_path: Path to save the LaTeX file
 
     Returns:
         DataFrame with embedding_model, cluster_label, and cluster_index columns for joining
     """
-    # Load clusters DataFrame
-    clusters_df = load_clusters_df(session)
-    
+
     # Filter out outliers (cluster_id == -1)
     filtered_df = clusters_df.filter(pl.col("cluster_id") != -1)
+
+    # Calculate cluster sizes by counting occurrences
+    cluster_sizes = (
+        filtered_df.group_by(["embedding_model", "cluster_label"])
+        .agg(pl.len().alias("cluster_size"))
+    )
 
     # Get unique combinations of embedding_model and cluster_label
     # Use cluster_size to order by importance (larger clusters first)
     unique_clusters = (
-        filtered_df.select("embedding_model", "cluster_label", "cluster_size")
-        .unique()
+        cluster_sizes
         .sort(["embedding_model", "cluster_size", "cluster_label"], descending=[False, True, False])
     )
 
@@ -144,7 +147,7 @@ def create_label_map_df(
     # Create a table for each embedding model
     for embedding_model in map_df["embedding_model"].unique().sort():
         model_df = map_df.filter(pl.col("embedding_model") == embedding_model).sort("cluster_index")
-        
+
         latex_content.extend([
             f"\\section*{{{embedding_model}}}",
             "\\begin{longtable}{|c|p{12cm}|}",
@@ -343,7 +346,7 @@ def plot_persistence_entropy(
 
 
 def plot_cluster_run_lengths(
-    session: Session, 
+    clusters_df: pl.DataFrame,
     output_file: str = "output/vis/cluster_run_lengths.pdf"
 ) -> None:
     """
@@ -354,12 +357,10 @@ def plot_cluster_run_lengths(
     - embedding_model represented by point shape
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data with sequence information
         output_file: Path to save the visualization
     """
-    # Load clusters data - it has sequence information!
-    clusters_df = load_clusters_df(session)
-    
+
     # Calculate run lengths using calculate_cluster_run_lengths
     run_lengths_df = calculate_cluster_run_lengths(clusters_df)
 
@@ -403,7 +404,7 @@ def plot_cluster_run_lengths(
 
 
 def plot_cluster_run_length_violin(
-    session: Session,
+    clusters_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_run_length_violin.pdf",
 ) -> None:
@@ -415,13 +416,11 @@ def plot_cluster_run_length_violin(
     - faceted by network
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data
         include_outliers: If False, filter out outliers
         output_file: Path to save the visualization
     """
-    # Load clusters data
-    clusters_df = load_clusters_df(session)
-    
+
     run_lengths_df = calculate_cluster_run_lengths(clusters_df, include_outliers)
 
     # Filter out null or OUTLIER cluster labels
@@ -629,7 +628,7 @@ def plot_semantic_drift(
 
 def plot_cluster_timelines(
     df: pl.DataFrame,
-    session: Session,
+    clusters_df: pl.DataFrame,
     output_file: str = "output/vis/cluster_timelines.pdf",
 ) -> None:
     """
@@ -638,12 +637,12 @@ def plot_cluster_timelines(
 
     Args:
         df: DataFrame containing embedding data with cluster_label and sequence_number
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data for label mapping
         output_file: Path to save the visualization
     """
     # Create label mapping
-    label_map_df = create_label_map_df(session)
-    
+    label_map_df = create_label_map_df(clusters_df)
+
     # Filter out null cluster labels
     filtered_df = df.filter(pl.col("cluster_label").is_not_null())
 
@@ -697,7 +696,7 @@ def plot_cluster_timelines(
 
 
 def plot_cluster_bubblegrid(
-    session: Session,
+    clusters_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_bubblegrid.pdf",
 ) -> None:
@@ -708,16 +707,13 @@ def plot_cluster_bubblegrid(
     represents count. Uses facet_grid by embedding_model and network.
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
-    # Load clusters data directly - it has everything we need!
-    clusters_df = load_clusters_df(session)
-    
     # Create label mapping
-    label_map_df = create_label_map_df(session)
-    
+    label_map_df = create_label_map_df(clusters_df)
+
     # Filter out outliers if requested
     if not include_outliers:
         filtered_df = clusters_df.filter(pl.col("cluster_id") != -1)
@@ -832,7 +828,7 @@ def plot_cluster_bubblegrid(
 
 
 def plot_cluster_run_length_bubblegrid(
-    session: Session,
+    clusters_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_run_length_bubblegrid.pdf",
 ) -> None:
@@ -843,16 +839,13 @@ def plot_cluster_run_length_bubblegrid(
     represents average run length. Uses facet_grid by embedding_model and network.
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
-    # Load clusters data
-    clusters_df = load_clusters_df(session)
-    
     # Create label mapping
-    label_map_df = create_label_map_df(session)
-    
+    label_map_df = create_label_map_df(clusters_df)
+
     # Filter based on outliers
     if not include_outliers:
         filtered_df = clusters_df.filter(pl.col("cluster_id") != -1)
@@ -985,7 +978,7 @@ def plot_sense_check_histograms(
 
 
 def plot_cluster_histograms(
-    session: Session,
+    clusters_df: pl.DataFrame,
     include_outliers: bool = False,
     output_file: str = "output/vis/cluster_histograms.pdf",
 ) -> None:
@@ -994,13 +987,11 @@ def plot_cluster_histograms(
     faceted by embedding model and network.
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
-    # Load clusters data
-    clusters_df = load_clusters_df(session)
-    
+
     # Filter based on outliers
     if not include_outliers:
         df = clusters_df.filter(pl.col("cluster_id") != -1)
@@ -1094,7 +1085,7 @@ def plot_cluster_histograms_top_n(
 
 
 def plot_cluster_transitions(
-    session: Session,
+    clusters_df: pl.DataFrame,
     include_outliers: bool,
     output_file: str = "output/vis/cluster_transitions.pdf",
 ) -> None:
@@ -1105,15 +1096,12 @@ def plot_cluster_transitions(
     and displays them as a grid of points where point size represents transition frequency.
 
     Args:
-        session: SQLModel database session
+        clusters_df: DataFrame containing cluster data with sequence information
         include_outliers: If False, filter out all "OUTLIER" cluster labels
         output_file: Path to save the visualization
     """
-    # Load clusters data - it has sequence information!
-    clusters_df = load_clusters_df(session)
-    
     # Create label mapping
-    label_map_df = create_label_map_df(session)
+    label_map_df = create_label_map_df(clusters_df)
     # Use calculate_cluster_transitions to get transition counts
     transition_counts = calculate_cluster_transitions(
         clusters_df, ["embedding_model", "network"], include_outliers
@@ -1261,7 +1249,7 @@ def plot_cluster_example_images(
         df: DataFrame containing embedding data with cluster_label and invocation_id
         num_examples: Number of example images to include for each cluster
         embedding_model: The embedding model to filter by
-        session: Session object for database access
+        session: Session object for database access (needed for export_mosaic_image)
         examples_per_row: Maximum number of images per row before wrapping (default: num_examples)
         output_file: Path to save the visualization
         rescale: Optional scaling factor for the output image dimensions (default: None)
