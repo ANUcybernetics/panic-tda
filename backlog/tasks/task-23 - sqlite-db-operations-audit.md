@@ -1,7 +1,7 @@
 ---
 id: task-23
 title: sqlite db operations audit
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-26"
 labels: []
@@ -27,13 +27,12 @@ attention to:
 
 ### 1. SQLModel vs SQLAlchemy Usage
 
-**Finding**: The codebase has mixed usage of SQLModel and SQLAlchemy:
+**Finding**: The codebase has mostly migrated to SQLModel with a few remaining SQLAlchemy usages:
 - ✅ Models are properly defined using SQLModel (src/panic_tda/schemas.py)
 - ✅ Most queries use SQLModel's `select()` and `session.exec()`
 - ⚠️ Some instances still use SQLAlchemy directly:
   - `src/panic_tda/local.py:38` - Uses `session.query(Run)` instead of SQLModel
   - `src/panic_tda/clustering_manager.py:130` - Imports `IntegrityError` from SQLAlchemy
-  - `src/panic_tda/main.py:654` - Uses `sqlalchemy.text()` for raw SQL
 
 **Recommendations**:
 - Replace `session.query()` with SQLModel's `select()` pattern
@@ -95,9 +94,20 @@ attention to:
 
 **Areas for Improvement**:
 1. **Bulk Operations**: The `bulk_save_objects()` in clustering_manager could use SQLModel's approach
-2. **Raw SQL**: Consider abstracting the raw SQL in main.py into proper queries
-3. **Query Optimization**: Some complex queries could benefit from joins vs multiple queries
+2. **Query Optimization**: Some complex queries could benefit from joins vs multiple queries
+3. **Consistency**: Complete the migration from SQLAlchemy to SQLModel in the remaining 2 files
 
 ## Summary
 
 The database operations are generally well-implemented with proper session management, good SQLite configuration, and comprehensive test coverage. The main recommendation is to complete the migration from SQLAlchemy to SQLModel for consistency, particularly in the areas identified above.
+
+## Refactoring Completed
+
+1. ✅ Replaced `session.query()` with SQLModel's `select()` pattern in `local.py:37-45`
+2. ✅ Moved `func` import from sqlalchemy to sqlmodel in `local.py:5`
+3. ✅ Replaced `bulk_save_objects()` with SQLModel's approach (using `session.add()` + `session.flush()`) in `clustering_manager.py:123-143`
+4. ✅ Removed unnecessary IntegrityError handling in `_bulk_insert_with_flush()` - the unique constraint violations cannot occur in this use case since we're always creating new clustering results
+
+Note: The `aliased` function remains imported from `sqlalchemy.orm` as it's not available in SQLModel. This is needed for CTE (Common Table Expression) operations.
+
+All tests pass successfully after refactoring.

@@ -125,46 +125,22 @@ def _bulk_insert_with_flush(
 ):
     """
     Insert objects in batches with periodic flushes to avoid memory issues.
-    Handles unique constraint violations by skipping duplicates.
     """
-    from sqlalchemy.exc import IntegrityError
-
     batch = []
     for obj in objects:
         batch.append(obj)
         if len(batch) >= batch_size:
-            try:
-                session.bulk_save_objects(batch)
-                session.flush()
-            except IntegrityError:
-                # If we get a unique constraint violation, fall back to individual inserts
-                session.rollback()
-                for item in batch:
-                    try:
-                        session.add(item)
-                        session.flush()
-                    except IntegrityError:
-                        # Skip this duplicate
-                        session.rollback()
-                        continue
+            # Add objects and flush
+            for item in batch:
+                session.add(item)
+            session.flush()
             batch = []
 
     # Insert remaining objects
     if batch:
-        try:
-            session.bulk_save_objects(batch)
-            session.flush()
-        except IntegrityError:
-            # If we get a unique constraint violation, fall back to individual inserts
-            session.rollback()
-            for item in batch:
-                try:
-                    session.add(item)
-                    session.flush()
-                except IntegrityError:
-                    # Skip this duplicate
-                    session.rollback()
-                    continue
+        for item in batch:
+            session.add(item)
+        session.flush()
 
 
 def _get_embeddings_query(model_name: str, downsample: int = 1):

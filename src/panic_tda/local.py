@@ -1,9 +1,8 @@
 import os
 
 import polars as pl
-from sqlalchemy import func
 from sqlalchemy.orm import aliased
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from panic_tda.datavis import plot_cluster_example_images
 from panic_tda.export import export_video
@@ -34,16 +33,15 @@ def example_run_ids(session: Session):
         # For each network pair, get 2 runs
         for network in selected_networks:
             # Query the database for runs matching prompt and models
-            matching_runs = (
-                session.query(Run)
-                .filter(
+            matching_runs = session.exec(
+                select(Run)
+                .where(
                     Run.initial_prompt == prompt,
                     Run.network == network,
                 )
                 .order_by(Run.id)
                 .limit(2)
-                .all()
-            )
+            ).all()
 
             # Extract run IDs and add to selected_ids
             run_ids = [str(run.id) for run in matching_runs]
