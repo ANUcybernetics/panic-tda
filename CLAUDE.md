@@ -10,6 +10,7 @@ AI models by feeding outputs recursively back as inputs, creating "trajectories"
 through semantic space.
 
 - use `uv` for _everything_
+- use `sqlmodel` for database operations (models in @src/panic_tda/schema.py)
 - use modern python: we support 3.12 and above
 - use type hints
 - to execute ad-hoc python code but in the correct context (including db
