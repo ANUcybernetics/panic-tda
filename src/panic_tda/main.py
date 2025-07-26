@@ -645,12 +645,8 @@ def paper_charts_command(
 
 @app.command("script")
 def script():
-    # Create database connection
-    db_str = "sqlite:///db/trajectory_data.sqlite"
-    logger.info("Connecting to database to process all experiments...")
-
-    with get_session_from_connection_string(db_str) as session:
-        session
+    # Empty script function for user to add ad-hoc code
+    pass
 
 
 @cluster_app.command("embeddings")
@@ -671,10 +667,10 @@ def cluster_embeddings_command(
         help="Downsampling factor (1 = no downsampling, 10 = every 10th embedding)",
     ),
     epsilon: float = typer.Option(
-        0.4,
+        0.5,
         "--epsilon",
         "-e",
-        help="Epsilon value for HDBSCAN cluster selection (default: 0.4)",
+        help="Epsilon value for HDBSCAN cluster selection (default: 0.5)",
     ),
 ):
     """

@@ -5,6 +5,8 @@ from sqlmodel import Session, create_engine, select
 from panic_tda.clustering_manager import (
     cluster_all_data,
     _save_clustering_results,
+    delete_cluster_data,
+    delete_single_cluster,
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import (
@@ -637,3 +639,218 @@ def test_uuid_type_validation(db_session):
             cluster = db_session.get(Cluster, assignment.cluster_id)
             assert cluster is not None
             assert cluster.clustering_result_id == cr.id
+
+
+def test_delete_cluster_data_all(db_session):
+    """Test deleting all clustering data."""
+    # Create and run a simple experiment
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test delete all"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=10,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+    
+    # Cluster the data
+    cluster_result = cluster_all_data(db_session, downsample=1)
+    assert cluster_result["status"] == "success"
+
+    # Verify clustering data exists
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) == 2  # One for each embedding model
+
+    clusters = db_session.exec(select(Cluster)).all()
+    assert len(clusters) > 0
+
+    assignments = db_session.exec(select(EmbeddingCluster)).all()
+    assert len(assignments) > 0
+
+    # Delete all clustering data
+    delete_result = delete_cluster_data(db_session, "all")
+    assert delete_result["status"] == "success"
+    assert delete_result["deleted_results"] == 2
+    assert delete_result["deleted_assignments"] > 0
+
+    # Verify all clustering data is deleted
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) == 0
+
+    clusters = db_session.exec(select(Cluster)).all()
+    assert len(clusters) == 0
+
+    assignments = db_session.exec(select(EmbeddingCluster)).all()
+    assert len(assignments) == 0
+
+
+def test_delete_cluster_data_specific_model(db_session):
+    """Test deleting clustering data for a specific embedding model."""
+    # Create experiment with multiple embedding models
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test delete specific"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=10,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+    
+    # Cluster the data
+    cluster_result = cluster_all_data(db_session, downsample=1)
+    assert cluster_result["status"] == "success"
+
+    # Verify clustering data exists for both models
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) == 2
+
+    dummy_result = next((cr for cr in clustering_results if cr.embedding_model == "Dummy"), None)
+    dummy2_result = next((cr for cr in clustering_results if cr.embedding_model == "Dummy2"), None)
+    assert dummy_result is not None
+    assert dummy2_result is not None
+
+    # Count assignments for each model
+    dummy_assignments = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == dummy_result.id
+        )
+    ).all()
+    dummy2_assignments = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == dummy2_result.id
+        )
+    ).all()
+    initial_dummy_count = len(dummy_assignments)
+    initial_dummy2_count = len(dummy2_assignments)
+
+    # Delete only Dummy model's clustering data
+    delete_result = delete_cluster_data(db_session, "Dummy")
+    assert delete_result["status"] == "success"
+    assert delete_result["deleted_results"] == 1
+    assert delete_result["deleted_assignments"] == initial_dummy_count
+
+    # Refresh the session to see committed changes
+    db_session.expire_all()
+    
+    # Verify only Dummy model's data is deleted
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) == 1
+    assert clustering_results[0].embedding_model == "Dummy2"
+
+    # Verify Dummy2's assignments still exist
+    dummy2_assignments_after = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == dummy2_result.id
+        )
+    ).all()
+    assert len(dummy2_assignments_after) == initial_dummy2_count
+
+
+def test_delete_cluster_data_not_found(db_session):
+    """Test deleting clustering data when none exists."""
+    # Try to delete when no clustering data exists
+    delete_result = delete_cluster_data(db_session, "all")
+    assert delete_result["status"] == "not_found"
+    assert delete_result["message"] == "No clustering results found for all models"
+
+    # Try to delete for a specific model that doesn't exist
+    delete_result = delete_cluster_data(db_session, "NonExistentModel")
+    assert delete_result["status"] == "not_found"
+    assert delete_result["message"] == "No clustering results found for model NonExistentModel"
+
+
+def test_delete_single_cluster(db_session):
+    """Test deleting a single clustering result."""
+    # Create a simple experiment
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test delete single"],
+        embedding_models=["Dummy"],
+        max_length=10,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+    
+    # Cluster twice to create multiple clustering results
+    cluster_all_data(db_session, downsample=1)
+    cluster_all_data(db_session, downsample=1)
+
+    # Verify we have multiple clustering results
+    clustering_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(clustering_results) >= 2
+
+    # Pick one to delete
+    result_to_delete = clustering_results[0]
+    result_to_keep = clustering_results[1]
+
+    # Count assignments for the result to delete
+    assignments_to_delete = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == result_to_delete.id
+        )
+    ).all()
+    assignments_to_keep = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == result_to_keep.id
+        )
+    ).all()
+    initial_delete_count = len(assignments_to_delete)
+    initial_keep_count = len(assignments_to_keep)
+
+    # Delete the single clustering result
+    delete_result = delete_single_cluster(result_to_delete.id, db_session)
+    
+    assert delete_result["status"] == "success"
+    assert delete_result["deleted_results"] == 1
+    assert delete_result["deleted_assignments"] == initial_delete_count
+    
+    # Refresh the session to see committed changes
+    db_session.expire_all()
+    
+    # Verify the specific result is deleted
+    remaining_results = db_session.exec(select(ClusteringResult)).all()
+    assert len(remaining_results) == len(clustering_results) - 1
+    assert result_to_delete.id not in [r.id for r in remaining_results]
+    assert result_to_keep.id in [r.id for r in remaining_results]
+
+    # Verify assignments for the kept result still exist
+    kept_assignments = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == result_to_keep.id
+        )
+    ).all()
+    assert len(kept_assignments) == initial_keep_count
+
+    # Verify assignments for the deleted result are gone
+    deleted_assignments = db_session.exec(
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == result_to_delete.id
+        )
+    ).all()
+    assert len(deleted_assignments) == 0
+
+
+def test_delete_single_cluster_not_found(db_session):
+    """Test deleting a single clustering result that doesn't exist."""
+    non_existent_id = UUID("12345678-1234-5678-1234-567812345678")
+    delete_result = delete_single_cluster(non_existent_id, db_session)
+    assert delete_result["status"] == "not_found"
+    assert delete_result["message"] == f"Clustering result with ID {non_existent_id} not found"

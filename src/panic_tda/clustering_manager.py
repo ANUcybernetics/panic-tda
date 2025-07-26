@@ -592,15 +592,15 @@ def delete_cluster_data(
         Dictionary with deletion results summary
     """
     try:
-        # Build query for clustering results to delete
-        query = select(ClusteringResult)
+        from sqlmodel import delete
+        
+        # Count clustering results before deletion
+        count_query = select(func.count(ClusteringResult.id))
         if embedding_model_id != "all":
-            query = query.where(ClusteringResult.embedding_model == embedding_model_id)
-
-        results_to_delete = session.exec(query).all()
-        logger.debug(f"Found {len(results_to_delete)} clustering results to delete")
-
-        if not results_to_delete:
+            count_query = count_query.where(ClusteringResult.embedding_model == embedding_model_id)
+        deleted_results = session.exec(count_query).one()
+        
+        if deleted_results == 0:
             model_msg = (
                 "all models"
                 if embedding_model_id == "all"
@@ -611,28 +611,46 @@ def delete_cluster_data(
                 "message": f"No clustering results found for {model_msg}",
             }
 
-        deleted_results = len(results_to_delete)
-
-        # Count total assignments before deletion (for reporting)
-        total_assignments = 0
-        for i, result in enumerate(results_to_delete):
-            logger.debug(f"Processing result {i + 1}/{deleted_results}: {result.id}")
-            assignment_count = session.exec(
-                select(func.count(EmbeddingCluster.id)).where(
-                    EmbeddingCluster.clustering_result_id == result.id
-                )
-            ).one()
-            logger.debug(
-                f"Assignment count type: {type(assignment_count)}, value: {assignment_count}"
+        # Count total assignments before deletion
+        assignment_count_query = (
+            select(func.count(EmbeddingCluster.id))
+            .join(ClusteringResult, EmbeddingCluster.clustering_result_id == ClusteringResult.id)
+        )
+        if embedding_model_id != "all":
+            assignment_count_query = assignment_count_query.where(
+                ClusteringResult.embedding_model == embedding_model_id
             )
-            total_assignments += int(assignment_count or 0)
+        total_assignments = session.exec(assignment_count_query).one()
 
-        # Delete the clustering results - cascades will handle related tables
+        # Get clustering results to delete
+        if embedding_model_id == "all":
+            results_to_delete = session.exec(select(ClusteringResult)).all()
+        else:
+            results_to_delete = session.exec(
+                select(ClusteringResult).where(
+                    ClusteringResult.embedding_model == embedding_model_id
+                )
+            ).all()
+        
+        # Delete in reverse dependency order
         for result in results_to_delete:
+            # Delete embedding cluster assignments using a delete statement
+            delete_stmt = delete(EmbeddingCluster).where(
+                EmbeddingCluster.clustering_result_id == result.id
+            )
+            session.exec(delete_stmt)
+            
+            # Delete clusters using a delete statement
+            delete_stmt = delete(Cluster).where(
+                Cluster.clustering_result_id == result.id
+            )
+            session.exec(delete_stmt)
+            
+            # Delete the clustering result itself
             session.delete(result)
-
-        # Flush deletions (commit handled by context manager)
-        session.flush()
+        
+        # Commit changes
+        session.commit()
 
         model_msg = (
             "all models"
@@ -676,6 +694,8 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
         Dictionary with deletion status and counts
     """
     try:
+        from sqlmodel import delete
+        # Get the clustering result
         result = session.get(ClusteringResult, clustering_id)
         if not result:
             return {
@@ -683,26 +703,30 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
                 "message": f"Clustering result with ID {clustering_id} not found",
             }
 
-        # Count assignments
+        # Count assignments before deletion
         assignments_count = session.exec(
             select(func.count(EmbeddingCluster.id)).where(
-                EmbeddingCluster.clustering_result_id == result.id
+                EmbeddingCluster.clustering_result_id == clustering_id
             )
         ).one()
 
-        # Delete assignments
-        for cluster in session.exec(
-            select(EmbeddingCluster).where(
-                EmbeddingCluster.clustering_result_id == result.id
-            )
-        ).all():
-            session.delete(cluster)
-
-        # Delete the clustering result
+        # Delete embedding cluster assignments using a delete statement
+        delete_stmt = delete(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == result.id
+        )
+        session.exec(delete_stmt)
+        
+        # Delete clusters using a delete statement
+        delete_stmt = delete(Cluster).where(
+            Cluster.clustering_result_id == result.id
+        )
+        session.exec(delete_stmt)
+        
+        # Delete the clustering result itself
         session.delete(result)
-
-        # Flush deletion (commit handled by context manager)
-        session.flush()
+        
+        # Commit changes
+        session.commit()
 
         logger.info(
             f"Deleted clustering result {clustering_id} and {assignments_count} assignments"
