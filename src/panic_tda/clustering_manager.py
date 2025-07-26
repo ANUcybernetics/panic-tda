@@ -304,6 +304,11 @@ def cluster_all_data(
         logger.info(f"Embedding models: {[m[0] for m in model_counts]}")
         logger.info(f"Running clustering with downsample factor {downsample}")
 
+        # Import necessary modules
+        from panic_tda.clustering import hdbscan
+        import numpy as np
+        from datetime import datetime
+
         # Process each embedding model
         total_clusters = 0
         clustered_embeddings = 0
@@ -316,7 +321,8 @@ def cluster_all_data(
                 logger.info(f"  Skipping {model_name} - too few samples for HDBSCAN")
                 continue
 
-            # Get embeddings for this model
+            # PHASE 1: LOAD (read-only)
+            logger.info(f"  Phase 1: Loading embeddings for {model_name}...")
             embeddings_data = session.exec(
                 _get_embeddings_query(model_name, downsample)
             ).all()
@@ -357,15 +363,12 @@ def cluster_all_data(
                 logger.warning(f"  No valid embeddings found for model {model_name}")
                 continue
 
-            # Import clustering function here to avoid circular imports
-            from panic_tda.clustering import hdbscan
-            import numpy as np
-            from datetime import datetime
-
             # Convert vectors to numpy array for clustering
             vectors_array = np.array(vectors)
+            logger.info(f"  Loaded {len(embedding_ids)} embeddings")
 
-            # Record start time BEFORE clustering
+            # PHASE 2: COMPUTE (no DB access)
+            logger.info(f"  Phase 2: Running HDBSCAN clustering...")
             start_time = datetime.utcnow()
 
             # Perform clustering
@@ -375,16 +378,28 @@ def cluster_all_data(
                 logger.warning(f"  Clustering failed for model {model_name}")
                 continue
 
+            end_time = datetime.utcnow()
+            duration = (end_time - start_time).total_seconds()
+            logger.info(f"  Clustering completed in {duration:.1f} seconds")
+
+            # PHASE 3: LOOKUP (read-only, if needed)
+            # In this implementation, we already have all the data we need from Phase 1
+            # (embedding IDs and texts), so no additional lookups are required
+
+            # PHASE 4: WRITE (single transaction)
+            logger.info(f"  Phase 4: Writing clustering results...")
+
             # Create clustering result record
             clustering_result = ClusteringResult(
                 embedding_model=model_name,
                 algorithm="hdbscan",
                 started_at=start_time,
+                completed_at=end_time,
                 parameters={
                     "cluster_selection_epsilon": epsilon,
                     "allow_single_cluster": True,
                 },
-                clusters=[],  # Will be populated below
+                clusters=[],  # Not used anymore but kept for compatibility
             )
             session.add(clustering_result)
             session.flush()  # Get the ID
@@ -438,9 +453,6 @@ def cluster_all_data(
                 session.flush()
                 cluster_id_map[label] = cluster.id
 
-            # Don't need to maintain the JSON clusters field anymore
-            clustering_result.clusters = []
-
             # Create embedding cluster assignments with new cluster IDs
             assignments = [
                 EmbeddingCluster(
@@ -453,10 +465,12 @@ def cluster_all_data(
                 )
             ]
 
+            # Bulk insert assignments
             _bulk_insert_with_flush(session, assignments)
 
-            # Mark clustering as completed
-            clustering_result.completed_at = datetime.utcnow()
+            # Commit the entire write phase for this model
+            session.commit()
+            logger.info(f"  Successfully saved clustering results for {model_name}")
 
             # Update counts
             clustered_embeddings += len(embedding_ids)
@@ -465,9 +479,6 @@ def cluster_all_data(
             logger.info(
                 f"  Clustered {len(embedding_ids)} embeddings into {len(cluster_id_map)} clusters"
             )
-
-        # Ensure all changes are flushed (commit handled by context manager)
-        session.flush()
 
         logger.info(
             f"Global clustering complete: {clustered_embeddings:,}/{total_embeddings:,} embeddings "

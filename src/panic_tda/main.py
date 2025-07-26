@@ -650,8 +650,29 @@ def script():
     logger.info("Connecting to database to process all experiments...")
 
     with get_session_from_connection_string(db_str) as session:
-        # Add your script code here
-        session
+        # Clean up corrupted clustering data using raw SQL
+        from sqlalchemy import text
+
+        print("Cleaning up corrupted clustering data...")
+
+        # Delete all clustering-related data using raw SQL to bypass ORM validation
+        try:
+            # Delete in reverse order of foreign key dependencies
+            result1 = session.execute(text("DELETE FROM embeddingcluster"))
+            print(f"Deleted {result1.rowcount} EmbeddingCluster records")
+
+            result2 = session.execute(text("DELETE FROM cluster"))
+            print(f"Deleted {result2.rowcount} Cluster records")
+
+            result3 = session.execute(text("DELETE FROM clusteringresult"))
+            print(f"Deleted {result3.rowcount} ClusteringResult records")
+
+            session.commit()
+            print("\nSuccessfully cleaned up all clustering data!")
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error during cleanup: {e}")
 
 
 @cluster_app.command("embeddings")
