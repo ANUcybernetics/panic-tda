@@ -3,24 +3,28 @@ id: task-24
 title: Fix UUID type error when deleting clustering results
 status: To Do
 assignee: []
-created_date: '2025-07-26'
+created_date: "2025-07-26"
 labels: []
 dependencies: []
 ---
 
 ## Description
 
-SQLAlchemy is encountering float values where UUID objects are expected during cascade deletion of clustering results
+SQLAlchemy is encountering float values where UUID objects are expected during
+cascade deletion of clustering results
 
 ## Problem Details
 
-When attempting to delete clustering results using `panic-tda cluster reset --force` or `panic-tda cluster delete <id>`, the operation fails with:
+When attempting to delete clustering results using
+`panic-tda cluster reset --force` or `panic-tda cluster delete <id>`, the
+operation fails with:
 
 ```
 AttributeError: 'float' object has no attribute 'replace'
 ```
 
-This occurs in the UUID parsing code when SQLAlchemy tries to load related records during cascade deletion.
+This occurs in the UUID parsing code when SQLAlchemy tries to load related
+records during cascade deletion.
 
 ### Full Error Traceback
 
@@ -30,15 +34,21 @@ File "/usr/lib/python3.12/uuid.py", line 175, in __init__
 AttributeError: 'float' object has no attribute 'replace'
 ```
 
-The error occurs during lazy loading of relationships when SQLAlchemy tries to cascade delete related records.
+The error occurs during lazy loading of relationships when SQLAlchemy tries to
+cascade delete related records.
 
 ## Root Cause Analysis
 
-The issue appears to be that somewhere in the clustering process, non-UUID values (floats or integers) are being stored in UUID fields in the database. This could happen in several places:
+The issue appears to be that somewhere in the clustering process, non-UUID
+values (floats or integers) are being stored in UUID fields in the database.
+This could happen in several places:
 
-1. **medoid_embedding_id in Cluster table**: Despite validation, invalid values might still be inserted
-2. **cluster_id in EmbeddingCluster table**: Should reference Cluster.id (UUID) but might contain integer cluster labels
-3. **embedding_id in EmbeddingCluster table**: Should reference Embedding.id (UUID)
+1. **medoid_embedding_id in Cluster table**: Despite validation, invalid values
+   might still be inserted
+2. **cluster_id in EmbeddingCluster table**: Should reference Cluster.id (UUID)
+   but might contain integer cluster labels
+3. **embedding_id in EmbeddingCluster table**: Should reference Embedding.id
+   (UUID)
 
 ## Investigation Steps Taken
 
@@ -50,6 +60,7 @@ The issue appears to be that somewhere in the clustering process, non-UUID value
 ## Potential Solutions
 
 ### 1. Direct SQL Cleanup (Immediate Fix)
+
 Create a script to identify and remove invalid records before deletion:
 
 ```python
@@ -59,25 +70,33 @@ SELECT * FROM embeddingcluster WHERE typeof(cluster_id) != 'text';
 SELECT * FROM embeddingcluster WHERE typeof(embedding_id) != 'text';
 ```
 
+However, this fix is NOT SUFFICIENT.
+
 ### 2. Bypass Cascade Deletion (Workaround)
-Delete records manually in the correct order without relying on SQLAlchemy cascades:
+
+Delete records manually in the correct order without relying on SQLAlchemy
+cascades:
 
 ```python
 # Delete in reverse dependency order
 session.exec(text("DELETE FROM embeddingcluster"))
-session.exec(text("DELETE FROM cluster"))  
+session.exec(text("DELETE FROM cluster"))
 session.exec(text("DELETE FROM clusteringresult"))
 ```
 
 ### 3. Fix Data Insertion (Long-term Solution)
-Despite existing validation, somewhere the wrong data types are being inserted. Potential areas:
+
+Despite existing validation, somewhere the wrong data types are being inserted.
+Potential areas:
 
 - Check if SQLite is coercing types during bulk inserts
-- Verify the _bulk_insert_with_flush function preserves types correctly
+- Verify the \_bulk_insert_with_flush function preserves types correctly
 - Add database-level constraints or CHECK constraints to prevent invalid data
 
 ### 4. Add Type Decorators (Defensive)
-Create custom SQLAlchemy type decorators that enforce UUID validation at the database level:
+
+Create custom SQLAlchemy type decorators that enforce UUID validation at the
+database level:
 
 ```python
 class StrictUUID(TypeDecorator):
@@ -90,9 +109,8 @@ class StrictUUID(TypeDecorator):
 
 ## Recommended Action Plan
 
-1. **Immediate**: Implement workaround #2 for the delete commands
-2. **Short-term**: Add diagnostic logging to identify when/where invalid data is inserted
-3. **Long-term**: Implement solution #4 with strict type decorators
+Option 3 is the best plan. Option 4 shouldn't be necessary - we let the db
+itself enforce FK validity.
 
 ## Related Code Locations
 
