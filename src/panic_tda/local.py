@@ -2,7 +2,7 @@ import os
 
 import polars as pl
 from sqlalchemy.orm import aliased
-from sqlmodel import Session, select, func
+from sqlmodel import Session, func, select
 
 from panic_tda.datavis import plot_cluster_example_images
 from panic_tda.export import export_video
@@ -1306,18 +1306,12 @@ def artificial_futures_slides_charts(session: Session) -> None:
     embeddings_df = load_embeddings_from_cache()
     clusters_df = load_clusters_from_cache()
 
-    # Clustering result ID to use for filtering
-    CLUSTERING_RESULT_ID = (
-        "06882381-8ed8-7903-9b7f-e1bbc4c517f0"  # Most recent Nomic clustering
-    )
-
     # Filter embeddings to Nomic model
     embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
 
     # Filter clusters to only the specified clustering result
-    clusters_df = clusters_df.filter(
-        pl.col("clustering_result_id") == CLUSTERING_RESULT_ID
-    )
+    clusters_df = clusters_df.filter(pl.col("embedding_model") == "Nomic")
+    # clusters_df = clusters_df.filter(pl.col("clustering_result_id") == "result-id")
 
     # Join embeddings with clusters to get cluster labels
     # First deduplicate clusters_df to avoid multiple rows per embedding
@@ -1453,6 +1447,8 @@ def paper_charts(session: Session) -> None:
     """
     Generate charts for paper publications.
     """
+
+    # from panic_tda.data_prep import cache_dfs
 
     # cache_dfs(
     #     session,
