@@ -1421,26 +1421,45 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Calculate bigrams for all clusters
     bigrams_df = calculate_cluster_bigrams(clusters_df, include_outliers=False)
 
-    # Join with runs to get network information
+    # Join with runs to get network information, converting network list to string
     bigrams_with_network = bigrams_df.join(
-        runs_df.select(["run_id", "network"]), on="run_id", how="inner"
+        runs_df.select([
+            "run_id", 
+            pl.col("network").list.join(" -> ").alias("network_str")
+        ]), 
+        on="run_id", 
+        how="inner"
     )
 
     # Count bigrams by network
     bigram_counts = (
-        bigrams_with_network.group_by(["network", "from_cluster", "to_cluster"])
-        .agg(pl.count().alias("count"))
-        .sort(["network", "count"], descending=[False, True])
+        bigrams_with_network.group_by(["network_str", "from_cluster", "to_cluster"])
+        .agg(pl.len().alias("count"))
     )
 
-    # Print top 10 bigrams for each network
+    # Add rank within each network based on count
+    top_bigrams_by_network = (
+        bigram_counts
+        .with_columns(
+            pl.col("count")
+            .rank(method="ordinal", descending=True)
+            .over("network_str")
+            .alias("rank")
+        )
+        .filter(pl.col("rank") <= 10)
+        .sort(["network_str", "rank"])
+        .select([
+            pl.col("network_str").alias("network"),
+            "from_cluster", 
+            "to_cluster", 
+            "count"
+        ])
+    )
+
+    # Print results
     print("\nTop 10 most common cluster bigrams by network:")
     print("=" * 60)
-
-    for network in bigram_counts.get_column("network").unique().sort():
-        network_bigrams = bigram_counts.filter(pl.col("network") == network).head(10)
-        print(f"\nNetwork: {network}")
-        print(network_bigrams.select(["from_cluster", "to_cluster", "count"]))
+    print(top_bigrams_by_network)
 
 
 def paper_charts(session: Session) -> None:
