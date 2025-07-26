@@ -1196,18 +1196,18 @@ def ieee_smc_charts(session: Session) -> None:
     #     pl.col("network").str.replace_all(" → ", "→", literal=True).alias("network")
     # )
 
-    # label_df = create_label_map_df(embeddings_df)
-
-    # # plot_sense_check_histograms(embeddings_df)
+    # # With the new approach, many visualization functions only need the session!
+    # # They load the clusters data internally.
+    
+    # # plot_sense_check_histograms(embeddings_df)  # This one still needs embeddings
     # plot_cluster_bubblegrid(
-    #     embeddings_df.filter(pl.col("embedding_model") == "Nomic"),
-    #     label_df,
+    #     session,  # Just pass the session - no DataFrame needed!
     #     False,
     #     "output/vis/paper/fig2.pdf",
     # )
 
     # plot_cluster_run_length_violin(
-    #     embeddings_df,
+    #     session,  # Just pass the session - no DataFrame needed!
     #     True,
     #     "output/vis/paper/fig3.pdf",
     # )
@@ -1461,6 +1461,12 @@ def artificial_futures_slides_charts(session: Session) -> None:
     print("=" * 60)
     print(top_bigrams_by_network)
 
+    plot_cluster_bubblegrid(
+        cluster_df,
+        label_df,
+        False,
+        "output/vis/paper/fig2.pdf",
+    )
 
 def paper_charts(session: Session) -> None:
     """
