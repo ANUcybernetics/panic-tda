@@ -1367,16 +1367,16 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     # print "top 10 clusters" table as md (for marp slides)
-    # total_non_outlier = embeddings_df.height
-    # top_clusters_table = (
-    #     cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
-    #     .with_columns(
-    #         (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
-    #     )
-    #     .select(["rank", "cluster_label", "percentage"])
-    # )
-    # markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
-    # print(markdown_table)
+    total_non_outlier = embeddings_df.height
+    top_clusters_table = (
+        cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
+        .with_columns(
+            (pl.col("count") / total_non_outlier * 100).round(1).alias("percentage")
+        )
+        .select(["rank", "cluster_label", "percentage"])
+    )
+    markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
+    print(markdown_table)
 
     # # Create ridgeline plot for semantic drift by network
     # from panic_tda.datavis import plot_semantic_drift

@@ -69,10 +69,51 @@ def save(plot, filename: str) -> str:
     return filename
 
 
+def format_label_map_as_markdown(
+    map_df: pl.DataFrame,
+    embedding_model: Optional[str] = None,
+    max_label_length: int = 70,
+) -> str:
+    """
+    Format a cluster label mapping as a markdown table.
+
+    Args:
+        map_df: DataFrame with embedding_model, cluster_label, and cluster_index columns
+        embedding_model: Optional specific model to filter for
+        max_label_length: Maximum length for cluster labels before truncation
+
+    Returns:
+        Markdown-formatted table string
+    """
+    # Filter for specific model if provided
+    if embedding_model:
+        filtered_df = map_df.filter(pl.col("embedding_model") == embedding_model)
+    else:
+        filtered_df = map_df
+
+    # Sort by cluster_index
+    sorted_df = filtered_df.sort("cluster_index")
+
+    # Truncate long labels
+    sorted_df = sorted_df.with_columns(
+        pl.when(pl.col("cluster_label").str.len_chars() > max_label_length)
+        .then(pl.col("cluster_label").str.slice(0, max_label_length - 3) + "...")
+        .otherwise(pl.col("cluster_label"))
+        .alias("display_label")
+    )
+
+    # Select only the columns we need for the table
+    table_df = sorted_df.select(["cluster_index", "display_label"])
+    
+    # Convert to pandas and generate markdown
+    markdown_table = table_df.to_pandas().to_markdown(index=False, headers=["Index", "Cluster Label"])
+    
+    return markdown_table
+
+
 def create_label_map_df(
     clusters_df: pl.DataFrame,
     print_mapping: bool = False,
-    output_path: str = "output/vis/cluster_label_map.tex",
 ) -> pl.DataFrame:
     """
     Creates a mapping of cluster labels to sequential integer indices.
@@ -84,8 +125,7 @@ def create_label_map_df(
 
     Args:
         clusters_df: DataFrame containing cluster data
-        print_mapping: If True, print the mapping to console
-        output_path: Path to save the LaTeX file
+        print_mapping: If True, print the mapping to console as markdown tables
 
     Returns:
         DataFrame with embedding_model, cluster_label, and cluster_index columns for joining
@@ -125,65 +165,10 @@ def create_label_map_df(
         print("\nCluster Label Mapping:")
         print("=" * 80)
         for embedding_model in map_df["embedding_model"].unique().sort():
-            print(f"\nEmbedding Model: {embedding_model}")
-            print("-" * 80)
-            model_df = map_df.filter(pl.col("embedding_model") == embedding_model).sort("cluster_index")
-            for row in model_df.iter_rows(named=True):
-                # Truncate long labels for display
-                label = row["cluster_label"]
-                if len(label) > 70:
-                    label = label[:67] + "..."
-                print(f"  {row['cluster_index']:3d} -> {label}")
-
-    # Create LaTeX content for the table
-    latex_content = [
-        "\\documentclass{article}",
-        "\\usepackage{booktabs}",
-        "\\usepackage{longtable}",
-        "\\usepackage{array}",
-        "\\begin{document}",
-    ]
-
-    # Create a table for each embedding model
-    for embedding_model in map_df["embedding_model"].unique().sort():
-        model_df = map_df.filter(pl.col("embedding_model") == embedding_model).sort("cluster_index")
-
-        latex_content.extend([
-            f"\\section*{{{embedding_model}}}",
-            "\\begin{longtable}{|c|p{12cm}|}",
-            "\\hline",
-            "\\textbf{Index} & \\textbf{Cluster Label} \\\\",
-            "\\hline",
-        ])
-
-        # Add rows to the table
-        for row in model_df.iter_rows(named=True):
-            cluster_label = row["cluster_label"]
-            index = row["cluster_index"]
-
-            # Escape special LaTeX characters
-            escaped_label = (
-                cluster_label.replace("_", "\\_")
-                .replace("#", "\\#")
-                .replace("$", "\\$")
-                .replace("%", "\\%")
-                .replace("&", "\\&")
-                .replace("{", "\\{")
-                .replace("}", "\\}")
-            )
-            latex_content.append(f"{index} & {escaped_label} \\\\")
-            latex_content.append("\\hline")
-
-        # Close the table
-        latex_content.append("\\end{longtable}")
-        latex_content.append("")
-
-    # Close the document
-    latex_content.append("\\end{document}")
-
-    # Write LaTeX file
-    with open(output_path, "w") as f:
-        f.write("\n".join(latex_content))
+            print(f"\n## {embedding_model}\n")
+            markdown_table = format_label_map_as_markdown(map_df, embedding_model)
+            print(markdown_table)
+            print()
 
     # Return the mapping dataframe for joining
     return map_df.select("embedding_model", "cluster_label", "cluster_index")

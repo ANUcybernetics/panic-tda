@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 import typer
-from sqlmodel import func, select
+from sqlmodel import Session, func, select
 
 import panic_tda.engine as engine
 from panic_tda.db import (
@@ -644,9 +644,34 @@ def paper_charts_command(
 
 
 @app.command("script")
-def script():
-    # Empty script function for user to add ad-hoc code
-    pass
+def script(
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+):
+    """Run a script, passing a db session."""
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    
+    with get_session_from_connection_string(db_str) as session:
+        # Example: Print cluster label mappings as markdown
+        from panic_tda.data_prep import load_clusters_df
+        from panic_tda.datavis import create_label_map_df
+        
+        try:
+            clusters_df = load_clusters_df(session)
+            if clusters_df.height > 0:
+                print("\nCreating cluster label mappings...\n")
+                label_map = create_label_map_df(clusters_df, print_mapping=True)
+                print(f"\nTotal mappings created: {label_map.height}")
+            else:
+                print("No clusters found in database")
+        except Exception as e:
+            print(f"Note: {e}")
+            print("Run 'panic-tda cluster embeddings' first to create clusters")
 
 
 @cluster_app.command("embeddings")
