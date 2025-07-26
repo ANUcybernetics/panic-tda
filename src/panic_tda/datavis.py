@@ -85,30 +85,23 @@ def format_label_map_as_markdown(
     Returns:
         Markdown-formatted table string
     """
+    from panic_tda.utils import polars_to_markdown
+    
     # Filter for specific model if provided
     if embedding_model:
         filtered_df = map_df.filter(pl.col("embedding_model") == embedding_model)
     else:
         filtered_df = map_df
 
-    # Sort by cluster_index
-    sorted_df = filtered_df.sort("cluster_index")
-
-    # Truncate long labels
-    sorted_df = sorted_df.with_columns(
-        pl.when(pl.col("cluster_label").str.len_chars() > max_label_length)
-        .then(pl.col("cluster_label").str.slice(0, max_label_length - 3) + "...")
-        .otherwise(pl.col("cluster_label"))
-        .alias("display_label")
+    # Sort by cluster_index and select only the columns we need
+    table_df = filtered_df.sort("cluster_index").select(["cluster_index", "cluster_label"])
+    
+    # Use the utility function with custom headers
+    return polars_to_markdown(
+        table_df, 
+        max_col_width=max_label_length,
+        headers=["Index", "Cluster Label"]
     )
-
-    # Select only the columns we need for the table
-    table_df = sorted_df.select(["cluster_index", "display_label"])
-    
-    # Convert to pandas and generate markdown
-    markdown_table = table_df.to_pandas().to_markdown(index=False, headers=["Index", "Cluster Label"])
-    
-    return markdown_table
 
 
 def create_label_map_df(

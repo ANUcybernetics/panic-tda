@@ -1456,10 +1456,15 @@ def artificial_futures_slides_charts(session: Session) -> None:
         ])
     )
 
-    # Print results
-    print("\nTop 10 most common cluster bigrams by network:")
-    print("=" * 60)
-    print(top_bigrams_by_network)
+    # Print results using markdown formatting
+    from panic_tda.utils import print_polars_as_markdown
+    
+    print_polars_as_markdown(
+        top_bigrams_by_network,
+        title="Top 10 most common cluster bigrams by network",
+        max_col_width=60,
+        headers=["Network", "From Cluster", "To Cluster", "Count"]
+    )
 
     from panic_tda.datavis import plot_cluster_bubblegrid
 
