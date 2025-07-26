@@ -1378,18 +1378,18 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # markdown_table = top_clusters_table.to_pandas().to_markdown(index=False)
     # print(markdown_table)
 
-    # Create ridgeline plot for semantic drift by network
-    from panic_tda.datavis import plot_semantic_drift
+    # # Create ridgeline plot for semantic drift by network
+    # from panic_tda.datavis import plot_semantic_drift
 
-    # Join with clusters to filter to our specific clustering run
-    ridgeline_df = embeddings_df.join(
-        clusters_df.select(["embedding_id"]).unique(),
-        left_on="id",
-        right_on="embedding_id",
-        how="inner",
-    )
+    # # Join with clusters to filter to our specific clustering run
+    # ridgeline_df = embeddings_df.join(
+    #     clusters_df.select(["embedding_id"]).unique(),
+    #     left_on="id",
+    #     right_on="embedding_id",
+    #     how="inner",
+    # )
 
-    plot_semantic_drift(ridgeline_df, output_file="output/vis/semantic-drift.pdf")
+    # plot_semantic_drift(ridgeline_df, output_file="output/vis/semantic-drift.pdf")
 
     # sample 20 runs at random, and then use export_timeline (with 10 images per run) to show some of the invocations from that run
     from panic_tda.export import export_timeline
@@ -1424,10 +1424,10 @@ def artificial_futures_slides_charts(session: Session) -> None:
     # Join with runs to get network information, converting network list to string
     bigrams_with_network = bigrams_df.join(
         runs_df.select([
-            "run_id", 
+            "run_id",
             pl.col("network").list.join(" -> ").alias("network_str")
-        ]), 
-        on="run_id", 
+        ]),
+        on="run_id",
         how="inner"
     )
 
@@ -1450,8 +1450,8 @@ def artificial_futures_slides_charts(session: Session) -> None:
         .sort(["network_str", "rank"])
         .select([
             pl.col("network_str").alias("network"),
-            "from_cluster", 
-            "to_cluster", 
+            "from_cluster",
+            "to_cluster",
             "count"
         ])
     )
