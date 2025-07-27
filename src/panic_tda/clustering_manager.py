@@ -159,7 +159,7 @@ def _get_embeddings_query(model_name: str, downsample: int = 1):
         # Apply downsampling filter
         query = query.where(((Invocation.sequence_number - 1) / 2) % downsample == 0)
 
-    return query.order_by(Invocation.sequence_number)
+    return query.distinct().order_by(Invocation.sequence_number)
 
 
 def get_cluster_details(
@@ -327,11 +327,19 @@ def _save_clustering_results(
         
         # Create embedding cluster assignments with new cluster IDs
         assignments = []
+        seen_embeddings = set()  # Track which embeddings we've already assigned
+        
         for embedding_id, cluster_label in zip(embedding_ids, cluster_result["labels"]):
             # Ensure all IDs are proper UUID objects
             if not isinstance(embedding_id, UUID):
                 logger.error(f"Invalid embedding_id type: {type(embedding_id)}, value: {embedding_id}")
                 continue
+                
+            # Skip if we've already seen this embedding
+            if embedding_id in seen_embeddings:
+                logger.warning(f"Duplicate embedding_id {embedding_id} found, skipping")
+                continue
+            seen_embeddings.add(embedding_id)
                 
             cluster_uuid = cluster_id_map.get(int(cluster_label))
             if not cluster_uuid or not isinstance(cluster_uuid, UUID):
