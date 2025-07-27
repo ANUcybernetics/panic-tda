@@ -1437,9 +1437,26 @@ def artificial_futures_slides_charts(session: Session) -> None:
         .agg(pl.len().alias("count"))
     )
 
-    # Add rank within each network based on count
-    top_bigrams_by_network = (
+    # Calculate total bigrams per network (including self-transitions) for percentages
+    total_bigrams_by_network = (
         bigram_counts
+        .group_by("network_str")
+        .agg(pl.col("count").sum().alias("total_count"))
+    )
+
+    # Join with totals and calculate percentages
+    bigram_counts_with_pct = (
+        bigram_counts
+        .join(total_bigrams_by_network, on="network_str", how="left")
+        .with_columns(
+            (100.0 * pl.col("count") / pl.col("total_count")).round(1).alias("percentage")
+        )
+    )
+
+    # Filter out self-transitions and add rank
+    top_bigrams_by_network = (
+        bigram_counts_with_pct
+        .filter(pl.col("from_cluster") != pl.col("to_cluster"))  # Filter out self-transitions
         .with_columns(
             pl.col("count")
             .rank(method="ordinal", descending=True)
@@ -1452,18 +1469,18 @@ def artificial_futures_slides_charts(session: Session) -> None:
             pl.col("network_str").alias("network"),
             "from_cluster",
             "to_cluster",
-            "count"
+            (pl.col("percentage").cast(pl.Utf8) + "%").alias("percentage")
         ])
     )
 
     # Print results using markdown formatting
     from panic_tda.utils import print_polars_as_markdown
-    
+
     print_polars_as_markdown(
         top_bigrams_by_network,
         title="Top 10 most common cluster bigrams by network",
         max_col_width=60,
-        headers=["Network", "From Cluster", "To Cluster", "Count"]
+        headers=["Network", "From Cluster", "To Cluster", "Percentage"]
     )
 
     from panic_tda.datavis import plot_cluster_bubblegrid
@@ -1480,15 +1497,15 @@ def paper_charts(session: Session) -> None:
     Generate charts for paper publications.
     """
 
-    # from panic_tda.data_prep import cache_dfs
+    from panic_tda.data_prep import cache_dfs
 
-    # cache_dfs(
-    #     session,
-    #     runs=False,
-    #     embeddings=False,
-    #     invocations=False,
-    #     persistence_diagrams=False,
-    #     clusters=True,
-    # )
+    cache_dfs(
+        session,
+        runs=False,
+        embeddings=False,
+        invocations=False,
+        persistence_diagrams=False,
+        clusters=True,
+    )
 
     artificial_futures_slides_charts(session)
