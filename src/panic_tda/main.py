@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 import typer
-from sqlmodel import Session, func, select
+from sqlmodel import func, select
 
 import panic_tda.engine as engine
 from panic_tda.db import (
@@ -658,7 +658,7 @@ def script(
 
     with get_session_from_connection_string(db_str) as session:
         # Empty script function for user to add ad-hoc code
-        pass
+        session
 
 
 @cluster_app.command("embeddings")

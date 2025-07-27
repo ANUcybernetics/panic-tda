@@ -1,7 +1,7 @@
 """Utility functions for the panic_tda package."""
 
 import polars as pl
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 
 def polars_to_markdown(
