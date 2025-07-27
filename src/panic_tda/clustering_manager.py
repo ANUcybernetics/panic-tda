@@ -220,9 +220,9 @@ def _save_clustering_results(
 ) -> Dict[str, any]:
     """
     Save clustering results to the database.
-    
+
     This is a helper function extracted from cluster_all_data to enable unit testing.
-    
+
     Args:
         session: Database session
         model_name: Name of the embedding model
@@ -231,14 +231,14 @@ def _save_clustering_results(
         texts: List of text strings corresponding to embeddings
         downsample: Downsampling factor used
         epsilon: Epsilon value used for clustering
-        
+
     Returns:
         Dictionary with status and cluster count
     """
     from datetime import datetime
-    
+
     start_time = datetime.utcnow()
-    
+
     try:
         # Create clustering result record
         clustering_result = ClusteringResult(
@@ -254,14 +254,14 @@ def _save_clustering_results(
         )
         session.add(clustering_result)
         session.flush()  # Get the ID
-        
+
         # Build cluster info using medoid indices
         medoid_indices = cluster_result.get("medoid_indices", {})
         cluster_id_map = {}  # Maps numeric cluster_id to Cluster.id
-        
+
         # First create Cluster records
         unique_labels = set(cluster_result["labels"])
-        
+
         # Create outlier cluster if needed
         if OUTLIER_CLUSTER_ID in unique_labels:
             outlier_cluster = Cluster(
@@ -277,35 +277,39 @@ def _save_clustering_results(
             )
             session.add(outlier_cluster)
             session.flush()
-            
+
             # Verify the outlier cluster ID is a UUID after creation
             if not isinstance(outlier_cluster.id, UUID):
-                logger.error(f"Outlier cluster.id is not a UUID after creation! Type: {type(outlier_cluster.id)}, value: {outlier_cluster.id}")
+                logger.error(
+                    f"Outlier cluster.id is not a UUID after creation! Type: {type(outlier_cluster.id)}, value: {outlier_cluster.id}"
+                )
             else:
                 cluster_id_map[OUTLIER_CLUSTER_ID] = outlier_cluster.id
-        
+
         # Create regular clusters
         for label, medoid_idx in medoid_indices.items():
             if label == OUTLIER_CLUSTER_ID:
                 continue  # Already handled above
-            
+
             # Validate medoid index bounds
             if medoid_idx < 0 or medoid_idx >= len(embedding_ids):
-                logger.error(f"Invalid medoid index {medoid_idx} for cluster {label} (out of bounds for {len(embedding_ids)} embeddings)")
+                logger.error(
+                    f"Invalid medoid index {medoid_idx} for cluster {label} (out of bounds for {len(embedding_ids)} embeddings)"
+                )
                 continue
-            
+
             # Direct index lookup - no vector matching needed
             medoid_text = texts[medoid_idx]
             medoid_embedding_id = embedding_ids[medoid_idx]
-            cluster_size = sum(
-                1 for lbl in cluster_result["labels"] if lbl == label
-            )
-            
+            cluster_size = sum(1 for lbl in cluster_result["labels"] if lbl == label)
+
             # Validate medoid_embedding_id is a proper UUID
             if not isinstance(medoid_embedding_id, UUID):
-                logger.error(f"Invalid medoid_embedding_id type for cluster {label}: {type(medoid_embedding_id)}, value: {medoid_embedding_id}")
+                logger.error(
+                    f"Invalid medoid_embedding_id type for cluster {label}: {type(medoid_embedding_id)}, value: {medoid_embedding_id}"
+                )
                 continue
-            
+
             cluster = Cluster(
                 clustering_result_id=clustering_result.id,
                 cluster_id=int(label),
@@ -317,39 +321,47 @@ def _save_clustering_results(
             )
             session.add(cluster)
             session.flush()
-            
+
             # Verify the cluster ID is a UUID after creation
             if not isinstance(cluster.id, UUID):
-                logger.error(f"Cluster.id is not a UUID after creation! Type: {type(cluster.id)}, value: {cluster.id}")
+                logger.error(
+                    f"Cluster.id is not a UUID after creation! Type: {type(cluster.id)}, value: {cluster.id}"
+                )
                 continue
-                
+
             cluster_id_map[label] = cluster.id
-        
+
         # Create embedding cluster assignments with new cluster IDs
         assignments = []
         seen_embeddings = set()  # Track which embeddings we've already assigned
-        
+
         for embedding_id, cluster_label in zip(embedding_ids, cluster_result["labels"]):
             # Ensure all IDs are proper UUID objects
             if not isinstance(embedding_id, UUID):
-                logger.error(f"Invalid embedding_id type: {type(embedding_id)}, value: {embedding_id}")
+                logger.error(
+                    f"Invalid embedding_id type: {type(embedding_id)}, value: {embedding_id}"
+                )
                 continue
-                
+
             # Skip if we've already seen this embedding
             if embedding_id in seen_embeddings:
                 logger.warning(f"Duplicate embedding_id {embedding_id} found, skipping")
                 continue
             seen_embeddings.add(embedding_id)
-                
+
             cluster_uuid = cluster_id_map.get(int(cluster_label))
             if not cluster_uuid or not isinstance(cluster_uuid, UUID):
-                logger.error(f"Invalid cluster_uuid for label {cluster_label}: {cluster_uuid}")
+                logger.error(
+                    f"Invalid cluster_uuid for label {cluster_label}: {cluster_uuid}"
+                )
                 continue
-                
+
             if not isinstance(clustering_result.id, UUID):
-                logger.error(f"Invalid clustering_result.id type: {type(clustering_result.id)}")
+                logger.error(
+                    f"Invalid clustering_result.id type: {type(clustering_result.id)}"
+                )
                 continue
-            
+
             # Create the assignment with validated UUIDs
             assignment = EmbeddingCluster(
                 embedding_id=embedding_id,
@@ -357,18 +369,18 @@ def _save_clustering_results(
                 cluster_id=cluster_uuid,
             )
             assignments.append(assignment)
-        
+
         # Bulk insert assignments
         _bulk_insert_with_flush(session, assignments)
-        
+
         # Commit the entire write phase
         session.commit()
-        
+
         return {
             "status": "success",
             "clusters_created": len(cluster_id_map),
         }
-        
+
     except Exception as e:
         logger.error(f"Error saving clustering results: {str(e)}")
         session.rollback()
@@ -534,7 +546,7 @@ def cluster_all_data(
 
             # PHASE 4: WRITE (single transaction)
             logger.info("  Phase 4: Writing clustering results...")
-            
+
             # Use the extracted save function
             save_result = _save_clustering_results(
                 session=session,
@@ -545,11 +557,13 @@ def cluster_all_data(
                 downsample=downsample,
                 epsilon=epsilon,
             )
-            
+
             if save_result["status"] != "success":
-                logger.warning(f"  Failed to save clustering results for {model_name}: {save_result.get('message', 'Unknown error')}")
+                logger.warning(
+                    f"  Failed to save clustering results for {model_name}: {save_result.get('message', 'Unknown error')}"
+                )
                 continue
-                
+
             logger.info(f"  Successfully saved clustering results for {model_name}")
 
             # Update counts
@@ -601,13 +615,15 @@ def delete_cluster_data(
     """
     try:
         from sqlmodel import delete
-        
+
         # Count clustering results before deletion
         count_query = select(func.count(ClusteringResult.id))
         if embedding_model_id != "all":
-            count_query = count_query.where(ClusteringResult.embedding_model == embedding_model_id)
+            count_query = count_query.where(
+                ClusteringResult.embedding_model == embedding_model_id
+            )
         deleted_results = session.exec(count_query).one()
-        
+
         if deleted_results == 0:
             model_msg = (
                 "all models"
@@ -620,9 +636,9 @@ def delete_cluster_data(
             }
 
         # Count total assignments before deletion
-        assignment_count_query = (
-            select(func.count(EmbeddingCluster.id))
-            .join(ClusteringResult, EmbeddingCluster.clustering_result_id == ClusteringResult.id)
+        assignment_count_query = select(func.count(EmbeddingCluster.id)).join(
+            ClusteringResult,
+            EmbeddingCluster.clustering_result_id == ClusteringResult.id,
         )
         if embedding_model_id != "all":
             assignment_count_query = assignment_count_query.where(
@@ -639,7 +655,7 @@ def delete_cluster_data(
                     ClusteringResult.embedding_model == embedding_model_id
                 )
             ).all()
-        
+
         # Delete in reverse dependency order
         for result in results_to_delete:
             # Delete embedding cluster assignments using a delete statement
@@ -647,16 +663,16 @@ def delete_cluster_data(
                 EmbeddingCluster.clustering_result_id == result.id
             )
             session.exec(delete_stmt)
-            
+
             # Delete clusters using a delete statement
             delete_stmt = delete(Cluster).where(
                 Cluster.clustering_result_id == result.id
             )
             session.exec(delete_stmt)
-            
+
             # Delete the clustering result itself
             session.delete(result)
-        
+
         # Commit changes
         session.commit()
 
@@ -703,6 +719,7 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
     """
     try:
         from sqlmodel import delete
+
         # Get the clustering result
         result = session.get(ClusteringResult, clustering_id)
         if not result:
@@ -723,16 +740,14 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
             EmbeddingCluster.clustering_result_id == result.id
         )
         session.exec(delete_stmt)
-        
+
         # Delete clusters using a delete statement
-        delete_stmt = delete(Cluster).where(
-            Cluster.clustering_result_id == result.id
-        )
+        delete_stmt = delete(Cluster).where(Cluster.clustering_result_id == result.id)
         session.exec(delete_stmt)
-        
+
         # Delete the clustering result itself
         session.delete(result)
-        
+
         # Commit changes
         session.commit()
 

@@ -86,7 +86,7 @@ def format_label_map_as_markdown(
         Markdown-formatted table string
     """
     from panic_tda.utils import polars_to_markdown
-    
+
     # Filter for specific model if provided
     if embedding_model:
         filtered_df = map_df.filter(pl.col("embedding_model") == embedding_model)
@@ -94,13 +94,14 @@ def format_label_map_as_markdown(
         filtered_df = map_df
 
     # Sort by cluster_index and select only the columns we need
-    table_df = filtered_df.sort("cluster_index").select(["cluster_index", "cluster_label"])
-    
+    table_df = filtered_df.sort("cluster_index").select([
+        "cluster_index",
+        "cluster_label",
+    ])
+
     # Use the utility function with custom headers
     return polars_to_markdown(
-        table_df, 
-        max_col_width=max_label_length,
-        headers=["Index", "Cluster Label"]
+        table_df, max_col_width=max_label_length, headers=["Index", "Cluster Label"]
     )
 
 
@@ -128,30 +129,26 @@ def create_label_map_df(
     filtered_df = clusters_df.filter(pl.col("cluster_id") != -1)
 
     # Calculate cluster sizes by counting occurrences
-    cluster_sizes = (
-        filtered_df.group_by(["embedding_model", "cluster_label"])
-        .agg(pl.len().alias("cluster_size"))
+    cluster_sizes = filtered_df.group_by(["embedding_model", "cluster_label"]).agg(
+        pl.len().alias("cluster_size")
     )
 
     # Get unique combinations of embedding_model and cluster_label
     # Use cluster_size to order by importance (larger clusters first)
-    unique_clusters = (
-        cluster_sizes
-        .sort(["embedding_model", "cluster_size", "cluster_label"], descending=[False, True, False])
+    unique_clusters = cluster_sizes.sort(
+        ["embedding_model", "cluster_size", "cluster_label"],
+        descending=[False, True, False],
     )
 
     # Add cluster_index column with increasing integers starting at 1
     # Group by embedding_model to restart numbering for each model
-    map_df = (
-        unique_clusters.with_columns(
-            pl.col("cluster_label")
-            .rank(method="dense")
-            .over("embedding_model")
-            .cast(pl.Int64)
-            .alias("cluster_index")
-        )
-        .drop("cluster_size")
-    )
+    map_df = unique_clusters.with_columns(
+        pl.col("cluster_label")
+        .rank(method="dense")
+        .over("embedding_model")
+        .cast(pl.Int64)
+        .alias("cluster_index")
+    ).drop("cluster_size")
 
     # Print mapping if requested
     if print_mapping:
@@ -324,8 +321,7 @@ def plot_persistence_entropy(
 
 
 def plot_cluster_run_lengths(
-    clusters_df: pl.DataFrame,
-    output_file: str = "output/vis/cluster_run_lengths.pdf"
+    clusters_df: pl.DataFrame, output_file: str = "output/vis/cluster_run_lengths.pdf"
 ) -> None:
     """
     Create and save a visualization of cluster run length distributions with:

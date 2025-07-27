@@ -543,17 +543,17 @@ def test_plot_cluster_transitions(db_session):
 def test_create_label_map_df(db_session, capsys):
     """Test that label_map_df is constructed properly and verifies that cluster_index
     is unique for each embedding_model + cluster_label combination."""
-    
+
     # Setup the experiment with cluster data
     setup_cluster_experiment(db_session)
-    
+
     # Run clustering to get some data
     cluster_all_data(db_session, downsample=1)
     db_session.commit()
 
     # Load clusters data
     clusters_df = load_clusters_df(db_session)
-    
+
     # Test create_label_map_df function with clusters dataframe
     label_map_df = create_label_map_df(clusters_df)
 
@@ -573,18 +573,18 @@ def test_create_label_map_df(db_session, capsys):
 
     # Verify that cluster_index values start from 1
     assert label_map_df["cluster_index"].min() == 1
-    
+
     # Verify indices are sequential within each embedding model
     for model in label_map_df["embedding_model"].unique():
         model_df = label_map_df.filter(pl.col("embedding_model") == model)
         indices = sorted(model_df["cluster_index"].to_list())
         # Check they're sequential starting from 1
         assert indices == list(range(1, len(indices) + 1))
-    
+
     # Test the markdown printing functionality
     label_map_df_with_print = create_label_map_df(clusters_df, print_mapping=True)
     captured = capsys.readouterr()
-    
+
     # Verify the output contains expected markdown table elements
     assert "Cluster Label Mapping:" in captured.out
     assert "==" in captured.out  # Separator line
@@ -592,7 +592,7 @@ def test_create_label_map_df(db_session, capsys):
     assert "|" in captured.out  # Table pipes
     assert "Index" in captured.out  # Table header
     assert "Cluster Label" in captured.out  # Table header
-    
+
     # Verify each embedding model appears in the output
     for model in label_map_df["embedding_model"].unique():
         assert model in captured.out
@@ -667,23 +667,28 @@ def test_format_label_map_as_markdown():
         "cluster_index": [1, 2, 3, 1, 2],
     }
     map_df = pl.DataFrame(test_data)
-    
+
     # Test basic functionality
     markdown = format_label_map_as_markdown(map_df)
     assert "|" in markdown
     assert "Index" in markdown
     assert "Cluster Label" in markdown
-    
+
     # Test filtering by model
     markdown_model1 = format_label_map_as_markdown(map_df, embedding_model="Model1")
     assert "Short label" in markdown_model1
     assert "Another short one" not in markdown_model1
-    
+
     # Test label truncation
     assert "..." in markdown_model1  # Long label should be truncated
-    assert "A very long label that should be truncated because it exceeds the maximum allowed length for display" not in markdown_model1
-    
+    assert (
+        "A very long label that should be truncated because it exceeds the maximum allowed length for display"
+        not in markdown_model1
+    )
+
     # Test custom max length
-    markdown_short = format_label_map_as_markdown(map_df, embedding_model="Model1", max_label_length=20)
+    markdown_short = format_label_map_as_markdown(
+        map_df, embedding_model="Model1", max_label_length=20
+    )
     # Count occurrences of "..." - should have more with shorter max length
     assert markdown_short.count("...") >= 1

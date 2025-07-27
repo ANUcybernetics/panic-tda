@@ -655,7 +655,7 @@ def script(
     """Run a script, passing a db session."""
     # Create database connection
     db_str = f"sqlite:///{db_path}"
-    
+
     with get_session_from_connection_string(db_str) as session:
         # Empty script function for user to add ad-hoc code
         pass

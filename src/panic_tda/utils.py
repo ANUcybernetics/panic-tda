@@ -43,7 +43,9 @@ def polars_to_markdown(
     # Use custom headers if provided
     if headers:
         if len(headers) != len(pandas_df.columns):
-            raise ValueError(f"Number of headers ({len(headers)}) must match number of columns ({len(pandas_df.columns)})")
+            raise ValueError(
+                f"Number of headers ({len(headers)}) must match number of columns ({len(pandas_df.columns)})"
+            )
         pandas_df.columns = headers
 
     # Generate markdown

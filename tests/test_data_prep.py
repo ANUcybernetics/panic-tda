@@ -730,7 +730,7 @@ def test_cache_dfs(db_session):
 
     # 4. Cache all dataframes including clusters
     cache_dfs(db_session, clusters=True)
-    
+
     # Check that cache directory exists
     cache_dir = Path("output/cache")
 
@@ -742,9 +742,7 @@ def test_cache_dfs(db_session):
     assert (cache_dir / "embeddings.parquet").exists(), (
         "Embeddings cache file not found"
     )
-    assert (cache_dir / "clusters.parquet").exists(), (
-        "Clusters cache file not found"
-    )
+    assert (cache_dir / "clusters.parquet").exists(), "Clusters cache file not found"
 
     # 5. Load dataframes from cache
     runs_df_cached = pl.read_parquet(cache_dir / "runs.parquet")
@@ -796,7 +794,7 @@ def test_cache_dfs(db_session):
     assert clusters_df_cached.filter(pl.col("algorithm") == "hdbscan").height == 100, (
         "All clusters should use hdbscan algorithm"
     )
-    
+
     # Verify both embedding models have clustering results
     models_in_clusters = clusters_df_cached["embedding_model"].unique().sort()
     assert models_in_clusters.to_list() == ["Dummy", "Dummy2"], (

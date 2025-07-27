@@ -1425,38 +1425,36 @@ def artificial_futures_slides_charts(session: Session) -> None:
     bigrams_with_network = bigrams_df.join(
         runs_df.select([
             "run_id",
-            pl.col("network").list.join(" -> ").alias("network_str")
+            pl.col("network").list.join(" -> ").alias("network_str"),
         ]),
         on="run_id",
-        how="inner"
+        how="inner",
     )
 
     # Count bigrams by network
-    bigram_counts = (
-        bigrams_with_network.group_by(["network_str", "from_cluster", "to_cluster"])
-        .agg(pl.len().alias("count"))
-    )
+    bigram_counts = bigrams_with_network.group_by([
+        "network_str",
+        "from_cluster",
+        "to_cluster",
+    ]).agg(pl.len().alias("count"))
 
     # Calculate total bigrams per network (including self-transitions) for percentages
-    total_bigrams_by_network = (
-        bigram_counts
-        .group_by("network_str")
-        .agg(pl.col("count").sum().alias("total_count"))
+    total_bigrams_by_network = bigram_counts.group_by("network_str").agg(
+        pl.col("count").sum().alias("total_count")
     )
 
     # Join with totals and calculate percentages
-    bigram_counts_with_pct = (
-        bigram_counts
-        .join(total_bigrams_by_network, on="network_str", how="left")
-        .with_columns(
-            (100.0 * pl.col("count") / pl.col("total_count")).round(1).alias("percentage")
-        )
+    bigram_counts_with_pct = bigram_counts.join(
+        total_bigrams_by_network, on="network_str", how="left"
+    ).with_columns(
+        (100.0 * pl.col("count") / pl.col("total_count")).round(1).alias("percentage")
     )
 
     # Filter out self-transitions and add rank
     top_bigrams_by_network = (
-        bigram_counts_with_pct
-        .filter(pl.col("from_cluster") != pl.col("to_cluster"))  # Filter out self-transitions
+        bigram_counts_with_pct.filter(
+            pl.col("from_cluster") != pl.col("to_cluster")
+        )  # Filter out self-transitions
         .with_columns(
             pl.col("count")
             .rank(method="ordinal", descending=True)
@@ -1469,7 +1467,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
             pl.col("network_str").alias("network"),
             "from_cluster",
             "to_cluster",
-            (pl.col("percentage").cast(pl.Utf8) + "%").alias("percentage")
+            (pl.col("percentage").cast(pl.Utf8) + "%").alias("percentage"),
         ])
     )
 
@@ -1480,7 +1478,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         top_bigrams_by_network,
         title="Top 10 most common cluster bigrams by network",
         max_col_width=60,
-        headers=["Network", "From Cluster", "To Cluster", "Percentage"]
+        headers=["Network", "From Cluster", "To Cluster", "Percentage"],
     )
 
     from panic_tda.datavis import plot_cluster_bubblegrid

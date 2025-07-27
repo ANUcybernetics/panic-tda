@@ -12,11 +12,11 @@ def test_polars_to_markdown_basic():
     df = pl.DataFrame({
         "name": ["Alice", "Bob", "Charlie"],
         "age": [25, 30, 35],
-        "score": [95.5, 87.3, 92.8]
+        "score": [95.5, 87.3, 92.8],
     })
-    
+
     markdown = polars_to_markdown(df)
-    
+
     # Check that it contains expected elements
     assert "|" in markdown
     assert "name" in markdown
@@ -35,27 +35,26 @@ def test_polars_to_markdown_truncation():
         "description": [
             "Short text",
             "This is a very long description that should be truncated",
-            "Another medium length text here"
-        ]
+            "Another medium length text here",
+        ],
     })
-    
+
     # Test with truncation
     markdown = polars_to_markdown(df, max_col_width=20)
-    
+
     assert "Short text" in markdown
     assert "This is a very lo..." in markdown
-    assert "Another medium le..." in markdown  # This one is 31 chars, so it IS truncated at 20
+    assert (
+        "Another medium le..." in markdown
+    )  # This one is 31 chars, so it IS truncated at 20
 
 
 def test_polars_to_markdown_custom_headers():
     """Test custom headers functionality."""
-    df = pl.DataFrame({
-        "col1": [1, 2, 3],
-        "col2": ["a", "b", "c"]
-    })
-    
+    df = pl.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
+
     markdown = polars_to_markdown(df, headers=["ID", "Letter"])
-    
+
     assert "ID" in markdown
     assert "Letter" in markdown
     assert "col1" not in markdown
@@ -64,15 +63,13 @@ def test_polars_to_markdown_custom_headers():
 
 def test_polars_to_markdown_float_format():
     """Test custom float formatting."""
-    df = pl.DataFrame({
-        "value": [1.23456, 2.34567, 3.45678]
-    })
-    
+    df = pl.DataFrame({"value": [1.23456, 2.34567, 3.45678]})
+
     # Test with different float formats
     markdown_2f = polars_to_markdown(df, floatfmt=".2f")
     assert "1.23" in markdown_2f
     assert "2.35" in markdown_2f
-    
+
     markdown_4f = polars_to_markdown(df, floatfmt=".4f")
     assert "1.2346" in markdown_4f
     assert "2.3457" in markdown_4f
@@ -80,24 +77,18 @@ def test_polars_to_markdown_float_format():
 
 def test_polars_to_markdown_invalid_headers():
     """Test that invalid headers raise an error."""
-    df = pl.DataFrame({
-        "col1": [1, 2, 3],
-        "col2": ["a", "b", "c"]
-    })
-    
+    df = pl.DataFrame({"col1": [1, 2, 3], "col2": ["a", "b", "c"]})
+
     with pytest.raises(ValueError, match="Number of headers"):
         polars_to_markdown(df, headers=["Only One Header"])
 
 
 def test_print_polars_as_markdown(capsys):
     """Test the print function."""
-    df = pl.DataFrame({
-        "name": ["Alice", "Bob"],
-        "score": [95, 87]
-    })
-    
+    df = pl.DataFrame({"name": ["Alice", "Bob"], "score": [95, 87]})
+
     print_polars_as_markdown(df, title="Test Results")
-    
+
     captured = capsys.readouterr()
     assert "Test Results" in captured.out
     assert "=" in captured.out  # Title underline
@@ -109,9 +100,9 @@ def test_print_polars_as_markdown(capsys):
 def test_polars_to_markdown_empty_dataframe():
     """Test handling of empty DataFrames."""
     df = pl.DataFrame({"col1": [], "col2": []})
-    
+
     markdown = polars_to_markdown(df)
-    
+
     # Should still have headers
     assert "|" in markdown
     assert "col1" in markdown
@@ -124,11 +115,11 @@ def test_polars_to_markdown_mixed_types():
         "int_col": [1, 2, 3],
         "float_col": [1.1, 2.2, 3.3],
         "str_col": ["a", "b", "c"],
-        "bool_col": [True, False, True]
+        "bool_col": [True, False, True],
     })
-    
+
     markdown = polars_to_markdown(df)
-    
+
     # Check all values are present
     assert "1" in markdown
     assert "2.20" in markdown  # Float with default formatting
