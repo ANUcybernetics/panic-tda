@@ -82,26 +82,38 @@ def load_invocations_from_cache() -> pl.DataFrame:
     return pl.read_parquet(cache_path)
 
 
-def load_embeddings_from_cache() -> pl.DataFrame:
+def load_embeddings_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     Load embeddings from the cache file.
+
+    Args:
+        cache_dir: Optional custom cache directory. Defaults to "output/cache"
 
     Returns:
         A polars DataFrame containing all embedding metadata from cache (without vector data)
     """
-    cache_path = "output/cache/embeddings.parquet"
+    if cache_dir is None:
+        cache_dir = "output/cache"
+    
+    cache_path = f"{cache_dir}/embeddings.parquet"
     print(f"Loading embeddings from cache: {cache_path}")
     return pl.read_parquet(cache_path)
 
 
-def load_clusters_from_cache() -> pl.DataFrame:
+def load_clusters_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     Load clustering results from the cache file.
+
+    Args:
+        cache_dir: Optional custom cache directory. Defaults to "output/cache"
 
     Returns:
         A polars DataFrame containing all clustering data from cache
     """
-    cache_path = "output/cache/clusters.parquet"
+    if cache_dir is None:
+        cache_dir = "output/cache"
+    
+    cache_path = f"{cache_dir}/clusters.parquet"
     print(f"Loading clusters from cache: {cache_path}")
     return pl.read_parquet(cache_path)
 
@@ -701,14 +713,20 @@ def add_semantic_drift(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     return result_df
 
 
-def load_runs_from_cache() -> pl.DataFrame:
+def load_runs_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     Load runs from the cache file.
+
+    Args:
+        cache_dir: Optional custom cache directory. Defaults to "output/cache"
 
     Returns:
         A polars DataFrame containing basic run data from cache
     """
-    cache_path = "output/cache/runs.parquet"
+    if cache_dir is None:
+        cache_dir = "output/cache"
+    
+    cache_path = f"{cache_dir}/runs.parquet"
     print(f"Loading runs from cache: {cache_path}")
     return pl.read_parquet(cache_path)
 
@@ -767,14 +785,20 @@ def add_persistence_entropy(df: pl.DataFrame, session: Session) -> pl.DataFrame:
     return result_df
 
 
-def load_pd_from_cache() -> pl.DataFrame:
+def load_pd_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     Load persistence diagram data from the cache file.
+
+    Args:
+        cache_dir: Optional custom cache directory. Defaults to "output/cache"
 
     Returns:
         A polars DataFrame containing all persistence diagram data from cache
     """
-    cache_path = "output/cache/persistence_diagrams.parquet"
+    if cache_dir is None:
+        cache_dir = "output/cache"
+    
+    cache_path = f"{cache_dir}/pd.parquet"
     print(f"Loading persistence diagrams from cache: {cache_path}")
     return pl.read_parquet(cache_path)
 
@@ -786,6 +810,7 @@ def cache_dfs(
     invocations: bool = True,
     persistence_diagrams: bool = True,
     clusters: bool = True,
+    cache_dir: str | None = None,
 ) -> None:
     """
     Preload and cache dataframes.
@@ -797,16 +822,21 @@ def cache_dfs(
         invocations: Whether to cache invocations dataframe
         persistence_diagrams: Whether to cache persistence diagrams dataframe
         clusters: Whether to cache clusters dataframe
+        cache_dir: Optional custom cache directory. Defaults to "output/cache"
 
     Returns:
         None
     """
-
-    os.makedirs("output/cache", exist_ok=True)  # Ensure cache directory exists
+    
+    # Use provided cache_dir or default
+    if cache_dir is None:
+        cache_dir = "output/cache"
+    
+    os.makedirs(cache_dir, exist_ok=True)  # Ensure cache directory exists
 
     if runs:
         print("Warming cache for runs dataframe...")
-        cache_path = "output/cache/runs.parquet"
+        cache_path = f"{cache_dir}/runs.parquet"
 
         start_time = time.time()
         runs_df = load_runs_df(session)
@@ -827,7 +857,7 @@ def cache_dfs(
 
     if embeddings:
         print("Warming cache for embeddings dataframe...")
-        cache_path = "output/cache/embeddings.parquet"
+        cache_path = f"{cache_dir}/embeddings.parquet"
 
         start_time = time.time()
         embeddings_df = load_embeddings_df(session)
@@ -850,7 +880,7 @@ def cache_dfs(
 
     if invocations:
         print("Warming cache for invocations dataframe...")
-        cache_path = "output/cache/invocations.parquet"
+        cache_path = f"{cache_dir}/invocations.parquet"
 
         start_time = time.time()
         invocations_df = load_invocations_df(session)
@@ -873,7 +903,7 @@ def cache_dfs(
 
     if persistence_diagrams:
         print("Warming cache for persistence diagrams dataframe...")
-        cache_path = "output/cache/persistence_diagrams.parquet"
+        cache_path = f"{cache_dir}/pd.parquet"
 
         start_time = time.time()
         pd_df = load_pd_df(session)
@@ -894,7 +924,7 @@ def cache_dfs(
 
     if clusters:
         print("Warming cache for clusters dataframe...")
-        cache_path = "output/cache/clusters.parquet"
+        cache_path = f"{cache_dir}/clusters.parquet"
 
         start_time = time.time()
         clusters_df = load_clusters_df(session)

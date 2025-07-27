@@ -5,6 +5,7 @@ import polars as pl
 import polars.testing
 import pytest
 
+from panic_tda.clustering_manager import cluster_all_data
 from panic_tda.data_prep import (
     add_semantic_drift,
     cache_dfs,
@@ -26,7 +27,6 @@ from panic_tda.engine import (
     perform_experiment,
 )
 from panic_tda.schemas import ExperimentConfig
-from panic_tda.clustering_manager import cluster_all_data
 
 
 def test_load_invocations_df(db_session):
