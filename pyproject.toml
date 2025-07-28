@@ -23,7 +23,6 @@ dependencies = [
     "pyarrow>=19.0.1",
     "pydantic>=2.10.6",
     "pytest>=8.3.5",
-    "pytest-benchmark>=5.1.0",
     "pyvips>=2.2.3",
     "ray>=2.44.0",
     "rich>=13.9.4",
@@ -58,9 +57,8 @@ packages = ["panic_tda"]
 pythonpath = ["."]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "benchmark: marks benchmark tests (deselect with '-m \"not benchmark\"')",
 ]
-addopts = "-m 'not slow and not benchmark'"
+addopts = "-m 'not slow'"
 # Show slowest tests
 testpaths = ["tests"]
 # Disable warnings during tests

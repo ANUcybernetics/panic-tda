@@ -111,33 +111,6 @@ def test_plot_diagram():
     # fig.write_image("circle_persistence_diagram.png")
 
 
-@pytest.mark.benchmark
-@pytest.mark.parametrize("n_points", range(1000, 11000, 1000))
-def test_giotto_phd_large_point_cloud(benchmark, n_points):
-    """Test the giotto_phd function on larger point clouds of increasing size."""
-    n_dims = 768
-
-    # Generate random points in 768-dimensional space
-    point_cloud = np.random.normal(0, 1, (n_points, n_dims))
-
-    # Benchmark the computation of persistence diagrams with increasing point cloud sizes
-    result = benchmark(lambda: giotto_phd(point_cloud, max_dim=2))
-
-    # Check that the output is a dictionary
-    assert isinstance(result, dict)
-
-    # Check that the diagrams are in the "dgms" key
-    assert "dgms" in result
-    diagrams = result["dgms"]
-
-    # Check that we have diagrams for dimensions 0, 1, and 2
-    assert len(diagrams) >= 3
-
-    # Check that entropy was computed
-    assert "entropy" in result
-
-    # Log the size of the point cloud
-    print(f"Processed point cloud with {n_points} points in {n_dims} dimensions")
 
 
 def test_persistence_diagram_type_decorator(db_session):
