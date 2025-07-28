@@ -250,7 +250,6 @@ def _save_clustering_results(
                 "cluster_selection_epsilon": epsilon,
                 "allow_single_cluster": True,
             },
-            clusters=[],  # Not used anymore but kept for compatibility
         )
         session.add(clustering_result)
         session.flush()  # Get the ID
