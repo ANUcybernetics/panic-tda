@@ -13,6 +13,7 @@ from panic_tda.data_prep import (
     calculate_cluster_run_lengths,
     calculate_cluster_transitions,
     calculate_semantic_drift,
+    calculate_wasserstein_distances,
     embed_initial_prompts,
     filter_top_n_clusters,
     load_clusters_df,
@@ -1892,3 +1893,101 @@ def test_calculate_cluster_bigrams_empty():
     assert bigrams_df.schema["run_id"] == pl.Utf8
     assert bigrams_df.schema["from_cluster"] == pl.Utf8
     assert bigrams_df.schema["to_cluster"] == pl.Utf8
+
+
+def test_calculate_wasserstein_distances(db_session):
+    """Test that calculate_wasserstein_distances correctly computes pairwise distances."""
+
+    # Create a test configuration with multiple runs to get multiple persistence diagrams
+    # Use seed -1 to get random outputs from DummyI2T, avoiding deduplication
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -1, -1],  # Use -1 for random outputs
+        prompts=["test wasserstein distances", "another test prompt"],
+        embedding_models=["Dummy", "Dummy2"],
+        max_length=50,  # Ensure enough embeddings per run for PD computation
+    )
+
+    # Save config to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Test for each embedding model
+    for embedding_model in ["Dummy", "Dummy2"]:
+        # Calculate Wasserstein distances
+        distance_matrices = calculate_wasserstein_distances(db_session, embedding_model)
+
+        # Check that we got a dictionary
+        assert isinstance(distance_matrices, dict)
+
+        # Check that we have matrices for dimensions 0, 1, 2 (or subset)
+        assert all(dim in range(3) for dim in distance_matrices.keys())
+
+        # For each dimension that has data
+        for dim, distance_matrix in distance_matrices.items():
+            # Check that it's a numpy array
+            assert isinstance(distance_matrix, np.ndarray)
+
+            # Check that it's square
+            assert distance_matrix.ndim == 2
+            assert distance_matrix.shape[0] == distance_matrix.shape[1]
+
+            # With 3 seeds and 2 prompts, we should have 6 persistence diagrams
+            expected_n_diagrams = 6
+            assert distance_matrix.shape == (expected_n_diagrams, expected_n_diagrams)
+
+            # Check that diagonal is zero (distance to self)
+            np.testing.assert_array_almost_equal(np.diag(distance_matrix), 0.0)
+
+            # Check that matrix is symmetric
+            np.testing.assert_array_almost_equal(distance_matrix, distance_matrix.T)
+
+            # Check that all distances are non-negative
+            assert np.all(distance_matrix >= 0)
+
+            # Check that we have some non-zero distances (not all diagrams are identical)
+            assert np.any(distance_matrix > 0)
+
+    # Test with non-existent embedding model
+    empty_result = calculate_wasserstein_distances(db_session, "NonExistentModel")
+    assert empty_result == {}
+
+
+def test_calculate_wasserstein_distances_edge_cases(db_session):
+    """Test edge cases for Wasserstein distance calculation."""
+
+    # Create a minimal test configuration
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],  # Single run
+        prompts=["test edge case"],
+        embedding_models=["Dummy"],
+        max_length=50,
+    )
+
+    # Save config to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Calculate distances for single persistence diagram
+    distance_matrices = calculate_wasserstein_distances(db_session, "Dummy")
+
+    # Should still work with single diagram
+    assert isinstance(distance_matrices, dict)
+
+    for dim, distance_matrix in distance_matrices.items():
+        # With 1 seed and 1 prompt, we should have 1 persistence diagram
+        assert distance_matrix.shape == (1, 1)
+
+        # Distance to self should be 0
+        assert distance_matrix[0, 0] == 0.0

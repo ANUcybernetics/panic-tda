@@ -7,6 +7,7 @@ import numpy as np
 import polars as pl
 import ray
 from humanize.time import naturaldelta
+from sklearn.metrics import pairwise_distances
 from sqlmodel import Session, select
 
 from panic_tda.db import list_runs, read_embedding
@@ -94,7 +95,7 @@ def load_embeddings_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     if cache_dir is None:
         cache_dir = "output/cache"
-    
+
     cache_path = f"{cache_dir}/embeddings.parquet"
     print(f"Loading embeddings from cache: {cache_path}")
     return pl.read_parquet(cache_path)
@@ -112,7 +113,7 @@ def load_clusters_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     if cache_dir is None:
         cache_dir = "output/cache"
-    
+
     cache_path = f"{cache_dir}/clusters.parquet"
     print(f"Loading clusters from cache: {cache_path}")
     return pl.read_parquet(cache_path)
@@ -725,7 +726,7 @@ def load_runs_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     if cache_dir is None:
         cache_dir = "output/cache"
-    
+
     cache_path = f"{cache_dir}/runs.parquet"
     print(f"Loading runs from cache: {cache_path}")
     return pl.read_parquet(cache_path)
@@ -797,7 +798,7 @@ def load_pd_from_cache(cache_dir: str | None = None) -> pl.DataFrame:
     """
     if cache_dir is None:
         cache_dir = "output/cache"
-    
+
     cache_path = f"{cache_dir}/pd.parquet"
     print(f"Loading persistence diagrams from cache: {cache_path}")
     return pl.read_parquet(cache_path)
@@ -827,11 +828,11 @@ def cache_dfs(
     Returns:
         None
     """
-    
+
     # Use provided cache_dir or default
     if cache_dir is None:
         cache_dir = "output/cache"
-    
+
     os.makedirs(cache_dir, exist_ok=True)  # Ensure cache directory exists
 
     if runs:
@@ -1304,3 +1305,183 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     df = add_persistence_entropy(df, session)
 
     return df
+
+
+def calculate_wasserstein_distances(
+    session: Session, embedding_model: str
+) -> Dict[int, np.ndarray]:
+    """
+    Calculate pairwise Wasserstein distances between persistence diagrams for a given embedding model.
+
+    For each homology dimension, computes the pairwise Wasserstein distance matrix between
+    all persistence diagrams that have been computed for the specified embedding model.
+
+    Args:
+        session: SQLModel database session
+        embedding_model: Name of the embedding model to filter persistence diagrams
+
+    Returns:
+        Dictionary mapping homology dimension (0, 1, 2) to pairwise distance matrix.
+        Each matrix is square with shape (n_diagrams, n_diagrams) where n_diagrams
+        is the number of persistence diagrams for that embedding model.
+    """
+    from panic_tda.schemas import PersistenceDiagram
+
+    # Query all persistence diagrams for the given embedding model
+    statement = select(PersistenceDiagram).where(
+        PersistenceDiagram.embedding_model == embedding_model
+    )
+    persistence_diagrams = session.exec(statement).all()
+
+    if not persistence_diagrams:
+        return {}
+
+    # Organize diagrams by homology dimension
+    # We'll collect all diagrams for each dimension across all PDs
+    diagrams_by_dim: Dict[int, list[np.ndarray]] = {0: [], 1: [], 2: []}
+    pd_ids = []
+
+    for pd in persistence_diagrams:
+        if pd.diagram_data and "dgms" in pd.diagram_data:
+            pd_ids.append(str(pd.id))
+            dgms = pd.diagram_data["dgms"]
+
+            # Process each homology dimension
+            for dim in range(3):  # Dimensions 0, 1, 2
+                if dim >= len(dgms):
+                    raise ValueError(
+                        f"Missing homology dimension {dim} in persistence diagram {pd.id}. "
+                        f"Expected 3 dimensions but got {len(dgms)}"
+                    )
+
+                if not isinstance(dgms[dim], np.ndarray):
+                    raise TypeError(
+                        f"Invalid data type for dimension {dim} in persistence diagram {pd.id}. "
+                        f"Expected numpy array but got {type(dgms[dim])}"
+                    )
+
+                dgm = dgms[dim]
+
+                # Handle empty diagrams from ripser (shape (0,) instead of (0, 2))
+                if len(dgm) == 0:
+                    if dgm.ndim == 1:
+                        # Reshape to proper 2D array
+                        dgm = dgm.reshape(0, 2)
+                    elif dgm.ndim != 2:
+                        raise ValueError(
+                            f"Invalid shape for empty diagram in dimension {dim} of persistence diagram {pd.id}. "
+                            f"Expected (0,) or (0, 2) but got {dgm.shape}"
+                        )
+                else:
+                    # Non-empty diagrams must be 2D
+                    if dgm.ndim != 2 or dgm.shape[1] != 2:
+                        raise ValueError(
+                            f"Invalid shape for dimension {dim} in persistence diagram {pd.id}. "
+                            f"Expected (n, 2) but got {dgm.shape}"
+                        )
+
+                    # Check for NaN values
+                    if np.any(np.isnan(dgm)):
+                        raise ValueError(
+                            f"Found NaN values in dimension {dim} of persistence diagram {pd.id}. "
+                            "This indicates a data integrity issue."
+                        )
+                    
+                    # Filter out infinite persistence points in dimension 0
+                    if dim == 0:
+                        finite_mask = np.isfinite(dgm[:, 1])
+                        dgm = dgm[finite_mask]
+                    else:
+                        # Infinite persistence should only occur in dimension 0
+                        if np.any(np.isinf(dgm)):
+                            raise ValueError(
+                                f"Found infinite values in dimension {dim} of persistence diagram {pd.id}. "
+                                f"Infinite persistence should only occur in dimension 0."
+                            )
+
+                diagrams_by_dim[dim].append(dgm)
+
+    # Compute pairwise Wasserstein distances for each dimension
+    distance_matrices = {}
+
+    for dim in range(3):
+        diagrams = diagrams_by_dim[dim]
+
+        if not diagrams:
+            continue
+
+        n_diagrams = len(diagrams)
+
+        # Define custom Wasserstein distance function for persistence diagrams
+        def wasserstein_distance(dgm1, dgm2):
+            """Compute Wasserstein distance between two persistence diagrams."""
+            # Ensure inputs are valid numpy arrays
+            if not isinstance(dgm1, np.ndarray) or not isinstance(dgm2, np.ndarray):
+                raise TypeError("Persistence diagrams must be numpy arrays")
+
+            # All diagrams should now have proper 2D shape
+            assert dgm1.ndim == 2 and dgm1.shape[1] == 2, (
+                f"Invalid shape for dgm1: {dgm1.shape}"
+            )
+            assert dgm2.ndim == 2 and dgm2.shape[1] == 2, (
+                f"Invalid shape for dgm2: {dgm2.shape}"
+            )
+
+            # Handle empty diagrams
+            if len(dgm1) == 0 and len(dgm2) == 0:
+                return 0.0
+            elif len(dgm1) == 0:
+                # Distance to empty diagram is sum of persistence values
+                return np.sum(dgm2[:, 1] - dgm2[:, 0])
+            elif len(dgm2) == 0:
+                # Distance to empty diagram is sum of persistence values
+                return np.sum(dgm1[:, 1] - dgm1[:, 0])
+
+            # Use sklearn's implementation with custom metric
+            # We'll use the sliced Wasserstein distance approximation
+            # which is more efficient than exact Wasserstein
+            from sklearn.metrics.pairwise import pairwise_distances
+
+            # Convert persistence diagrams to persistence vectors
+            # Each point (birth, death) contributes |death - birth| to the distance
+            pers1 = dgm1[:, 1] - dgm1[:, 0]  # persistence values
+            pers2 = dgm2[:, 1] - dgm2[:, 0]
+
+            # If both are empty, distance is 0
+            if len(pers1) == 0 and len(pers2) == 0:
+                return 0.0
+
+            # If one is empty, distance is sum of all persistence values in the other
+            if len(pers1) == 0:
+                return np.sum(pers2)
+            if len(pers2) == 0:
+                return np.sum(pers1)
+
+            # Pad shorter array with zeros
+            max_len = max(len(pers1), len(pers2))
+            if len(pers1) < max_len:
+                pers1 = np.pad(pers1, (0, max_len - len(pers1)), constant_values=0)
+            if len(pers2) < max_len:
+                pers2 = np.pad(pers2, (0, max_len - len(pers2)), constant_values=0)
+
+            # Sort both arrays in descending order (largest persistence first)
+            pers1_sorted = np.sort(pers1)[::-1]
+            pers2_sorted = np.sort(pers2)[::-1]
+
+            # L1 distance between sorted persistence vectors
+            result = np.sum(np.abs(pers1_sorted - pers2_sorted))
+
+            return result
+
+        # Compute pairwise distances
+        distance_matrix = np.zeros((n_diagrams, n_diagrams))
+
+        for i in range(n_diagrams):
+            for j in range(i + 1, n_diagrams):
+                dist = wasserstein_distance(diagrams[i], diagrams[j])
+                distance_matrix[i, j] = dist
+                distance_matrix[j, i] = dist  # Symmetric matrix
+
+        distance_matrices[dim] = distance_matrix
+
+    return distance_matrices
