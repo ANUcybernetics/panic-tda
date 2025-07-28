@@ -4,7 +4,7 @@ import pytest
 from gtda.plotting import plot_diagram
 
 from panic_tda.schemas import PersistenceDiagram, Run
-from panic_tda.tda import giotto_phd
+from panic_tda.tda import giotto_phd, compute_wasserstein_distance
 
 
 def test_giotto_phd():
@@ -210,3 +210,70 @@ def test_persistence_diagram_type_decorator(db_session):
             # Check each generator
             for i in range(len(original_gens[dim])):
                 assert np.array_equal(original_gens[dim][i], retrieved_gens[dim][i])
+
+
+def test_compute_wasserstein_distance():
+    """Test the compute_wasserstein_distance function with known inputs and expected outputs."""
+
+    # Test 1: Identical diagrams should have distance 0
+    dgm1 = np.array([[0, 1], [0.5, 1.5], [1, 2]])
+    dgm2 = np.array([[0, 1], [0.5, 1.5], [1, 2]])
+    dist = compute_wasserstein_distance(dgm1, dgm2)
+    assert dist == 0.0, f"Identical diagrams should have distance 0, got {dist}"
+
+    # Test 2: Empty diagrams should have distance 0
+    empty1 = np.array([]).reshape(0, 2)
+    empty2 = np.array([]).reshape(0, 2)
+    dist = compute_wasserstein_distance(empty1, empty2)
+    assert dist == 0.0, f"Two empty diagrams should have distance 0, got {dist}"
+
+    # Test 3: Empty diagram vs non-empty diagram
+    dgm = np.array([[0, 1], [0.5, 2], [1, 3]])
+    empty = np.array([]).reshape(0, 2)
+    # Distance should be sum of persistence values: (1-0) + (2-0.5) + (3-1) = 1 + 1.5 + 2 = 4.5
+    dist = compute_wasserstein_distance(dgm, empty)
+    assert dist == 4.5, f"Expected distance 4.5, got {dist}"
+
+    # Test 4: Same distance regardless of order
+    dist_reverse = compute_wasserstein_distance(empty, dgm)
+    assert dist_reverse == 4.5, f"Expected distance 4.5 (reversed), got {dist_reverse}"
+
+    # Test 5: Simple known example
+    dgm1 = np.array([[0, 1], [0, 2]])  # Persistence values: 1, 2
+    dgm2 = np.array([[0, 1.5], [0, 2.5]])  # Persistence values: 1.5, 2.5
+    # After sorting in descending order: [2, 1] vs [2.5, 1.5]
+    # L1 distance: |2.5 - 2| + |1.5 - 1| = 0.5 + 0.5 = 1.0
+    dist = compute_wasserstein_distance(dgm1, dgm2)
+    assert dist == 1.0, f"Expected distance 1.0, got {dist}"
+
+    # Test 6: Different sized diagrams
+    dgm1 = np.array([[0, 1], [0, 2], [0, 3]])  # Persistence values: 1, 2, 3
+    dgm2 = np.array([[0, 1.5], [0, 2.5]])  # Persistence values: 1.5, 2.5
+    # After sorting in descending order: [3, 2, 1] vs [2.5, 1.5, 0] (padded)
+    # L1 distance: |3 - 2.5| + |2 - 1.5| + |1 - 0| = 0.5 + 0.5 + 1 = 2.0
+    dist = compute_wasserstein_distance(dgm1, dgm2)
+    assert dist == 2.0, f"Expected distance 2.0, got {dist}"
+
+    # Test 7: Test with persistence diagrams that have different birth times
+    dgm1 = np.array([[1, 3], [2, 5]])  # Persistence values: 2, 3
+    dgm2 = np.array([[0, 2], [3, 6]])  # Persistence values: 2, 3
+    # Same persistence values, so after sorting: [3, 2] vs [3, 2]
+    # L1 distance: |3 - 3| + |2 - 2| = 0
+    dist = compute_wasserstein_distance(dgm1, dgm2)
+    assert dist == 0.0, f"Expected distance 0.0 for same persistence values, got {dist}"
+
+    # Test 8: Test error handling for invalid inputs
+    with pytest.raises(TypeError):
+        compute_wasserstein_distance("not an array", dgm1)
+
+    with pytest.raises(TypeError):
+        compute_wasserstein_distance(dgm1, "not an array")
+
+    # Test 9: Test assertion for wrong shape
+    wrong_shape = np.array([1, 2, 3])  # 1D array
+    with pytest.raises(AssertionError):
+        compute_wasserstein_distance(wrong_shape, dgm1)
+
+    wrong_shape_2d = np.array([[1, 2, 3], [4, 5, 6]])  # Wrong number of columns
+    with pytest.raises(AssertionError):
+        compute_wasserstein_distance(dgm1, wrong_shape_2d)

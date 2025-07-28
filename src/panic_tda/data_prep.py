@@ -7,7 +7,6 @@ import numpy as np
 import polars as pl
 import ray
 from humanize.time import naturaldelta
-from sklearn.metrics import pairwise_distances
 from sqlmodel import Session, select
 
 from panic_tda.db import list_runs, read_embedding
@@ -1313,6 +1312,9 @@ def calculate_wasserstein_distances(
     """
     Calculate pairwise Wasserstein distances between persistence diagrams for a given embedding model.
 
+    This is the wrapper function that loads persistence diagram data from the database
+    and calls the inner compute_wasserstein_distance function for pairwise calculations.
+
     For each homology dimension, computes the pairwise Wasserstein distance matrix between
     all persistence diagrams that have been computed for the specified embedding model.
 
@@ -1326,6 +1328,7 @@ def calculate_wasserstein_distances(
         is the number of persistence diagrams for that embedding model.
     """
     from panic_tda.schemas import PersistenceDiagram
+    from panic_tda.tda import compute_wasserstein_distance
 
     # Query all persistence diagrams for the given embedding model
     statement = select(PersistenceDiagram).where(
@@ -1386,7 +1389,7 @@ def calculate_wasserstein_distances(
                             f"Found NaN values in dimension {dim} of persistence diagram {pd.id}. "
                             "This indicates a data integrity issue."
                         )
-                    
+
                     # Filter out infinite persistence points in dimension 0
                     if dim == 0:
                         finite_mask = np.isfinite(dgm[:, 1])
@@ -1412,73 +1415,12 @@ def calculate_wasserstein_distances(
 
         n_diagrams = len(diagrams)
 
-        # Define custom Wasserstein distance function for persistence diagrams
-        def wasserstein_distance(dgm1, dgm2):
-            """Compute Wasserstein distance between two persistence diagrams."""
-            # Ensure inputs are valid numpy arrays
-            if not isinstance(dgm1, np.ndarray) or not isinstance(dgm2, np.ndarray):
-                raise TypeError("Persistence diagrams must be numpy arrays")
-
-            # All diagrams should now have proper 2D shape
-            assert dgm1.ndim == 2 and dgm1.shape[1] == 2, (
-                f"Invalid shape for dgm1: {dgm1.shape}"
-            )
-            assert dgm2.ndim == 2 and dgm2.shape[1] == 2, (
-                f"Invalid shape for dgm2: {dgm2.shape}"
-            )
-
-            # Handle empty diagrams
-            if len(dgm1) == 0 and len(dgm2) == 0:
-                return 0.0
-            elif len(dgm1) == 0:
-                # Distance to empty diagram is sum of persistence values
-                return np.sum(dgm2[:, 1] - dgm2[:, 0])
-            elif len(dgm2) == 0:
-                # Distance to empty diagram is sum of persistence values
-                return np.sum(dgm1[:, 1] - dgm1[:, 0])
-
-            # Use sklearn's implementation with custom metric
-            # We'll use the sliced Wasserstein distance approximation
-            # which is more efficient than exact Wasserstein
-            from sklearn.metrics.pairwise import pairwise_distances
-
-            # Convert persistence diagrams to persistence vectors
-            # Each point (birth, death) contributes |death - birth| to the distance
-            pers1 = dgm1[:, 1] - dgm1[:, 0]  # persistence values
-            pers2 = dgm2[:, 1] - dgm2[:, 0]
-
-            # If both are empty, distance is 0
-            if len(pers1) == 0 and len(pers2) == 0:
-                return 0.0
-
-            # If one is empty, distance is sum of all persistence values in the other
-            if len(pers1) == 0:
-                return np.sum(pers2)
-            if len(pers2) == 0:
-                return np.sum(pers1)
-
-            # Pad shorter array with zeros
-            max_len = max(len(pers1), len(pers2))
-            if len(pers1) < max_len:
-                pers1 = np.pad(pers1, (0, max_len - len(pers1)), constant_values=0)
-            if len(pers2) < max_len:
-                pers2 = np.pad(pers2, (0, max_len - len(pers2)), constant_values=0)
-
-            # Sort both arrays in descending order (largest persistence first)
-            pers1_sorted = np.sort(pers1)[::-1]
-            pers2_sorted = np.sort(pers2)[::-1]
-
-            # L1 distance between sorted persistence vectors
-            result = np.sum(np.abs(pers1_sorted - pers2_sorted))
-
-            return result
-
-        # Compute pairwise distances
+        # Compute pairwise distances using the inner function from tda module
         distance_matrix = np.zeros((n_diagrams, n_diagrams))
 
         for i in range(n_diagrams):
             for j in range(i + 1, n_diagrams):
-                dist = wasserstein_distance(diagrams[i], diagrams[j])
+                dist = compute_wasserstein_distance(diagrams[i], diagrams[j])
                 distance_matrix[i, j] = dist
                 distance_matrix[j, i] = dist  # Symmetric matrix
 
