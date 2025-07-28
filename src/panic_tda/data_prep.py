@@ -154,7 +154,7 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         c.properties as cluster_properties,
         CASE 
             WHEN c.cluster_id = -1 THEN 'OUTLIER'
-            ELSE json_extract(c.properties, '$.medoid_text')
+            ELSE COALESCE(mi.output_text, json_extract(c.properties, '$.medoid_text'))
         END as cluster_label,
         cr.algorithm as algorithm,
         cr.parameters as parameters,
@@ -171,6 +171,9 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     JOIN embedding e ON ec.embedding_id = e.id
     JOIN invocation i ON e.invocation_id = i.id
     JOIN run r ON i.run_id = r.id
+    -- Join with medoid embedding's invocation to get the actual text
+    LEFT JOIN embedding me ON c.medoid_embedding_id = me.id
+    LEFT JOIN invocation mi ON me.invocation_id = mi.id
     -- WHERE r.initial_prompt NOT IN ('yeah', 'nah')  -- Commented out for now to allow test data
     ORDER BY cr.embedding_model, i.run_id, i.sequence_number
     """

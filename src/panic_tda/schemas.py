@@ -607,13 +607,6 @@ class ClusteringResult(SQLModel, table=True):
         default_factory=dict, sa_type=JSON, description="Algorithm parameters"
     )
 
-    # Cluster information (deprecated - kept for migration compatibility)
-    clusters: List[Dict[str, Any]] = Field(
-        default_factory=list,
-        sa_type=JSON,
-        description="DEPRECATED: List of clusters with their properties",
-    )
-
     # Relationships
     cluster_records: List["Cluster"] = Relationship(
         back_populates="clustering_result",

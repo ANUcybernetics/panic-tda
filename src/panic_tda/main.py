@@ -891,7 +891,7 @@ def delete_cluster_command(
             typer.echo(f"Embedding Model: {clustering_result.embedding_model}")
             typer.echo(f"Algorithm: {clustering_result.algorithm}")
             typer.echo(f"Created: {clustering_result.created_at}")
-            typer.echo(f"Clusters: {len(clustering_result.clusters)}")
+            typer.echo(f"Clusters: {len(clustering_result.cluster_records)}")
             typer.echo(f"Assignments: {assignments_count}")
 
             if not force:

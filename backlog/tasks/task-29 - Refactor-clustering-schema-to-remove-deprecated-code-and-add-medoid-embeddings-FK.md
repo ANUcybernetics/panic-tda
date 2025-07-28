@@ -3,7 +3,7 @@ id: task-29
 title: >-
   Refactor clustering schema to remove deprecated code and add medoid embeddings
   FK
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2025-07-28'
 labels: [database, refactoring, clustering]
@@ -57,3 +57,28 @@ The clustering schema in `src/panic_tda/schemas.py` has deprecated code:
 - Clustering results properly store medoid embedding references
 - All tests pass
 - No references to deprecated fields in codebase
+
+## Work Completed
+
+1. **Removed deprecated field** (src/panic_tda/schemas.py:611-615)
+   - Removed `ClusteringResult.clusters` field that was marked as deprecated
+
+2. **Updated code references**
+   - Fixed reference in src/panic_tda/main.py:894 to use `cluster_records` instead of `clusters`
+
+3. **Verified medoid_embedding_id implementation**
+   - Confirmed clustering_manager.py properly sets medoid_embedding_id when creating clusters (line 316)
+   - FK relationship is properly established
+
+4. **Updated data loading query** (src/panic_tda/data_prep.py)
+   - Modified `load_clusters_df` SQL query to join with medoid embedding's invocation
+   - Now retrieves actual text from invocation output rather than relying on stored JSON property
+   - Uses COALESCE for backward compatibility
+
+5. **All tests pass**
+   - Ran clustering-related tests: 22 passed, 1 skipped
+   - No test updates needed as none referenced the deprecated field
+
+6. **Fixed SQL column reference**
+   - Fixed SQL query to use `mi.output_text` instead of `mi.output` (since output is a property, not a column)
+   - All tests now pass: 166 passed, 5 skipped, 3 warnings
