@@ -582,7 +582,7 @@ def test_create_label_map_df(db_session, capsys):
         assert indices == list(range(1, len(indices) + 1))
 
     # Test the markdown printing functionality
-    label_map_df_with_print = create_label_map_df(clusters_df, print_mapping=True)
+    _label_map_df_with_print = create_label_map_df(clusters_df, print_mapping=True)
     captured = capsys.readouterr()
 
     # Verify the output contains expected markdown table elements
