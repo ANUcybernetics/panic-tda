@@ -15,7 +15,7 @@ run = "uv run panic-tda script"
 run = "uv run panic-tda export charts"
 
 [tasks.test]
-run = "uv run pytest -n auto \"${@}\""
+run = "uv run pytest -n 8 \"${@}\""
 
 [tasks.list-experiments]
 run = "uv run panic-tda list-experiments"
