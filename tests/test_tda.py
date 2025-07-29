@@ -111,8 +111,6 @@ def test_plot_diagram():
     # fig.write_image("circle_persistence_diagram.png")
 
 
-
-
 def test_persistence_diagram_type_decorator(db_session):
     """Test that the PersistenceDiagramResultType can serialize and deserialize persistence diagram results."""
     # Create a simple point cloud

@@ -309,7 +309,9 @@ def test_optics_clustering():
     for i in range(3):
         # Create outliers but not too far from the main clusters
         center = np.random.choice([0.1, 0.9])
-        vector = np.ones(EMBEDDING_DIM) * center + np.random.normal(0, 0.05, EMBEDDING_DIM)
+        vector = np.ones(EMBEDDING_DIM) * center + np.random.normal(
+            0, 0.05, EMBEDDING_DIM
+        )
         embeddings_arr.append(vector.astype(np.float32))
 
     # Convert to numpy array

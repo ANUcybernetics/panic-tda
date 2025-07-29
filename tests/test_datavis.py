@@ -2,6 +2,7 @@ import os
 
 import polars as pl
 
+from panic_tda.clustering_manager import cluster_all_data
 from panic_tda.data_prep import (
     add_persistence_entropy,
     load_clusters_df,
@@ -11,9 +12,6 @@ from panic_tda.data_prep import (
     load_runs_df,
 )
 from panic_tda.datavis import (
-    plot_cluster_run_length_violin,
-)  # Temporary import for clarity
-from panic_tda.datavis import (
     create_label_map_df,
     format_label_map_as_markdown,
     plot_cluster_bubblegrid,
@@ -21,6 +19,7 @@ from panic_tda.datavis import (
     plot_cluster_histograms,
     plot_cluster_histograms_top_n,
     plot_cluster_run_length_bubblegrid,
+    plot_cluster_run_length_violin,
     plot_cluster_run_lengths,
     plot_cluster_timelines,
     plot_cluster_transitions,
@@ -31,10 +30,9 @@ from panic_tda.datavis import (
     plot_persistence_entropy,
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
-)
+)  # Temporary import for clarity
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
-from panic_tda.clustering_manager import cluster_all_data
 
 
 def setup_minimal_experiment(db_session):
