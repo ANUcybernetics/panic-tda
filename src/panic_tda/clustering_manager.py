@@ -148,7 +148,7 @@ def _get_embeddings_query(model_name: str, downsample: int = 1):
     Build a query for embeddings with optional downsampling.
     """
     query = (
-        select(Embedding.id, Embedding.vector, Invocation.output_text)
+        select(Embedding.id, Embedding.vector, Invocation.output_text, Invocation.sequence_number)
         .select_from(Embedding)
         .join(Invocation, Embedding.invocation_id == Invocation.id)
         .where(Embedding.embedding_model == model_name)
@@ -494,7 +494,7 @@ def cluster_all_data(
             texts = []
 
             for e in embeddings_data:
-                embedding_id, vector, text = e
+                embedding_id, vector, text, seq_num = e
 
                 # Validate embedding_id - it should be a UUID object or convertible to one
                 if not isinstance(embedding_id, UUID):
