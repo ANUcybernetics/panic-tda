@@ -8,6 +8,9 @@ from alembic import context
 # Import SQLModel and your models
 from sqlmodel import SQLModel
 
+# Import all models so alembic can detect schema changes
+from panic_tda import schemas
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
