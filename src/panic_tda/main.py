@@ -657,24 +657,8 @@ def script(
     db_str = f"sqlite:///{db_path}"
 
     with get_session_from_connection_string(db_str) as session:
-        # Check if clusters column exists in clusteringresult table
-        from sqlalchemy import inspect
-        
-        engine = session.get_bind()
-        inspector = inspect(engine)
-        
-        # Get columns for clusteringresult table
-        columns = inspector.get_columns('clusteringresult')
-        column_names = [col['name'] for col in columns]
-        
-        print("Columns in clusteringresult table:")
-        for col in columns:
-            print(f"  - {col['name']}: {col['type']} (nullable: {col['nullable']})")
-        
-        if 'clusters' in column_names:
-            print("\nWARNING: 'clusters' column still exists in the database!")
-        else:
-            print("\nSUCCESS: 'clusters' column has been removed from the database.")
+        # Your script code here
+        pass
 
 
 @cluster_app.command("embeddings")
