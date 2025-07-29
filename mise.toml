@@ -4,10 +4,6 @@ uv = "latest"
 node = "latest"
 bun = "latest"
 
-
-[tasks.status]
-run = "uv run panic-tda experiment-status"
-
 [tasks.script]
 run = "uv run panic-tda script"
 
@@ -17,5 +13,5 @@ run = "uv run panic-tda export charts"
 [tasks.test]
 run = "uv run pytest -n 8 \"${@}\""
 
-[tasks.list-experiments]
-run = "uv run panic-tda list-experiments"
+[tasks.tda]
+run = "uv run panic-tda \"${@}\""
