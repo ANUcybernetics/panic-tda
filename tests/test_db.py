@@ -22,7 +22,7 @@ from panic_tda.db import (
     read_invocation,
     read_run,
 )
-from panic_tda.local import droplet_and_leaf_invocations, list_completed_run_ids
+from panic_tda.local_modules.shared import droplet_and_leaf_invocations, list_completed_run_ids
 from panic_tda.schemas import (
     Embedding,
     ExperimentConfig,
