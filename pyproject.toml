@@ -67,6 +67,10 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 
+[tool.ruff]
+# Ignore unused imports in local modules since they change frequently
+lint.per-file-ignores = { "src/panic_tda/local.py" = ["F401"], "src/panic_tda/local_modules/**/*.py" = ["F401"] }
+
 [tool.ruff.format]
 # Enable preview style formatting.
 preview = true

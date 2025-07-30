@@ -38,9 +38,20 @@ The refactoring has been completed:
 2. Extracted modules:
    - `local_modules/ieee_smc.py` - Contains ieee_smc_charts function
    - `local_modules/artificial_futures.py` - Contains artificial_futures_slides_charts function
-   - `local_modules/shared.py` - Contains shared helper functions
-3. Updated `local.py` to import from the new module structure
+   - `local_modules/shared.py` - Contains ALL shared helper functions:
+     - example_run_ids
+     - export_cluster_examples
+     - run_counts
+     - cluster_counts
+     - render_hallway_videos
+     - droplet_and_leaf_invocations
+     - create_top_class_image_grids
+     - list_completed_run_ids
+     - TOP4_RUN_IDS constant
+3. Updated `local.py` to only contain the paper_charts function and necessary imports
 4. The `paper_charts` function now imports and calls `artificial_futures_slides_charts`
-5. Verified that `uv run panic-tda export charts` command still works
+5. Configured ruff linter to ignore unused imports (F401) in these frequently-changing files
+6. Verified that all imports work correctly
+7. Ran ruff linter and formatter on all refactored modules
 
-To switch between different papers/presentations, simply update the import in `local.py` line 15 to import the desired module.
+To switch between different papers/presentations, simply update the import in `local.py` line 8 to import the desired module (e.g., change from `artificial_futures` to `ieee_smc`).
