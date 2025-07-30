@@ -17,6 +17,7 @@ from panic_tda.schemas import (
     EmbeddingCluster,
     Invocation,
     InvocationType,
+    Run,
 )
 
 logger = logging.getLogger(__name__)
@@ -155,8 +156,10 @@ def _get_embeddings_query(model_name: str, downsample: int = 1):
         select(Embedding.id, Embedding.vector, Invocation.output_text, Invocation.sequence_number)
         .select_from(Embedding)
         .join(Invocation, Embedding.invocation_id == Invocation.id)
+        .join(Run, Invocation.run_id == Run.id)
         .where(Embedding.embedding_model == model_name)
         .where(Invocation.type == InvocationType.TEXT)
+        .where(Run.initial_prompt.notin_(["yeah", "nah"]))
     )
 
     if downsample > 1:
@@ -392,7 +395,9 @@ def cluster_all_data(
             select(Embedding.embedding_model, func.count(Embedding.id).label("count"))
             .select_from(Embedding)
             .join(Invocation, Embedding.invocation_id == Invocation.id)
+            .join(Run, Invocation.run_id == Run.id)
             .where(Invocation.type == InvocationType.TEXT)
+            .where(Run.initial_prompt.notin_(["yeah", "nah"]))
         )
 
         # Apply downsampling and model filters
@@ -419,9 +424,15 @@ def cluster_all_data(
             }
 
         # Get total embedding count
-        total_query = select(func.count(Embedding.id))
+        total_query = (
+            select(func.count(Embedding.id))
+            .select_from(Embedding)
+            .join(Invocation, Embedding.invocation_id == Invocation.id)
+            .join(Run, Invocation.run_id == Run.id)
+            .where(Run.initial_prompt.notin_(["yeah", "nah"]))
+        )
         if embedding_model_id != "all":
-            total_query = total_query.select_from(Embedding).where(
+            total_query = total_query.where(
                 Embedding.embedding_model == embedding_model_id
             )
         total_embeddings = session.exec(total_query).one()
