@@ -154,7 +154,7 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         ec.medoid_embedding_id as medoid_embedding_id,
         CASE
             WHEN ec.medoid_embedding_id IS NULL THEN 'OUTLIER'
-            ELSE COALESCE(mi.output_text, 'Cluster ' || SUBSTR(CAST(ec.medoid_embedding_id AS TEXT), 1, 8))
+            ELSE mi.output_text
         END as cluster_label,
         cr.algorithm as algorithm,
         cr.parameters as parameters,
