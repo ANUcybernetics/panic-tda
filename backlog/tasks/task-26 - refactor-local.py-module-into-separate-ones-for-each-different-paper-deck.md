@@ -1,7 +1,7 @@
 ---
 id: task-26
 title: refactor local.py module into separate ones for each different paper/deck
-status: In Progress
+status: Done
 assignee: []
 created_date: "2025-07-27"
 labels: []
@@ -34,10 +34,12 @@ they change so much).
 
 The refactoring has been completed:
 
-1. Created a `local_modules/` subdirectory (instead of `local/` to avoid import conflicts)
+1. Created a `local_modules/` subdirectory (instead of `local/` to avoid import
+   conflicts)
 2. Extracted modules:
    - `local_modules/ieee_smc.py` - Contains ieee_smc_charts function
-   - `local_modules/artificial_futures.py` - Contains artificial_futures_slides_charts function
+   - `local_modules/artificial_futures.py` - Contains
+     artificial_futures_slides_charts function
    - `local_modules/shared.py` - Contains ALL shared helper functions:
      - example_run_ids
      - export_cluster_examples
@@ -48,10 +50,15 @@ The refactoring has been completed:
      - create_top_class_image_grids
      - list_completed_run_ids
      - TOP4_RUN_IDS constant
-3. Updated `local.py` to only contain the paper_charts function and necessary imports
-4. The `paper_charts` function now imports and calls `artificial_futures_slides_charts`
-5. Configured ruff linter to ignore unused imports (F401) in these frequently-changing files
+3. Updated `local.py` to only contain the paper_charts function and necessary
+   imports
+4. The `paper_charts` function now imports and calls
+   `artificial_futures_slides_charts`
+5. Configured ruff linter to ignore unused imports (F401) in these
+   frequently-changing files
 6. Verified that all imports work correctly
 7. Ran ruff linter and formatter on all refactored modules
 
-To switch between different papers/presentations, simply update the import in `local.py` line 8 to import the desired module (e.g., change from `artificial_futures` to `ieee_smc`).
+To switch between different papers/presentations, simply update the import in
+`local.py` line 8 to import the desired module (e.g., change from
+`artificial_futures` to `ieee_smc`).
