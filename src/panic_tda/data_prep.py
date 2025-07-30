@@ -145,16 +145,16 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     print("Loading clustering data...")
 
     # SQL query to join clustering data with embedding and invocation metadata
+    # In the new schema, clusters are identified by their medoid_embedding_id
     query = """
     SELECT
         ec.clustering_result_id as clustering_result_id,
         ec.embedding_id as embedding_id,
         cr.embedding_model as embedding_model,
-        c.cluster_id as cluster_id,
-        c.properties as cluster_properties,
+        ec.medoid_embedding_id as medoid_embedding_id,
         CASE 
-            WHEN c.cluster_id = -1 THEN 'OUTLIER'
-            ELSE COALESCE(mi.output_text, json_extract(c.properties, '$.medoid_text'))
+            WHEN ec.medoid_embedding_id IS NULL THEN 'OUTLIER'
+            ELSE COALESCE(mi.output_text, 'Cluster ' || SUBSTR(CAST(ec.medoid_embedding_id AS TEXT), 1, 8))
         END as cluster_label,
         cr.algorithm as algorithm,
         cr.parameters as parameters,
@@ -163,16 +163,14 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         i.sequence_number as sequence_number,
         r.initial_prompt as initial_prompt,
         r.network as network,
-        c.medoid_embedding_id as medoid_embedding_id,
-        c.size as cluster_size
+        COUNT(*) OVER (PARTITION BY ec.clustering_result_id, ec.medoid_embedding_id) as cluster_size
     FROM embeddingcluster ec
     JOIN clusteringresult cr ON ec.clustering_result_id = cr.id
-    JOIN cluster c ON ec.cluster_id = c.id
     JOIN embedding e ON ec.embedding_id = e.id
     JOIN invocation i ON e.invocation_id = i.id
     JOIN run r ON i.run_id = r.id
     -- Join with medoid embedding's invocation to get the actual text
-    LEFT JOIN embedding me ON c.medoid_embedding_id = me.id
+    LEFT JOIN embedding me ON ec.medoid_embedding_id = me.id
     LEFT JOIN invocation mi ON me.invocation_id = mi.id
     -- WHERE r.initial_prompt NOT IN ('yeah', 'nah')  -- Commented out for now to allow test data
     ORDER BY cr.embedding_model, i.run_id, i.sequence_number
@@ -181,6 +179,21 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     # Use polars to read directly from the database
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
+    
+    # Add a numeric cluster_id column for backward compatibility
+    # Outliers (where medoid_embedding_id is null) get -1
+    # All others get a sequential ID based on their medoid_embedding_id
+    df = df.with_columns(
+        pl.when(pl.col("medoid_embedding_id").is_null())
+        .then(-1)
+        .otherwise(
+            pl.col("medoid_embedding_id")
+            .rank(method="dense")
+            .over("clustering_result_id")
+            .cast(pl.Int64) - 1  # Start from 0 for non-outliers
+        )
+        .alias("cluster_id")
+    )
 
     # Format UUID columns
     df = format_uuid_columns(
@@ -237,8 +250,8 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         .alias("network")
     ])
 
-    # Drop the parameters and cluster_properties columns as we've extracted what we need
-    df = df.drop(["parameters", "cluster_properties"])
+    # Drop the parameters column as we've extracted what we need
+    df = df.drop(["parameters"])
 
     return df
 

@@ -1,6 +1,6 @@
 """Tests for the clustering manager functionality."""
 
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, create_engine, select, func
 
 from panic_tda.clustering_manager import (
     cluster_all_data,
@@ -10,7 +10,6 @@ from panic_tda.clustering_manager import (
 )
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import (
-    Cluster,
     ClusteringResult,
     Embedding,
     EmbeddingCluster,
@@ -69,8 +68,13 @@ def test_cluster_all_data_no_downsampling(db_session):
             "cluster_selection_epsilon": 0.4,
             "allow_single_cluster": True,
         }
-        # Check that cluster records were created in the new structure
-        assert len(cr.cluster_records) > 0  # Should have at least one cluster
+        # Check that clustering assignments were created
+        # Count unique clusters (distinct medoid_embedding_ids)
+        unique_clusters = db_session.exec(
+            select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id)))
+            .where(EmbeddingCluster.clustering_result_id == cr.id)
+        ).one()
+        assert unique_clusters > 0  # Should have at least one cluster
 
         # Verify embedding assignments exist
         assignments = db_session.exec(
@@ -285,6 +289,8 @@ def test_medoid_embedding_id_stored(db_session):
     # Cluster all data
     result = cluster_all_data(db_session, downsample=1)
     assert result["status"] == "success"
+    assert result["total_embeddings"] > 0  # Make sure we have embeddings
+    assert result["clustered_embeddings"] > 0  # Make sure they were clustered
 
     # Verify both models have clustering results with medoid_embedding_id
     for model in ["Dummy", "Dummy2"]:
@@ -293,18 +299,28 @@ def test_medoid_embedding_id_stored(db_session):
         ).first()
 
         assert clustering_result is not None
-        assert len(clustering_result.cluster_records) > 0
-
-        # Check that each cluster has medoid_embedding_id (except outliers)
-        for cluster in clustering_result.cluster_records:
-            if cluster.cluster_id != -1:  # Not an outlier
-                assert cluster.medoid_embedding_id is not None
-
-                # Verify the embedding exists
-                embedding = db_session.exec(
-                    select(Embedding).where(Embedding.id == cluster.medoid_embedding_id)
-                ).first()
-                assert embedding is not None
+        
+        # Count unique clusters for this result
+        unique_clusters = db_session.exec(
+            select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id)))
+            .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        ).one()
+        assert unique_clusters > 0
+        
+        # Check that medoid embeddings exist (except for outliers)
+        medoid_ids = db_session.exec(
+            select(func.distinct(EmbeddingCluster.medoid_embedding_id))
+            .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+            .where(EmbeddingCluster.medoid_embedding_id.is_not(None))
+        ).all()
+        
+        for medoid_id in medoid_ids:
+            # Verify the embedding exists
+            # Convert to UUID if it's a string
+            if isinstance(medoid_id, str):
+                medoid_id = UUID(medoid_id)
+            embedding = db_session.get(Embedding, medoid_id)
+            assert embedding is not None
 
 
 def test_cluster_all_data_multiple_models(db_session):
@@ -436,33 +452,24 @@ def test_cluster_creation_with_known_medoids(db_session):
     ).first()
     assert clustering_result is not None
 
-    # Verify clusters were created correctly
-    clusters = db_session.exec(
-        select(Cluster).where(Cluster.clustering_result_id == clustering_result.id)
+    # Verify clusters were created correctly by checking unique medoid IDs
+    unique_medoids = db_session.exec(
+        select(func.distinct(EmbeddingCluster.medoid_embedding_id))
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
     ).all()
-
-    # Should have 3 clusters: 2 regular + 1 outlier
-    assert len(clusters) == 3
-
-    # Check each cluster
-    for cluster in clusters:
-        assert isinstance(cluster.id, UUID)
-        assert isinstance(cluster.clustering_result_id, UUID)
-        assert isinstance(cluster.cluster_id, int)
-
-        if cluster.cluster_id == -1:  # Outlier cluster
-            assert cluster.medoid_embedding_id is None
-        else:  # Regular clusters
-            assert cluster.medoid_embedding_id is not None
-            assert isinstance(cluster.medoid_embedding_id, UUID)
-            # Verify the medoid_embedding_id is one of our embedding IDs
-            assert cluster.medoid_embedding_id in embedding_ids
-
-            # Verify it's the correct medoid based on our known data
-            if cluster.cluster_id == 0:
-                assert cluster.medoid_embedding_id == embedding_ids[0]
-            elif cluster.cluster_id == 1:
-                assert cluster.medoid_embedding_id == embedding_ids[2]
+    
+    # Should have 3 unique medoid values: embedding_ids[0], embedding_ids[2], and None (outlier)
+    assert len(unique_medoids) == 3
+    assert None in unique_medoids  # Outlier cluster
+    
+    # Convert string UUIDs to UUID objects for comparison
+    medoid_uuids = []
+    for medoid in unique_medoids:
+        if medoid is not None:
+            medoid_uuids.append(UUID(medoid) if isinstance(medoid, str) else medoid)
+    
+    assert embedding_ids[0] in medoid_uuids  # Cluster 0 medoid
+    assert embedding_ids[2] in medoid_uuids  # Cluster 1 medoid
 
     # Verify embedding cluster assignments
     assignments = db_session.exec(
@@ -475,13 +482,8 @@ def test_cluster_creation_with_known_medoids(db_session):
     for assignment in assignments:
         assert isinstance(assignment.embedding_id, UUID)
         assert isinstance(assignment.clustering_result_id, UUID)
-        assert isinstance(assignment.cluster_id, UUID)
-
-        # Verify the cluster_id references an actual cluster
-        cluster = db_session.exec(
-            select(Cluster).where(Cluster.id == assignment.cluster_id)
-        ).first()
-        assert cluster is not None
+        # medoid_embedding_id can be UUID or None (for outliers)
+        assert assignment.medoid_embedding_id is None or isinstance(assignment.medoid_embedding_id, UUID)
 
 
 def test_medoid_index_bounds_checking(db_session):
@@ -561,17 +563,15 @@ def test_medoid_index_bounds_checking(db_session):
         select(ClusteringResult).where(ClusteringResult.embedding_model == "Dummy")
     ).first()
 
-    clusters = db_session.exec(
-        select(Cluster).where(Cluster.clustering_result_id == clustering_result.id)
+    # Count unique medoid IDs to verify clusters
+    unique_medoids = db_session.exec(
+        select(func.distinct(EmbeddingCluster.medoid_embedding_id))
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
     ).all()
 
-    # Should only have the outlier cluster since the regular cluster had invalid medoid
-    outlier_clusters = [c for c in clusters if c.cluster_id == -1]
-    assert len(outlier_clusters) == 1
-
-    # Regular clusters with invalid medoid indices should be skipped
-    regular_clusters = [c for c in clusters if c.cluster_id != -1]
-    assert len(regular_clusters) == 0
+    # Should only have None (outlier) since the regular cluster had invalid medoid
+    assert len(unique_medoids) == 1
+    assert None in unique_medoids  # Only outlier cluster
 
     # Check that assignments still work for outliers
     assignments = db_session.exec(
@@ -611,17 +611,21 @@ def test_uuid_type_validation(db_session):
     for cr in clustering_results:
         assert isinstance(cr.id, UUID)
 
-        # Check all clusters
-        for cluster in cr.cluster_records:
-            assert isinstance(cluster.id, UUID)
-            assert isinstance(cluster.clustering_result_id, UUID)
-            assert cluster.clustering_result_id == cr.id
-
-            if cluster.medoid_embedding_id is not None:
-                assert isinstance(cluster.medoid_embedding_id, UUID)
-                # Verify it references a real embedding
-                embedding = db_session.get(Embedding, cluster.medoid_embedding_id)
-                assert embedding is not None
+        # Check all medoid embeddings
+        medoid_ids = db_session.exec(
+            select(func.distinct(EmbeddingCluster.medoid_embedding_id))
+            .where(EmbeddingCluster.clustering_result_id == cr.id)
+            .where(EmbeddingCluster.medoid_embedding_id.is_not(None))
+        ).all()
+        
+        for medoid_id in medoid_ids:
+            # Convert to UUID if it's a string (SQLite quirk)
+            if isinstance(medoid_id, str):
+                medoid_id = UUID(medoid_id)
+            assert isinstance(medoid_id, UUID)
+            # Verify it references a real embedding
+            embedding = db_session.get(Embedding, medoid_id)
+            assert embedding is not None
 
         # Check all embedding assignments
         assignments = db_session.exec(
@@ -633,15 +637,12 @@ def test_uuid_type_validation(db_session):
         for assignment in assignments:
             assert isinstance(assignment.embedding_id, UUID)
             assert isinstance(assignment.clustering_result_id, UUID)
-            assert isinstance(assignment.cluster_id, UUID)
+            # medoid_embedding_id can be UUID or None (for outliers)
+            assert assignment.medoid_embedding_id is None or isinstance(assignment.medoid_embedding_id, UUID)
 
             # Verify references are valid
             embedding = db_session.get(Embedding, assignment.embedding_id)
             assert embedding is not None
-
-            cluster = db_session.get(Cluster, assignment.cluster_id)
-            assert cluster is not None
-            assert cluster.clustering_result_id == cr.id
 
 
 def test_delete_cluster_data_all(db_session):
@@ -670,8 +671,15 @@ def test_delete_cluster_data_all(db_session):
     clustering_results = db_session.exec(select(ClusteringResult)).all()
     assert len(clustering_results) == 2  # One for each embedding model
 
-    clusters = db_session.exec(select(Cluster)).all()
-    assert len(clusters) > 0
+    # Count unique clusters across all results
+    total_clusters = 0
+    for cr in clustering_results:
+        unique_clusters = db_session.exec(
+            select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id)))
+            .where(EmbeddingCluster.clustering_result_id == cr.id)
+        ).one()
+        total_clusters += unique_clusters
+    assert total_clusters > 0
 
     assignments = db_session.exec(select(EmbeddingCluster)).all()
     assert len(assignments) > 0
@@ -686,8 +694,7 @@ def test_delete_cluster_data_all(db_session):
     clustering_results = db_session.exec(select(ClusteringResult)).all()
     assert len(clustering_results) == 0
 
-    clusters = db_session.exec(select(Cluster)).all()
-    assert len(clusters) == 0
+    # No more cluster table to check
 
     assignments = db_session.exec(select(EmbeddingCluster)).all()
     assert len(assignments) == 0

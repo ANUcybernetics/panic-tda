@@ -12,7 +12,6 @@ from uuid import UUID
 from sqlmodel import Session, func, select
 
 from panic_tda.schemas import (
-    Cluster,
     ClusteringResult,
     Embedding,
     EmbeddingCluster,
@@ -43,53 +42,58 @@ def _build_cluster_details(
         )
     ).one()
 
-    # Get clusters from the new Cluster table
+    # Get unique clusters by medoid_embedding_id with their sizes
     clusters_query = (
-        select(Cluster)
-        .where(Cluster.clustering_result_id == clustering_result.id)
-        .order_by(Cluster.size.desc())
+        select(
+            EmbeddingCluster.medoid_embedding_id,
+            func.count(EmbeddingCluster.id).label("size")
+        )
+        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        .group_by(EmbeddingCluster.medoid_embedding_id)
+        .order_by(func.count(EmbeddingCluster.id).desc())
     )
 
     if limit:
         clusters_query = clusters_query.limit(limit)
 
-    cluster_records = session.exec(clusters_query).all()
+    cluster_data = session.exec(clusters_query).all()
 
     # Build cluster details
     clusters = []
-    for cluster in cluster_records:
-        if cluster.cluster_id == OUTLIER_CLUSTER_ID:
+    cluster_id = 0  # For display purposes, assign sequential IDs
+    
+    for medoid_embedding_id, size in cluster_data:
+        if medoid_embedding_id is None:
+            # This is the outlier cluster
             clusters.append({
                 "id": OUTLIER_CLUSTER_ID,
                 "medoid_text": OUTLIER_LABEL,
-                "size": cluster.size,
+                "size": size,
             })
         else:
+            # Get the medoid embedding details
+            medoid_embedding = session.get(Embedding, medoid_embedding_id)
+            
             cluster_info = {
-                "id": cluster.cluster_id,
-                "medoid_text": cluster.properties.get("medoid_text", ""),
-                "medoid_embedding_id": str(cluster.medoid_embedding_id)
-                if cluster.medoid_embedding_id
-                else None,
-                "size": cluster.size,
+                "id": cluster_id,
+                "medoid_text": "",  # Will be populated below
+                "medoid_embedding_id": str(medoid_embedding_id),
+                "size": size,
             }
-
-            # Add invocation details if available
-            if cluster.medoid_embedding and cluster.medoid_embedding.invocation:
-                cluster_info["medoid_invocation_id"] = str(
-                    cluster.medoid_embedding.invocation.id
-                )
-                cluster_info["medoid_run_id"] = str(
-                    cluster.medoid_embedding.invocation.run_id
-                )
-
+            
+            # Get medoid text from the invocation
+            if medoid_embedding and medoid_embedding.invocation:
+                if medoid_embedding.invocation.output_text:
+                    cluster_info["medoid_text"] = medoid_embedding.invocation.output_text
+                cluster_info["medoid_invocation_id"] = str(medoid_embedding.invocation.id)
+                cluster_info["medoid_run_id"] = str(medoid_embedding.invocation.run_id)
+            
             clusters.append(cluster_info)
+            cluster_id += 1
 
     # Count regular clusters (excluding outliers)
-    regular_cluster_count = len([
-        c for c in cluster_records if c.cluster_id != OUTLIER_CLUSTER_ID
-    ])
-    has_outliers = any(c.cluster_id == OUTLIER_CLUSTER_ID for c in cluster_records)
+    regular_cluster_count = len([c for c in clusters if c["id"] != OUTLIER_CLUSTER_ID])
+    has_outliers = any(c["id"] == OUTLIER_CLUSTER_ID for c in clusters)
 
     return {
         "clustering_id": clustering_result.id,
@@ -256,84 +260,43 @@ def _save_clustering_results(
 
         # Build cluster info using medoid indices
         medoid_indices = cluster_result.get("medoid_indices", {})
-        cluster_id_map = {}  # Maps numeric cluster_id to Cluster.id
-
-        # First create Cluster records
+        
+        # Map numeric cluster labels to medoid embedding IDs
+        cluster_medoid_map = {}  # Maps numeric cluster_label to medoid_embedding_id
+        
+        # Handle outliers (they have no medoid)
         unique_labels = set(cluster_result["labels"])
-
-        # Create outlier cluster if needed
         if OUTLIER_CLUSTER_ID in unique_labels:
-            outlier_cluster = Cluster(
-                clustering_result_id=clustering_result.id,
-                cluster_id=OUTLIER_CLUSTER_ID,
-                medoid_embedding_id=None,
-                size=sum(
-                    1
-                    for label in cluster_result["labels"]
-                    if label == OUTLIER_CLUSTER_ID
-                ),
-                properties={"type": "outlier"},
-            )
-            session.add(outlier_cluster)
-            session.flush()
-
-            # Verify the outlier cluster ID is a UUID after creation
-            if not isinstance(outlier_cluster.id, UUID):
-                logger.error(
-                    f"Outlier cluster.id is not a UUID after creation! Type: {type(outlier_cluster.id)}, value: {outlier_cluster.id}"
-                )
-            else:
-                cluster_id_map[OUTLIER_CLUSTER_ID] = outlier_cluster.id
-
-        # Create regular clusters
+            cluster_medoid_map[OUTLIER_CLUSTER_ID] = None
+            
+        # Map regular clusters to their medoid embedding IDs
         for label, medoid_idx in medoid_indices.items():
             if label == OUTLIER_CLUSTER_ID:
                 continue  # Already handled above
-
+                
             # Validate medoid index bounds
             if medoid_idx < 0 or medoid_idx >= len(embedding_ids):
                 logger.error(
                     f"Invalid medoid index {medoid_idx} for cluster {label} (out of bounds for {len(embedding_ids)} embeddings)"
                 )
                 continue
-
+                
             # Direct index lookup - no vector matching needed
-            medoid_text = texts[medoid_idx]
             medoid_embedding_id = embedding_ids[medoid_idx]
-            cluster_size = sum(1 for lbl in cluster_result["labels"] if lbl == label)
-
+            
             # Validate medoid_embedding_id is a proper UUID
             if not isinstance(medoid_embedding_id, UUID):
                 logger.error(
                     f"Invalid medoid_embedding_id type for cluster {label}: {type(medoid_embedding_id)}, value: {medoid_embedding_id}"
                 )
                 continue
+                
+            cluster_medoid_map[label] = medoid_embedding_id
 
-            cluster = Cluster(
-                clustering_result_id=clustering_result.id,
-                cluster_id=int(label),
-                medoid_embedding_id=medoid_embedding_id,
-                size=cluster_size,
-                properties={
-                    "medoid_text": medoid_text,
-                },
-            )
-            session.add(cluster)
-            session.flush()
-
-            # Verify the cluster ID is a UUID after creation
-            if not isinstance(cluster.id, UUID):
-                logger.error(
-                    f"Cluster.id is not a UUID after creation! Type: {type(cluster.id)}, value: {cluster.id}"
-                )
-                continue
-
-            cluster_id_map[label] = cluster.id
-
-        # Create embedding cluster assignments with new cluster IDs
+        # Create embedding cluster assignments using medoid embedding IDs
         assignments = []
         seen_embeddings = set()  # Track which embeddings we've already assigned
-
+        
         for embedding_id, cluster_label in zip(embedding_ids, cluster_result["labels"]):
             # Ensure all IDs are proper UUID objects
             if not isinstance(embedding_id, UUID):
@@ -341,31 +304,34 @@ def _save_clustering_results(
                     f"Invalid embedding_id type: {type(embedding_id)}, value: {embedding_id}"
                 )
                 continue
-
+                
             # Skip if we've already seen this embedding
             if embedding_id in seen_embeddings:
                 logger.warning(f"Duplicate embedding_id {embedding_id} found, skipping")
                 continue
             seen_embeddings.add(embedding_id)
-
-            cluster_uuid = cluster_id_map.get(int(cluster_label))
-            if not cluster_uuid or not isinstance(cluster_uuid, UUID):
+            
+            # Get the medoid embedding ID for this cluster
+            medoid_embedding_id = cluster_medoid_map.get(int(cluster_label))
+            
+            # Skip if we don't have a mapping for this label
+            if int(cluster_label) not in cluster_medoid_map:
                 logger.error(
-                    f"Invalid cluster_uuid for label {cluster_label}: {cluster_uuid}"
+                    f"No medoid mapping found for cluster label {cluster_label}"
                 )
                 continue
-
+                
             if not isinstance(clustering_result.id, UUID):
                 logger.error(
                     f"Invalid clustering_result.id type: {type(clustering_result.id)}"
                 )
                 continue
-
+                
             # Create the assignment with validated UUIDs
             assignment = EmbeddingCluster(
                 embedding_id=embedding_id,
                 clustering_result_id=clustering_result.id,
-                cluster_id=cluster_uuid,
+                medoid_embedding_id=medoid_embedding_id,  # None for outliers
             )
             assignments.append(assignment)
 
@@ -375,9 +341,12 @@ def _save_clustering_results(
         # Commit the entire write phase
         session.commit()
 
+        # Count unique clusters (including outliers)
+        unique_clusters = len(set(cluster_medoid_map.values()))
+        
         return {
             "status": "success",
-            "clusters_created": len(cluster_id_map),
+            "clusters_created": unique_clusters,
         }
 
     except Exception as e:
@@ -663,11 +632,7 @@ def delete_cluster_data(
             )
             session.exec(delete_stmt)
 
-            # Delete clusters using a delete statement
-            delete_stmt = delete(Cluster).where(
-                Cluster.clustering_result_id == result.id
-            )
-            session.exec(delete_stmt)
+            # No need to delete clusters anymore - they're gone!
 
             # Delete the clustering result itself
             session.delete(result)
@@ -740,9 +705,7 @@ def delete_single_cluster(clustering_id: UUID, session: Session) -> Dict[str, an
         )
         session.exec(delete_stmt)
 
-        # Delete clusters using a delete statement
-        delete_stmt = delete(Cluster).where(Cluster.clustering_result_id == result.id)
-        session.exec(delete_stmt)
+        # No need to delete clusters anymore - they're gone!
 
         # Delete the clustering result itself
         session.delete(result)
@@ -824,21 +787,37 @@ def get_medoid_invocation(
     Get the invocation that produced the medoid for a specific cluster.
 
     Args:
-        cluster_id: The cluster ID
+        cluster_id: The cluster ID (display ID, not medoid embedding ID)
         clustering_result_id: UUID of the clustering result
         session: Database session
 
     Returns:
         Invocation object for the medoid
     """
-    # Get cluster from the new table
-    cluster = session.exec(
-        select(Cluster)
-        .where(Cluster.clustering_result_id == clustering_result_id)
-        .where(Cluster.cluster_id == cluster_id)
-    ).first()
-
-    if not cluster or not cluster.medoid_embedding:
+    # For the new schema, we need to look up clusters by their position in the sorted list
+    # Get all clusters sorted by size (descending) to match the display order
+    clusters_query = (
+        select(
+            EmbeddingCluster.medoid_embedding_id,
+            func.count(EmbeddingCluster.id).label("size")
+        )
+        .where(EmbeddingCluster.clustering_result_id == clustering_result_id)
+        .where(EmbeddingCluster.medoid_embedding_id.is_not(None))  # Exclude outliers
+        .group_by(EmbeddingCluster.medoid_embedding_id)
+        .order_by(func.count(EmbeddingCluster.id).desc())
+    )
+    
+    clusters = session.exec(clusters_query).all()
+    
+    # Find the cluster at the requested position
+    if cluster_id < 0 or cluster_id >= len(clusters):
         return None
-
-    return cluster.medoid_embedding.invocation
+        
+    medoid_embedding_id = clusters[cluster_id][0]
+    
+    # Get the medoid embedding and its invocation
+    medoid_embedding = session.get(Embedding, medoid_embedding_id)
+    if not medoid_embedding:
+        return None
+        
+    return medoid_embedding.invocation

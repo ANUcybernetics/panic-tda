@@ -27,7 +27,7 @@ from panic_tda.export import (
 from panic_tda.genai_models import get_output_type
 from panic_tda.genai_models import list_models as list_genai_models
 from panic_tda.local import paper_charts
-from panic_tda.schemas import Cluster, EmbeddingCluster, ExperimentConfig
+from panic_tda.schemas import EmbeddingCluster, ExperimentConfig
 
 # NOTE: all these logging shenanigans are required because it's not otherwise
 # possible to shut pyvips (a dep of moondream) up
@@ -657,7 +657,15 @@ def script(
     db_str = f"sqlite:///{db_path}"
 
     with get_session_from_connection_string(db_str) as session:
-        session
+        from panic_tda.schemas import ClusteringResult
+        
+        # Check for ClusteringResult objects
+        clustering_results = session.exec(select(ClusteringResult)).all()
+        print(f"ClusteringResult objects found: {len(clustering_results)}")
+        
+        # Check for EmbeddingCluster objects
+        embedding_clusters = session.exec(select(EmbeddingCluster)).all()
+        print(f"EmbeddingCluster objects found: {len(embedding_clusters)}")
 
 
 @cluster_app.command("embeddings")
@@ -755,13 +763,11 @@ def list_clusters_command(
                 )
             ).one()
 
-            # Count outlier assignments through the Cluster table
+            # Count outlier assignments (where medoid_embedding_id is None)
             outlier_count = session.exec(
-                select(func.count(EmbeddingCluster.id))
-                .join(Cluster, EmbeddingCluster.cluster_id == Cluster.id)
-                .where(
+                select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == result.id,
-                    Cluster.cluster_id == -1,  # -1 is the outlier cluster ID
+                    EmbeddingCluster.medoid_embedding_id.is_(None)
                 )
             ).one()
 
@@ -771,10 +777,13 @@ def list_clusters_command(
                 else 0
             )
 
-            # Count regular clusters (excluding outliers) using the cluster_records relationship
-            regular_clusters = len([
-                c for c in result.cluster_records if c.cluster_id != -1
-            ])
+            # Count unique clusters (distinct medoid_embedding_ids, excluding None)
+            regular_clusters = session.exec(
+                select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))).where(
+                    EmbeddingCluster.clustering_result_id == result.id,
+                    EmbeddingCluster.medoid_embedding_id.is_not(None)
+                )
+            ).one()
 
             if verbose:
                 # Detailed output
@@ -890,7 +899,14 @@ def delete_cluster_command(
             typer.echo(f"Embedding Model: {clustering_result.embedding_model}")
             typer.echo(f"Algorithm: {clustering_result.algorithm}")
             typer.echo(f"Created: {clustering_result.created_at}")
-            typer.echo(f"Clusters: {len(clustering_result.cluster_records)}")
+            # Count unique clusters
+            cluster_count = session.exec(
+                select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))).where(
+                    EmbeddingCluster.clustering_result_id == clustering_result.id,
+                    EmbeddingCluster.medoid_embedding_id.is_not(None)
+                )
+            ).one()
+            typer.echo(f"Clusters: {cluster_count}")
             typer.echo(f"Assignments: {assignments_count}")
 
             if not force:
