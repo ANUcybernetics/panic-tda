@@ -6,6 +6,7 @@ monitor clustering progress, and retrieve clustering results.
 """
 
 import logging
+from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -224,6 +225,8 @@ def _save_clustering_results(
     texts: List[str],
     downsample: int,
     epsilon: float,
+    start_time: datetime,
+    end_time: datetime,
 ) -> Dict[str, any]:
     """
     Save clustering results to the database.
@@ -238,13 +241,13 @@ def _save_clustering_results(
         texts: List of text strings corresponding to embeddings
         downsample: Downsampling factor used
         epsilon: Epsilon value used for clustering
+        start_time: When the clustering computation started
+        end_time: When the clustering computation completed
 
     Returns:
         Dictionary with status and cluster count
     """
     from datetime import datetime
-
-    start_time = datetime.utcnow()
 
     try:
         # Create clustering result record
@@ -252,7 +255,7 @@ def _save_clustering_results(
             embedding_model=model_name,
             algorithm="hdbscan",
             started_at=start_time,
-            completed_at=datetime.utcnow(),
+            completed_at=end_time,
             parameters={
                 "cluster_selection_epsilon": epsilon,
                 "allow_single_cluster": True,
@@ -535,6 +538,8 @@ def cluster_all_data(
                 texts=texts,
                 downsample=downsample,
                 epsilon=epsilon,
+                start_time=start_time,
+                end_time=end_time,
             )
 
             if save_result["status"] != "success":

@@ -1,7 +1,7 @@
 ---
 id: task-25
 title: find out why cluster started/ended at timestamps aren't working anymore
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-27"
 labels: []

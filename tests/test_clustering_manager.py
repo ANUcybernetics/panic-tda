@@ -434,6 +434,10 @@ def test_cluster_creation_with_known_medoids(db_session):
     }
 
     # Test the save function
+    from datetime import datetime
+    start_time = datetime.utcnow()
+    end_time = datetime.utcnow()
+    
     result = _save_clustering_results(
         session=db_session,
         model_name="Dummy",
@@ -442,6 +446,8 @@ def test_cluster_creation_with_known_medoids(db_session):
         texts=texts,
         downsample=1,
         epsilon=0.4,
+        start_time=start_time,
+        end_time=end_time,
     )
 
     assert result["status"] == "success"
@@ -545,6 +551,10 @@ def test_medoid_index_bounds_checking(db_session):
     }
 
     # This should handle the error gracefully
+    from datetime import datetime
+    start_time = datetime.utcnow()
+    end_time = datetime.utcnow()
+    
     result = _save_clustering_results(
         session=db_session,
         model_name="Dummy",
@@ -553,6 +563,8 @@ def test_medoid_index_bounds_checking(db_session):
         texts=texts,
         downsample=1,
         epsilon=0.4,
+        start_time=start_time,
+        end_time=end_time,
     )
 
     # The function should succeed but skip the invalid cluster
