@@ -315,7 +315,7 @@ def test_plot_cluster_run_length_violin(db_session):
     output_file = "output/test/cluster_run_length_violin.pdf"
 
     # Generate the plot - now pass the clusters dataframe!
-    plot_cluster_run_length_violin(clusters_df, output_file)
+    plot_cluster_run_length_violin(clusters_df, output_file = output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
@@ -476,7 +476,7 @@ def test_plot_cluster_histograms(db_session):
     output_file = "output/test/cluster_histograms.pdf"
 
     # Generate the plot - now pass the clusters dataframe!
-    plot_cluster_histograms(clusters_df, output_file)
+    plot_cluster_histograms(clusters_df, output_file =output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"
