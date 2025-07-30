@@ -1,7 +1,7 @@
 ---
 id: task-24
 title: Fix UUID type error when deleting clustering results
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-26"
 labels: []

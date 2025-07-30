@@ -1,7 +1,7 @@
 ---
 id: task-16
 title: why is cluster epsilon being set to 0.6
-status: In Progress
+status: Done
 assignee: []
 created_date: "2025-07-23"
 labels: []
@@ -31,35 +31,49 @@ epsilon value as part of "running" the clustering operation.
 
 Found the root cause of the discrepancy:
 
-1. The clustering algorithm in `src/panic_tda/clustering.py:35` uses `cluster_selection_epsilon = 0.4`
-2. However, when storing the results in the database, `src/panic_tda/clustering_manager.py:312` hardcodes the epsilon value as 0.6 in the ClusteringResult parameters
+1. The clustering algorithm in `src/panic_tda/clustering.py:35` uses
+   `cluster_selection_epsilon = 0.4`
+2. However, when storing the results in the database,
+   `src/panic_tda/clustering_manager.py:312` hardcodes the epsilon value as 0.6
+   in the ClusteringResult parameters
 
-This is a bug - the stored value doesn't match the actual value used in clustering.
+This is a bug - the stored value doesn't match the actual value used in
+clustering.
 
 The CLI command structure:
+
 - `panic-tda clusters embeddings` is the command that runs clustering
 - It's defined in `src/panic_tda/main.py` as `cluster_embeddings_command`
 - Currently accepts: embedding_model_id, db_path, and downsample parameters
 - Does NOT accept epsilon parameter
-- Calls `cluster_all_data` from clustering_manager which uses the hardcoded values
+- Calls `cluster_all_data` from clustering_manager which uses the hardcoded
+  values
 
 ## Proposed Solution
 
-1. Fix the immediate bug: Make the stored epsilon value match the actual value used (0.4)
-2. Add epsilon as a CLI parameter to allow users to control the clustering sensitivity
-3. Pass epsilon through the call chain: CLI → cluster_all_data → hdbscan function
+1. Fix the immediate bug: Make the stored epsilon value match the actual value
+   used (0.4)
+2. Add epsilon as a CLI parameter to allow users to control the clustering
+   sensitivity
+3. Pass epsilon through the call chain: CLI → cluster_all_data → hdbscan
+   function
 
 ## Implementation Completed
 
 Fixed the discrepancy and added epsilon as a configurable parameter:
 
-1. **Fixed the bug**: Changed `clustering_manager.py:312` from hardcoded 0.6 to use the actual epsilon value
-2. **Updated hdbscan function**: Added epsilon parameter with default 0.4 (`clustering.py:7`)
-3. **Updated cluster_all_data**: Added epsilon parameter to function signature (`clustering_manager.py:210`)
-4. **Updated CLI command**: Added `--epsilon/-e` option to `panic-tda clusters embeddings` command (`main.py:666-671`)
+1. **Fixed the bug**: Changed `clustering_manager.py:312` from hardcoded 0.6 to
+   use the actual epsilon value
+2. **Updated hdbscan function**: Added epsilon parameter with default 0.4
+   (`clustering.py:7`)
+3. **Updated cluster_all_data**: Added epsilon parameter to function signature
+   (`clustering_manager.py:210`)
+4. **Updated CLI command**: Added `--epsilon/-e` option to
+   `panic-tda clusters embeddings` command (`main.py:666-671`)
 5. **Updated tests**: Fixed test expectation to use 0.4 instead of 0.6
 
 The command now supports custom epsilon values:
+
 ```bash
 # Use default epsilon (0.4)
 uv run panic-tda clusters embeddings

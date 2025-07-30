@@ -1,7 +1,7 @@
 ---
 id: task-34
 title: unique constraint error on embeddingcluster.id during clustering
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-29"
 labels: []
@@ -81,12 +81,17 @@ From logs/clustering_2025-07-29_15-52-54.log:
 To systematically debug this issue:
 
 1. **Find a reproducible test case**:
-   - Identify a combination of embedding model, epsilon, and downsample factor that deterministically triggers the bug
-   - Use the highest possible downsample factor that still reproduces the issue (for faster feedback during testing)
+
+   - Identify a combination of embedding model, epsilon, and downsample factor
+     that deterministically triggers the bug
+   - Use the highest possible downsample factor that still reproduces the issue
+     (for faster feedback during testing)
    - Document the exact parameters and data that trigger the failure
 
 2. **Add comprehensive checks to pinpoint the duplicate source**:
-   - Check for duplicates in the initial "get embeddings to cluster" query results
+
+   - Check for duplicates in the initial "get embeddings to cluster" query
+     results
    - Track UUID generation throughout the clustering process
    - Verify uniqueness in the clustering algorithm outputs
    - Monitor the batched write process for any ID reuse or duplication

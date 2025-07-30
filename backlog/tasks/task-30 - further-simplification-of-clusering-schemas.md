@@ -1,7 +1,7 @@
 ---
 id: task-30
 title: further simplification of clusering schemas
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-28"
 labels: []

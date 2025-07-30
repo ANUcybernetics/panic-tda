@@ -1,7 +1,7 @@
 ---
 id: task-04
 title: cluster production embedding data
-status: To Do
+status: Done
 assignee: []
 created_date: "2025-07-15"
 labels: []

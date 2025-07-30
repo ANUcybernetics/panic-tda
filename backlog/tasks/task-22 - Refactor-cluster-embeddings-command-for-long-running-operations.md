@@ -1,6 +1,12 @@
-# Task 22: Refactor cluster embeddings command for long-running operations
-
-**Status**: "In Progress" **Created**: 2025-07-26
+---
+id: task-22
+title: Refactor cluster embeddings command for long-running operations
+status: Done
+assignee: []
+created_date: "2025-07-26"
+labels: []
+dependencies: []
+---
 
 ## Problem
 
