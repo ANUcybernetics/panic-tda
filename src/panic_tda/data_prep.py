@@ -152,7 +152,7 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         ec.embedding_id as embedding_id,
         cr.embedding_model as embedding_model,
         ec.medoid_embedding_id as medoid_embedding_id,
-        CASE 
+        CASE
             WHEN ec.medoid_embedding_id IS NULL THEN 'OUTLIER'
             ELSE COALESCE(mi.output_text, 'Cluster ' || SUBSTR(CAST(ec.medoid_embedding_id AS TEXT), 1, 8))
         END as cluster_label,
@@ -172,14 +172,13 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
     -- Join with medoid embedding's invocation to get the actual text
     LEFT JOIN embedding me ON ec.medoid_embedding_id = me.id
     LEFT JOIN invocation mi ON me.invocation_id = mi.id
-    -- WHERE r.initial_prompt NOT IN ('yeah', 'nah')  -- Commented out for now to allow test data
     ORDER BY cr.embedding_model, i.run_id, i.sequence_number
     """
 
     # Use polars to read directly from the database
     db_url = _get_polars_db_uri(session)
     df = pl.read_database_uri(query=query, uri=db_url)
-    
+
     # Add a numeric cluster_id column for backward compatibility
     # Outliers (where medoid_embedding_id is null) get -1
     # All others get a sequential ID based on their medoid_embedding_id
