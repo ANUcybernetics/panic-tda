@@ -770,7 +770,7 @@ def plot_cluster_bubblegrid(
                 x="cluster_index",
                 y="initial_prompt",
                 size="count",
-                fill="cluster_label",
+                fill="cluster_index",
             ),
         )
         + geom_point(alpha=0.8, show_legend=False)
@@ -783,7 +783,7 @@ def plot_cluster_bubblegrid(
             x="cluster index",
             y="initial prompt",
             size="count",
-            fill="count",
+            fill="cluster index",
         )
         + facet_grid("embedding_model ~ network", labeller="label_context")
         + theme(
