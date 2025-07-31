@@ -657,15 +657,7 @@ def script(
     db_str = f"sqlite:///{db_path}"
 
     with get_session_from_connection_string(db_str) as session:
-        from panic_tda.schemas import ClusteringResult
-        
-        # Check for ClusteringResult objects
-        clustering_results = session.exec(select(ClusteringResult)).all()
-        print(f"ClusteringResult objects found: {len(clustering_results)}")
-        
-        # Check for EmbeddingCluster objects
-        embedding_clusters = session.exec(select(EmbeddingCluster)).all()
-        print(f"EmbeddingCluster objects found: {len(embedding_clusters)}")
+        session
 
 
 @cluster_app.command("embeddings")
