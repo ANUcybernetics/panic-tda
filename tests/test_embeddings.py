@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pytest
 import ray
+from PIL import Image
 
 from panic_tda.embeddings import (
     Dummy,
@@ -234,7 +235,9 @@ def test_list_models():
         "Dummy",
         "Dummy2",
         "Nomic",
+        "NomicVision",
         "JinaClip",
+        "JinaClipVision",
     ]
     for model in expected_models:
         assert model in available_models
@@ -387,40 +390,47 @@ def test_run_missing_embeddings(db_session, dummy_actors):
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", list_models())
 def test_embedding_model(model_name, embedding_model_actors):
-    """Test that the embedding model returns valid vectors for text and is deterministic."""
-    # Create a sample text string
-    sample_text = ["Sample output text"]
-
+    """Test that the embedding model returns valid vectors and is deterministic."""
     # Get the model actor from fixture
     model = embedding_model_actors[model_name]
 
-    # Test with text
-    text_embedding_ref = model.embed.remote(sample_text)
-    text_embeddings = ray.get(text_embedding_ref)
-    text_embedding = text_embeddings[0]  # Get the first embedding
+    # Determine if this is an image model or text model
+    is_image_model = "Vision" in model_name
+    
+    if is_image_model:
+        # Create a sample image
+        sample_input = [Image.new("RGB", (100, 100), color="blue")]
+    else:
+        # Create a sample text string
+        sample_input = ["Sample output text"]
+
+    # Test embedding
+    embedding_ref = model.embed.remote(sample_input)
+    embeddings = ray.get(embedding_ref)
+    embedding = embeddings[0]  # Get the first embedding
 
     # Run it again to verify determinism
-    text_embedding2_ref = model.embed.remote(sample_text)
-    text_embeddings2 = ray.get(text_embedding2_ref)
-    text_embedding2 = text_embeddings2[0]  # Get the first embedding
+    embedding2_ref = model.embed.remote(sample_input)
+    embeddings2 = ray.get(embedding2_ref)
+    embedding2 = embeddings2[0]  # Get the first embedding
 
     # Check that the embedding has the correct properties
-    assert text_embedding is not None
-    assert len(text_embedding) == 768  # Expected dimension
+    assert embedding is not None
+    assert len(embedding) == 768  # Expected dimension
 
     # Verify embedding is normalized (L2 norm close to 1.0)
-    # vector_norm = np.linalg.norm(text_embedding)
+    # vector_norm = np.linalg.norm(embedding)
     # assert 0.999 <= vector_norm <= 1.001, (
     #     f"Vector not normalized: norm = {vector_norm}"
     # )
 
     # Verify it's a proper embedding vector (except for dummy models which may not use float32)
     if not model_name.startswith("Dummy"):
-        assert text_embedding.dtype == np.float32
-        assert not np.all(text_embedding == 0)  # Should not be all zeros
+        assert embedding.dtype == np.float32
+        assert not np.all(embedding == 0)  # Should not be all zeros
 
     # Verify determinism
-    assert np.array_equal(text_embedding, text_embedding2)
+    assert np.array_equal(embedding, embedding2)
 
 
 @pytest.mark.slow
@@ -431,23 +441,33 @@ def test_embedding_batch_performance(model_name, batch_size, embedding_model_act
     # Get the model actor from fixture
     model = embedding_model_actors[model_name]
 
-    # Create dummy text strings for the batch
-    sample_texts = [f"Sample text {i}" for i in range(batch_size)]
+    # Determine if this is an image model or text model
+    is_image_model = "Vision" in model_name
+    
+    if is_image_model:
+        # Create dummy images for the batch
+        sample_inputs = [
+            Image.new("RGB", (100, 100), color=(i % 255, (i * 2) % 255, (i * 3) % 255))
+            for i in range(batch_size)
+        ]
+    else:
+        # Create dummy text strings for the batch
+        sample_inputs = [f"Sample text {i}" for i in range(batch_size)]
 
     # Measure time to process the batch
     start_time = time.time()
 
     # Get embeddings for the batch
-    text_embedding_ref = model.embed.remote(sample_texts)
-    text_embeddings = ray.get(text_embedding_ref)
+    embedding_ref = model.embed.remote(sample_inputs)
+    embeddings = ray.get(embedding_ref)
 
     elapsed_time = time.time() - start_time
 
     # Verify we got the correct number of embeddings
-    assert len(text_embeddings) == batch_size
+    assert len(embeddings) == batch_size
 
     # Check that all embeddings have the expected properties
-    for embedding in text_embeddings:
+    for embedding in embeddings:
         assert embedding is not None
         assert len(embedding) == 768  # Expected dimension
         assert embedding.dtype == np.float32
@@ -523,3 +543,7 @@ def test_nomic_embedding_actor_pool(embedding_model_actors):
     # Clean up only the additional actors we created
     for actor in additional_actors:
         ray.kill(actor)
+
+
+
+

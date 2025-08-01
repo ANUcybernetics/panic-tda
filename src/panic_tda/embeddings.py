@@ -9,9 +9,10 @@ import ray
 import torch
 import torch.nn.functional as F
 import transformers
+from PIL import Image
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import batch_to_device
-from transformers import AutoModel
+from transformers import AutoModel, AutoImageProcessor
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -409,6 +410,98 @@ class Dummy(EmbeddingModel):
         return embeddings
 
 
+@ray.remote(num_gpus=0.02)
+class NomicVision(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Load the Nomic Vision model using transformers
+        self.processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
+        self.model = AutoModel.from_pretrained(
+            "nomic-ai/nomic-embed-vision-v1.5", 
+            trust_remote_code=True
+        ).to("cuda").eval()
+
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of image items and return embeddings."""
+        if not contents:
+            return []
+
+        # For image embedding models, contents should be PIL Images
+        images = []
+        for item in contents:
+            if isinstance(item, Image.Image):
+                images.append(item)
+            else:
+                raise ValueError(f"Expected PIL Image but got {type(item)}")
+
+        # Process images and get embeddings
+        embeddings = []
+        with torch.no_grad():
+            # Process in batches to handle large inputs
+            batch_size = 32
+            for i in range(0, len(images), batch_size):
+                batch_images = images[i:i+batch_size]
+                
+                # Process images
+                inputs = self.processor(batch_images, return_tensors="pt")
+                inputs = {k: v.to("cuda") for k, v in inputs.items()}
+                
+                # Get embeddings
+                outputs = self.model(**inputs)
+                batch_embeddings = outputs.last_hidden_state[:, 0]  # CLS token
+                
+                # Normalize embeddings
+                batch_embeddings = F.normalize(batch_embeddings, p=2, dim=1)
+                
+                # Convert to numpy and append
+                batch_embeddings = batch_embeddings.cpu().numpy()
+                embeddings.extend([emb for emb in batch_embeddings])
+
+        return embeddings
+
+
+@ray.remote(num_gpus=0.03)
+class JinaClipVision(EmbeddingModel):
+    def __init__(self):
+        """Initialize the model and load to device."""
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA GPU is required but not available")
+
+        # Load model using transformers directly (same model as JinaClip)
+        self.model = (
+            AutoModel.from_pretrained("jinaai/jina-clip-v2", trust_remote_code=True)
+            .to("cuda")
+            .eval()
+        )
+
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of image items and return embeddings."""
+        if not contents:
+            return []
+
+        # For image embedding models, contents should be PIL Images
+        images = []
+        for item in contents:
+            if isinstance(item, Image.Image):
+                images.append(item)
+            else:
+                raise ValueError(f"Expected PIL Image but got {type(item)}")
+
+        with torch.no_grad():
+            # Image embedding
+            image_embeddings = self.model.encode_image(
+                images, truncate_dim=EMBEDDING_DIM
+            )
+            return [emb for emb in image_embeddings]
+
+
 @ray.remote
 class Dummy2(EmbeddingModel):
     def __init__(self):
@@ -433,6 +526,7 @@ class Dummy2(EmbeddingModel):
             embeddings.append(vector.astype(np.float32))
 
         return embeddings
+
 
 
 def list_models():

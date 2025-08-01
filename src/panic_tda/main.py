@@ -657,7 +657,7 @@ def script(
     db_str = f"sqlite:///{db_path}"
 
     with get_session_from_connection_string(db_str) as session:
-        session
+        session  # Ad-hoc script function
 
 
 @cluster_app.command("embeddings")
