@@ -13,13 +13,13 @@ def paper_charts(session: Session) -> None:
     Generate charts for paper publications.
     """
 
-    cache_dfs(
-        session,
-        runs=False,
-        embeddings=False,
-        invocations=False,
-        persistence_diagrams=False,
-        clusters=True,
-    )
+    # cache_dfs(
+    #     session,
+    #     runs=True,
+    #     embeddings=True,
+    #     invocations=True,
+    #     persistence_diagrams=True,
+    #     clusters=True,
+    # )
 
     artificial_futures_slides_charts(session)
