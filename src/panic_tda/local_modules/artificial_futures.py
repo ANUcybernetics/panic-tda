@@ -6,7 +6,6 @@ from sqlmodel import Session
 from panic_tda.data_prep import (
     calculate_cluster_bigrams,
     load_clusters_from_cache,
-    load_embeddings_from_cache,
     load_runs_from_cache,
 )
 from panic_tda.datavis import plot_cluster_bubblegrid, plot_cluster_example_images
@@ -26,35 +25,21 @@ def artificial_futures_slides_charts(session: Session) -> None:
     """
     # Load all dataframes from cache at the top
     runs_df = load_runs_from_cache()
-    embeddings_df = load_embeddings_from_cache()
     clusters_df = load_clusters_from_cache()
 
-    # Filter embeddings to Nomic model
-    embeddings_df = embeddings_df.filter(pl.col("embedding_model") == "Nomic")
-
     # Filter clusters to only the specified clustering result
-    clusters_df = clusters_df.filter(pl.col("embedding_model") == "Nomic")
-    # clusters_df = clusters_df.filter(pl.col("clustering_result_id") == "result-id")
-
-    # Join embeddings with clusters to get cluster labels
-    # First deduplicate clusters_df to avoid multiple rows per embedding
-    unique_clusters = clusters_df.select([
-        "embedding_id",
-        "cluster_id",
-        "cluster_label",
-    ]).unique()
-    embeddings_df = embeddings_df.join(
-        unique_clusters, left_on="id", right_on="embedding_id", how="inner"
+    clusters_df = clusters_df.filter(
+        pl.col("clustering_result_id") == "0688ac5e-ee51-7a9b-9b0a-017376f3fbb5"
     )
 
     # Filter out outliers
-    embeddings_df = embeddings_df.filter(
+    clusters_df = clusters_df.filter(
         (pl.col("cluster_label").is_not_null()) & (pl.col("cluster_label") != "OUTLIER")
     )
 
     # Get top 10 most popular clusters with their counts
     cluster_counts = (
-        embeddings_df.group_by("cluster_label")
+        clusters_df.group_by("cluster_label")
         .agg(pl.len().alias("count"))
         .sort("count", descending=True)
         .head(10)
@@ -63,16 +48,16 @@ def artificial_futures_slides_charts(session: Session) -> None:
     top_cluster_labels = cluster_counts.get_column("cluster_label")
 
     # Filter to only top 10 clusters
-    embeddings_df = embeddings_df.filter(
+    top_clusters_df = clusters_df.filter(
         pl.col("cluster_label").is_in(top_cluster_labels)
     )
 
-    # Join with cluster counts to add count column (but don't sort the entire df)
-    embeddings_df = embeddings_df.join(cluster_counts, on="cluster_label", how="left")
+    # Join with cluster counts to add count column
+    top_clusters_df = top_clusters_df.join(cluster_counts, on="cluster_label", how="left")
 
     # cluster examples
     plot_cluster_example_images(
-        embeddings_df,
+        top_clusters_df,
         24,
         "Nomic",
         session,
@@ -80,7 +65,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
         rescale=0.5,
     )
     plot_cluster_example_images(
-        embeddings_df,
+        top_clusters_df,
         180,
         "Nomic",
         session,
@@ -90,7 +75,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     # print "top 10 clusters" table as md (for marp slides)
-    total_non_outlier = embeddings_df.height
+    total_non_outlier = clusters_df.height
     top_clusters_table = (
         cluster_counts.with_row_index("rank", offset=1)  # Add rank column starting at 1
         .with_columns(
