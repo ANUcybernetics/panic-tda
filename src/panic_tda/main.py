@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 import typer
+from humanize.time import naturaldelta
 from sqlmodel import func, select
 
 import panic_tda.engine as engine
@@ -289,7 +290,7 @@ def list_experiments_command(
                     f"{experiment.id} - runs: {run_count}, "
                     f"max_length: {experiment.max_length}, "
                     f"started: {experiment.started_at.strftime('%Y-%m-%d %H:%M')}, "
-                    f"elapsed: {elapsed:.1f}s"
+                    f"elapsed: {naturaldelta(elapsed)}"
                 )
 
 
@@ -785,7 +786,7 @@ def list_clusters_command(
                 typer.echo(f"  Parameters: {result.parameters}")
                 typer.echo(f"  Started: {result.started_at}")
                 typer.echo(f"  Completed: {result.completed_at}")
-                typer.echo(f"  Duration: {result.duration:.1f} seconds")
+                typer.echo(f"  Duration: {naturaldelta(result.duration)}")
                 typer.echo(f"  Total Clusters: {regular_clusters}")
                 typer.echo(f"  Total Assignments: {assignments_count}")
                 typer.echo(
@@ -795,7 +796,7 @@ def list_clusters_command(
                 # Simple output with cluster_selection_epsilon parameter
                 epsilon = result.parameters.get("cluster_selection_epsilon", "N/A")
                 duration_str = (
-                    f"{result.duration:.1f}s" if result.duration > 0 else "N/A"
+                    naturaldelta(result.duration) if result.duration > 0 else "N/A"
                 )
                 typer.echo(
                     f"{result.id} - model: {result.embedding_model}, "
@@ -1053,7 +1054,7 @@ def cluster_status_command(
         typer.echo(f"Started: {details['started_at']}")
         typer.echo(f"Completed: {details['completed_at']}")
         duration = details.get("duration", 0)
-        duration_str = f"{duration:.1f} seconds" if duration > 0 else "N/A"
+        duration_str = naturaldelta(duration) if duration > 0 else "N/A"
         typer.echo(f"Duration: {duration_str}")
         typer.echo(f"Total clusters: {len(regular_clusters)}")
         typer.echo(f"Total assignments: {details['total_assignments']}")
