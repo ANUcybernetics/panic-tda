@@ -1,7 +1,7 @@
 ---
 id: task-36
 title: investigate whether yeah/nah run filtering is used consistently
-status: In Progress
+status: Done
 assignee: []
 created_date: "2025-07-30"
 labels: []
@@ -28,12 +28,15 @@ filter out any invocations or embeddings from these runs.
 ### Files Checked
 
 1. **data_prep.py** ✅ - All SQL queries properly filter out yeah/nah runs:
+
    - Line 992: `WHERE run.initial_prompt NOT IN ('yeah', 'nah')`
-   - Line 1036: `WHERE invocation.type = 'TEXT' AND run.initial_prompt NOT IN ('yeah', 'nah')`
+   - Line 1036:
+     `WHERE invocation.type = 'TEXT' AND run.initial_prompt NOT IN ('yeah', 'nah')`
    - Line 1088: `WHERE run.initial_prompt NOT IN ('yeah', 'nah')`
    - Line 1274: `AND run.initial_prompt NOT IN ('yeah', 'nah')`
 
-2. **clustering_manager.py** ❌ - Missing yeah/nah filtering in cluster embeddings command:
+2. **clustering_manager.py** ❌ - Missing yeah/nah filtering in cluster
+   embeddings command:
    - `_get_embeddings_query()` - Did not filter yeah/nah runs
    - `cluster_all_data()` count query - Did not filter yeah/nah runs
    - `cluster_all_data()` total query - Did not filter yeah/nah runs
@@ -51,6 +54,8 @@ Updated `clustering_manager.py` to add yeah/nah filtering:
 
 ### Other Files Reviewed
 
-- **db.py** - Contains some Embedding queries but they are for specific lookups or exports, not for analysis
-- **main.py** - Uses clustering_manager functions, so will benefit from the fixes
+- **db.py** - Contains some Embedding queries but they are for specific lookups
+  or exports, not for analysis
+- **main.py** - Uses clustering_manager functions, so will benefit from the
+  fixes
 - **engine.py** - No relevant queries found
