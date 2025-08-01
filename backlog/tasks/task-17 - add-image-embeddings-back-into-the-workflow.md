@@ -1,7 +1,7 @@
 ---
 id: task-17
 title: add image embeddings back into the workflow
-status: In Progress
+status: Done
 assignee: []
 created_date: "2025-07-23"
 labels: []
@@ -33,14 +33,20 @@ create the image embeddings in ad-hoc script code for now.
 
 Successfully implemented two new image embedding models:
 
-1. **NomicVision** - Uses the nomic-ai/nomic-embed-vision-v1.5 model with transformers AutoModel/AutoImageProcessor
-2. **JinaClipVision** - Uses the jinaai/jina-clip-v2 model (same as JinaClip but for image embeddings)
+1. **NomicVision** - Uses the nomic-ai/nomic-embed-vision-v1.5 model with
+   transformers AutoModel/AutoImageProcessor
+2. **JinaClipVision** - Uses the jinaai/jina-clip-v2 model (same as JinaClip but
+   for image embeddings)
 
 Both models:
-- Accept PIL Image objects as input (from invocation.output for IMAGE type invocations)
+
+- Accept PIL Image objects as input (from invocation.output for IMAGE type
+  invocations)
 - Return 768-dimensional embedding vectors (matching EMBEDDING_DIM)
 - Have deterministic behavior (same image always produces same embedding)
 - Support batch processing with proper GPU memory management
-- Are included in the list_models() function and work with the existing infrastructure
+- Are included in the list_models() function and work with the existing
+  infrastructure
 
-All tests pass successfully, including the slow performance tests with batch sizes up to 256 images.
+All tests pass successfully, including the slow performance tests with batch
+sizes up to 256 images.
