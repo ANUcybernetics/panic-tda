@@ -225,28 +225,10 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
         .alias("epsilon")
     ]).drop("params_struct")
 
-    # Parse network from JSON string to create network_path column
-    # Handle case where network might be null or already decoded
-    def parse_network(network_val):
-        if network_val is None:
-            return ""
-        if isinstance(network_val, str):
-            try:
-                import json
-
-                parsed = json.loads(network_val)
-                if isinstance(parsed, list):
-                    return "→".join(parsed)
-            except (json.JSONDecodeError, ValueError):
-                pass
-        elif isinstance(network_val, list):
-            return "→".join(network_val)
-        return str(network_val)
-
+    # Parse network from JSON string to create string column
+    # JSON list of models -> string with arrow separator
     df = df.with_columns([
-        pl.col("network")
-        .map_elements(parse_network, return_dtype=pl.Utf8)
-        .alias("network")
+        pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
 
     # Drop the parameters column as we've extracted what we need
@@ -1044,7 +1026,8 @@ def load_embeddings_df(session: Session) -> pl.DataFrame:
     # Format UUID columns
     df = format_uuid_columns(df, ["id", "invocation_id", "run_id", "experiment_id"])
 
-    # Parse network from JSON string and create network_path column
+    # Parse network from JSON string to create string column
+    # JSON list of models -> string with arrow separator
     df = df.with_columns([
         pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
@@ -1098,7 +1081,8 @@ def load_pd_df(session: Session) -> pl.DataFrame:
         pd_metadata_df, ["persistence_diagram_id", "run_id", "experiment_id"]
     )
 
-    # Parse network from JSON string
+    # Parse network from JSON string to create string column
+    # JSON list of models -> string with arrow separator
     pd_metadata_df = pd_metadata_df.with_columns([
         pl.col("network").str.json_decode().list.join("→").alias("network")
     ])
@@ -1151,8 +1135,12 @@ def load_pd_df(session: Session) -> pl.DataFrame:
 
     pd_df = pl.DataFrame(expanded_data, schema_overrides=schema_overrides)
 
-    # Extract image_model and text_model from network
-    def extract_models(network):
+    # Extract image_model and text_model from network string
+    def extract_models(network_str):
+        if not network_str:
+            return pl.Series([None, None])
+        
+        network = network_str.split("→")
         image_model = None
         text_model = None
         for model in network:
@@ -1165,11 +1153,8 @@ def load_pd_df(session: Session) -> pl.DataFrame:
                 break
         return pl.Series([image_model, text_model])
 
-    # Parse network string back to list and extract models
-    pd_df = pd_df.with_columns([pl.col("network").str.split("→").alias("network_list")])
-
     pd_df = pd_df.with_columns([
-        pl.col("network_list")
+        pl.col("network")
         .map_elements(extract_models, return_dtype=pl.List(pl.String))
         .alias("models")
     ])
@@ -1177,7 +1162,7 @@ def load_pd_df(session: Session) -> pl.DataFrame:
     pd_df = pd_df.with_columns([
         pl.col("models").list.get(0).alias("image_model"),
         pl.col("models").list.get(1).alias("text_model"),
-    ]).drop(["models", "network_list"])
+    ]).drop(["models"])
 
     return pd_df
 
@@ -1281,11 +1266,18 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     # Format UUID columns
     df = format_uuid_columns(df, ["run_id", "experiment_id"])
 
-    # Parse network from JSON string to List[str]
-    df = df.with_columns([pl.col("network").str.json_decode().alias("network")])
+    # Parse network from JSON string to create string column
+    # JSON list of models -> string with arrow separator
+    df = df.with_columns([
+        pl.col("network").str.json_decode().list.join("→").alias("network")
+    ])
 
-    # Extract image_model and text_model from network
-    def extract_models(network):
+    # Extract image_model and text_model from network string
+    def extract_models(network_str):
+        if not network_str:
+            return pl.Series([None, None])
+        
+        network = network_str.split("→")
         image_model = None
         text_model = None
         for model in network:

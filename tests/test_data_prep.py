@@ -507,7 +507,7 @@ def test_load_runs_df(db_session):
     first_row = df.row(0, named=True)
     assert first_row["initial_prompt"] == "test runs dataframe"
     assert first_row["seed"] == -1  # Updated to match actual seed value
-    assert first_row["network"] == ["DummyT2I", "DummyI2T"]
+    assert first_row["network"] == "DummyT2I→DummyI2T"
     assert first_row["max_length"] == 10  # Updated to match configured max_length
     assert first_row["num_invocations"] == 10
     assert first_row["experiment_id"] == str(config.id)

@@ -287,8 +287,7 @@ def plot_persistence_entropy(
     df = df.with_columns(
         pl.col("homology_dimension")
         .replace_strict({0: "h₀", 1: "h₁", 2: "h₂"})
-        .alias("homology_dimension"),
-        pl.col("network").list.join("→").alias("network"),
+        .alias("homology_dimension")
     )
 
     # Convert polars DataFrame to pandas for plotnine
