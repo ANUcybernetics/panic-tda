@@ -351,13 +351,38 @@ def plot_cluster_run_lengths(
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = count_df.to_pandas()
 
+    # Check which groups have multiple data points
+    # Group by all aesthetics that define separate lines
+    group_sizes = pandas_df.groupby(['embedding_model', 'network']).size()
+    groups_with_multiple_points = group_sizes[group_sizes > 1]
+    
+    # Only include data for groups with multiple points for line plotting
+    if len(groups_with_multiple_points) > 0:
+        # Get the group keys that have multiple points
+        valid_groups = groups_with_multiple_points.index
+        # Create a mask for rows that belong to groups with multiple points
+        mask = pandas_df.apply(
+            lambda row: (row['embedding_model'], row['network']) in valid_groups, 
+            axis=1
+        )
+        line_data = pandas_df[mask]
+    else:
+        line_data = pandas_df.iloc[0:0]  # Empty dataframe with same structure
+
     plot = (
         ggplot(
             pandas_df,
             aes(x="run_length", y="count", color="network"),
         )
         + geom_point(size=2, stroke=1, fill="none")
-        + geom_line()
+    )
+    
+    # Only add lines if we have data for them
+    if len(line_data) > 0:
+        plot = plot + geom_line(data=line_data)
+    
+    plot = (
+        plot
         + scale_color_brewer(type="qual", palette=2)
         # + scale_x_continuous(limits=[0, 12], breaks=range(0, 13))
         # + scale_y_log10()  # Log scale for y-axis
@@ -635,6 +660,9 @@ def plot_cluster_timelines(
     # Convert polars DataFrame to pandas for plotnine
     pandas_df = indexed_df.to_pandas()
 
+    # Add a numeric alpha column to the dataframe
+    pandas_df['point_alpha'] = pandas_df['cluster_index'].apply(lambda x: 0.3 if x == 0 else 1.0)
+    
     # Create the plot
     plot = (
         ggplot(
@@ -643,7 +671,7 @@ def plot_cluster_timelines(
                 x="sequence_number",
                 y="run_id",
                 color="cluster_index",
-                alpha="cluster_index != 0",  # 0 is now the OUTLIER value
+                alpha="point_alpha",
             ),
         )
         + geom_line(colour="black", alpha=0.5, show_legend=False)
