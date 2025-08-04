@@ -544,6 +544,12 @@ class Embedding(SQLModel, table=True):
 
     model_config = {"arbitrary_types_allowed": True}
 
+    __table_args__ = (
+        UniqueConstraint(
+            "invocation_id", "embedding_model", name="unique_invocation_embedding_model"
+        ),
+    )
+
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     started_at: Optional[datetime] = Field(default=None)
     completed_at: Optional[datetime] = Field(default=None)

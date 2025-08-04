@@ -1,7 +1,7 @@
 ---
 id: task-37
 title: Add unique constraint to Embedding table for invocation_id + embedding_model
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2025-08-03'
 labels: [database, migration, constraint]
@@ -124,11 +124,11 @@ WHERE conname = 'unique_invocation_embedding_model';
 ```
 
 ## Success Criteria
-- [ ] No duplicate (invocation_id, embedding_model) pairs exist in the database
-- [ ] Unique constraint is successfully added to the embedding table
-- [ ] Embedding model in schemas.py reflects the constraint
-- [ ] Future attempts to insert duplicate embeddings are rejected by the database
-- [ ] Existing application code continues to work correctly
+- [x] No duplicate (invocation_id, embedding_model) pairs exist in the database
+- [x] Unique constraint is successfully added to the embedding table
+- [x] Embedding model in schemas.py reflects the constraint
+- [x] Future attempts to insert duplicate embeddings are rejected by the database
+- [x] Existing application code continues to work correctly
 
 ## Notes
 - The duplicate removal strategy keeps the embedding with the smallest ID (oldest)
@@ -138,3 +138,21 @@ WHERE conname = 'unique_invocation_embedding_model';
 ## Related
 - File: `src/panic_tda/schemas.py` (Embedding class definition)
 - Alembic migrations directory: `alembic/versions/`
+
+## Implementation Notes
+
+### Migration Implementation
+- Created Alembic migration: `9c62d27ee223_add_unique_constraint_embedding_.py`
+- Due to the large size of the embedding table (7.3M rows), used a unique index instead of a constraint
+- This avoids the slow batch table operation required by SQLite for adding constraints
+- The unique index provides the same uniqueness guarantee as a constraint
+
+### Changes Made
+1. **Migration file**: Created migration with duplicate removal and unique index creation
+2. **schemas.py**: Added `__table_args__` with UniqueConstraint to the Embedding model
+3. **Testing**: Verified the index was created and duplicate inserts are rejected with IntegrityError
+
+### Verification Results
+- No duplicates found in the database before migration
+- Unique index successfully created: `CREATE UNIQUE INDEX unique_invocation_embedding_model ON embedding (invocation_id, embedding_model)`
+- Duplicate insertion attempts are properly rejected
