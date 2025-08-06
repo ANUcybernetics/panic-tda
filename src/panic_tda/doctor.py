@@ -562,6 +562,78 @@ def clean_orphaned_records(orphaned: Dict, db_str: str):
         logger.info(f"Cleaned {total_cleaned} orphaned records")
 
 
+def _check_and_fix_experiment(
+    experiment_id: UUID,
+    db_str: str,
+    report: DoctorReport,
+    fix: bool,
+    yes_flag: bool,
+    progress=None,
+    task=None,
+    experiment_index: Optional[int] = None,
+    total_experiments: Optional[int] = None,
+) -> bool:
+    """
+    Helper function to check and optionally fix a single experiment.
+    
+    Returns:
+        True if the experiment has issues, False otherwise.
+    """
+    experiment_has_issues = False
+    
+    with get_session_from_connection_string(db_str) as session:
+        # Load experiment in this session
+        experiment = session.get(ExperimentConfig, experiment_id)
+        if not experiment:
+            raise ValueError(f"Experiment with ID {experiment_id} not found")
+        
+        # Check run invocations
+        run_issues = check_experiment_run_invocations(experiment, session, report)
+        if progress and task:
+            progress.advance(task)
+        
+        # Check embeddings
+        embedding_issues = check_experiment_embeddings(experiment, session, report)
+        if progress and task:
+            progress.advance(task)
+        
+        # Check persistence diagrams
+        pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
+        if progress and task:
+            progress.advance(task)
+        
+        if run_issues or embedding_issues or pd_issues:
+            experiment_has_issues = True
+            report.experiments_with_issues += 1
+            
+            if fix:
+                # Fix issues for this experiment
+                if run_issues and confirm_fix(
+                    f"Fix {len(run_issues)} run invocation issues for experiment {experiment_id}?", yes_flag
+                ):
+                    fix_run_invocations(run_issues, experiment, db_str)
+                
+                if embedding_issues and confirm_fix(
+                    f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?", yes_flag
+                ):
+                    fix_embeddings(embedding_issues, experiment, db_str)
+                
+                if pd_issues and confirm_fix(
+                    f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?", yes_flag
+                ):
+                    fix_persistence_diagrams(pd_issues, experiment, db_str)
+    
+    # Update progress if provided
+    if progress and task:
+        if experiment_index is not None and total_experiments is not None:
+            description = f"Experiment {experiment_index+1}/{total_experiments} ({experiment_id}): {'issues found' if experiment_has_issues else 'OK'}"
+        else:
+            description = f"Experiment {experiment_id}: {'issues found' if experiment_has_issues else 'OK'}"
+        progress.update(task, completed=True, description=description)
+    
+    return experiment_has_issues
+
+
 def doctor_single_experiment(
     experiment_id: UUID,
     db_str: str,
@@ -628,55 +700,32 @@ def doctor_single_experiment(
                 f"Checking experiment {experiment_id}",
                 total=3,
             )
+        else:
+            task = None
         
-        experiment_has_issues = False
-        
-        with get_session_from_connection_string(db_str) as session:
-            # Load experiment in this session
-            experiment = session.get(ExperimentConfig, experiment_id)
-            
-            # Check run invocations
-            run_issues = check_experiment_run_invocations(experiment, session, report)
-            if show_progress:
-                progress.advance(task)
-            
-            # Check embeddings
-            embedding_issues = check_experiment_embeddings(experiment, session, report)
-            if show_progress:
-                progress.advance(task)
-            
-            # Check persistence diagrams
-            pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
-            if show_progress:
-                progress.advance(task)
-            
-            if run_issues or embedding_issues or pd_issues:
-                experiment_has_issues = True
-                report.experiments_with_issues += 1
-                
-                if fix:
-                    # Fix issues for this experiment
-                    if run_issues and confirm_fix(
-                        f"Fix {len(run_issues)} run invocation issues?", yes_flag
-                    ):
-                        fix_run_invocations(run_issues, experiment, db_str)
-                    
-                    if embedding_issues and confirm_fix(
-                        f"Fix {len(embedding_issues)} embedding issues?", yes_flag
-                    ):
-                        fix_embeddings(embedding_issues, experiment, db_str)
-                    
-                    if pd_issues and confirm_fix(
-                        f"Fix {len(pd_issues)} persistence diagram issues?", yes_flag
-                    ):
-                        fix_persistence_diagrams(pd_issues, experiment, db_str)
-        
-        if show_progress:
-            progress.update(
-                task,
-                completed=True,
-                description=f"Experiment: {'issues found' if experiment_has_issues else 'OK'}",
+        # Use the helper function to check and fix the experiment
+        try:
+            _check_and_fix_experiment(
+                experiment_id=experiment_id,
+                db_str=db_str,
+                report=report,
+                fix=fix,
+                yes_flag=yes_flag,
+                progress=progress if show_progress else None,
+                task=task,
             )
+        except ValueError as e:
+            # Should not happen since we already checked, but handle gracefully
+            if output_format == "json":
+                error_report = {
+                    "error": str(e),
+                    "summary": {"total_experiments": 0},
+                    "issues": {},
+                }
+                print(json.dumps(error_report, indent=2))
+            else:
+                console.print(f"[red]Error: {e}[/red]")
+            return 1
         
         # Check for orphaned records related to this experiment
         if show_progress:
@@ -693,7 +742,7 @@ def doctor_single_experiment(
         # Fix orphaned records if requested
         if fix and (report.orphaned_records["embeddings"] or report.orphaned_records["persistence_diagrams"]):
             if confirm_fix(
-                f"Clean orphaned records?",
+                f"Clean orphaned records (globally)?",
                 yes_flag,
             ):
                 clean_orphaned_records(report.orphaned_records, db_str)
@@ -701,7 +750,7 @@ def doctor_single_experiment(
         # Fix sequence gaps if requested  
         if fix and report.sequence_gap_issues:
             if confirm_fix(
-                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs?", yes_flag
+                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs for experiment {experiment_id}?", yes_flag
             ):
                 fix_sequence_gaps(report.sequence_gap_issues, db_str)
 
@@ -802,55 +851,31 @@ def doctor_all_experiments(
                     f"Checking experiment {i+1}/{report.total_experiments} ({experiment_id})",
                     total=3,
                 )
+            else:
+                task = None
             
-            experiment_has_issues = False
-            
-            with get_session_from_connection_string(db_str) as session:
-                # Load experiment in this session
-                experiment = session.get(ExperimentConfig, experiment_id)
-                
-                # Check run invocations
-                run_issues = check_experiment_run_invocations(experiment, session, report)
-                if show_progress:
-                    progress.advance(task)
-                
-                # Check embeddings
-                embedding_issues = check_experiment_embeddings(experiment, session, report)
-                if show_progress:
-                    progress.advance(task)
-                
-                # Check persistence diagrams
-                pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
-                if show_progress:
-                    progress.advance(task)
-                
-                if run_issues or embedding_issues or pd_issues:
-                    experiment_has_issues = True
-                    report.experiments_with_issues += 1
-                    
-                    if fix:
-                        # Fix issues for this experiment
-                        if run_issues and confirm_fix(
-                            f"Fix {len(run_issues)} run invocation issues?", yes_flag
-                        ):
-                            fix_run_invocations(run_issues, experiment, db_str)
-                        
-                        if embedding_issues and confirm_fix(
-                            f"Fix {len(embedding_issues)} embedding issues?", yes_flag
-                        ):
-                            fix_embeddings(embedding_issues, experiment, db_str)
-                        
-                        if pd_issues and confirm_fix(
-                            f"Fix {len(pd_issues)} persistence diagram issues?", yes_flag
-                        ):
-                            fix_persistence_diagrams(pd_issues, experiment, db_str)
-            
-            if show_progress:
-                progress.update(
-                    task,
-                    completed=True,
-                    description=f"Experiment {i+1}: {'issues found' if experiment_has_issues else 'OK'}",
+            # Use the helper function to check and fix the experiment
+            try:
+                _check_and_fix_experiment(
+                    experiment_id=experiment_id,
+                    db_str=db_str,
+                    report=report,
+                    fix=fix,
+                    yes_flag=yes_flag,
+                    progress=progress if show_progress else None,
+                    task=task,
+                    experiment_index=i,
+                    total_experiments=report.total_experiments,
                 )
+            except ValueError as e:
+                # Log error and continue with next experiment
+                logger.error(f"Error processing experiment {experiment_id}: {e}")
+                if show_progress:
+                    progress.update(
+                        task,
+                        completed=True,
+                        description=f"Experiment {i+1}/{report.total_experiments} ({experiment_id}): ERROR",
+                    )
 
         # Check for global orphaned records
         if show_progress:
