@@ -1,7 +1,5 @@
 # PANIC-TDA Project Overview
 
-## Project Description
-
 PANIC-TDA is a Python tool for computing recursive text-to-image and
 image-to-text model trajectories and analyzing them using
 [topological data analysis](https://en.wikipedia.org/wiki/Topological_data_analysis).
@@ -23,6 +21,7 @@ through semantic space.
 - use the logging module for logging (and don't overuse the INFO level - DEBUG
   is fine in most cases)
 - use `sqlmodel` for database operations (models in @src/panic_tda/schema.py)
+- use UUIDv7 for unique identifiers with `from uuid_v7.base import uuid7`
 - when writing Alembic migrations that add constraints to existing tables,
   always use `batch_alter_table` context manager since SQLite doesn't support
   most ALTER TABLE operations directly (it will recreate the table with the new
