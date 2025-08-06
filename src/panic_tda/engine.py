@@ -571,7 +571,7 @@ def perform_embeddings_stage(
             text_invocations = []
             for invocation_id in invocation_ids:
                 invocation = session.get(Invocation, UUID(invocation_id))
-                if invocation.type == InvocationType.TEXT:
+                if invocation and invocation.type == InvocationType.TEXT:
                     text_invocations.append(invocation_id)
 
         if not text_invocations:

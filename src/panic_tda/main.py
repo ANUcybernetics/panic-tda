@@ -20,6 +20,7 @@ from panic_tda.db import (
     print_experiment_info,
 )
 from panic_tda.db import delete_experiment as db_delete_experiment
+from panic_tda.doctor import doctor_all_experiments
 from panic_tda.embeddings import list_models as list_embedding_models
 from panic_tda.export import (
     export_video,
@@ -577,50 +578,6 @@ def export_video_command(
         logger.info(f"Mosaic video successfully created at {output_file}")
 
 
-@experiment_app.command("doctor")
-def doctor_command(
-    experiment_id: str = typer.Argument(
-        ...,
-        help="ID of the experiment to diagnose and fix",
-    ),
-    db_path: Path = typer.Option(
-        "db/trajectory_data.sqlite",
-        "--db-path",
-        "-d",
-        help="Path to the SQLite database file",
-    ),
-    fix: bool = typer.Option(
-        False, "--fix", "-f", help="Fix issues that are found (default: report only)"
-    ),
-):
-    """
-    Diagnose and optionally fix issues with an experiment's data.
-
-    Performs checks on the experiment's runs, invocations, embeddings, and persistence
-    diagrams to ensure data integrity and completeness. Use the --fix flag to
-    automatically repair issues that are found.
-    """
-    # Create database connection
-    db_str = f"sqlite:///{db_path}"
-    logger.info(f"Connecting to database at {db_path}")
-
-    # Validate experiment ID format
-    try:
-        UUID(experiment_id)
-    except ValueError:
-        logger.error(f"Invalid experiment ID format: {experiment_id}")
-        raise typer.Exit(code=1)
-
-    logger.info(f"Running diagnostics on experiment {experiment_id}")
-    if fix:
-        logger.info("Fix mode enabled - will attempt to repair issues found")
-
-    # Call the experiment_doctor function from the engine module
-    engine.experiment_doctor(experiment_id, db_str, fix)
-
-    logger.info("Experiment diagnostic completed")
-
-
 @export_app.command("charts")
 def paper_charts_command(
     db_path: Path = typer.Option(
@@ -642,6 +599,77 @@ def paper_charts_command(
     with get_session_from_connection_string(db_str) as session:
         paper_charts(session)
         logger.info("Paper charts generation completed successfully.")
+
+
+@app.command("doctor")
+def doctor_command(
+    db_path: Path = typer.Option(
+        "db/trajectory_data.sqlite",
+        "--db-path",
+        "-d",
+        help="Path to the SQLite database file",
+    ),
+    fix: bool = typer.Option(
+        False, "--fix", "-f", help="Fix issues that are found (default: report only)"
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip confirmation prompts (useful for automation)"
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--format",
+        help="Output format: 'text' for human-readable or 'json' for structured output",
+    ),
+):
+    """
+    Diagnose and repair data integrity issues across ALL experiments.
+
+    The doctor command performs comprehensive health checks on all experiment data:
+
+    • **Run Integrity**: Verifies that all runs have complete invocation sequences
+      from 0 to max_length-1 with no gaps
+
+    • **Embedding Coverage**: Ensures all text invocations have embeddings for every
+      configured embedding model
+
+    • **Persistence Diagrams**: Confirms all runs have properly computed persistence
+      diagrams
+
+    • **Orphaned Records**: Checks for and cleans up orphaned records (embeddings
+      without invocations, PDs without runs, etc.)
+
+    • **Sequence Gaps**: Detects and fixes non-contiguous sequence numbers
+
+    Use the --fix flag to automatically repair issues that are found.
+    Use --format json for structured output suitable for CI/CD integration.
+    Use --yes to skip confirmation prompts for automated workflows.
+
+    Returns exit code 0 if no issues found, 1 if issues detected.
+    """
+    # Create database connection
+    db_str = f"sqlite:///{db_path}"
+    logger.info(f"Connecting to database at {db_path}")
+
+    # Validate output format
+    if output_format not in ["text", "json"]:
+        logger.error(f"Invalid output format: {output_format}. Must be 'text' or 'json'.")
+        raise typer.Exit(code=1)
+
+    if fix:
+        logger.info("Fix mode enabled - will attempt to repair issues found")
+        if yes:
+            logger.info("Auto-confirm mode enabled - skipping confirmation prompts")
+
+    # Call the new doctor function for all experiments
+    exit_code = doctor_all_experiments(db_str, fix=fix, yes_flag=yes, output_format=output_format)
+
+    if output_format == "text":
+        if exit_code == 0:
+            logger.info("All data integrity checks passed")
+        else:
+            logger.info("Data integrity check completed with issues")
+
+    raise typer.Exit(code=exit_code)
 
 
 @app.command("script")
