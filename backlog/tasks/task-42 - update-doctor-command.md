@@ -10,8 +10,8 @@ dependencies: []
 
 ## Description
 
-Currently the `uv run panic-tda experiment doctor` command only (in @src/panic_tda/main.py)
-works on a single experiment.
+Currently the `uv run panic-tda experiment doctor` command only (in
+@src/panic_tda/main.py) works on a single experiment.
 
 Refactor it so that it checks all data in the db for:
 
@@ -28,41 +28,43 @@ subcommand.
 Ensure that all tests still pass, and add/update any tests of the
 `engine.experiment_doctor` function in accordance with any changes made.
 
+Keep the implementation simple and readable.
+
 ## Enhanced Requirements
 
 ### Performance & Scalability
+
 - Add progress indicators when checking all experiments (progress bar/counter)
 - Process experiments in batches to avoid memory issues with large databases
-- Add filtering options: `--filter-date`, `--filter-status`, or `--experiment-ids` to selectively check subsets
-- **Memory optimization**: Process one experiment/embedding model at a time - load all data for a single experiment, perform all necessary work, then release that data before loading the next. This avoids loading the entire database into RAM at once. Exception: when using Ray parallelism where larger batches would benefit throughput
+- **Memory optimization**: Process one experiment/embedding model at a time -
+  load all data for a single experiment, perform all necessary work, then
+  release that data before loading the next. This avoids loading the entire
+  database into RAM at once. Exception: when using Ray parallelism where larger
+  batches would benefit throughput
 
 ### Enhanced Reporting
-- Show summary statistics: total issues found/fixed per category, processing time
-- Add `--format json` option for structured output (useful for CI/CD integration)
-- Implement severity levels for issues (critical/warning/info)
-- Return appropriate exit codes (non-zero on issues found) for monitoring/automation
+
+- Show summary statistics: total issues found/fixed per category, processing
+  time
+- Add `--format json` option for structured output (useful for CI/CD
+  integration)
+- Return appropriate exit codes (non-zero on issues found) for
+  monitoring/automation
 
 ### Additional Integrity Checks
+
 - Check for orphaned records (embeddings without invocations, PDs without runs)
 - Verify sequence_numbers are contiguous (0 to max with no gaps)
 - Ensure all foreign key relationships are valid across tables
-- Detect stale data (flag experiments that haven't been updated in X days)
 
 ### Safety Improvements
+
 - Wrap all fixes in database transactions with rollback on error
-- Add backup reminder/prompt before applying fixes
-- Add `--fix-type` option for selective fixing (e.g., only fix embeddings)
 - Add `--yes` flag to skip confirmation prompts for automation
 
-### User Experience
-- Add `-v/--verbose` flag for detailed diagnostics per record
-- Consider parallel checking for independent validation tasks
-- Handle database locking and concurrent access gracefully
-- Enhance help text with common usage examples
-
 ### Testing Requirements
+
 - Test with empty database
 - Test with corrupted/inconsistent data scenarios
 - Test transaction rollback on partial failures
-- Test performance with large datasets (1000+ experiments)
 - Update tests in @tests/ for the refactored `engine.experiment_doctor` function
