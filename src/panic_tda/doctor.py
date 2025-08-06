@@ -562,16 +562,18 @@ def clean_orphaned_records(orphaned: Dict, db_str: str):
         logger.info(f"Cleaned {total_cleaned} orphaned records")
 
 
-def doctor_all_experiments(
+def doctor_single_experiment(
+    experiment_id: UUID,
     db_str: str,
     fix: bool = False,
     yes_flag: bool = False,
     output_format: str = "text",
 ) -> int:
     """
-    Check and optionally fix all experiments in the database.
+    Check and optionally fix a single experiment in the database.
     
     Args:
+        experiment_id: UUID of the experiment to check
         db_str: Database connection string
         fix: If True, fix issues; if False, only report
         yes_flag: Skip confirmation prompts if True
@@ -580,6 +582,189 @@ def doctor_all_experiments(
     Returns:
         Exit code (0 if no issues, 1 if issues found)
     """
+    report = DoctorReport()
+    
+    # Only show progress indicator for text output
+    show_progress = output_format == "text"
+    
+    if show_progress:
+        progress_context = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        )
+    else:
+        # Create a dummy context manager that does nothing
+        from contextlib import nullcontext
+        progress_context = nullcontext()
+    
+    with progress_context as progress:
+        # Load the specific experiment
+        if show_progress:
+            task = progress.add_task(f"Loading experiment {experiment_id}...", total=None)
+        
+        with get_session_from_connection_string(db_str) as session:
+            experiment = session.get(ExperimentConfig, experiment_id)
+            if not experiment:
+                if output_format == "json":
+                    error_report = {
+                        "error": f"Experiment with ID {experiment_id} not found",
+                        "summary": {"total_experiments": 0},
+                        "issues": {},
+                    }
+                    print(json.dumps(error_report, indent=2))
+                else:
+                    console.print(f"[red]Error: Experiment with ID {experiment_id} not found[/red]")
+                return 1
+            
+            report.total_experiments = 1
+            
+        if show_progress:
+            progress.update(task, completed=True, description=f"Found experiment {experiment_id}")
+        
+        # Process the experiment
+        if show_progress:
+            task = progress.add_task(
+                f"Checking experiment {experiment_id}",
+                total=3,
+            )
+        
+        experiment_has_issues = False
+        
+        with get_session_from_connection_string(db_str) as session:
+            # Load experiment in this session
+            experiment = session.get(ExperimentConfig, experiment_id)
+            
+            # Check run invocations
+            run_issues = check_experiment_run_invocations(experiment, session, report)
+            if show_progress:
+                progress.advance(task)
+            
+            # Check embeddings
+            embedding_issues = check_experiment_embeddings(experiment, session, report)
+            if show_progress:
+                progress.advance(task)
+            
+            # Check persistence diagrams
+            pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
+            if show_progress:
+                progress.advance(task)
+            
+            if run_issues or embedding_issues or pd_issues:
+                experiment_has_issues = True
+                report.experiments_with_issues += 1
+                
+                if fix:
+                    # Fix issues for this experiment
+                    if run_issues and confirm_fix(
+                        f"Fix {len(run_issues)} run invocation issues?", yes_flag
+                    ):
+                        fix_run_invocations(run_issues, experiment, db_str)
+                    
+                    if embedding_issues and confirm_fix(
+                        f"Fix {len(embedding_issues)} embedding issues?", yes_flag
+                    ):
+                        fix_embeddings(embedding_issues, experiment, db_str)
+                    
+                    if pd_issues and confirm_fix(
+                        f"Fix {len(pd_issues)} persistence diagram issues?", yes_flag
+                    ):
+                        fix_persistence_diagrams(pd_issues, experiment, db_str)
+        
+        if show_progress:
+            progress.update(
+                task,
+                completed=True,
+                description=f"Experiment: {'issues found' if experiment_has_issues else 'OK'}",
+            )
+        
+        # Check for orphaned records related to this experiment
+        if show_progress:
+            task = progress.add_task("Checking for orphaned records...", total=None)
+        
+        with get_session_from_connection_string(db_str) as session:
+            # We still check all orphaned records, but this could be optimized
+            # to check only records related to this experiment
+            check_orphaned_records(session, report)
+        
+        if show_progress:
+            progress.update(task, completed=True, description="Orphan check complete")
+        
+        # Fix orphaned records if requested
+        if fix and (report.orphaned_records["embeddings"] or report.orphaned_records["persistence_diagrams"]):
+            if confirm_fix(
+                f"Clean orphaned records?",
+                yes_flag,
+            ):
+                clean_orphaned_records(report.orphaned_records, db_str)
+        
+        # Fix sequence gaps if requested  
+        if fix and report.sequence_gap_issues:
+            if confirm_fix(
+                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs?", yes_flag
+            ):
+                fix_sequence_gaps(report.sequence_gap_issues, db_str)
+
+    report.finalize()
+
+    # Output results
+    if output_format == "json":
+        print(report.to_json())
+    else:
+        # Display summary table
+        table = Table(title=f"Doctor Check Summary for Experiment {experiment_id}")
+        table.add_column("Category", style="cyan")
+        table.add_column("Issues Found", style="red")
+
+        stats = report.get_summary_stats()
+        table.add_row("Total Experiments", str(stats["total_experiments"]))
+        table.add_row("Experiments with Issues", str(stats["experiments_with_issues"]))
+        table.add_row("Run Invocation Issues", str(stats["total_issues"]["run_invocations"]))
+        table.add_row("Embedding Issues", str(stats["total_issues"]["embeddings"]))
+        table.add_row("Persistence Diagram Issues", str(stats["total_issues"]["persistence_diagrams"]))
+        table.add_row("Sequence Gap Issues", str(stats["total_issues"]["sequence_gaps"]))
+        table.add_row("Orphaned Embeddings", str(stats["total_issues"]["orphaned_embeddings"]))
+        table.add_row("Orphaned PDs", str(stats["total_issues"]["orphaned_pds"]))
+        table.add_row(
+            "Global Orphans",
+            f"Inv: {stats['total_issues']['global_orphans']['invocations']}, "
+            f"Emb: {stats['total_issues']['global_orphans']['embeddings']}, "
+            f"PD: {stats['total_issues']['global_orphans']['persistence_diagrams']}",
+        )
+        table.add_row("Duration", f"{stats['duration_seconds']:.2f} seconds")
+
+        console.print(table)
+
+        if not fix and report.has_issues():
+            console.print("\n[yellow]Use --fix flag to repair issues[/yellow]")
+
+    return 1 if report.has_issues() else 0
+
+
+def doctor_all_experiments(
+    db_str: str,
+    fix: bool = False,
+    yes_flag: bool = False,
+    output_format: str = "text",
+    experiment_id: Optional[UUID] = None,
+) -> int:
+    """
+    Check and optionally fix all experiments in the database, or a specific experiment if provided.
+    
+    Args:
+        db_str: Database connection string
+        fix: If True, fix issues; if False, only report
+        yes_flag: Skip confirmation prompts if True
+        output_format: Output format ('text' or 'json')
+        experiment_id: Optional UUID of a specific experiment to check
+    
+    Returns:
+        Exit code (0 if no issues, 1 if issues found)
+    """
+    # If a specific experiment is requested, use the single experiment function
+    if experiment_id is not None:
+        return doctor_single_experiment(experiment_id, db_str, fix, yes_flag, output_format)
+    
     report = DoctorReport()
     
     # Only show progress indicator for text output

@@ -603,6 +603,12 @@ def paper_charts_command(
 
 @app.command("doctor")
 def doctor_command(
+    experiment_id: str = typer.Option(
+        None,
+        "--experiment",
+        "-e",
+        help="UUID of a specific experiment to check (defaults to all experiments)",
+    ),
     db_path: Path = typer.Option(
         "db/trajectory_data.sqlite",
         "--db-path",
@@ -622,9 +628,11 @@ def doctor_command(
     ),
 ):
     """
-    Diagnose and repair data integrity issues across ALL experiments.
+    Diagnose and repair data integrity issues.
 
-    The doctor command performs comprehensive health checks on all experiment data:
+    By default, checks ALL experiments. Use --experiment to check a specific one.
+
+    The doctor command performs comprehensive health checks on experiment data:
 
     • **Run Integrity**: Verifies that all runs have complete invocation sequences
       from 0 to max_length-1 with no gaps
@@ -655,13 +663,25 @@ def doctor_command(
         logger.error(f"Invalid output format: {output_format}. Must be 'text' or 'json'.")
         raise typer.Exit(code=1)
 
+    # Parse experiment ID if provided
+    exp_uuid = None
+    if experiment_id:
+        try:
+            exp_uuid = UUID(experiment_id)
+            logger.info(f"Checking specific experiment: {exp_uuid}")
+        except ValueError:
+            logger.error(f"Invalid experiment ID format: {experiment_id}")
+            raise typer.Exit(code=1)
+    else:
+        logger.info("Checking all experiments")
+
     if fix:
         logger.info("Fix mode enabled - will attempt to repair issues found")
         if yes:
             logger.info("Auto-confirm mode enabled - skipping confirmation prompts")
 
-    # Call the new doctor function for all experiments
-    exit_code = doctor_all_experiments(db_str, fix=fix, yes_flag=yes, output_format=output_format)
+    # Call the doctor function with optional experiment ID
+    exit_code = doctor_all_experiments(db_str, fix=fix, yes_flag=yes, output_format=output_format, experiment_id=exp_uuid)
 
     if output_format == "text":
         if exit_code == 0:

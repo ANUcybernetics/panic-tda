@@ -17,6 +17,7 @@ from panic_tda.doctor import (
     check_experiment_run_invocations,
     check_orphaned_records,
     doctor_all_experiments,
+    doctor_single_experiment,
     fix_run_invocations,
     fix_embeddings,
     fix_persistence_diagrams,
@@ -217,6 +218,130 @@ def clean_db():
             "db_url": db_url,
             "db_path": db_path,
             "experiment_id": experiment.id
+        }
+    
+    # Cleanup
+    engine.dispose()
+    if os.path.exists(db_path):
+        os.unlink(db_path)
+
+
+@pytest.fixture
+def multi_experiment_db():
+    """Create a database with multiple experiments (one clean, one with issues)."""
+    # Use a temporary file for the database
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+        db_path = tmp.name
+    
+    db_url = f"sqlite:///{db_path}"
+    engine = create_engine(db_url)
+    SQLModel.metadata.create_all(engine)
+    
+    with Session(engine) as session:
+        # First experiment: clean
+        clean_experiment = ExperimentConfig(
+            id=uuid4(),
+            networks=[["DummyT2I"]],
+            seeds=[42],
+            prompts=["Clean"],
+            embedding_models=["Dummy"],
+            max_length=2,
+        )
+        session.add(clean_experiment)
+        
+        clean_run = Run(
+            id=uuid4(),
+            experiment_id=clean_experiment.id,
+            network=["DummyT2I"],
+            seed=42,
+            initial_prompt="Clean",
+            max_length=2,
+        )
+        session.add(clean_run)
+        
+        # Create complete invocations for clean experiment
+        for i in range(2):
+            inv = Invocation(
+                id=uuid4(),
+                run_id=clean_run.id,
+                sequence_number=i,
+                type=InvocationType.TEXT,
+                model="DummyT2I",
+                seed=42,
+                output_text=f"Clean {i}",
+            )
+            session.add(inv)
+            
+            # Create embedding
+            emb = Embedding(
+                id=uuid4(),
+                invocation_id=inv.id,
+                embedding_model="Dummy",
+                vector=[0.1 * i, 0.2 * i, 0.3 * i],
+            )
+            session.add(emb)
+        
+        # Create persistence diagram for clean experiment
+        pd = PersistenceDiagram(
+            id=uuid4(),
+            run_id=clean_run.id,
+            embedding_model="Dummy",
+            diagram_data={"test": []},
+        )
+        session.add(pd)
+        
+        # Second experiment: with issues
+        problematic_experiment = ExperimentConfig(
+            id=uuid4(),
+            networks=[["DummyT2I"]],
+            seeds=[42],
+            prompts=["Problem"],
+            embedding_models=["Dummy", "Dummy2"],
+            max_length=3,
+        )
+        session.add(problematic_experiment)
+        
+        problem_run = Run(
+            id=uuid4(),
+            experiment_id=problematic_experiment.id,
+            network=["DummyT2I"],
+            seed=42,
+            initial_prompt="Problem",
+            max_length=3,
+        )
+        session.add(problem_run)
+        
+        # Create incomplete invocations (missing sequence 1)
+        for i in [0, 2]:
+            inv = Invocation(
+                id=uuid4(),
+                run_id=problem_run.id,
+                sequence_number=i,
+                type=InvocationType.TEXT,
+                model="DummyT2I",
+                seed=42,
+                output_text=f"Problem {i}",
+            )
+            session.add(inv)
+            
+            # Only create Dummy embedding, missing Dummy2
+            if i == 0:
+                emb = Embedding(
+                    id=uuid4(),
+                    invocation_id=inv.id,
+                    embedding_model="Dummy",
+                    vector=[0.1, 0.2, 0.3],
+                )
+                session.add(emb)
+        
+        session.commit()
+        
+        yield {
+            "engine": engine,
+            "db_url": db_url,
+            "db_path": db_path,
+            "clean_experiment_id": clean_experiment.id,
+            "problematic_experiment_id": problematic_experiment.id
         }
     
     # Cleanup
@@ -434,6 +559,214 @@ class TestDoctorAllExperiments:
         # Skip this test as it requires Ray actors to fix embeddings/PDs
         # and those can't work properly with test data
         pytest.skip("Requires Ray actors for fixing embeddings and persistence diagrams")
+    
+    def test_doctor_all_experiments_with_specific_experiment(self, test_db, capsys):
+        """Test doctor_all_experiments with a specific experiment ID."""
+        db_url = test_db["db_url"]
+        experiment_id = test_db["experiment_id"]
+        
+        # Run doctor with specific experiment ID
+        exit_code = doctor_all_experiments(
+            db_url, 
+            fix=False, 
+            yes_flag=False, 
+            output_format="text", 
+            experiment_id=experiment_id
+        )
+        
+        # Should return 1 (issues found)
+        assert exit_code == 1
+        
+        # Check console output contains experiment-specific summary
+        captured = capsys.readouterr()
+        assert str(experiment_id) in captured.out
+        assert "Doctor Check Summary" in captured.out or "issues" in captured.out.lower()
+
+
+class TestDoctorSingleExperiment:
+    """Test the doctor_single_experiment function."""
+    
+    def test_doctor_single_experiment_finds_issues(self, test_db, capsys):
+        """Test doctor_single_experiment finds issues correctly."""
+        db_url = test_db["db_url"]
+        experiment_id = test_db["experiment_id"]
+        
+        # Run doctor without fix
+        exit_code = doctor_single_experiment(
+            experiment_id, 
+            db_url, 
+            fix=False, 
+            yes_flag=False, 
+            output_format="text"
+        )
+        
+        # Should return 1 (issues found)
+        assert exit_code == 1
+        
+        # Check console output contains issue summary
+        captured = capsys.readouterr()
+        assert str(experiment_id) in captured.out
+        assert "Doctor Check Summary" in captured.out or "issues" in captured.out.lower()
+    
+    def test_doctor_single_experiment_json_output(self, test_db, capsys):
+        """Test JSON output format for single experiment."""
+        db_url = test_db["db_url"]
+        experiment_id = test_db["experiment_id"]
+        
+        exit_code = doctor_single_experiment(
+            experiment_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="json"
+        )
+        
+        captured = capsys.readouterr()
+        
+        # Should be valid JSON
+        data = json.loads(captured.out)
+        assert "summary" in data
+        assert "issues" in data
+        assert data["summary"]["total_experiments"] == 1
+        assert exit_code == 1  # Issues found
+    
+    def test_doctor_single_experiment_no_issues(self, clean_db):
+        """Test doctor_single_experiment with a clean database."""
+        db_url = clean_db["db_url"]
+        experiment_id = clean_db["experiment_id"]
+        
+        exit_code = doctor_single_experiment(
+            experiment_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="text"
+        )
+        
+        # Should return 0 (no issues)
+        assert exit_code == 0
+    
+    def test_doctor_single_experiment_nonexistent(self, test_db, capsys):
+        """Test doctor_single_experiment with non-existent experiment ID."""
+        db_url = test_db["db_url"]
+        fake_id = uuid4()
+        
+        # Run doctor with non-existent ID
+        exit_code = doctor_single_experiment(
+            fake_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="text"
+        )
+        
+        # Should return 1 (error)
+        assert exit_code == 1
+        
+        # Check error message
+        captured = capsys.readouterr()
+        assert "not found" in captured.out.lower()
+    
+    def test_doctor_single_experiment_nonexistent_json(self, test_db, capsys):
+        """Test doctor_single_experiment with non-existent experiment ID in JSON mode."""
+        db_url = test_db["db_url"]
+        fake_id = uuid4()
+        
+        # Run doctor with non-existent ID
+        exit_code = doctor_single_experiment(
+            fake_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="json"
+        )
+        
+        # Should return 1 (error)
+        assert exit_code == 1
+        
+        # Check JSON error output
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "error" in data
+        assert "not found" in data["error"].lower()
+
+
+class TestMultiExperimentScenarios:
+    """Test doctor with multiple experiments."""
+    
+    def test_doctor_all_experiments_multiple(self, multi_experiment_db, capsys):
+        """Test doctor_all_experiments finds issues in multiple experiments."""
+        db_url = multi_experiment_db["db_url"]
+        
+        # Run doctor for all experiments
+        exit_code = doctor_all_experiments(db_url, fix=False, yes_flag=False, output_format="text")
+        
+        # Should return 1 (one experiment has issues)
+        assert exit_code == 1
+        
+        # Check console output
+        captured = capsys.readouterr()
+        assert "Doctor Check Summary" in captured.out
+        # Should show 2 total experiments
+        assert "2" in captured.out
+    
+    def test_doctor_single_clean_experiment(self, multi_experiment_db):
+        """Test doctor on the clean experiment only."""
+        db_url = multi_experiment_db["db_url"]
+        clean_id = multi_experiment_db["clean_experiment_id"]
+        
+        # Run doctor on clean experiment
+        exit_code = doctor_single_experiment(
+            clean_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="text"
+        )
+        
+        # Should return 0 (no issues)
+        assert exit_code == 0
+    
+    def test_doctor_single_problematic_experiment(self, multi_experiment_db):
+        """Test doctor on the problematic experiment only."""
+        db_url = multi_experiment_db["db_url"]
+        problem_id = multi_experiment_db["problematic_experiment_id"]
+        
+        # Run doctor on problematic experiment
+        exit_code = doctor_single_experiment(
+            problem_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="text"
+        )
+        
+        # Should return 1 (has issues)
+        assert exit_code == 1
+    
+    def test_doctor_all_vs_single_consistency(self, multi_experiment_db, capsys):
+        """Test that single experiment mode gives same results as filtering all experiments."""
+        db_url = multi_experiment_db["db_url"]
+        problem_id = multi_experiment_db["problematic_experiment_id"]
+        
+        # Run doctor on single problematic experiment
+        exit_code_single = doctor_single_experiment(
+            problem_id,
+            db_url,
+            fix=False,
+            yes_flag=False,
+            output_format="json"
+        )
+        
+        captured_single = capsys.readouterr()
+        data_single = json.loads(captured_single.out)
+        
+        # Both should find issues
+        assert exit_code_single == 1
+        
+        # Check that issues are found
+        assert data_single["summary"]["experiments_with_issues"] == 1
+        assert len(data_single["issues"]["run_invocations"]) > 0
 
 
 class TestDoctorReportSummary:
