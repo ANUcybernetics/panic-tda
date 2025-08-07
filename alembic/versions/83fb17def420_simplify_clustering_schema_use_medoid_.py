@@ -31,11 +31,11 @@ def upgrade() -> None:
     if "cluster" in inspector.get_table_names():
         try:
             op.drop_index(op.f("ix_cluster_clustering_result_id"), table_name="cluster")
-        except:
+        except Exception:
             pass
         try:
             op.drop_index(op.f("ix_cluster_medoid_embedding_id"), table_name="cluster")
-        except:
+        except Exception:
             pass
         op.drop_table("cluster")
 
