@@ -321,22 +321,24 @@ def check_experiment_embeddings(
                 )
             ).one()
 
-            # Check for null vectors
-            null_vectors = session.exec(
-                select(func.count())
-                .select_from(Embedding)
-                .where(
+            # Check for null vectors by retrieving and checking actual numpy arrays
+            embeddings = session.exec(
+                select(Embedding).where(
                     Embedding.invocation_id == invocation.id,
                     Embedding.embedding_model == embedding_model,
-                    Embedding.vector.is_(None),
                 )
-            ).one()
+            ).all()
+
+            null_vectors = sum(1 for e in embeddings if e.vector is None)
 
             if embedding_count != 1 or null_vectors > 0:
+                # Get embedding IDs for debugging
+                embedding_ids = [e.id for e in embeddings]
                 issue = {
                     "embedding_model": embedding_model,
                     "embedding_count": embedding_count,
                     "has_null_vector": null_vectors > 0,
+                    "embedding_ids": embedding_ids,
                 }
                 issues.append({"invocation_id": invocation.id, **issue})
                 report.add_embedding_issue(experiment.id, invocation.id, issue)
