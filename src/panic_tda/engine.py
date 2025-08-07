@@ -674,8 +674,9 @@ def perform_experiment(experiment_config_id: str, db_str: str) -> None:
     try:
         # Ensure SQLite pragmas are set for better concurrency
         from panic_tda.db import set_sqlite_pragmas
+
         set_sqlite_pragmas(db_str)
-        
+
         # Load the experiment config from the database
         with get_session_from_connection_string(db_str) as session:
             experiment_id = UUID(experiment_config_id)

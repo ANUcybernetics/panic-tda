@@ -67,7 +67,7 @@ def sample_embeddings(db_session, sample_run: Run):
             # Group 3: centered at [0, 0, 10, ...]
             base_vector = np.zeros(768)
             base_vector[2] = 10.0
-        
+
         # Add very small random noise to create tight clusters
         noise = np.random.normal(0, 0.01, 768)
         vector = base_vector + noise
@@ -104,7 +104,9 @@ def test_cluster_table_creation(db_session, sample_embeddings):
 
     # Check that EmbeddingCluster assignments were created
     assignments = db_session.exec(
-        select(EmbeddingCluster).where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        select(EmbeddingCluster).where(
+            EmbeddingCluster.clustering_result_id == clustering_result.id
+        )
     ).all()
     print(f"Found {len(assignments)} assignments")
     if len(assignments) > 0:
@@ -113,12 +115,14 @@ def test_cluster_table_creation(db_session, sample_embeddings):
 
     # Count unique clusters
     from sqlmodel import func
+
     unique_clusters = db_session.exec(
-        select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id)))
-        .where(EmbeddingCluster.clustering_result_id == clustering_result.id)
+        select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))).where(
+            EmbeddingCluster.clustering_result_id == clustering_result.id
+        )
     ).one()
     assert unique_clusters > 0
-    
+
     # Check that outliers have None as medoid_embedding_id
     outliers = db_session.exec(
         select(EmbeddingCluster)
@@ -187,16 +191,14 @@ def test_medoid_invocation_retrieval(db_session, sample_embeddings):
 
     # Get cluster details to find non-outlier clusters
     details = get_cluster_details("test_model", db_session)
-    
+
     # Find a non-outlier cluster
     non_outlier_clusters = [c for c in details["clusters"] if c["id"] != -1]
-    
+
     if non_outlier_clusters:
         # Test medoid invocation retrieval for the first non-outlier cluster
         cluster_id = non_outlier_clusters[0]["id"]
-        invocation = get_medoid_invocation(
-            cluster_id, clustering_result.id, db_session
-        )
+        invocation = get_medoid_invocation(cluster_id, clustering_result.id, db_session)
         assert invocation is not None
         assert invocation.type == InvocationType.TEXT
         assert invocation.output_text is not None
@@ -214,17 +216,20 @@ def test_outlier_handling(db_session, sample_embeddings):
 
     # Check for outlier assignments
     from sqlmodel import func
+
     outlier_count = db_session.exec(
-        select(func.count(EmbeddingCluster.id))
-        .where(EmbeddingCluster.medoid_embedding_id.is_(None))
+        select(func.count(EmbeddingCluster.id)).where(
+            EmbeddingCluster.medoid_embedding_id.is_(None)
+        )
     ).one()
-    
+
     # With very small epsilon, we should have some outliers
     if outlier_count > 0:
         # Verify outliers have None as medoid_embedding_id
         outliers = db_session.exec(
-            select(EmbeddingCluster)
-            .where(EmbeddingCluster.medoid_embedding_id.is_(None))
+            select(EmbeddingCluster).where(
+                EmbeddingCluster.medoid_embedding_id.is_(None)
+            )
         ).all()
         for outlier in outliers:
             assert outlier.medoid_embedding_id is None
@@ -320,10 +325,10 @@ def test_clustering_with_downsampling(db_session, sample_embeddings):
         else:
             base_vector = np.zeros(768)
             base_vector[2] = 10.0
-            
+
         noise = np.random.normal(0, 0.01, 768)
         vector = base_vector + noise
-        
+
         embedding = Embedding(
             invocation_id=invocation.id,
             embedding_model="test_model",
@@ -370,10 +375,12 @@ def test_multiple_clustering_results(db_session, sample_embeddings):
     # Each should have its own set of cluster assignments
     for cr in clustering_results:
         from sqlmodel import func
+
         # Count unique clusters
         unique_clusters = db_session.exec(
-            select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id)))
-            .where(EmbeddingCluster.clustering_result_id == cr.id)
+            select(
+                func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))
+            ).where(EmbeddingCluster.clustering_result_id == cr.id)
         ).one()
         assert unique_clusters > 0
 

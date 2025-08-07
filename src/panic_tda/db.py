@@ -35,9 +35,10 @@ def get_engine_from_connection_string(db_str, timeout=30):
         max_overflow=10,
         connect_args={"timeout": timeout},
     )
-    
+
     # Set connection-specific pragmas for performance (these don't persist)
     if db_str.startswith("sqlite"):
+
         @sqlalchemy.event.listens_for(engine, "connect")
         def set_connection_pragmas(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
@@ -71,16 +72,16 @@ def get_session_from_connection_string(db_str, timeout=30):
 
 def set_sqlite_pragmas(db_str):
     """Set SQLite WAL mode for better concurrency.
-    
+
     This should be called once when creating/initializing the database.
     WAL mode persists across connections, unlike other pragmas.
-    
+
     Args:
         db_str: Database connection string
     """
     if not db_str.startswith("sqlite"):
         return  # Only apply to SQLite databases
-    
+
     # Create a temporary connection just to set WAL mode
     engine = create_engine(db_str)
     try:
@@ -88,14 +89,17 @@ def set_sqlite_pragmas(db_str):
             # Check current journal mode first
             result = conn.execute(sqlalchemy.text("PRAGMA journal_mode"))
             current_mode = result.scalar()
-            
+
             # Only set WAL if not already set (to avoid locking issues)
             if current_mode != "wal":
-                conn.execute(sqlalchemy.text("PRAGMA journal_mode=WAL"))  # Write-Ahead Logging
+                conn.execute(
+                    sqlalchemy.text("PRAGMA journal_mode=WAL")
+                )  # Write-Ahead Logging
                 conn.commit()
     except Exception as e:
         # Log but don't fail - WAL is an optimization, not a requirement
         import logging
+
         logging.debug(f"Could not set SQLite WAL mode: {e}")
     finally:
         engine.dispose()
@@ -117,7 +121,7 @@ def create_db_and_tables(db_str):
 
     # Create all tables defined in SQLModel classes
     SQLModel.metadata.create_all(engine)
-    
+
     # Set SQLite pragmas once during database creation
     set_sqlite_pragmas(db_str)
 

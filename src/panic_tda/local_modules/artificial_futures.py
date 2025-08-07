@@ -53,7 +53,9 @@ def artificial_futures_slides_charts(session: Session) -> None:
     )
 
     # Join with cluster counts to add count column
-    top_clusters_df = top_clusters_df.join(cluster_counts, on="cluster_label", how="left")
+    top_clusters_df = top_clusters_df.join(
+        cluster_counts, on="cluster_label", how="left"
+    )
 
     # cluster examples
     plot_cluster_example_images(
@@ -76,29 +78,27 @@ def artificial_futures_slides_charts(session: Session) -> None:
 
     # Group clusters by network and get top 5 per network
     # The network column is already a string, so we can use it directly
-    
+
     # Count clusters by network and cluster_label
-    cluster_counts_by_network = (
-        clusters_df.group_by(["network", "cluster_label"])
-        .agg(pl.len().alias("count"))
+    cluster_counts_by_network = clusters_df.group_by(["network", "cluster_label"]).agg(
+        pl.len().alias("count")
     )
-    
+
     # Calculate total per network for percentages
     total_by_network = clusters_df.group_by("network").agg(
         pl.len().alias("total_count")
     )
-    
+
     # Join with totals and calculate percentages
     cluster_counts_with_pct = cluster_counts_by_network.join(
         total_by_network, on="network", how="left"
     ).with_columns(
         (100.0 * pl.col("count") / pl.col("total_count")).round(1).alias("percentage")
     )
-    
+
     # Add rank within each network and filter to top 5
     top_clusters_by_network = (
-        cluster_counts_with_pct
-        .with_columns(
+        cluster_counts_with_pct.with_columns(
             pl.col("count")
             .rank(method="ordinal", descending=True)
             .over("network")
@@ -112,7 +112,7 @@ def artificial_futures_slides_charts(session: Session) -> None:
             (pl.col("percentage").cast(pl.Utf8) + "%").alias("percentage"),
         ])
     )
-    
+
     # Print results using markdown formatting
     print_polars_as_markdown(
         top_clusters_by_network,

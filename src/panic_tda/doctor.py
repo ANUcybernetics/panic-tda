@@ -12,10 +12,8 @@ across all experiments in the database, including:
 
 import json
 import logging
-import sys
-from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import typer
@@ -64,44 +62,60 @@ class DoctorReport:
         self, experiment_id: UUID, run_id: UUID, issue_details: Dict[str, Any]
     ):
         """Add a run invocation issue to the report."""
-        self.run_invocation_issues.append(
-            {"experiment_id": experiment_id, "run_id": run_id, **issue_details}
-        )
+        self.run_invocation_issues.append({
+            "experiment_id": experiment_id,
+            "run_id": run_id,
+            **issue_details,
+        })
 
     def add_embedding_issue(
         self, experiment_id: UUID, invocation_id: UUID, issue_details: Dict[str, Any]
     ):
         """Add an embedding issue to the report."""
-        self.embedding_issues.append(
-            {"experiment_id": experiment_id, "invocation_id": invocation_id, **issue_details}
-        )
+        self.embedding_issues.append({
+            "experiment_id": experiment_id,
+            "invocation_id": invocation_id,
+            **issue_details,
+        })
 
-    def add_pd_issue(self, experiment_id: UUID, run_id: UUID, issue_details: Dict[str, Any]):
+    def add_pd_issue(
+        self, experiment_id: UUID, run_id: UUID, issue_details: Dict[str, Any]
+    ):
         """Add a persistence diagram issue to the report."""
-        self.pd_issues.append({"experiment_id": experiment_id, "run_id": run_id, **issue_details})
+        self.pd_issues.append({
+            "experiment_id": experiment_id,
+            "run_id": run_id,
+            **issue_details,
+        })
 
     def add_sequence_gap_issue(
-        self, experiment_id: UUID, run_id: UUID, gaps: List[int], actual_sequences: List[int]
+        self,
+        experiment_id: UUID,
+        run_id: UUID,
+        gaps: List[int],
+        actual_sequences: List[int],
     ):
         """Add a sequence gap issue to the report."""
-        self.sequence_gap_issues.append(
-            {
-                "experiment_id": experiment_id,
-                "run_id": run_id,
-                "gaps": gaps,
-                "actual_sequences": actual_sequences,
-            }
-        )
+        self.sequence_gap_issues.append({
+            "experiment_id": experiment_id,
+            "run_id": run_id,
+            "gaps": gaps,
+            "actual_sequences": actual_sequences,
+        })
 
     def add_orphaned_embedding(self, embedding_id: UUID, invocation_id: UUID):
         """Add an orphaned embedding to the report."""
-        self.orphaned_records["embeddings"].append(
-            {"embedding_id": embedding_id, "invocation_id": invocation_id}
-        )
+        self.orphaned_records["embeddings"].append({
+            "embedding_id": embedding_id,
+            "invocation_id": invocation_id,
+        })
 
     def add_orphaned_pd(self, pd_id: UUID, run_id: UUID):
         """Add an orphaned persistence diagram to the report."""
-        self.orphaned_records["persistence_diagrams"].append({"pd_id": pd_id, "run_id": run_id})
+        self.orphaned_records["persistence_diagrams"].append({
+            "pd_id": pd_id,
+            "run_id": run_id,
+        })
 
     def has_issues(self) -> bool:
         """Check if any issues were found."""
@@ -121,7 +135,9 @@ class DoctorReport:
 
     def get_summary_stats(self) -> Dict[str, Any]:
         """Get summary statistics for the report."""
-        duration = (self.end_time - self.start_time).total_seconds() if self.end_time else 0
+        duration = (
+            (self.end_time - self.start_time).total_seconds() if self.end_time else 0
+        )
         return {
             "total_experiments": self.total_experiments,
             "experiments_with_issues": self.experiments_with_issues,
@@ -147,7 +163,11 @@ class DoctorReport:
                         {
                             "experiment_id": str(issue["experiment_id"]),
                             "run_id": str(issue["run_id"]),
-                            **{k: v for k, v in issue.items() if k not in ["experiment_id", "run_id"]},
+                            **{
+                                k: v
+                                for k, v in issue.items()
+                                if k not in ["experiment_id", "run_id"]
+                            },
                         }
                         for issue in self.run_invocation_issues
                     ],
@@ -167,7 +187,11 @@ class DoctorReport:
                         {
                             "experiment_id": str(issue["experiment_id"]),
                             "run_id": str(issue["run_id"]),
-                            **{k: v for k, v in issue.items() if k not in ["experiment_id", "run_id"]},
+                            **{
+                                k: v
+                                for k, v in issue.items()
+                                if k not in ["experiment_id", "run_id"]
+                            },
                         }
                         for issue in self.pd_issues
                     ],
@@ -189,7 +213,10 @@ class DoctorReport:
                             for record in self.orphaned_records["embeddings"]
                         ],
                         "persistence_diagrams": [
-                            {"pd_id": str(record["pd_id"]), "run_id": str(record["run_id"])}
+                            {
+                                "pd_id": str(record["pd_id"]),
+                                "run_id": str(record["run_id"]),
+                            }
                             for record in self.orphaned_records["persistence_diagrams"]
                         ],
                         "global_orphans": self.orphaned_records["global_orphans"],
@@ -211,7 +238,9 @@ def check_experiment_run_invocations(
     for run in runs:
         # Check invocation count
         invocation_count = session.exec(
-            select(func.count()).select_from(Invocation).where(Invocation.run_id == run.id)
+            select(func.count())
+            .select_from(Invocation)
+            .where(Invocation.run_id == run.id)
         ).one()
 
         # Check for sequence_number 0
@@ -258,7 +287,9 @@ def check_experiment_run_invocations(
             gaps = [seq for seq in expected_sequences if seq not in actual_sequences]
 
             if gaps:
-                report.add_sequence_gap_issue(experiment.id, run.id, gaps, actual_sequences)
+                report.add_sequence_gap_issue(
+                    experiment.id, run.id, gaps, actual_sequences
+                )
 
     return issues
 
@@ -273,7 +304,9 @@ def check_experiment_embeddings(
     invocations = session.exec(
         select(Invocation)
         .join(Run, Invocation.run_id == Run.id)
-        .where(Run.experiment_id == experiment.id, Invocation.type == InvocationType.TEXT)
+        .where(
+            Run.experiment_id == experiment.id, Invocation.type == InvocationType.TEXT
+        )
     ).all()
 
     for invocation in invocations:
@@ -413,7 +446,9 @@ def check_orphaned_records(session: Session, report: DoctorReport):
 
     report.orphaned_records["global_orphans"]["invocations"] = orphaned_invocations
     report.orphaned_records["global_orphans"]["embeddings"] = len(orphaned_embeddings)
-    report.orphaned_records["global_orphans"]["persistence_diagrams"] = len(orphaned_pds)
+    report.orphaned_records["global_orphans"]["persistence_diagrams"] = len(
+        orphaned_pds
+    )
 
 
 def confirm_fix(message: str, yes_flag: bool) -> bool:
@@ -431,12 +466,10 @@ def fix_run_invocations(issues: List[Dict], experiment: ExperimentConfig, db_str
         run_ids_to_fix = []
         for issue in issues:
             run_id = issue["run_id"]
-            run = session.get(Run, run_id)
+            session.get(Run, run_id)
 
             # Delete all existing invocations for this run
-            session.exec(
-                select(Invocation).where(Invocation.run_id == run_id)
-            ).all()
+            session.exec(select(Invocation).where(Invocation.run_id == run_id)).all()
             for inv in session.exec(
                 select(Invocation).where(Invocation.run_id == run_id)
             ):
@@ -459,17 +492,22 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
     invocation_ids_to_fix = list(set(str(issue["invocation_id"]) for issue in issues))
 
     if invocation_ids_to_fix:
-        logger.info(f"Computing embeddings for {len(invocation_ids_to_fix)} invocations")
-        perform_embeddings_stage(invocation_ids_to_fix, experiment.embedding_models, db_str)
+        logger.info(
+            f"Computing embeddings for {len(invocation_ids_to_fix)} invocations"
+        )
+        perform_embeddings_stage(
+            invocation_ids_to_fix, experiment.embedding_models, db_str
+        )
 
 
-def fix_persistence_diagrams(issues: List[Dict], experiment: ExperimentConfig, db_str: str):
+def fix_persistence_diagrams(
+    issues: List[Dict], experiment: ExperimentConfig, db_str: str
+):
     """Fix missing or invalid persistence diagrams."""
     from panic_tda.engine import perform_pd_stage
 
     # Group issues by type
     runs_to_recompute = set()
-    pds_to_delete = []
 
     with get_session_from_connection_string(db_str) as session:
         for issue in issues:
@@ -490,7 +528,8 @@ def fix_persistence_diagrams(issues: List[Dict], experiment: ExperimentConfig, d
                     pds = session.exec(
                         select(PersistenceDiagram).where(
                             PersistenceDiagram.run_id == issue["run_id"],
-                            PersistenceDiagram.embedding_model == issue["embedding_model"],
+                            PersistenceDiagram.embedding_model
+                            == issue["embedding_model"],
                         )
                     ).all()
                     for pd in pds:
@@ -510,19 +549,19 @@ def fix_sequence_gaps(gaps_issues: List[Dict], db_str: str):
     with get_session_from_connection_string(db_str) as session:
         for issue in gaps_issues:
             run_id = issue["run_id"]
-            
+
             # Get all invocations for this run, ordered by current sequence
             invocations = session.exec(
                 select(Invocation)
                 .where(Invocation.run_id == run_id)
                 .order_by(Invocation.sequence_number)
             ).all()
-            
+
             # Re-sequence them to be contiguous
             for new_seq, inv in enumerate(invocations):
                 inv.sequence_number = new_seq
                 session.add(inv)
-            
+
         session.commit()
         logger.info(f"Fixed sequence gaps for {len(gaps_issues)} runs")
 
@@ -535,29 +574,29 @@ def clean_orphaned_records(orphaned: Dict, db_str: str):
             emb = session.get(Embedding, record["embedding_id"])
             if emb:
                 session.delete(emb)
-        
+
         # Clean orphaned persistence diagrams
         for record in orphaned["persistence_diagrams"]:
             pd = session.get(PersistenceDiagram, record["pd_id"])
             if pd:
                 session.delete(pd)
-        
+
         # Clean globally orphaned invocations
         orphaned_invs = session.exec(
             select(Invocation)
             .outerjoin(Run, Invocation.run_id == Run.id)
             .where(Run.id.is_(None))
         ).all()
-        
+
         for inv in orphaned_invs:
             session.delete(inv)
-        
+
         session.commit()
-        
+
         total_cleaned = (
-            len(orphaned["embeddings"]) +
-            len(orphaned["persistence_diagrams"]) +
-            len(orphaned_invs)
+            len(orphaned["embeddings"])
+            + len(orphaned["persistence_diagrams"])
+            + len(orphaned_invs)
         )
         logger.info(f"Cleaned {total_cleaned} orphaned records")
 
@@ -575,62 +614,65 @@ def _check_and_fix_experiment(
 ) -> bool:
     """
     Helper function to check and optionally fix a single experiment.
-    
+
     Returns:
         True if the experiment has issues, False otherwise.
     """
     experiment_has_issues = False
-    
+
     with get_session_from_connection_string(db_str) as session:
         # Load experiment in this session
         experiment = session.get(ExperimentConfig, experiment_id)
         if not experiment:
             raise ValueError(f"Experiment with ID {experiment_id} not found")
-        
+
         # Check run invocations
         run_issues = check_experiment_run_invocations(experiment, session, report)
         if progress and task:
             progress.advance(task)
-        
+
         # Check embeddings
         embedding_issues = check_experiment_embeddings(experiment, session, report)
         if progress and task:
             progress.advance(task)
-        
+
         # Check persistence diagrams
         pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
         if progress and task:
             progress.advance(task)
-        
+
         if run_issues or embedding_issues or pd_issues:
             experiment_has_issues = True
             report.experiments_with_issues += 1
-            
+
             if fix:
                 # Fix issues for this experiment
                 if run_issues and confirm_fix(
-                    f"Fix {len(run_issues)} run invocation issues for experiment {experiment_id}?", yes_flag
+                    f"Fix {len(run_issues)} run invocation issues for experiment {experiment_id}?",
+                    yes_flag,
                 ):
                     fix_run_invocations(run_issues, experiment, db_str)
-                
+
                 if embedding_issues and confirm_fix(
-                    f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?", yes_flag
+                    f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?",
+                    yes_flag,
                 ):
                     fix_embeddings(embedding_issues, experiment, db_str)
-                
+
                 if pd_issues and confirm_fix(
-                    f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?", yes_flag
+                    f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?",
+                    yes_flag,
                 ):
                     fix_persistence_diagrams(pd_issues, experiment, db_str)
-    
+
     # Update progress if provided
     if progress and task:
         if experiment_index is not None and total_experiments is not None:
-            description = f"Experiment {experiment_index+1}/{total_experiments} ({experiment_id}): {'issues found' if experiment_has_issues else 'OK'}"
+            description = f"Experiment {experiment_index + 1}/{total_experiments} ({experiment_id}): {'issues found' if experiment_has_issues else 'OK'}"
         else:
             description = f"Experiment {experiment_id}: {'issues found' if experiment_has_issues else 'OK'}"
         progress.update(task, completed=True, description=description)
-    
+
     return experiment_has_issues
 
 
@@ -643,22 +685,22 @@ def doctor_single_experiment(
 ) -> int:
     """
     Check and optionally fix a single experiment in the database.
-    
+
     Args:
         experiment_id: UUID of the experiment to check
         db_str: Database connection string
         fix: If True, fix issues; if False, only report
         yes_flag: Skip confirmation prompts if True
         output_format: Output format ('text' or 'json')
-    
+
     Returns:
         Exit code (0 if no issues, 1 if issues found)
     """
     report = DoctorReport()
-    
+
     # Only show progress indicator for text output
     show_progress = output_format == "text"
-    
+
     if show_progress:
         progress_context = Progress(
             SpinnerColumn(),
@@ -668,13 +710,16 @@ def doctor_single_experiment(
     else:
         # Create a dummy context manager that does nothing
         from contextlib import nullcontext
+
         progress_context = nullcontext()
-    
+
     with progress_context as progress:
         # Load the specific experiment
         if show_progress:
-            task = progress.add_task(f"Loading experiment {experiment_id}...", total=None)
-        
+            task = progress.add_task(
+                f"Loading experiment {experiment_id}...", total=None
+            )
+
         with get_session_from_connection_string(db_str) as session:
             experiment = session.get(ExperimentConfig, experiment_id)
             if not experiment:
@@ -686,14 +731,18 @@ def doctor_single_experiment(
                     }
                     print(json.dumps(error_report, indent=2))
                 else:
-                    console.print(f"[red]Error: Experiment with ID {experiment_id} not found[/red]")
+                    console.print(
+                        f"[red]Error: Experiment with ID {experiment_id} not found[/red]"
+                    )
                 return 1
-            
+
             report.total_experiments = 1
-            
+
         if show_progress:
-            progress.update(task, completed=True, description=f"Found experiment {experiment_id}")
-        
+            progress.update(
+                task, completed=True, description=f"Found experiment {experiment_id}"
+            )
+
         # Process the experiment
         if show_progress:
             task = progress.add_task(
@@ -702,7 +751,7 @@ def doctor_single_experiment(
             )
         else:
             task = None
-        
+
         # Use the helper function to check and fix the experiment
         try:
             _check_and_fix_experiment(
@@ -726,31 +775,35 @@ def doctor_single_experiment(
             else:
                 console.print(f"[red]Error: {e}[/red]")
             return 1
-        
+
         # Check for orphaned records related to this experiment
         if show_progress:
             task = progress.add_task("Checking for orphaned records...", total=None)
-        
+
         with get_session_from_connection_string(db_str) as session:
             # We still check all orphaned records, but this could be optimized
             # to check only records related to this experiment
             check_orphaned_records(session, report)
-        
+
         if show_progress:
             progress.update(task, completed=True, description="Orphan check complete")
-        
+
         # Fix orphaned records if requested
-        if fix and (report.orphaned_records["embeddings"] or report.orphaned_records["persistence_diagrams"]):
+        if fix and (
+            report.orphaned_records["embeddings"]
+            or report.orphaned_records["persistence_diagrams"]
+        ):
             if confirm_fix(
-                f"Clean orphaned records (globally)?",
+                "Clean orphaned records (globally)?",
                 yes_flag,
             ):
                 clean_orphaned_records(report.orphaned_records, db_str)
-        
-        # Fix sequence gaps if requested  
+
+        # Fix sequence gaps if requested
         if fix and report.sequence_gap_issues:
             if confirm_fix(
-                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs for experiment {experiment_id}?", yes_flag
+                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs for experiment {experiment_id}?",
+                yes_flag,
             ):
                 fix_sequence_gaps(report.sequence_gap_issues, db_str)
 
@@ -766,13 +819,13 @@ def doctor_single_experiment(
         table.add_column("Issue Details", style="yellow")
 
         stats = report.get_summary_stats()
-        
+
         # Summary row
         table.add_row(
             "Summary",
-            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues"
+            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues",
         )
-        
+
         # Run invocation issues
         if report.run_invocation_issues:
             for issue in report.run_invocation_issues[:10]:  # Show first 10
@@ -781,16 +834,18 @@ def doctor_single_experiment(
                 if issue.get("missing_first"):
                     details.append("missing seq 0")
                 if issue.get("missing_last"):
-                    details.append(f"missing seq {issue.get('expected_count', 0)-1}")
+                    details.append(f"missing seq {issue.get('expected_count', 0) - 1}")
                 if issue.get("actual_count") != issue.get("expected_count"):
-                    details.append(f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations")
-                table.add_row(
-                    f"Run {run_id_str}",
-                    ", ".join(details)
-                )
+                    details.append(
+                        f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations"
+                    )
+                table.add_row(f"Run {run_id_str}", ", ".join(details))
             if len(report.run_invocation_issues) > 10:
-                table.add_row("", f"... and {len(report.run_invocation_issues)-10} more run issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.run_invocation_issues) - 10} more run issues",
+                )
+
         # Embedding issues
         if report.embedding_issues:
             shown = 0
@@ -798,19 +853,23 @@ def doctor_single_experiment(
                 inv_id_str = str(issue["invocation_id"])[:8]
                 details = []
                 if issue.get("embedding_count", 0) == 0:
-                    details.append(f"missing embedding for {issue.get('embedding_model')}")
+                    details.append(
+                        f"missing embedding for {issue.get('embedding_model')}"
+                    )
                 elif issue.get("embedding_count", 0) > 1:
-                    details.append(f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}")
+                    details.append(
+                        f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}"
+                    )
                 if issue.get("has_null_vector"):
                     details.append(f"null vector for {issue.get('embedding_model')}")
-                table.add_row(
-                    f"Invocation {inv_id_str}",
-                    ", ".join(details)
-                )
+                table.add_row(f"Invocation {inv_id_str}", ", ".join(details))
                 shown += 1
             if len(report.embedding_issues) > 10:
-                table.add_row("", f"... and {len(report.embedding_issues)-10} more embedding issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.embedding_issues) - 10} more embedding issues",
+                )
+
         # Persistence diagram issues
         if report.pd_issues:
             for issue in report.pd_issues[:10]:  # Show first 10
@@ -829,8 +888,10 @@ def doctor_single_experiment(
                     details += " (null data)"
                 table.add_row(f"Run {run_id_str}", details)
             if len(report.pd_issues) > 10:
-                table.add_row("", f"... and {len(report.pd_issues)-10} more PD issues")
-        
+                table.add_row(
+                    "", f"... and {len(report.pd_issues) - 10} more PD issues"
+                )
+
         # Sequence gap issues
         if report.sequence_gap_issues:
             for issue in report.sequence_gap_issues[:10]:  # Show first 10
@@ -840,13 +901,13 @@ def doctor_single_experiment(
                     gap_str = ", ".join(str(g) for g in gaps)
                 else:
                     gap_str = f"{', '.join(str(g) for g in gaps[:3])}... ({len(gaps)} gaps total)"
-                table.add_row(
-                    f"Run {run_id_str}",
-                    f"missing sequences: {gap_str}"
-                )
+                table.add_row(f"Run {run_id_str}", f"missing sequences: {gap_str}")
             if len(report.sequence_gap_issues) > 10:
-                table.add_row("", f"... and {len(report.sequence_gap_issues)-10} more sequence gap issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.sequence_gap_issues) - 10} more sequence gap issues",
+                )
+
         # Orphaned records
         if report.orphaned_records["embeddings"]:
             count = len(report.orphaned_records["embeddings"])
@@ -855,7 +916,7 @@ def doctor_single_experiment(
             if count > 3:
                 sample_str += f"... ({count} total)"
             table.add_row("Orphaned Embeddings", sample_str)
-        
+
         if report.orphaned_records["persistence_diagrams"]:
             count = len(report.orphaned_records["persistence_diagrams"])
             sample = report.orphaned_records["persistence_diagrams"][:3]
@@ -863,7 +924,7 @@ def doctor_single_experiment(
             if count > 3:
                 sample_str += f"... ({count} total)"
             table.add_row("Orphaned PDs", sample_str)
-        
+
         # Global orphans
         global_orphans = report.orphaned_records["global_orphans"]
         if any(global_orphans.values()):
@@ -875,7 +936,7 @@ def doctor_single_experiment(
             if global_orphans["persistence_diagrams"]:
                 details.append(f"{global_orphans['persistence_diagrams']} PDs")
             table.add_row("Global Orphans", ", ".join(details))
-        
+
         # Duration
         table.add_row("Duration", f"{stats['duration_seconds']:.2f} seconds")
 
@@ -896,26 +957,28 @@ def doctor_all_experiments(
 ) -> int:
     """
     Check and optionally fix all experiments in the database, or a specific experiment if provided.
-    
+
     Args:
         db_str: Database connection string
         fix: If True, fix issues; if False, only report
         yes_flag: Skip confirmation prompts if True
         output_format: Output format ('text' or 'json')
         experiment_id: Optional UUID of a specific experiment to check
-    
+
     Returns:
         Exit code (0 if no issues, 1 if issues found)
     """
     # If a specific experiment is requested, use the single experiment function
     if experiment_id is not None:
-        return doctor_single_experiment(experiment_id, db_str, fix, yes_flag, output_format)
-    
+        return doctor_single_experiment(
+            experiment_id, db_str, fix, yes_flag, output_format
+        )
+
     report = DoctorReport()
-    
+
     # Only show progress indicator for text output
     show_progress = output_format == "text"
-    
+
     if show_progress:
         progress_context = Progress(
             SpinnerColumn(),
@@ -925,32 +988,37 @@ def doctor_all_experiments(
     else:
         # Create a dummy context manager that does nothing
         from contextlib import nullcontext
+
         progress_context = nullcontext()
-    
+
     with progress_context as progress:
         # Load all experiments
         if show_progress:
             task = progress.add_task("Loading experiments...", total=None)
-        
+
         with get_session_from_connection_string(db_str) as session:
             experiments = session.exec(select(ExperimentConfig)).all()
             # Store just the IDs to avoid detached instance issues
             experiment_ids = [exp.id for exp in experiments]
             report.total_experiments = len(experiment_ids)
-            
+
         if show_progress:
-            progress.update(task, completed=True, description=f"Found {report.total_experiments} experiments")
+            progress.update(
+                task,
+                completed=True,
+                description=f"Found {report.total_experiments} experiments",
+            )
 
         # Process each experiment
         for i, experiment_id in enumerate(experiment_ids):
             if show_progress:
                 task = progress.add_task(
-                    f"Checking experiment {i+1}/{report.total_experiments} ({experiment_id})",
+                    f"Checking experiment {i + 1}/{report.total_experiments} ({experiment_id})",
                     total=3,
                 )
             else:
                 task = None
-            
+
             # Use the helper function to check and fix the experiment
             try:
                 _check_and_fix_experiment(
@@ -971,19 +1039,19 @@ def doctor_all_experiments(
                     progress.update(
                         task,
                         completed=True,
-                        description=f"Experiment {i+1}/{report.total_experiments} ({experiment_id}): ERROR",
+                        description=f"Experiment {i + 1}/{report.total_experiments} ({experiment_id}): ERROR",
                     )
 
         # Check for global orphaned records
         if show_progress:
             task = progress.add_task("Checking for orphaned records...", total=None)
-        
+
         with get_session_from_connection_string(db_str) as session:
             check_orphaned_records(session, report)
-        
+
         if show_progress:
             progress.update(task, completed=True, description="Orphan check complete")
-        
+
         # Fix orphaned records if requested
         if fix and report.orphaned_records["global_orphans"]["invocations"] > 0:
             if confirm_fix(
@@ -991,11 +1059,12 @@ def doctor_all_experiments(
                 yes_flag,
             ):
                 clean_orphaned_records(report.orphaned_records, db_str)
-        
-        # Fix sequence gaps if requested  
+
+        # Fix sequence gaps if requested
         if fix and report.sequence_gap_issues:
             if confirm_fix(
-                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs?", yes_flag
+                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs?",
+                yes_flag,
             ):
                 fix_sequence_gaps(report.sequence_gap_issues, db_str)
 
@@ -1011,13 +1080,13 @@ def doctor_all_experiments(
         table.add_column("Issue Details", style="yellow")
 
         stats = report.get_summary_stats()
-        
+
         # Summary row
         table.add_row(
             "Summary",
-            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues"
+            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues",
         )
-        
+
         # Run invocation issues
         if report.run_invocation_issues:
             for issue in report.run_invocation_issues[:10]:  # Show first 10
@@ -1027,16 +1096,20 @@ def doctor_all_experiments(
                 if issue.get("missing_first"):
                     details.append("missing seq 0")
                 if issue.get("missing_last"):
-                    details.append(f"missing seq {issue.get('expected_count', 0)-1}")
+                    details.append(f"missing seq {issue.get('expected_count', 0) - 1}")
                 if issue.get("actual_count") != issue.get("expected_count"):
-                    details.append(f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations")
+                    details.append(
+                        f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations"
+                    )
                 table.add_row(
-                    f"Run {run_id_str} (exp {exp_id_str})",
-                    ", ".join(details)
+                    f"Run {run_id_str} (exp {exp_id_str})", ", ".join(details)
                 )
             if len(report.run_invocation_issues) > 10:
-                table.add_row("", f"... and {len(report.run_invocation_issues)-10} more run issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.run_invocation_issues) - 10} more run issues",
+                )
+
         # Embedding issues
         if report.embedding_issues:
             shown = 0
@@ -1045,19 +1118,25 @@ def doctor_all_experiments(
                 inv_id_str = str(issue["invocation_id"])[:8]
                 details = []
                 if issue.get("embedding_count", 0) == 0:
-                    details.append(f"missing embedding for {issue.get('embedding_model')}")
+                    details.append(
+                        f"missing embedding for {issue.get('embedding_model')}"
+                    )
                 elif issue.get("embedding_count", 0) > 1:
-                    details.append(f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}")
+                    details.append(
+                        f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}"
+                    )
                 if issue.get("has_null_vector"):
                     details.append(f"null vector for {issue.get('embedding_model')}")
                 table.add_row(
-                    f"Invocation {inv_id_str} (exp {exp_id_str})",
-                    ", ".join(details)
+                    f"Invocation {inv_id_str} (exp {exp_id_str})", ", ".join(details)
                 )
                 shown += 1
             if len(report.embedding_issues) > 10:
-                table.add_row("", f"... and {len(report.embedding_issues)-10} more embedding issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.embedding_issues) - 10} more embedding issues",
+                )
+
         # Persistence diagram issues
         if report.pd_issues:
             for issue in report.pd_issues[:10]:  # Show first 10
@@ -1077,8 +1156,10 @@ def doctor_all_experiments(
                     details += " (null data)"
                 table.add_row(f"Run {run_id_str} (exp {exp_id_str})", details)
             if len(report.pd_issues) > 10:
-                table.add_row("", f"... and {len(report.pd_issues)-10} more PD issues")
-        
+                table.add_row(
+                    "", f"... and {len(report.pd_issues) - 10} more PD issues"
+                )
+
         # Sequence gap issues
         if report.sequence_gap_issues:
             for issue in report.sequence_gap_issues[:10]:  # Show first 10
@@ -1091,11 +1172,14 @@ def doctor_all_experiments(
                     gap_str = f"{', '.join(str(g) for g in gaps[:3])}... ({len(gaps)} gaps total)"
                 table.add_row(
                     f"Run {run_id_str} (exp {exp_id_str})",
-                    f"missing sequences: {gap_str}"
+                    f"missing sequences: {gap_str}",
                 )
             if len(report.sequence_gap_issues) > 10:
-                table.add_row("", f"... and {len(report.sequence_gap_issues)-10} more sequence gap issues")
-        
+                table.add_row(
+                    "",
+                    f"... and {len(report.sequence_gap_issues) - 10} more sequence gap issues",
+                )
+
         # Orphaned records
         if report.orphaned_records["embeddings"]:
             count = len(report.orphaned_records["embeddings"])
@@ -1104,7 +1188,7 @@ def doctor_all_experiments(
             if count > 3:
                 sample_str += f"... ({count} total)"
             table.add_row("Orphaned Embeddings", sample_str)
-        
+
         if report.orphaned_records["persistence_diagrams"]:
             count = len(report.orphaned_records["persistence_diagrams"])
             sample = report.orphaned_records["persistence_diagrams"][:3]
@@ -1112,7 +1196,7 @@ def doctor_all_experiments(
             if count > 3:
                 sample_str += f"... ({count} total)"
             table.add_row("Orphaned PDs", sample_str)
-        
+
         # Global orphans
         global_orphans = report.orphaned_records["global_orphans"]
         if any(global_orphans.values()):
@@ -1124,7 +1208,7 @@ def doctor_all_experiments(
             if global_orphans["persistence_diagrams"]:
                 details.append(f"{global_orphans['persistence_diagrams']} PDs")
             table.add_row("Global Orphans", ", ".join(details))
-        
+
         # Duration
         table.add_row("Duration", f"{stats['duration_seconds']:.2f} seconds")
 

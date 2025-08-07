@@ -660,7 +660,9 @@ def doctor_command(
 
     # Validate output format
     if output_format not in ["text", "json"]:
-        logger.error(f"Invalid output format: {output_format}. Must be 'text' or 'json'.")
+        logger.error(
+            f"Invalid output format: {output_format}. Must be 'text' or 'json'."
+        )
         raise typer.Exit(code=1)
 
     # Parse experiment ID if provided
@@ -681,7 +683,13 @@ def doctor_command(
             logger.info("Auto-confirm mode enabled - skipping confirmation prompts")
 
     # Call the doctor function with optional experiment ID
-    exit_code = doctor_all_experiments(db_str, fix=fix, yes_flag=yes, output_format=output_format, experiment_id=exp_uuid)
+    exit_code = doctor_all_experiments(
+        db_str,
+        fix=fix,
+        yes_flag=yes,
+        output_format=output_format,
+        experiment_id=exp_uuid,
+    )
 
     if output_format == "text":
         if exit_code == 0:
@@ -705,6 +713,7 @@ def script(
     # Create database connection
     # Convert to absolute path for Ray workers
     import os
+
     abs_db_path = os.path.abspath(db_path)
     db_str = f"sqlite:///{abs_db_path}"
 
@@ -811,7 +820,7 @@ def list_clusters_command(
             outlier_count = session.exec(
                 select(func.count(EmbeddingCluster.id)).where(
                     EmbeddingCluster.clustering_result_id == result.id,
-                    EmbeddingCluster.medoid_embedding_id.is_(None)
+                    EmbeddingCluster.medoid_embedding_id.is_(None),
                 )
             ).one()
 
@@ -823,9 +832,11 @@ def list_clusters_command(
 
             # Count unique clusters (distinct medoid_embedding_ids, excluding None)
             regular_clusters = session.exec(
-                select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))).where(
+                select(
+                    func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))
+                ).where(
                     EmbeddingCluster.clustering_result_id == result.id,
-                    EmbeddingCluster.medoid_embedding_id.is_not(None)
+                    EmbeddingCluster.medoid_embedding_id.is_not(None),
                 )
             ).one()
 
@@ -945,9 +956,11 @@ def delete_cluster_command(
             typer.echo(f"Created: {clustering_result.created_at}")
             # Count unique clusters
             cluster_count = session.exec(
-                select(func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))).where(
+                select(
+                    func.count(func.distinct(EmbeddingCluster.medoid_embedding_id))
+                ).where(
                     EmbeddingCluster.clustering_result_id == clustering_result.id,
-                    EmbeddingCluster.medoid_embedding_id.is_not(None)
+                    EmbeddingCluster.medoid_embedding_id.is_not(None),
                 )
             ).one()
             typer.echo(f"Clusters: {cluster_count}")

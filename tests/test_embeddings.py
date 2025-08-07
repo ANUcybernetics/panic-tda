@@ -398,7 +398,7 @@ def test_embedding_model(model_name, embedding_model_actors):
 
     # Determine if this is an image model or text model
     is_image_model = "Vision" in model_name
-    
+
     if is_image_model:
         # Create a sample image
         sample_input = [Image.new("RGB", (100, 100), color="blue")]
@@ -445,7 +445,7 @@ def test_embedding_batch_performance(model_name, batch_size, embedding_model_act
 
     # Determine if this is an image model or text model
     is_image_model = "Vision" in model_name
-    
+
     if is_image_model:
         # Create dummy images for the batch
         sample_inputs = [
@@ -485,33 +485,34 @@ def test_embedding_batch_performance(model_name, batch_size, embedding_model_act
 @pytest.mark.slow
 def test_jinaclipvision_batch_processing_single_actor():
     """Test JinaClipVision batch processing with a single actor.
-    
+
     This test was created to reproduce HuggingFace transformers issue #26999 where
     JinaClipVision failed with IndexError when processing multiple images.
-    
+
     The error was:
     IndexError: list index out of range
       File ".../modeling_clip.py", line 495, in encode_image
         all_embeddings = [all_embeddings[idx] for idx in _inverse_permutation]
-    
+
     As of the current test run, this issue appears to have been fixed and
     batch processing works correctly.
-    
+
     See: https://github.com/huggingface/transformers/issues/26999
     """
     # Skip if CUDA is not available
     if not torch.cuda.is_available():
         pytest.skip("CUDA GPU required for JinaClipVision test")
-    
+
     # Create the JinaClipVision actor
     from panic_tda.embeddings import JinaClipVision
+
     jina_vision = JinaClipVision.remote()
-    
+
     try:
         # Create a larger batch to try to trigger the error
         # Based on the logs, the error occurred with batches of 100 images
         batch_sizes_to_test = [2, 10, 50, 100]
-        
+
         # Test various batch sizes to ensure the issue is fixed
         for batch_size in batch_sizes_to_test:
             print(f"\nTesting batch size: {batch_size}")
@@ -519,38 +520,42 @@ def test_jinaclipvision_batch_processing_single_actor():
             images = []
             for i in range(batch_size):
                 # Create image
-                img = Image.new("RGB", (224, 224), color=(i % 255, (i * 2) % 255, (i * 3) % 255))
+                img = Image.new(
+                    "RGB", (224, 224), color=(i % 255, (i * 2) % 255, (i * 3) % 255)
+                )
                 # Convert to WEBP and back to simulate database storage
                 buffer = io.BytesIO()
                 img.save(buffer, format="WEBP", lossless=True, quality=100)
                 buffer.seek(0)
                 img_reloaded = Image.open(buffer)
                 images.append(img_reloaded)
-            
+
             # Process batch - should work without IndexError
             embedding_ref = jina_vision.embed.remote(images)
             embeddings = ray.get(embedding_ref)
-            
+
             # Verify we got the correct number of embeddings
-            assert len(embeddings) == batch_size, f"Expected {batch_size} embeddings, got {len(embeddings)}"
+            assert len(embeddings) == batch_size, (
+                f"Expected {batch_size} embeddings, got {len(embeddings)}"
+            )
             print(f"Success! Got {len(embeddings)} embeddings")
-            
+
             # Verify embedding properties
             for i, emb in enumerate(embeddings):
                 assert emb is not None
                 assert len(emb) == 768  # Expected dimension
                 assert emb.dtype == np.float32
                 assert not np.all(emb == 0)  # Should not be all zeros
-    
+
     finally:
         # Clean up
         ray.kill(jina_vision)
 
 
-@pytest.mark.slow 
+@pytest.mark.slow
 def test_jinaclipvision_batch_processing_multiple_actors():
     """Test JinaClipVision batch processing with multiple actors in parallel.
-    
+
     This test simulates the engine.py pattern where multiple JinaClipVision actors
     are created and process batches in parallel, which is the scenario where the
     IndexError was observed in production.
@@ -558,56 +563,66 @@ def test_jinaclipvision_batch_processing_multiple_actors():
     # Skip if CUDA is not available
     if not torch.cuda.is_available():
         pytest.skip("CUDA GPU required for JinaClipVision test")
-    
+
     # Create multiple JinaClipVision actors like the engine does
     from panic_tda.embeddings import JinaClipVision
+
     num_actors = 3
     actors = []
-    
+
     try:
         # Create actors
         for i in range(num_actors):
             actor = JinaClipVision.remote()
             actors.append(actor)
-            print(f"Created JinaClipVision actor {i+1}/{num_actors}")
-        
+            print(f"Created JinaClipVision actor {i + 1}/{num_actors}")
+
         # Create batches of images (WEBP format like in production)
         batch_size = 100  # Same as in the error logs
         num_batches = 5
-        
+
         all_tasks = []
         for batch_idx in range(num_batches):
             images = []
             for i in range(batch_size):
                 # Create unique images for each batch
                 color_base = batch_idx * 50
-                img = Image.new("RGB", (224, 224), 
-                              color=((color_base + i) % 255, 
-                                   ((color_base + i) * 2) % 255, 
-                                   ((color_base + i) * 3) % 255))
+                img = Image.new(
+                    "RGB",
+                    (224, 224),
+                    color=(
+                        (color_base + i) % 255,
+                        ((color_base + i) * 2) % 255,
+                        ((color_base + i) * 3) % 255,
+                    ),
+                )
                 # Convert to WEBP and back to simulate database storage
                 buffer = io.BytesIO()
                 img.save(buffer, format="WEBP", lossless=True, quality=100)
                 buffer.seek(0)
                 img_reloaded = Image.open(buffer)
                 images.append(img_reloaded)
-            
+
             # Submit batch to next actor (round-robin)
             actor = actors[batch_idx % num_actors]
             task = actor.embed.remote(images)
             all_tasks.append((batch_idx, task))
-            print(f"Submitted batch {batch_idx + 1} with {batch_size} images to actor {batch_idx % num_actors}")
-        
+            print(
+                f"Submitted batch {batch_idx + 1} with {batch_size} images to actor {batch_idx % num_actors}"
+            )
+
         # Collect results
         errors = []
         successes = 0
-        
+
         for batch_idx, task in all_tasks:
             try:
                 embeddings = ray.get(task)
                 assert len(embeddings) == batch_size
                 successes += 1
-                print(f"Batch {batch_idx + 1} succeeded with {len(embeddings)} embeddings")
+                print(
+                    f"Batch {batch_idx + 1} succeeded with {len(embeddings)} embeddings"
+                )
             except Exception as e:
                 errors.append((batch_idx, e))
                 print(f"Batch {batch_idx + 1} failed: {type(e).__name__}: {e}")
@@ -615,17 +630,19 @@ def test_jinaclipvision_batch_processing_multiple_actors():
                     # Check if it's the expected IndexError
                     if "IndexError" in str(e) and "list index out of range" in str(e):
                         print("Found the expected IndexError!")
-        
+
         # Report results
-        print(f"\nResults: {successes} successes, {len(errors)} errors out of {num_batches} batches")
-        
+        print(
+            f"\nResults: {successes} successes, {len(errors)} errors out of {num_batches} batches"
+        )
+
         if errors:
             # If we got IndexErrors, that confirms the issue still exists
             print("IndexError reproduced in parallel processing scenario")
             # Don't fail the test since we're documenting the issue
         else:
             print("All batches processed successfully - issue may be fixed")
-            
+
     finally:
         # Clean up all actors
         for actor in actors:
@@ -635,7 +652,7 @@ def test_jinaclipvision_batch_processing_multiple_actors():
 @pytest.mark.slow
 def test_jinaclipvision_batch_processing_fresh_actors():
     """Test JinaClipVision with fresh actors for each batch.
-    
+
     This test simulates the pattern seen in the error logs where each batch
     appears to get a fresh JinaClipVision actor (different PIDs), which might
     trigger the IndexError due to model initialization issues.
@@ -643,59 +660,66 @@ def test_jinaclipvision_batch_processing_fresh_actors():
     # Skip if CUDA is not available
     if not torch.cuda.is_available():
         pytest.skip("CUDA GPU required for JinaClipVision test")
-    
+
     from panic_tda.embeddings import JinaClipVision
-    
+
     # Test parameters matching production scenario
     batch_size = 100
     num_batches = 5
-    
+
     errors = []
     successes = 0
-    
+
     for batch_idx in range(num_batches):
         # Create a fresh actor for each batch (like in the logs)
         actor = JinaClipVision.remote()
         print(f"\nCreated fresh JinaClipVision actor for batch {batch_idx + 1}")
-        
+
         try:
             # Create batch of images (WEBP format)
             images = []
             for i in range(batch_size):
                 color_base = batch_idx * 50
-                img = Image.new("RGB", (224, 224), 
-                              color=((color_base + i) % 255, 
-                                   ((color_base + i) * 2) % 255, 
-                                   ((color_base + i) * 3) % 255))
+                img = Image.new(
+                    "RGB",
+                    (224, 224),
+                    color=(
+                        (color_base + i) % 255,
+                        ((color_base + i) * 2) % 255,
+                        ((color_base + i) * 3) % 255,
+                    ),
+                )
                 buffer = io.BytesIO()
                 img.save(buffer, format="WEBP", lossless=True, quality=100)
                 buffer.seek(0)
                 img_reloaded = Image.open(buffer)
                 images.append(img_reloaded)
-            
+
             # Process batch
             embedding_ref = actor.embed.remote(images)
             embeddings = ray.get(embedding_ref)
-            
+
             assert len(embeddings) == batch_size
             successes += 1
             print(f"Batch {batch_idx + 1} succeeded with {len(embeddings)} embeddings")
-            
+
         except Exception as e:
             errors.append((batch_idx, e))
             print(f"Batch {batch_idx + 1} failed: {type(e).__name__}: {e}")
             if isinstance(e, ray.exceptions.RayTaskError):
                 if "IndexError" in str(e) and "list index out of range" in str(e):
                     print("Found the expected IndexError with fresh actor!")
-                    
+
         finally:
             # Kill the actor after each batch (simulating what might happen in production)
             ray.kill(actor)
             print(f"Killed actor for batch {batch_idx + 1}")
-    
+
     # Report results
-    print(f"\nResults: {successes} successes, {len(errors)} errors out of {num_batches} batches")
-    
+    print(
+        f"\nResults: {successes} successes, {len(errors)} errors out of {num_batches} batches"
+    )
+
     if errors:
         print("IndexError reproduced with fresh actors for each batch")
     else:
@@ -705,17 +729,18 @@ def test_jinaclipvision_batch_processing_fresh_actors():
 @pytest.mark.slow
 def test_jinaclipvision_batch_workaround():
     """Test that JinaClipVision works correctly when processing images one at a time.
-    
+
     This is a workaround for the batch processing IndexError issue.
     """
     # Skip if CUDA is not available
     if not torch.cuda.is_available():
         pytest.skip("CUDA GPU required for JinaClipVision test")
-    
+
     # Create the JinaClipVision actor
     from panic_tda.embeddings import JinaClipVision
+
     jina_vision = JinaClipVision.remote()
-    
+
     try:
         # Create test images
         images = [
@@ -723,14 +748,14 @@ def test_jinaclipvision_batch_workaround():
             Image.new("RGB", (224, 224), color="blue"),
             Image.new("RGB", (224, 224), color="green"),
         ]
-        
+
         # Process images one at a time (batch_size=1)
         embeddings = []
         for image in images:
             embedding_ref = jina_vision.embed.remote([image])  # Single image in a list
             result = ray.get(embedding_ref)
             embeddings.append(result[0])
-        
+
         # Verify we got valid embeddings
         assert len(embeddings) == 3
         for embedding in embeddings:
@@ -738,11 +763,11 @@ def test_jinaclipvision_batch_workaround():
             assert len(embedding) == 768  # Expected dimension
             assert embedding.dtype == np.float32
             assert not np.all(embedding == 0)  # Should not be all zeros
-        
+
         # Verify embeddings are different for different images
         assert not np.array_equal(embeddings[0], embeddings[1])
         assert not np.array_equal(embeddings[1], embeddings[2])
-    
+
     finally:
         # Clean up
         ray.kill(jina_vision)
@@ -811,7 +836,3 @@ def test_nomic_embedding_actor_pool(embedding_model_actors):
     # Clean up only the additional actors we created
     for actor in additional_actors:
         ray.kill(actor)
-
-
-
-

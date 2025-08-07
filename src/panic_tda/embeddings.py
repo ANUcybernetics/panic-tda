@@ -418,11 +418,16 @@ class NomicVision(EmbeddingModel):
             raise RuntimeError("CUDA GPU is required but not available")
 
         # Load the Nomic Vision model using transformers
-        self.processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
-        self.model = AutoModel.from_pretrained(
-            "nomic-ai/nomic-embed-vision-v1.5", 
-            trust_remote_code=True
-        ).to("cuda").eval()
+        self.processor = AutoImageProcessor.from_pretrained(
+            "nomic-ai/nomic-embed-vision-v1.5"
+        )
+        self.model = (
+            AutoModel.from_pretrained(
+                "nomic-ai/nomic-embed-vision-v1.5", trust_remote_code=True
+            )
+            .to("cuda")
+            .eval()
+        )
 
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
@@ -445,19 +450,19 @@ class NomicVision(EmbeddingModel):
             # Process in batches to handle large inputs
             batch_size = 32
             for i in range(0, len(images), batch_size):
-                batch_images = images[i:i+batch_size]
-                
+                batch_images = images[i : i + batch_size]
+
                 # Process images
                 inputs = self.processor(batch_images, return_tensors="pt")
                 inputs = {k: v.to("cuda") for k, v in inputs.items()}
-                
+
                 # Get embeddings
                 outputs = self.model(**inputs)
                 batch_embeddings = outputs.last_hidden_state[:, 0]  # CLS token
-                
+
                 # Normalize embeddings
                 batch_embeddings = F.normalize(batch_embeddings, p=2, dim=1)
-                
+
                 # Convert to numpy and append
                 batch_embeddings = batch_embeddings.cpu().numpy()
                 embeddings.extend([emb for emb in batch_embeddings])
@@ -526,7 +531,6 @@ class Dummy2(EmbeddingModel):
             embeddings.append(vector.astype(np.float32))
 
         return embeddings
-
 
 
 def list_models():

@@ -189,7 +189,8 @@ def load_clusters_df(session: Session) -> pl.DataFrame:
             pl.col("medoid_embedding_id")
             .rank(method="dense")
             .over("clustering_result_id")
-            .cast(pl.Int64) - 1  # Start from 0 for non-outliers
+            .cast(pl.Int64)
+            - 1  # Start from 0 for non-outliers
         )
         .alias("cluster_id")
     )
@@ -1139,7 +1140,7 @@ def load_pd_df(session: Session) -> pl.DataFrame:
     def extract_models(network_str):
         if not network_str:
             return pl.Series([None, None])
-        
+
         network = network_str.split("→")
         image_model = None
         text_model = None
@@ -1276,7 +1277,7 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     def extract_models(network_str):
         if not network_str:
             return pl.Series([None, None])
-        
+
         network = network_str.split("→")
         image_model = None
         text_model = None

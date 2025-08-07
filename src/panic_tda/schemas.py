@@ -562,7 +562,7 @@ class Embedding(SQLModel, table=True):
     invocation: Invocation = Relationship(back_populates="embeddings")
     cluster_assignments: List["EmbeddingCluster"] = Relationship(
         back_populates="embedding",
-        sa_relationship_kwargs={"foreign_keys": "[EmbeddingCluster.embedding_id]"}
+        sa_relationship_kwargs={"foreign_keys": "[EmbeddingCluster.embedding_id]"},
     )
 
     @property
@@ -638,9 +638,9 @@ class ClusteringResult(SQLModel, table=True):
 class EmbeddingCluster(SQLModel, table=True):
     """
     Maps embeddings to their cluster assignments in a specific clustering result.
-    
-    Uses the medoid embedding as the cluster identifier. Outliers have 
-    medoid_embedding_id = None. This simplified design eliminates the need 
+
+    Uses the medoid embedding as the cluster identifier. Outliers have
+    medoid_embedding_id = None. This simplified design eliminates the need
     for a separate Cluster table.
     """
 
@@ -656,21 +656,23 @@ class EmbeddingCluster(SQLModel, table=True):
     clustering_result_id: UUID = Field(foreign_key="clusteringresult.id", index=True)
     medoid_embedding_id: Optional[UUID] = Field(
         default=None,
-        foreign_key="embedding.id", 
+        foreign_key="embedding.id",
         index=True,
-        description="The medoid embedding that represents this cluster (None for outliers)"
+        description="The medoid embedding that represents this cluster (None for outliers)",
     )
 
     # Relationships
     embedding: Embedding = Relationship(
         back_populates="cluster_assignments",
-        sa_relationship_kwargs={"foreign_keys": "[EmbeddingCluster.embedding_id]"}
+        sa_relationship_kwargs={"foreign_keys": "[EmbeddingCluster.embedding_id]"},
     )
     clustering_result: ClusteringResult = Relationship(
         back_populates="embedding_clusters"
     )
     medoid_embedding: Optional[Embedding] = Relationship(
-        sa_relationship_kwargs={"foreign_keys": "[EmbeddingCluster.medoid_embedding_id]"}
+        sa_relationship_kwargs={
+            "foreign_keys": "[EmbeddingCluster.medoid_embedding_id]"
+        }
     )
 
 
