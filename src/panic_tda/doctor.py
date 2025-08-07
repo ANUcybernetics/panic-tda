@@ -763,23 +763,120 @@ def doctor_single_experiment(
         # Display summary table
         table = Table(title=f"Doctor Check Summary for Experiment {experiment_id}")
         table.add_column("Category", style="cyan")
-        table.add_column("Issues Found", style="red")
+        table.add_column("Issue Details", style="yellow")
 
         stats = report.get_summary_stats()
-        table.add_row("Total Experiments", str(stats["total_experiments"]))
-        table.add_row("Experiments with Issues", str(stats["experiments_with_issues"]))
-        table.add_row("Run Invocation Issues", str(stats["total_issues"]["run_invocations"]))
-        table.add_row("Embedding Issues", str(stats["total_issues"]["embeddings"]))
-        table.add_row("Persistence Diagram Issues", str(stats["total_issues"]["persistence_diagrams"]))
-        table.add_row("Sequence Gap Issues", str(stats["total_issues"]["sequence_gaps"]))
-        table.add_row("Orphaned Embeddings", str(stats["total_issues"]["orphaned_embeddings"]))
-        table.add_row("Orphaned PDs", str(stats["total_issues"]["orphaned_pds"]))
+        
+        # Summary row
         table.add_row(
-            "Global Orphans",
-            f"Inv: {stats['total_issues']['global_orphans']['invocations']}, "
-            f"Emb: {stats['total_issues']['global_orphans']['embeddings']}, "
-            f"PD: {stats['total_issues']['global_orphans']['persistence_diagrams']}",
+            "Summary",
+            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues"
         )
+        
+        # Run invocation issues
+        if report.run_invocation_issues:
+            for issue in report.run_invocation_issues[:10]:  # Show first 10
+                run_id_str = str(issue["run_id"])[:8]
+                details = []
+                if issue.get("missing_first"):
+                    details.append("missing seq 0")
+                if issue.get("missing_last"):
+                    details.append(f"missing seq {issue.get('expected_count', 0)-1}")
+                if issue.get("actual_count") != issue.get("expected_count"):
+                    details.append(f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations")
+                table.add_row(
+                    f"Run {run_id_str}",
+                    ", ".join(details)
+                )
+            if len(report.run_invocation_issues) > 10:
+                table.add_row("", f"... and {len(report.run_invocation_issues)-10} more run issues")
+        
+        # Embedding issues
+        if report.embedding_issues:
+            shown = 0
+            for issue in report.embedding_issues[:10]:  # Show first 10
+                inv_id_str = str(issue["invocation_id"])[:8]
+                details = []
+                if issue.get("embedding_count", 0) == 0:
+                    details.append(f"missing embedding for {issue.get('embedding_model')}")
+                elif issue.get("embedding_count", 0) > 1:
+                    details.append(f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}")
+                if issue.get("has_null_vector"):
+                    details.append(f"null vector for {issue.get('embedding_model')}")
+                table.add_row(
+                    f"Invocation {inv_id_str}",
+                    ", ".join(details)
+                )
+                shown += 1
+            if len(report.embedding_issues) > 10:
+                table.add_row("", f"... and {len(report.embedding_issues)-10} more embedding issues")
+        
+        # Persistence diagram issues
+        if report.pd_issues:
+            for issue in report.pd_issues[:10]:  # Show first 10
+                run_id_str = str(issue["run_id"])[:8]
+                issue_type = issue.get("issue_type", "unknown")
+                model = issue.get("embedding_model", "unknown")
+                if issue_type == "missing":
+                    details = f"missing PD for {model}"
+                elif issue_type == "duplicate":
+                    details = f"{issue.get('pd_count', 0)} duplicate PDs for {model}"
+                elif issue_type == "invalid_model":
+                    details = f"PD with invalid model {model}"
+                else:
+                    details = f"{issue_type} issue for {model}"
+                if issue.get("has_null_data"):
+                    details += " (null data)"
+                table.add_row(f"Run {run_id_str}", details)
+            if len(report.pd_issues) > 10:
+                table.add_row("", f"... and {len(report.pd_issues)-10} more PD issues")
+        
+        # Sequence gap issues
+        if report.sequence_gap_issues:
+            for issue in report.sequence_gap_issues[:10]:  # Show first 10
+                run_id_str = str(issue["run_id"])[:8]
+                gaps = issue.get("gaps", [])
+                if len(gaps) <= 5:
+                    gap_str = ", ".join(str(g) for g in gaps)
+                else:
+                    gap_str = f"{', '.join(str(g) for g in gaps[:3])}... ({len(gaps)} gaps total)"
+                table.add_row(
+                    f"Run {run_id_str}",
+                    f"missing sequences: {gap_str}"
+                )
+            if len(report.sequence_gap_issues) > 10:
+                table.add_row("", f"... and {len(report.sequence_gap_issues)-10} more sequence gap issues")
+        
+        # Orphaned records
+        if report.orphaned_records["embeddings"]:
+            count = len(report.orphaned_records["embeddings"])
+            sample = report.orphaned_records["embeddings"][:3]
+            sample_str = ", ".join(str(r["embedding_id"])[:8] for r in sample)
+            if count > 3:
+                sample_str += f"... ({count} total)"
+            table.add_row("Orphaned Embeddings", sample_str)
+        
+        if report.orphaned_records["persistence_diagrams"]:
+            count = len(report.orphaned_records["persistence_diagrams"])
+            sample = report.orphaned_records["persistence_diagrams"][:3]
+            sample_str = ", ".join(str(r["pd_id"])[:8] for r in sample)
+            if count > 3:
+                sample_str += f"... ({count} total)"
+            table.add_row("Orphaned PDs", sample_str)
+        
+        # Global orphans
+        global_orphans = report.orphaned_records["global_orphans"]
+        if any(global_orphans.values()):
+            details = []
+            if global_orphans["invocations"]:
+                details.append(f"{global_orphans['invocations']} invocations")
+            if global_orphans["embeddings"]:
+                details.append(f"{global_orphans['embeddings']} embeddings")
+            if global_orphans["persistence_diagrams"]:
+                details.append(f"{global_orphans['persistence_diagrams']} PDs")
+            table.add_row("Global Orphans", ", ".join(details))
+        
+        # Duration
         table.add_row("Duration", f"{stats['duration_seconds']:.2f} seconds")
 
         console.print(table)
@@ -911,23 +1008,124 @@ def doctor_all_experiments(
         # Display summary table
         table = Table(title="Doctor Check Summary")
         table.add_column("Category", style="cyan")
-        table.add_column("Issues Found", style="red")
+        table.add_column("Issue Details", style="yellow")
 
         stats = report.get_summary_stats()
-        table.add_row("Total Experiments", str(stats["total_experiments"]))
-        table.add_row("Experiments with Issues", str(stats["experiments_with_issues"]))
-        table.add_row("Run Invocation Issues", str(stats["total_issues"]["run_invocations"]))
-        table.add_row("Embedding Issues", str(stats["total_issues"]["embeddings"]))
-        table.add_row("Persistence Diagram Issues", str(stats["total_issues"]["persistence_diagrams"]))
-        table.add_row("Sequence Gap Issues", str(stats["total_issues"]["sequence_gaps"]))
-        table.add_row("Orphaned Embeddings", str(stats["total_issues"]["orphaned_embeddings"]))
-        table.add_row("Orphaned PDs", str(stats["total_issues"]["orphaned_pds"]))
+        
+        # Summary row
         table.add_row(
-            "Global Orphans",
-            f"Inv: {stats['total_issues']['global_orphans']['invocations']}, "
-            f"Emb: {stats['total_issues']['global_orphans']['embeddings']}, "
-            f"PD: {stats['total_issues']['global_orphans']['persistence_diagrams']}",
+            "Summary",
+            f"{stats['experiments_with_issues']}/{stats['total_experiments']} experiments with issues"
         )
+        
+        # Run invocation issues
+        if report.run_invocation_issues:
+            for issue in report.run_invocation_issues[:10]:  # Show first 10
+                exp_id_str = str(issue["experiment_id"])[:8]
+                run_id_str = str(issue["run_id"])[:8]
+                details = []
+                if issue.get("missing_first"):
+                    details.append("missing seq 0")
+                if issue.get("missing_last"):
+                    details.append(f"missing seq {issue.get('expected_count', 0)-1}")
+                if issue.get("actual_count") != issue.get("expected_count"):
+                    details.append(f"has {issue.get('actual_count')}/{issue.get('expected_count')} invocations")
+                table.add_row(
+                    f"Run {run_id_str} (exp {exp_id_str})",
+                    ", ".join(details)
+                )
+            if len(report.run_invocation_issues) > 10:
+                table.add_row("", f"... and {len(report.run_invocation_issues)-10} more run issues")
+        
+        # Embedding issues
+        if report.embedding_issues:
+            shown = 0
+            for issue in report.embedding_issues[:10]:  # Show first 10
+                exp_id_str = str(issue["experiment_id"])[:8]
+                inv_id_str = str(issue["invocation_id"])[:8]
+                details = []
+                if issue.get("embedding_count", 0) == 0:
+                    details.append(f"missing embedding for {issue.get('embedding_model')}")
+                elif issue.get("embedding_count", 0) > 1:
+                    details.append(f"{issue.get('embedding_count')} duplicates for {issue.get('embedding_model')}")
+                if issue.get("has_null_vector"):
+                    details.append(f"null vector for {issue.get('embedding_model')}")
+                table.add_row(
+                    f"Invocation {inv_id_str} (exp {exp_id_str})",
+                    ", ".join(details)
+                )
+                shown += 1
+            if len(report.embedding_issues) > 10:
+                table.add_row("", f"... and {len(report.embedding_issues)-10} more embedding issues")
+        
+        # Persistence diagram issues
+        if report.pd_issues:
+            for issue in report.pd_issues[:10]:  # Show first 10
+                exp_id_str = str(issue["experiment_id"])[:8]
+                run_id_str = str(issue["run_id"])[:8]
+                issue_type = issue.get("issue_type", "unknown")
+                model = issue.get("embedding_model", "unknown")
+                if issue_type == "missing":
+                    details = f"missing PD for {model}"
+                elif issue_type == "duplicate":
+                    details = f"{issue.get('pd_count', 0)} duplicate PDs for {model}"
+                elif issue_type == "invalid_model":
+                    details = f"PD with invalid model {model}"
+                else:
+                    details = f"{issue_type} issue for {model}"
+                if issue.get("has_null_data"):
+                    details += " (null data)"
+                table.add_row(f"Run {run_id_str} (exp {exp_id_str})", details)
+            if len(report.pd_issues) > 10:
+                table.add_row("", f"... and {len(report.pd_issues)-10} more PD issues")
+        
+        # Sequence gap issues
+        if report.sequence_gap_issues:
+            for issue in report.sequence_gap_issues[:10]:  # Show first 10
+                exp_id_str = str(issue["experiment_id"])[:8]
+                run_id_str = str(issue["run_id"])[:8]
+                gaps = issue.get("gaps", [])
+                if len(gaps) <= 5:
+                    gap_str = ", ".join(str(g) for g in gaps)
+                else:
+                    gap_str = f"{', '.join(str(g) for g in gaps[:3])}... ({len(gaps)} gaps total)"
+                table.add_row(
+                    f"Run {run_id_str} (exp {exp_id_str})",
+                    f"missing sequences: {gap_str}"
+                )
+            if len(report.sequence_gap_issues) > 10:
+                table.add_row("", f"... and {len(report.sequence_gap_issues)-10} more sequence gap issues")
+        
+        # Orphaned records
+        if report.orphaned_records["embeddings"]:
+            count = len(report.orphaned_records["embeddings"])
+            sample = report.orphaned_records["embeddings"][:3]
+            sample_str = ", ".join(str(r["embedding_id"])[:8] for r in sample)
+            if count > 3:
+                sample_str += f"... ({count} total)"
+            table.add_row("Orphaned Embeddings", sample_str)
+        
+        if report.orphaned_records["persistence_diagrams"]:
+            count = len(report.orphaned_records["persistence_diagrams"])
+            sample = report.orphaned_records["persistence_diagrams"][:3]
+            sample_str = ", ".join(str(r["pd_id"])[:8] for r in sample)
+            if count > 3:
+                sample_str += f"... ({count} total)"
+            table.add_row("Orphaned PDs", sample_str)
+        
+        # Global orphans
+        global_orphans = report.orphaned_records["global_orphans"]
+        if any(global_orphans.values()):
+            details = []
+            if global_orphans["invocations"]:
+                details.append(f"{global_orphans['invocations']} invocations")
+            if global_orphans["embeddings"]:
+                details.append(f"{global_orphans['embeddings']} embeddings")
+            if global_orphans["persistence_diagrams"]:
+                details.append(f"{global_orphans['persistence_diagrams']} PDs")
+            table.add_row("Global Orphans", ", ".join(details))
+        
+        # Duration
         table.add_row("Duration", f"{stats['duration_seconds']:.2f} seconds")
 
         console.print(table)
