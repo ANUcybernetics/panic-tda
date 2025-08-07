@@ -718,7 +718,92 @@ def script(
     db_str = f"sqlite:///{abs_db_path}"
 
     with get_session_from_connection_string(db_str) as session:
-        session
+        # Clean up incomplete runs from experiment 06826b10
+        from uuid import UUID
+        from sqlmodel import select, func
+        from panic_tda.schemas import Run, Invocation, Embedding, PersistenceDiagram
+
+        experiment_id = UUID("06826b10-ddc2-79cb-9cc5-0879a974a6be")
+
+        print(f"Finding incomplete runs in experiment {experiment_id}...")
+
+        # Find all runs in this experiment
+        all_runs = session.exec(
+            select(Run).where(Run.experiment_id == experiment_id)
+        ).all()
+
+        print(f"Total runs in experiment: {len(all_runs)}")
+
+        # Find incomplete runs (< 1000 invocations)
+        incomplete_runs = []
+        for run in all_runs:
+            inv_count = session.exec(
+                select(func.count(Invocation.id)).where(Invocation.run_id == run.id)
+            ).first()
+
+            if inv_count < 1000:
+                incomplete_runs.append((run, inv_count))
+
+        print(f"\nFound {len(incomplete_runs)} incomplete runs:")
+
+        # Show distribution of invocation counts
+        from collections import Counter
+
+        inv_counts = Counter(count for _, count in incomplete_runs)
+        for count, num_runs in sorted(inv_counts.items()):
+            print(f"  {num_runs} runs with {count} invocations")
+
+        if incomplete_runs:
+            # Count data that will be deleted
+            total_invocations = sum(count for _, count in incomplete_runs)
+
+            # Count embeddings (through invocations)
+            total_embeddings = 0
+            for run, _ in incomplete_runs:
+                emb_count = session.exec(
+                    select(func.count(Embedding.id))
+                    .join(Invocation)
+                    .where(Invocation.run_id == run.id)
+                ).first()
+                total_embeddings += emb_count
+
+            # Count persistence diagrams
+            total_pds = 0
+            for run, _ in incomplete_runs:
+                pd_count = session.exec(
+                    select(func.count(PersistenceDiagram.id)).where(
+                        PersistenceDiagram.run_id == run.id
+                    )
+                ).first()
+                total_pds += pd_count
+
+            print("\nData to be deleted:")
+            print(f"  Runs: {len(incomplete_runs)}")
+            print(f"  Invocations: {total_invocations:,}")
+            print(f"  Embeddings: {total_embeddings:,}")
+            print(f"  Persistence Diagrams: {total_pds:,}")
+
+            # Ask for confirmation
+            print("\nReady to delete? Type 'DELETE' to proceed (or Ctrl-C to abort):")
+            confirmation = input().strip()
+
+            if confirmation == "DELETE":
+                print("\nDeleting incomplete runs...")
+                for run, _ in incomplete_runs:
+                    session.delete(run)
+
+                session.commit()
+                print(f"Successfully deleted {len(incomplete_runs)} incomplete runs")
+
+                # Verify deletion
+                remaining_runs = session.exec(
+                    select(func.count(Run.id)).where(Run.experiment_id == experiment_id)
+                ).first()
+                print(f"\nRemaining runs in experiment: {remaining_runs}")
+            else:
+                print("Deletion cancelled")
+        else:
+            print("No incomplete runs found in this experiment")
 
 
 @cluster_app.command("embeddings")
