@@ -655,9 +655,12 @@ def doctor_command(
 
     Returns exit code 0 if no issues found, 1 if issues detected.
     """
-    # Create database connection
-    db_str = f"sqlite:///{db_path}"
-    logger.info(f"Connecting to database at {db_path}")
+    # Convert to absolute path for Ray workers
+    import os
+
+    abs_db_path = os.path.abspath(db_path)
+    db_str = f"sqlite:///{abs_db_path}"
+    logger.info(f"Connecting to database at {abs_db_path}")
 
     # Validate output format
     if output_format not in ["text", "json"]:

@@ -1,8 +1,6 @@
 from typing import Dict
 
 import numpy as np
-from gph import ripser_parallel
-from persim.persistent_entropy import persistent_entropy
 
 
 def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> Dict:
@@ -16,6 +14,10 @@ def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> Dict:
     Returns:
         Dictionary containing the persistence diagram
     """
+    # Lazy import to avoid importing when not needed (e.g., in Ray workers)
+    from gph import ripser_parallel
+    from persim.persistent_entropy import persistent_entropy
+
     # NOTE n_threads needs to be fine-tuned for machine & problem sizes
     dgm = ripser_parallel(
         point_cloud, maxdim=max_dim, return_generators=True, n_threads=4

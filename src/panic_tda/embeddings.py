@@ -23,6 +23,10 @@ warnings.filterwarnings("ignore", message=".*Flash attention is not installed.*"
 warnings.filterwarnings("ignore", message=".*xFormers is not installed.*")
 warnings.filterwarnings("ignore", message=".*Using a slow image processor.*")
 warnings.filterwarnings("ignore", category=UserWarning)
+# Suppress persim's invalid escape sequence warnings
+warnings.filterwarnings(
+    "ignore", message=".*invalid escape sequence.*", category=SyntaxWarning
+)
 
 # You can also suppress the "All keys matched successfully" by setting
 # the transformers logging level even more aggressively
