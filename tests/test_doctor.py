@@ -585,6 +585,114 @@ class TestEmbeddingNullVectorCheck:
                         )
 
 
+class TestPersistenceDiagramWithNullVectorEmbeddings:
+    """Test that persistence diagrams handle embeddings with null vectors properly."""
+
+    def test_pd_computation_with_null_vectors(self):
+        """Test that PD computation fails gracefully when embeddings have null vectors."""
+        import numpy as np
+        from datetime import datetime
+
+        # Create a test database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        db_url = f"sqlite:///{db_path}"
+        engine = create_engine(db_url)
+        SQLModel.metadata.create_all(engine)
+
+        try:
+            with Session(engine) as session:
+                # Create experiment
+                experiment = ExperimentConfig(
+                    id=uuid4(),
+                    networks=[["DummyT2I"]],
+                    seeds=[42],
+                    prompts=["Test"],
+                    embedding_models=["TestModel", "FailingModel"],
+                    max_length=5,
+                )
+                session.add(experiment)
+
+                # Create run
+                run = Run(
+                    id=uuid4(),
+                    experiment_id=experiment.id,
+                    network=["DummyT2I"],
+                    seed=42,
+                    initial_prompt="Test",
+                    max_length=5,
+                )
+                session.add(run)
+
+                # Create invocations
+                invocations = []
+                for i in range(5):
+                    inv = Invocation(
+                        id=uuid4(),
+                        run_id=run.id,
+                        sequence_number=i,
+                        type=InvocationType.TEXT,
+                        model="DummyT2I",
+                        seed=42,
+                        output_text=f"Test output {i}",
+                    )
+                    session.add(inv)
+                    invocations.append(inv)
+
+                # Create embeddings for TestModel (all have vectors)
+                for inv in invocations:
+                    emb = Embedding(
+                        id=uuid4(),
+                        invocation_id=inv.id,
+                        embedding_model="TestModel",
+                        vector=np.random.random(100).tolist(),  # Valid vectors
+                        started_at=datetime.now(),
+                        completed_at=datetime.now(),
+                    )
+                    session.add(emb)
+
+                # Create embeddings for FailingModel (started but never completed, no vectors)
+                for inv in invocations:
+                    emb = Embedding(
+                        id=uuid4(),
+                        invocation_id=inv.id,
+                        embedding_model="FailingModel",
+                        vector=None,  # No vector - failed computation
+                        started_at=datetime.now(),
+                        completed_at=None,  # Never completed
+                    )
+                    session.add(emb)
+
+                session.commit()
+
+                # Run the check for persistence diagrams
+                report = DoctorReport()
+                issues = check_experiment_persistence_diagrams(
+                    experiment, session, report
+                )
+
+                # Should find that we need PDs for both models
+                assert len(issues) == 2
+
+                # The TestModel should be missing a PD (can be computed)
+                test_model_issues = [
+                    i for i in issues if i.get("embedding_model") == "TestModel"
+                ]
+                assert len(test_model_issues) == 1
+
+                # The FailingModel should also be missing a PD
+                failing_model_issues = [
+                    i for i in issues if i.get("embedding_model") == "FailingModel"
+                ]
+                assert len(failing_model_issues) == 1
+
+        finally:
+            engine.dispose()
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+
 class TestUUIDJsonSerialization:
     """Test that UUID objects in embedding_ids are properly serialized to JSON."""
 

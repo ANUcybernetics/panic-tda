@@ -260,11 +260,19 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         for invocation_id, invocation in invocations.items():
             # Check if this invocation already has an embedding for this model
             existing_embedding = invocation.embedding(embedding_model)
-            if existing_embedding:
-                # If embedding already exists, add its ID to the results and skip processing
+            if existing_embedding and existing_embedding.vector is not None:
+                # If embedding already exists with a valid vector, add its ID to the results and skip processing
                 existing_embedding_ids.append(str(existing_embedding.id))
             else:
-                # Only process invocations that don't have embeddings yet
+                # If embedding exists but has null vector, delete it first
+                if existing_embedding and existing_embedding.vector is None:
+                    logger.debug(
+                        f"Deleting existing embedding with null vector for invocation {invocation_id}"
+                    )
+                    session.delete(existing_embedding)
+                    session.commit()
+
+                # Create new embedding
                 embedding = Embedding(
                     invocation_id=UUID(invocation_id),
                     embedding_model=embedding_model,

@@ -656,12 +656,24 @@ def _check_and_fix_experiment(
                     yes_flag,
                 ):
                     fix_run_invocations(run_issues, experiment, db_str)
+                    # Re-check embeddings after fixing invocations
+                    with get_session_from_connection_string(db_str) as session:
+                        experiment = session.get(ExperimentConfig, experiment_id)
+                        embedding_issues = check_experiment_embeddings(
+                            experiment, session, DoctorReport()
+                        )
 
                 if embedding_issues and confirm_fix(
                     f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?",
                     yes_flag,
                 ):
                     fix_embeddings(embedding_issues, experiment, db_str)
+                    # Re-check persistence diagrams after fixing embeddings
+                    with get_session_from_connection_string(db_str) as session:
+                        experiment = session.get(ExperimentConfig, experiment_id)
+                        pd_issues = check_experiment_persistence_diagrams(
+                            experiment, session, DoctorReport()
+                        )
 
                 if pd_issues and confirm_fix(
                     f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?",
