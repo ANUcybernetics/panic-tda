@@ -565,6 +565,9 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
     from panic_tda.engine import perform_embeddings_stage
     from panic_tda.embeddings import get_model_type, EmbeddingModelType
 
+    # Store experiment ID to avoid detached instance issues
+    experiment_id = experiment.id
+
     # First, handle mismatched embeddings from the issues list
     mismatched_issues = [i for i in issues if i.get("issue_type") == "mismatched"]
     if mismatched_issues:
@@ -586,16 +589,22 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
 
     # Also do a comprehensive cleanup of all mismatched embeddings for this experiment
     with get_session_from_connection_string(db_str) as session:
+        # Re-fetch the experiment in this session to get embedding_models
+        experiment = session.get(ExperimentConfig, experiment_id)
+        if not experiment:
+            raise ValueError(f"Experiment with ID {experiment_id} not found")
+        embedding_models = list(experiment.embedding_models)  # Make a copy
+
         # Get all invocations for this experiment
         invocations = session.exec(
             select(Invocation)
             .join(Run, Invocation.run_id == Run.id)
-            .where(Run.experiment_id == experiment.id)
+            .where(Run.experiment_id == experiment_id)
         ).all()
 
         mismatched_count = 0
         for invocation in invocations:
-            for embedding_model in experiment.embedding_models:
+            for embedding_model in embedding_models:
                 try:
                     model_type = get_model_type(embedding_model)
                     # Check for mismatched embeddings
@@ -644,12 +653,17 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
     )
 
     if invocation_ids_to_fix:
+        # Re-fetch embedding_models to avoid detached instance issues
+        with get_session_from_connection_string(db_str) as session:
+            experiment = session.get(ExperimentConfig, experiment_id)
+            if not experiment:
+                raise ValueError(f"Experiment with ID {experiment_id} not found")
+            embedding_models = list(experiment.embedding_models)
+
         logger.info(
             f"Computing embeddings for {len(invocation_ids_to_fix)} invocations"
         )
-        perform_embeddings_stage(
-            invocation_ids_to_fix, experiment.embedding_models, db_str
-        )
+        perform_embeddings_stage(invocation_ids_to_fix, embedding_models, db_str)
 
 
 def fix_persistence_diagrams(
@@ -662,6 +676,12 @@ def fix_persistence_diagrams(
     runs_to_recompute = set()
 
     with get_session_from_connection_string(db_str) as session:
+        # Re-fetch the experiment in this session to get embedding_models
+        experiment = session.get(ExperimentConfig, experiment.id)
+        if not experiment:
+            raise ValueError(f"Experiment with ID {experiment.id} not found")
+        embedding_models = list(experiment.embedding_models)  # Make a copy
+
         for issue in issues:
             if issue["issue_type"] == "invalid_model":
                 # Delete PDs with invalid embedding models
@@ -693,7 +713,7 @@ def fix_persistence_diagrams(
     if runs_to_recompute:
         run_ids = list(runs_to_recompute)
         logger.info(f"Computing persistence diagrams for {len(run_ids)} runs")
-        perform_pd_stage(run_ids, experiment.embedding_models, db_str)
+        perform_pd_stage(run_ids, embedding_models, db_str)
 
 
 def fix_sequence_gaps(gaps_issues: List[Dict], db_str: str):
