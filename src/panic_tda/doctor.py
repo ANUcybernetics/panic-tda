@@ -176,7 +176,9 @@ class DoctorReport:
                             "experiment_id": str(issue["experiment_id"]),
                             "invocation_id": str(issue["invocation_id"]),
                             **{
-                                k: v
+                                k: (
+                                    [str(id) for id in v] if k == "embedding_ids" else v
+                                )
                                 for k, v in issue.items()
                                 if k not in ["experiment_id", "invocation_id"]
                             },

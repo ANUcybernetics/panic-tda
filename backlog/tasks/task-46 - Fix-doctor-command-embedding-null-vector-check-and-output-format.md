@@ -70,6 +70,33 @@ The JSON output includes experiment_id and invocation_id for each embedding issu
   - Real null vectors do exist in the database (confirmed by checking specific IDs)
   - The doctor command now correctly reports these issues with embedding IDs included
 
+### Additional Fix: UUID Serialization Error
+
+After the initial fix, the doctor command encountered a JSON serialization error when converting the report to JSON format. The issue was that the newly added `embedding_ids` field contained UUID objects that weren't being converted to strings.
+
+**Error**: `TypeError: Object of type UUID is not JSON serializable`
+
+**Solution**: Modified the `to_json()` method in the DoctorReport class to convert UUID objects in the `embedding_ids` list to strings during JSON serialization (src/panic_tda/doctor.py:179-181).
+
+### Test Coverage Added
+
+To prevent regressions, comprehensive tests have been added to `tests/test_doctor.py`:
+
+1. **TestEmbeddingNullVectorCheck** class:
+   - `test_null_vector_detection`: Verifies that null vectors are correctly detected by checking the actual numpy array values, not the BLOB field
+   - `test_embedding_ids_included_in_issues`: Ensures embedding IDs are included in all embedding issues
+
+2. **TestUUIDJsonSerialization** class:
+   - `test_embedding_ids_json_serialization`: Tests that UUID objects in embedding_ids are properly converted to strings
+   - `test_empty_embedding_ids_json_serialization`: Handles edge case of empty embedding_ids list
+   - `test_mixed_issue_types_json_serialization`: Tests JSON serialization with various issue types
+
+All tests are passing (28 passed, 1 skipped).
+
 ### Note on Test Suite
 
-The full test suite is currently failing due to an unrelated Ray package size issue (exceeds 512MB limit). This is not related to our changes to the doctor command.
+The UUID serialization issue wasn't initially caught by tests because:
+1. The `embedding_ids` field was newly added as part of this fix
+2. Existing tests didn't cover this specific scenario with UUID objects in embedding issues
+
+The test suite had a Ray package size issue due to the large doctor.log file (3.7GB) which has been addressed.

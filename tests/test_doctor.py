@@ -458,6 +458,237 @@ class TestCheckFunctions:
             assert report.orphaned_records["global_orphans"]["embeddings"] == 1
 
 
+class TestEmbeddingNullVectorCheck:
+    """Test the null vector checking fix for embeddings."""
+
+    def test_null_vector_detection(self):
+        """Test that null vectors are correctly detected in numpy arrays, not BLOB fields."""
+        # Create a test database
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        db_url = f"sqlite:///{db_path}"
+        engine = create_engine(db_url)
+        SQLModel.metadata.create_all(engine)
+
+        try:
+            with Session(engine) as session:
+                # Create experiment
+                experiment = ExperimentConfig(
+                    id=uuid4(),
+                    networks=[["DummyT2I"]],
+                    seeds=[42],
+                    prompts=["Test"],
+                    embedding_models=["TestModel"],
+                    max_length=2,
+                )
+                session.add(experiment)
+
+                # Create run
+                run = Run(
+                    id=uuid4(),
+                    experiment_id=experiment.id,
+                    network=["DummyT2I"],
+                    seed=42,
+                    initial_prompt="Test",
+                    max_length=2,
+                )
+                session.add(run)
+
+                # Create invocation
+                inv = Invocation(
+                    id=uuid4(),
+                    run_id=run.id,
+                    sequence_number=0,
+                    type=InvocationType.TEXT,
+                    model="DummyT2I",
+                    seed=42,
+                    output_text="Test output",
+                )
+                session.add(inv)
+
+                # Create embedding with valid vector (stored as non-NULL BLOB)
+                emb_valid = Embedding(
+                    id=uuid4(),
+                    invocation_id=inv.id,
+                    embedding_model="TestModel",
+                    vector=[0.1, 0.2, 0.3],  # Valid numpy array
+                )
+                session.add(emb_valid)
+
+                # Create another invocation for null vector test
+                inv2 = Invocation(
+                    id=uuid4(),
+                    run_id=run.id,
+                    sequence_number=1,
+                    type=InvocationType.TEXT,
+                    model="DummyT2I",
+                    seed=42,
+                    output_text="Test output 2",
+                )
+                session.add(inv2)
+
+                # Create embedding with null vector
+                emb_null = Embedding(
+                    id=uuid4(),
+                    invocation_id=inv2.id,
+                    embedding_model="TestModel",
+                    vector=None,  # Actual null vector
+                )
+                session.add(emb_null)
+
+                session.commit()
+
+                # Run the check
+                report = DoctorReport()
+                issues = check_experiment_embeddings(experiment, session, report)
+
+                # Should only find issue with the null vector embedding
+                null_vector_issues = [i for i in issues if i.get("has_null_vector")]
+                assert len(null_vector_issues) == 1
+                assert null_vector_issues[0]["invocation_id"] == inv2.id
+
+                # The valid embedding should not be reported as having null vector
+                valid_issues = [
+                    i
+                    for i in issues
+                    if i["invocation_id"] == inv.id and i.get("has_null_vector")
+                ]
+                assert len(valid_issues) == 0
+
+        finally:
+            engine.dispose()
+            if os.path.exists(db_path):
+                os.unlink(db_path)
+
+    def test_embedding_ids_included_in_issues(self, test_db):
+        """Test that embedding IDs are included in embedding issues."""
+        with Session(test_db["engine"]) as session:
+            experiment = session.get(ExperimentConfig, test_db["experiment_id"])
+            report = DoctorReport()
+
+            issues = check_experiment_embeddings(experiment, session, report)
+
+            # All issues should have embedding_ids field
+            for issue in issues:
+                assert "embedding_ids" in issue
+                # If there are embeddings, the IDs should be UUIDs
+                if issue.get("embedding_count", 0) > 0:
+                    assert isinstance(issue["embedding_ids"], list)
+                    # Check that we got actual IDs (could be empty list if no embeddings)
+                    if len(issue["embedding_ids"]) > 0:
+                        # The IDs should be UUID objects at this point (before JSON serialization)
+                        from uuid import UUID
+
+                        assert all(
+                            isinstance(id, UUID) for id in issue["embedding_ids"]
+                        )
+
+
+class TestUUIDJsonSerialization:
+    """Test that UUID objects in embedding_ids are properly serialized to JSON."""
+
+    def test_embedding_ids_json_serialization(self):
+        """Test that embedding_ids with UUIDs can be serialized to JSON."""
+        report = DoctorReport()
+
+        # Add an embedding issue with UUID objects in embedding_ids
+        exp_id = uuid4()
+        inv_id = uuid4()
+        embedding_id1 = uuid4()
+        embedding_id2 = uuid4()
+
+        issue = {
+            "embedding_model": "TestModel",
+            "embedding_count": 2,
+            "has_null_vector": False,
+            "embedding_ids": [embedding_id1, embedding_id2],  # UUID objects
+        }
+
+        report.add_embedding_issue(exp_id, inv_id, issue)
+
+        # This should not raise a TypeError
+        json_str = report.to_json()
+
+        # Parse the JSON to verify UUIDs were converted to strings
+        data = json.loads(json_str)
+
+        assert "issues" in data
+        assert "embeddings" in data["issues"]
+        assert len(data["issues"]["embeddings"]) == 1
+
+        embedding_issue = data["issues"]["embeddings"][0]
+        assert "embedding_ids" in embedding_issue
+        assert len(embedding_issue["embedding_ids"]) == 2
+
+        # The UUIDs should now be strings
+        assert all(isinstance(id, str) for id in embedding_issue["embedding_ids"])
+        assert embedding_issue["embedding_ids"][0] == str(embedding_id1)
+        assert embedding_issue["embedding_ids"][1] == str(embedding_id2)
+
+    def test_empty_embedding_ids_json_serialization(self):
+        """Test that empty embedding_ids list is handled correctly."""
+        report = DoctorReport()
+
+        issue = {
+            "embedding_model": "TestModel",
+            "embedding_count": 0,
+            "has_null_vector": False,
+            "embedding_ids": [],  # Empty list
+        }
+
+        report.add_embedding_issue(uuid4(), uuid4(), issue)
+
+        # Should serialize without error
+        json_str = report.to_json()
+        data = json.loads(json_str)
+
+        embedding_issue = data["issues"]["embeddings"][0]
+        assert embedding_issue["embedding_ids"] == []
+
+    def test_mixed_issue_types_json_serialization(self):
+        """Test JSON serialization with various issue types including embedding_ids."""
+        report = DoctorReport()
+
+        # Add various types of issues
+        exp_id = uuid4()
+        run_id = uuid4()
+        inv_id = uuid4()
+
+        # Run issue
+        report.add_run_invocation_issue(exp_id, run_id, {"missing_first": True})
+
+        # Embedding issue with UUIDs
+        embedding_issue = {
+            "embedding_model": "TestModel",
+            "embedding_count": 1,
+            "has_null_vector": True,
+            "embedding_ids": [uuid4()],
+        }
+        report.add_embedding_issue(exp_id, inv_id, embedding_issue)
+
+        # PD issue
+        report.add_pd_issue(exp_id, run_id, {"issue_type": "missing"})
+
+        # Orphaned records
+        report.add_orphaned_embedding(uuid4(), uuid4())
+
+        # Should serialize everything without error
+        json_str = report.to_json()
+        data = json.loads(json_str)
+
+        # Verify structure
+        assert len(data["issues"]["run_invocations"]) == 1
+        assert len(data["issues"]["embeddings"]) == 1
+        assert len(data["issues"]["persistence_diagrams"]) == 1
+        assert len(data["issues"]["orphaned_records"]["embeddings"]) == 1
+
+        # Verify embedding_ids were converted to strings
+        embedding_ids = data["issues"]["embeddings"][0]["embedding_ids"]
+        assert len(embedding_ids) == 1
+        assert isinstance(embedding_ids[0], str)
+
+
 class TestFixFunctions:
     """Test the fix functions."""
 
