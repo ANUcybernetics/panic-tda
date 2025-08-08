@@ -2,6 +2,7 @@ import gc
 import logging
 import sys
 import warnings
+from enum import Enum
 from typing import List
 
 import numpy as np
@@ -34,6 +35,11 @@ transformers.logging.set_verbosity_error()
 
 # Fixed embedding dimension
 EMBEDDING_DIM = 768
+
+
+class EmbeddingModelType(str, Enum):
+    TEXT = "text"
+    IMAGE = "image"
 
 
 # Create a custom SentenceTransformer that doesn't sort by length to avoid index issues
@@ -104,6 +110,8 @@ class NoSortingSentenceTransformer(SentenceTransformer):
 class EmbeddingModel:
     """Base class for embedding models."""
 
+    model_type = None  # Should be overridden by subclasses
+
     def __init__(self):
         """Initialize the model and load to device."""
         raise NotImplementedError
@@ -167,6 +175,8 @@ class EmbeddingModel:
 
 @ray.remote(num_gpus=0.02)
 class Nomic(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the model and load to device."""
         try:
@@ -218,6 +228,8 @@ class Nomic(EmbeddingModel):
 
 @ray.remote(num_gpus=0.03)
 class JinaClip(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the model and load to device."""
         if not torch.cuda.is_available():
@@ -247,6 +259,8 @@ class JinaClip(EmbeddingModel):
 
 @ray.remote(num_gpus=0.01)
 class STSBMpnet(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the model and load to device."""
         try:
@@ -294,6 +308,8 @@ class STSBMpnet(EmbeddingModel):
 
 @ray.remote(num_gpus=0.01)
 class STSBRoberta(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the model and load to device."""
         try:
@@ -341,6 +357,8 @@ class STSBRoberta(EmbeddingModel):
 
 @ray.remote(num_gpus=0.01)
 class STSBDistilRoberta(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the model and load to device."""
         try:
@@ -388,6 +406,8 @@ class STSBDistilRoberta(EmbeddingModel):
 
 @ray.remote
 class Dummy(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
@@ -416,6 +436,8 @@ class Dummy(EmbeddingModel):
 
 @ray.remote(num_gpus=0.02)
 class NomicVision(EmbeddingModel):
+    model_type = EmbeddingModelType.IMAGE
+
     def __init__(self):
         """Initialize the model and load to device."""
         if not torch.cuda.is_available():
@@ -476,6 +498,8 @@ class NomicVision(EmbeddingModel):
 
 @ray.remote(num_gpus=0.03)
 class JinaClipVision(EmbeddingModel):
+    model_type = EmbeddingModelType.IMAGE
+
     def __init__(self):
         """Initialize the model and load to device."""
         if not torch.cuda.is_available():
@@ -513,6 +537,8 @@ class JinaClipVision(EmbeddingModel):
 
 @ray.remote
 class Dummy2(EmbeddingModel):
+    model_type = EmbeddingModelType.TEXT
+
     def __init__(self):
         """Initialize the dummy model."""
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
@@ -606,3 +632,57 @@ def get_all_models_memory_usage(verbose=False):
             memory_usage[model_name] = -1  # No method available
 
     return memory_usage
+
+
+def get_model_type(model_name: str) -> EmbeddingModelType:
+    """
+    Get the model type (text or image) for a specific model name.
+
+    Args:
+        model_name: Name of the model to get the type for
+
+    Returns:
+        EmbeddingModelType: The type of the model (TEXT or IMAGE)
+
+    Raises:
+        ValueError: If the model name is not found or has no model_type
+    """
+    # Get the class directly from the module
+    current_module = sys.modules[__name__]
+    model_class = getattr(current_module, model_name, None)
+
+    if model_class is None:
+        raise ValueError(f"Model '{model_name}' not found")
+
+    # For Ray remote classes, access the wrapped class
+    if hasattr(model_class, "_cls"):
+        actual_class = model_class._cls
+    else:
+        actual_class = model_class
+
+    # Access the model_type attribute
+    if hasattr(actual_class, "model_type"):
+        return actual_class.model_type
+
+    raise ValueError(f"Model '{model_name}' does not have a model_type attribute")
+
+
+def list_models_by_type(model_type: EmbeddingModelType) -> List[str]:
+    """
+    Returns a list of model names that match the specified type.
+
+    Args:
+        model_type: The type of models to list (TEXT or IMAGE)
+
+    Returns:
+        list: Names of models matching the specified type
+    """
+    models = []
+    for model_name in list_models():
+        try:
+            if get_model_type(model_name) == model_type:
+                models.append(model_name)
+        except ValueError:
+            # Skip models without model_type
+            continue
+    return models

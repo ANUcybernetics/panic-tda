@@ -13,7 +13,11 @@ from ray.util import ActorPool
 from sqlmodel import func, select
 
 from panic_tda.db import get_session_from_connection_string
-from panic_tda.embeddings import get_actor_class as get_embedding_actor_class
+from panic_tda.embeddings import (
+    get_actor_class as get_embedding_actor_class,
+    get_model_type,
+    EmbeddingModelType,
+)
 from panic_tda.genai_models import get_actor_class as get_genai_actor_class
 from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import (
@@ -569,27 +573,47 @@ def perform_embeddings_stage(
     all_embedding_ids = []
 
     for embedding_model in embedding_models:
-        logger.info(f"Processing text embeddings with model {embedding_model}")
+        # Get the model type to determine which invocations to process
+        try:
+            model_type = get_model_type(embedding_model)
+        except ValueError as e:
+            logger.warning(f"Could not determine model type for {embedding_model}: {e}")
+            continue
+
+        # Determine the invocation type to filter based on model type
+        if model_type == EmbeddingModelType.TEXT:
+            target_invocation_type = InvocationType.TEXT
+            logger.info(f"Processing TEXT embeddings with model {embedding_model}")
+        elif model_type == EmbeddingModelType.IMAGE:
+            target_invocation_type = InvocationType.IMAGE
+            logger.info(f"Processing IMAGE embeddings with model {embedding_model}")
+        else:
+            logger.warning(f"Unknown model type {model_type} for {embedding_model}")
+            continue
 
         # Get the actor class for this embedding model
         embedding_actor_class = get_embedding_actor_class(embedding_model)
 
-        # Filter to only include text invocations
+        # Filter to only include invocations matching the model type
         with get_session_from_connection_string(db_str) as session:
-            text_invocations = []
+            filtered_invocations = []
             for invocation_id in invocation_ids:
                 invocation = session.get(Invocation, UUID(invocation_id))
-                if invocation and invocation.type == InvocationType.TEXT:
-                    text_invocations.append(invocation_id)
+                if invocation and invocation.type == target_invocation_type:
+                    filtered_invocations.append(invocation_id)
 
-        if not text_invocations:
-            logger.info(f"No text invocations found to embed with {embedding_model}")
+        if not filtered_invocations:
+            logger.info(
+                f"No {target_invocation_type.value} invocations found to embed with {embedding_model}"
+            )
             continue
 
-        logger.info(f"Found {len(text_invocations)} text invocations to embed")
+        logger.info(
+            f"Found {len(filtered_invocations)} {target_invocation_type.value} invocations to embed"
+        )
 
         # Limit the number of actors based on the number of batches
-        num_batches = (len(text_invocations) + batch_size - 1) // batch_size
+        num_batches = (len(filtered_invocations) + batch_size - 1) // batch_size
         actor_count = min(num_actors, num_batches)
 
         # Create actor instances
@@ -602,14 +626,14 @@ def perform_embeddings_stage(
             f"Created actor pool with {actor_count} actors for model {embedding_model}"
         )
 
-        # Create batches of text invocation IDs
-        text_batches = [
-            text_invocations[i : i + batch_size]
-            for i in range(0, len(text_invocations), batch_size)
+        # Create batches of invocation IDs
+        invocation_batches = [
+            filtered_invocations[i : i + batch_size]
+            for i in range(0, len(filtered_invocations), batch_size)
         ]
 
         logger.info(
-            f"Processing {len(text_batches)} batches with batch size {batch_size}"
+            f"Processing {len(invocation_batches)} batches with batch size {batch_size}"
         )
 
         # Process embedding batches in parallel using the actor pool
@@ -619,7 +643,7 @@ def perform_embeddings_stage(
                 lambda actor, batch: compute_embeddings.remote(
                     actor, batch, embedding_model, db_str
                 ),
-                text_batches,
+                invocation_batches,
             )
         )
 
@@ -628,7 +652,7 @@ def perform_embeddings_stage(
             all_embedding_ids.extend(batch_ids)
 
         logger.info(
-            f"Computed {len(all_embedding_ids)} text embeddings with model {embedding_model}"
+            f"Computed {len(all_embedding_ids)} {target_invocation_type.value} embeddings with model {embedding_model}"
         )
 
         # Clean up actors

@@ -300,19 +300,89 @@ def check_experiment_embeddings(
     experiment: ExperimentConfig, session: Session, report: DoctorReport
 ) -> List[Dict[str, Any]]:
     """Check that all invocations in an experiment have proper embeddings."""
+    from panic_tda.embeddings import get_model_type, EmbeddingModelType
+
     issues = []
 
-    # Get all text invocations for all runs in this experiment
+    # Get all invocations (both TEXT and IMAGE) for all runs in this experiment
     invocations = session.exec(
         select(Invocation)
         .join(Run, Invocation.run_id == Run.id)
-        .where(
-            Run.experiment_id == experiment.id, Invocation.type == InvocationType.TEXT
-        )
+        .where(Run.experiment_id == experiment.id)
     ).all()
 
     for invocation in invocations:
+        # First check for mismatched embeddings (e.g., image model on text invocation)
         for embedding_model in experiment.embedding_models:
+            try:
+                model_type = get_model_type(embedding_model)
+                is_mismatched = False
+
+                # Check if this model type is incompatible with invocation type
+                if (
+                    invocation.type == InvocationType.TEXT
+                    and model_type == EmbeddingModelType.IMAGE
+                ):
+                    is_mismatched = True
+                elif (
+                    invocation.type == InvocationType.IMAGE
+                    and model_type == EmbeddingModelType.TEXT
+                ):
+                    is_mismatched = True
+
+                if is_mismatched:
+                    # Check if there are any embeddings of this mismatched type
+                    mismatched_embeddings = session.exec(
+                        select(Embedding).where(
+                            Embedding.invocation_id == invocation.id,
+                            Embedding.embedding_model == embedding_model,
+                        )
+                    ).all()
+
+                    if mismatched_embeddings:
+                        # Report this as a mismatched embedding issue
+                        embedding_ids = [e.id for e in mismatched_embeddings]
+                        issue = {
+                            "invocation_type": invocation.type.value,
+                            "embedding_model": embedding_model,
+                            "issue_type": "mismatched",
+                            "embedding_count": len(mismatched_embeddings),
+                            "has_null_vector": any(
+                                e.vector is None for e in mismatched_embeddings
+                            ),
+                            "embedding_ids": embedding_ids,
+                        }
+                        issues.append({"invocation_id": invocation.id, **issue})
+                        report.add_embedding_issue(experiment.id, invocation.id, issue)
+                    continue  # Don't check for missing/null embeddings for mismatched types
+
+            except ValueError:
+                # If we can't determine model type, skip (will be logged elsewhere)
+                logger.warning(
+                    f"Could not determine type for embedding model {embedding_model}"
+                )
+                continue
+
+        # Now check for missing or null embeddings for compatible model types
+        for embedding_model in experiment.embedding_models:
+            # Check if this embedding model is compatible with the invocation type
+            try:
+                model_type = get_model_type(embedding_model)
+                # Skip if model type doesn't match invocation type
+                if (
+                    invocation.type == InvocationType.TEXT
+                    and model_type != EmbeddingModelType.TEXT
+                ):
+                    continue
+                if (
+                    invocation.type == InvocationType.IMAGE
+                    and model_type != EmbeddingModelType.IMAGE
+                ):
+                    continue
+            except ValueError:
+                # Already warned above
+                continue
+
             # Count embeddings for this invocation and model
             embedding_count = session.exec(
                 select(func.count())
@@ -337,6 +407,7 @@ def check_experiment_embeddings(
                 # Get embedding IDs for debugging
                 embedding_ids = [e.id for e in embeddings]
                 issue = {
+                    "invocation_type": invocation.type.value,
                     "embedding_model": embedding_model,
                     "embedding_count": embedding_count,
                     "has_null_vector": null_vectors > 0,
@@ -492,8 +563,85 @@ def fix_run_invocations(issues: List[Dict], experiment: ExperimentConfig, db_str
 def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str):
     """Fix missing or invalid embeddings."""
     from panic_tda.engine import perform_embeddings_stage
+    from panic_tda.embeddings import get_model_type, EmbeddingModelType
 
-    invocation_ids_to_fix = list(set(str(issue["invocation_id"]) for issue in issues))
+    # First, handle mismatched embeddings from the issues list
+    mismatched_issues = [i for i in issues if i.get("issue_type") == "mismatched"]
+    if mismatched_issues:
+        with get_session_from_connection_string(db_str) as session:
+            mismatched_count = 0
+            for issue in mismatched_issues:
+                # Delete the mismatched embeddings referenced in the issue
+                for embedding_id in issue.get("embedding_ids", []):
+                    emb = session.get(Embedding, embedding_id)
+                    if emb:
+                        session.delete(emb)
+                        mismatched_count += 1
+
+            if mismatched_count > 0:
+                logger.info(
+                    f"Deleted {mismatched_count} mismatched embeddings from issues"
+                )
+                session.commit()
+
+    # Also do a comprehensive cleanup of all mismatched embeddings for this experiment
+    with get_session_from_connection_string(db_str) as session:
+        # Get all invocations for this experiment
+        invocations = session.exec(
+            select(Invocation)
+            .join(Run, Invocation.run_id == Run.id)
+            .where(Run.experiment_id == experiment.id)
+        ).all()
+
+        mismatched_count = 0
+        for invocation in invocations:
+            for embedding_model in experiment.embedding_models:
+                try:
+                    model_type = get_model_type(embedding_model)
+                    # Check for mismatched embeddings
+                    should_delete = False
+                    if (
+                        invocation.type == InvocationType.TEXT
+                        and model_type == EmbeddingModelType.IMAGE
+                    ):
+                        should_delete = True
+                    elif (
+                        invocation.type == InvocationType.IMAGE
+                        and model_type == EmbeddingModelType.TEXT
+                    ):
+                        should_delete = True
+
+                    if should_delete:
+                        # Delete any embeddings of this model for this invocation
+                        embeddings_to_delete = session.exec(
+                            select(Embedding).where(
+                                Embedding.invocation_id == invocation.id,
+                                Embedding.embedding_model == embedding_model,
+                            )
+                        ).all()
+
+                        for emb in embeddings_to_delete:
+                            session.delete(emb)
+                            mismatched_count += 1
+
+                except ValueError:
+                    # Skip models without defined types
+                    continue
+
+        if mismatched_count > 0:
+            logger.info(
+                f"Deleted {mismatched_count} additional mismatched embeddings in cleanup"
+            )
+            session.commit()
+
+    # Now compute embeddings for invocations that need them (excluding mismatched ones)
+    invocation_ids_to_fix = list(
+        set(
+            str(issue["invocation_id"])
+            for issue in issues
+            if issue.get("issue_type") != "mismatched"
+        )
+    )
 
     if invocation_ids_to_fix:
         logger.info(
