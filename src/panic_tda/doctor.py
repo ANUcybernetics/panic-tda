@@ -533,7 +533,7 @@ def confirm_fix(message: str, yes_flag: bool) -> bool:
     return typer.confirm(message)
 
 
-def fix_run_invocations(issues: List[Dict], experiment: ExperimentConfig, db_str: str):
+def fix_run_invocations(issues: List[Dict], db_str: str):
     """Fix missing or extra invocations for runs."""
     from panic_tda.engine import perform_runs_stage
 
@@ -560,32 +560,60 @@ def fix_run_invocations(issues: List[Dict], experiment: ExperimentConfig, db_str
         perform_runs_stage(run_ids_to_fix, db_str)
 
 
-def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str):
+def fix_embeddings(issues: List[Dict], experiment_id: UUID, db_str: str):
     """Fix missing or invalid embeddings."""
     from panic_tda.engine import perform_embeddings_stage
     from panic_tda.embeddings import get_model_type, EmbeddingModelType
 
-    # Store experiment ID to avoid detached instance issues
-    experiment_id = experiment.id
-
     # First, handle mismatched embeddings from the issues list
     mismatched_issues = [i for i in issues if i.get("issue_type") == "mismatched"]
     if mismatched_issues:
+        logger.info(f"Processing {len(mismatched_issues)} mismatched embedding issues")
         with get_session_from_connection_string(db_str) as session:
             mismatched_count = 0
+            batch_size = 1000
+            embeddings_to_delete = []
+
             for issue in mismatched_issues:
-                # Delete the mismatched embeddings referenced in the issue
+                # Collect embedding IDs to delete
                 for embedding_id in issue.get("embedding_ids", []):
-                    emb = session.get(Embedding, embedding_id)
-                    if emb:
-                        session.delete(emb)
-                        mismatched_count += 1
+                    embeddings_to_delete.append(embedding_id)
+
+                    # Process in batches
+                    if len(embeddings_to_delete) >= batch_size:
+                        # Use a bulk query to fetch and delete embeddings
+                        embeddings = session.exec(
+                            select(Embedding).where(
+                                Embedding.id.in_(embeddings_to_delete)
+                            )
+                        ).all()
+
+                        for emb in embeddings:
+                            session.delete(emb)
+                            mismatched_count += 1
+
+                        session.commit()
+                        logger.info(
+                            f"Deleted batch of {len(embeddings)} mismatched embeddings"
+                        )
+                        embeddings_to_delete = []
+
+            # Process remaining embeddings
+            if embeddings_to_delete:
+                embeddings = session.exec(
+                    select(Embedding).where(Embedding.id.in_(embeddings_to_delete))
+                ).all()
+
+                for emb in embeddings:
+                    session.delete(emb)
+                    mismatched_count += 1
+
+                session.commit()
 
             if mismatched_count > 0:
                 logger.info(
                     f"Deleted {mismatched_count} mismatched embeddings from issues"
                 )
-                session.commit()
 
     # Also do a comprehensive cleanup of all mismatched embeddings for this experiment
     with get_session_from_connection_string(db_str) as session:
@@ -595,53 +623,94 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
             raise ValueError(f"Experiment with ID {experiment_id} not found")
         embedding_models = list(experiment.embedding_models)  # Make a copy
 
-        # Get all invocations for this experiment
-        invocations = session.exec(
-            select(Invocation)
-            .join(Run, Invocation.run_id == Run.id)
-            .where(Run.experiment_id == experiment_id)
-        ).all()
+        # Build lists of text and image embedding models
+        text_models = []
+        image_models = []
+        for model in embedding_models:
+            try:
+                model_type = get_model_type(model)
+                if model_type == EmbeddingModelType.TEXT:
+                    text_models.append(model)
+                elif model_type == EmbeddingModelType.IMAGE:
+                    image_models.append(model)
+            except ValueError:
+                # Skip models without defined types
+                continue
 
         mismatched_count = 0
-        for invocation in invocations:
-            for embedding_model in embedding_models:
-                try:
-                    model_type = get_model_type(embedding_model)
-                    # Check for mismatched embeddings
-                    should_delete = False
-                    if (
-                        invocation.type == InvocationType.TEXT
-                        and model_type == EmbeddingModelType.IMAGE
-                    ):
-                        should_delete = True
-                    elif (
-                        invocation.type == InvocationType.IMAGE
-                        and model_type == EmbeddingModelType.TEXT
-                    ):
-                        should_delete = True
 
-                    if should_delete:
-                        # Delete any embeddings of this model for this invocation
-                        embeddings_to_delete = session.exec(
-                            select(Embedding).where(
-                                Embedding.invocation_id == invocation.id,
-                                Embedding.embedding_model == embedding_model,
-                            )
-                        ).all()
+        # Delete text invocation embeddings with image models
+        if image_models:
+            logger.info("Cleaning up text invocations with image embedding models")
+            text_invocation_ids = session.exec(
+                select(Invocation.id)
+                .join(Run, Invocation.run_id == Run.id)
+                .where(
+                    Run.experiment_id == experiment_id,
+                    Invocation.type == InvocationType.TEXT,
+                )
+            ).all()
 
-                        for emb in embeddings_to_delete:
-                            session.delete(emb)
-                            mismatched_count += 1
+            if text_invocation_ids:
+                # Delete in batches
+                batch_size = 100
+                for i in range(0, len(text_invocation_ids), batch_size):
+                    batch_ids = text_invocation_ids[i : i + batch_size]
+                    embeddings_to_delete = session.exec(
+                        select(Embedding).where(
+                            Embedding.invocation_id.in_(batch_ids),
+                            Embedding.embedding_model.in_(image_models),
+                        )
+                    ).all()
 
-                except ValueError:
-                    # Skip models without defined types
-                    continue
+                    for emb in embeddings_to_delete:
+                        session.delete(emb)
+                        mismatched_count += 1
+
+                    if embeddings_to_delete:
+                        session.commit()
+                        logger.info(
+                            f"Deleted {len(embeddings_to_delete)} mismatched text->image embeddings"
+                        )
+
+        # Delete image invocation embeddings with text models
+        if text_models:
+            logger.info("Cleaning up image invocations with text embedding models")
+            image_invocation_ids = session.exec(
+                select(Invocation.id)
+                .join(Run, Invocation.run_id == Run.id)
+                .where(
+                    Run.experiment_id == experiment_id,
+                    Invocation.type == InvocationType.IMAGE,
+                )
+            ).all()
+
+            if image_invocation_ids:
+                # Delete in batches
+                batch_size = 100
+                for i in range(0, len(image_invocation_ids), batch_size):
+                    batch_ids = image_invocation_ids[i : i + batch_size]
+                    embeddings_to_delete = session.exec(
+                        select(Embedding).where(
+                            Embedding.invocation_id.in_(batch_ids),
+                            Embedding.embedding_model.in_(text_models),
+                        )
+                    ).all()
+
+                    for emb in embeddings_to_delete:
+                        session.delete(emb)
+                        mismatched_count += 1
+
+                    if embeddings_to_delete:
+                        session.commit()
+                        logger.info(
+                            f"Deleted {len(embeddings_to_delete)} mismatched image->text embeddings"
+                        )
 
         if mismatched_count > 0:
             logger.info(
                 f"Deleted {mismatched_count} additional mismatched embeddings in cleanup"
             )
-            session.commit()
 
     # Now compute embeddings for invocations that need them (excluding mismatched ones)
     invocation_ids_to_fix = list(
@@ -666,9 +735,7 @@ def fix_embeddings(issues: List[Dict], experiment: ExperimentConfig, db_str: str
         perform_embeddings_stage(invocation_ids_to_fix, embedding_models, db_str)
 
 
-def fix_persistence_diagrams(
-    issues: List[Dict], experiment: ExperimentConfig, db_str: str
-):
+def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: str):
     """Fix missing or invalid persistence diagrams."""
     from panic_tda.engine import perform_pd_stage
 
@@ -676,10 +743,10 @@ def fix_persistence_diagrams(
     runs_to_recompute = set()
 
     with get_session_from_connection_string(db_str) as session:
-        # Re-fetch the experiment in this session to get embedding_models
-        experiment = session.get(ExperimentConfig, experiment.id)
+        # Fetch the experiment in this session to get embedding_models
+        experiment = session.get(ExperimentConfig, experiment_id)
         if not experiment:
-            raise ValueError(f"Experiment with ID {experiment.id} not found")
+            raise ValueError(f"Experiment with ID {experiment_id} not found")
         embedding_models = list(experiment.embedding_models)  # Make a copy
 
         for issue in issues:
@@ -823,7 +890,7 @@ def _check_and_fix_experiment(
                     f"Fix {len(run_issues)} run invocation issues for experiment {experiment_id}?",
                     yes_flag,
                 ):
-                    fix_run_invocations(run_issues, experiment, db_str)
+                    fix_run_invocations(run_issues, db_str)
                     # Re-check embeddings after fixing invocations
                     with get_session_from_connection_string(db_str) as session:
                         experiment = session.get(ExperimentConfig, experiment_id)
@@ -835,7 +902,7 @@ def _check_and_fix_experiment(
                     f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?",
                     yes_flag,
                 ):
-                    fix_embeddings(embedding_issues, experiment, db_str)
+                    fix_embeddings(embedding_issues, experiment_id, db_str)
                     # Re-check persistence diagrams after fixing embeddings
                     with get_session_from_connection_string(db_str) as session:
                         experiment = session.get(ExperimentConfig, experiment_id)
@@ -847,7 +914,7 @@ def _check_and_fix_experiment(
                     f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?",
                     yes_flag,
                 ):
-                    fix_persistence_diagrams(pd_issues, experiment, db_str)
+                    fix_persistence_diagrams(pd_issues, experiment_id, db_str)
 
     # Update progress if provided
     if progress and task:

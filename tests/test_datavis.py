@@ -41,7 +41,7 @@ def setup_minimal_experiment(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         prompts=["test prompt"],
         seeds=[-1],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,  # Very short sequences for testing
     )
 
@@ -64,7 +64,7 @@ def setup_persistence_experiment(db_session):
         networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
         prompts=["one fish", "two fish"],
         seeds=[-1] * 2,
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=20,  # Short sequences for testing
     )
 
@@ -87,7 +87,7 @@ def setup_cluster_experiment(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         prompts=["one fish", "red fish"],
         seeds=[-1] * 2,
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=15,  # Short sequences for testing
     )
 

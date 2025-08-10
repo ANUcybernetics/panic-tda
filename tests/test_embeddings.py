@@ -8,8 +8,10 @@ import torch
 from PIL import Image
 
 from panic_tda.embeddings import (
-    Dummy,
-    Dummy2,
+    DummyText,
+    DummyText2,
+    DummyVision,
+    DummyVision2,
     get_actor_class,
     list_models,
 )
@@ -20,8 +22,10 @@ from panic_tda.schemas import Embedding, Invocation, InvocationType, Run
 def dummy_actors():
     """Module-scoped fixture for dummy embedding model actors."""
     actors = {
-        "Dummy": Dummy.remote(),
-        "Dummy2": Dummy2.remote(),
+        "DummyText": DummyText.remote(),
+        "DummyText2": DummyText2.remote(),
+        "DummyVision": DummyVision.remote(),
+        "DummyVision2": DummyVision2.remote(),
     }
     yield actors
     # Cleanup
@@ -80,24 +84,24 @@ def test_run_embeddings_by_model(db_session, dummy_actors):
     db_session.refresh(invocation2)
 
     # Create embeddings with different models - now with Ray actors
-    dummy_model = dummy_actors["Dummy"]
+    dummy_model = dummy_actors["DummyText"]
     embedding_vector1_ref = dummy_model.embed.remote([invocation1.output])
     embedding_vectors1 = ray.get(embedding_vector1_ref)
     embedding_vector1 = embedding_vectors1[0]  # Get the first embedding
     embedding1_1 = Embedding(
         invocation_id=invocation1.id,
-        embedding_model="Dummy",
+        embedding_model="DummyText",
         vector=embedding_vector1,
     )
     db_session.add(embedding1_1)
 
-    dummy2_model = dummy_actors["Dummy2"]
+    dummy2_model = dummy_actors["DummyText2"]
     embedding_vector2_ref = dummy2_model.embed.remote([invocation1.output])
     embedding_vectors2 = ray.get(embedding_vector2_ref)
     embedding_vector2 = embedding_vectors2[0]  # Get the first embedding
     embedding1_2 = Embedding(
         invocation_id=invocation1.id,
-        embedding_model="Dummy2",
+        embedding_model="DummyText2",
         vector=embedding_vector2,
     )
     db_session.add(embedding1_2)
@@ -107,7 +111,7 @@ def test_run_embeddings_by_model(db_session, dummy_actors):
     embedding_vector3 = embedding_vectors3[0]  # Get the first embedding
     embedding2_1 = Embedding(
         invocation_id=invocation2.id,
-        embedding_model="Dummy",
+        embedding_model="DummyText",
         vector=embedding_vector3,
     )
     db_session.add(embedding2_1)
@@ -118,14 +122,14 @@ def test_run_embeddings_by_model(db_session, dummy_actors):
     db_session.refresh(run)
 
     # Test filtering by model name
-    dummy_embeddings = run.embeddings["Dummy"]
-    dummy2_embeddings = run.embeddings["Dummy2"]
+    dummy_embeddings = run.embeddings["DummyText"]
+    dummy2_embeddings = run.embeddings["DummyText2"]
 
     # Verify the filtering works correctly
     assert len(dummy_embeddings) == 2
     assert len(dummy2_embeddings) == 1
-    assert all(e.embedding_model == "Dummy" for e in dummy_embeddings)
-    assert all(e.embedding_model == "Dummy2" for e in dummy2_embeddings)
+    assert all(e.embedding_model == "DummyText" for e in dummy_embeddings)
+    assert all(e.embedding_model == "DummyText2" for e in dummy2_embeddings)
 
     # Verify embeddings are associated with the correct invocations
     assert any(e.invocation_id == invocation1.id for e in dummy_embeddings)
@@ -165,8 +169,8 @@ def test_invocation_embedding_property(db_session):
 
     # Create embeddings with different models
     try:
-        dummy_model = Dummy.remote()
-        dummy2_model = Dummy2.remote()
+        dummy_model = DummyText.remote()
+        dummy2_model = DummyText2.remote()
 
         # Get embeddings from models
         embedding_vector1_ref = dummy_model.embed.remote([invocation.output])
@@ -181,14 +185,14 @@ def test_invocation_embedding_property(db_session):
         # Create embedding objects
         embedding1 = Embedding(
             invocation_id=invocation.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=embedding_vector1,
         )
         db_session.add(embedding1)
 
         embedding2 = Embedding(
             invocation_id=invocation.id,
-            embedding_model="Dummy2",
+            embedding_model="DummyText2",
             vector=embedding_vector2,
         )
         db_session.add(embedding2)
@@ -197,17 +201,17 @@ def test_invocation_embedding_property(db_session):
         db_session.refresh(invocation)
 
         # Test the embedding method
-        dummy_embedding = invocation.embedding("Dummy")
-        dummy2_embedding = invocation.embedding("Dummy2")
+        dummy_embedding = invocation.embedding("DummyText")
+        dummy2_embedding = invocation.embedding("DummyText2")
         nonexistent_embedding = invocation.embedding("NonexistentModel")
 
         # Verify the results
         assert dummy_embedding is not None
-        assert dummy_embedding.embedding_model == "Dummy"
+        assert dummy_embedding.embedding_model == "DummyText"
         assert np.array_equal(dummy_embedding.vector, embedding_vector1)
 
         assert dummy2_embedding is not None
-        assert dummy2_embedding.embedding_model == "Dummy2"
+        assert dummy2_embedding.embedding_model == "DummyText2"
         assert np.array_equal(dummy2_embedding.vector, embedding_vector2)
 
         # Should return None for a model that doesn't exist
@@ -234,8 +238,10 @@ def test_list_models():
 
     # Check that it contains the expected models we've tested
     expected_models = [
-        "Dummy",
-        "Dummy2",
+        "DummyText",
+        "DummyText2",
+        "DummyVision",
+        "DummyVision2",
         "Nomic",
         "NomicVision",
         "JinaClip",
@@ -313,7 +319,7 @@ def test_run_missing_embeddings(db_session, dummy_actors):
     db_session.refresh(run)
 
     # Create a dummy model for embeddings
-    dummy_model = dummy_actors["Dummy"]
+    dummy_model = dummy_actors["DummyText"]
 
     # Get embeddings for the first and third invocations only
     embedding_vector1_ref = dummy_model.embed.remote([invocation1.output])
@@ -324,30 +330,30 @@ def test_run_missing_embeddings(db_session, dummy_actors):
     embedding_vectors3 = ray.get(embedding_vector3_ref)
     embedding_vector3 = embedding_vectors3[0]
 
-    # Add embeddings for only the first and third invocations with "Dummy" model
+    # Add embeddings for only the first and third invocations with "DummyText" model
     embedding1 = Embedding(
         invocation_id=invocation1.id,
-        embedding_model="Dummy",
+        embedding_model="DummyText",
         vector=embedding_vector1,
     )
     db_session.add(embedding1)
 
     embedding3 = Embedding(
         invocation_id=invocation3.id,
-        embedding_model="Dummy",
+        embedding_model="DummyText",
         vector=embedding_vector3,
     )
     db_session.add(embedding3)
 
-    # Add an embedding for the first invocation with "Dummy2" model
-    dummy2_model = dummy_actors["Dummy2"]
+    # Add an embedding for the first invocation with "DummyText2" model
+    dummy2_model = dummy_actors["DummyText2"]
     embedding_vector1_2_ref = dummy2_model.embed.remote([invocation1.output])
     embedding_vectors1_2 = ray.get(embedding_vector1_2_ref)
     embedding_vector1_2 = embedding_vectors1_2[0]
 
     embedding1_2 = Embedding(
         invocation_id=invocation1.id,
-        embedding_model="Dummy2",
+        embedding_model="DummyText2",
         vector=embedding_vector1_2,
     )
     db_session.add(embedding1_2)
@@ -355,7 +361,7 @@ def test_run_missing_embeddings(db_session, dummy_actors):
     # Add an embedding with null vector for the second invocation
     embedding2 = Embedding(
         invocation_id=invocation2.id,
-        embedding_model="Dummy",
+        embedding_model="DummyText",
         vector=None,
     )
     db_session.add(embedding2)
@@ -363,17 +369,17 @@ def test_run_missing_embeddings(db_session, dummy_actors):
     db_session.commit()
     db_session.refresh(run)
 
-    # Test missing_embeddings for "Dummy" model
-    missing_dummy = run.missing_embeddings("Dummy")
+    # Test missing_embeddings for "DummyText" model
+    missing_dummy = run.missing_embeddings("DummyText")
 
     # Should return invocation2 because it has a null vector
     assert len(missing_dummy) == 1
     assert missing_dummy[0].id == invocation2.id
 
-    # Test missing_embeddings for "Dummy2" model
-    missing_dummy2 = run.missing_embeddings("Dummy2")
+    # Test missing_embeddings for "DummyText2" model
+    missing_dummy2 = run.missing_embeddings("DummyText2")
 
-    # Should return invocation2 and invocation3 (both missing "Dummy2" embeddings)
+    # Should return invocation2 and invocation3 (both missing "DummyText2" embeddings)
     assert len(missing_dummy2) == 2
     assert set(inv.id for inv in missing_dummy2) == {invocation2.id, invocation3.id}
 
@@ -427,7 +433,7 @@ def test_embedding_model(model_name, embedding_model_actors):
     # )
 
     # Verify it's a proper embedding vector (except for dummy models which may not use float32)
-    if not model_name.startswith("Dummy"):
+    if not model_name.startswith("DummyText"):
         assert embedding.dtype == np.float32
         assert not np.all(embedding == 0)  # Should not be all zeros
 
@@ -836,3 +842,119 @@ def test_nomic_embedding_actor_pool(embedding_model_actors):
     # Clean up only the additional actors we created
     for actor in additional_actors:
         ray.kill(actor)
+
+
+def test_dummy_vision_models(dummy_actors):
+    """Test that DummyVision models work correctly with PIL Images."""
+    # Get the dummy vision actors
+    dummy_vision = dummy_actors["DummyVision"]
+    dummy_vision2 = dummy_actors["DummyVision2"]
+
+    # Create test images
+    images = [
+        Image.new("RGB", (100, 100), color="red"),
+        Image.new("RGB", (150, 150), color="blue"),
+        Image.new("RGB", (200, 200), color="green"),
+    ]
+
+    # Test DummyVision
+    embeddings_ref = dummy_vision.embed.remote(images)
+    embeddings = ray.get(embeddings_ref)
+
+    assert len(embeddings) == 3
+    for emb in embeddings:
+        assert isinstance(emb, np.ndarray)
+        assert emb.shape == (768,)  # EMBEDDING_DIM
+        assert emb.dtype == np.float32
+
+    # Test DummyVision2
+    embeddings2_ref = dummy_vision2.embed.remote(images)
+    embeddings2 = ray.get(embeddings2_ref)
+
+    assert len(embeddings2) == 3
+    for emb in embeddings2:
+        assert isinstance(emb, np.ndarray)
+        assert emb.shape == (768,)  # EMBEDDING_DIM
+        assert emb.dtype == np.float32
+
+    # Test that different images produce different embeddings
+    assert not np.array_equal(embeddings[0], embeddings[1])
+    assert not np.array_equal(embeddings[1], embeddings[2])
+    assert not np.array_equal(embeddings2[0], embeddings2[1])
+    assert not np.array_equal(embeddings2[1], embeddings2[2])
+
+    # Test that the same image produces the same embedding (deterministic)
+    same_image = [Image.new("RGB", (100, 100), color="red")]
+    emb1_ref = dummy_vision.embed.remote(same_image)
+    emb1 = ray.get(emb1_ref)[0]
+    emb2_ref = dummy_vision.embed.remote(same_image)
+    emb2 = ray.get(emb2_ref)[0]
+    assert np.array_equal(emb1, emb2)
+
+    # Test with non-Image input (should raise error)
+    with pytest.raises(ray.exceptions.RayTaskError):
+        invalid_ref = dummy_vision.embed.remote(["not an image"])
+        ray.get(invalid_ref)
+
+    with pytest.raises(ray.exceptions.RayTaskError):
+        invalid_ref2 = dummy_vision2.embed.remote(["not an image"])
+        ray.get(invalid_ref2)
+
+
+def test_dummy_text_models(dummy_actors):
+    """Test that DummyText models work correctly with text inputs."""
+    # Get the dummy text actors
+    dummy_text = dummy_actors["DummyText"]
+    dummy_text2 = dummy_actors["DummyText2"]
+
+    # Create test text inputs
+    texts = [
+        "Hello world",
+        "This is a test",
+        "Another sample text",
+    ]
+
+    # Test DummyText
+    embeddings_ref = dummy_text.embed.remote(texts)
+    embeddings = ray.get(embeddings_ref)
+
+    assert len(embeddings) == 3
+    for emb in embeddings:
+        assert isinstance(emb, np.ndarray)
+        assert emb.shape == (768,)  # EMBEDDING_DIM
+        assert emb.dtype == np.float32
+
+    # Test DummyText2
+    embeddings2_ref = dummy_text2.embed.remote(texts)
+    embeddings2 = ray.get(embeddings2_ref)
+
+    assert len(embeddings2) == 3
+    for emb in embeddings2:
+        assert isinstance(emb, np.ndarray)
+        assert emb.shape == (768,)  # EMBEDDING_DIM
+        assert emb.dtype == np.float32
+
+    # Test that different texts produce different embeddings
+    assert not np.array_equal(embeddings[0], embeddings[1])
+    assert not np.array_equal(embeddings[1], embeddings[2])
+    assert not np.array_equal(embeddings2[0], embeddings2[1])
+    assert not np.array_equal(embeddings2[1], embeddings2[2])
+
+    # Test that the same text produces the same embedding (deterministic)
+    same_text = ["Hello world"]
+    emb1_ref = dummy_text.embed.remote(same_text)
+    emb1 = ray.get(emb1_ref)[0]
+    emb2_ref = dummy_text.embed.remote(same_text)
+    emb2 = ray.get(emb2_ref)[0]
+    assert np.array_equal(emb1, emb2)
+
+    # Test with non-string input (should raise error)
+    with pytest.raises(ray.exceptions.RayTaskError):
+        img = Image.new("RGB", (100, 100), color="red")
+        invalid_ref = dummy_text.embed.remote([img])
+        ray.get(invalid_ref)
+
+    with pytest.raises(ray.exceptions.RayTaskError):
+        img = Image.new("RGB", (100, 100), color="red")
+        invalid_ref2 = dummy_text2.embed.remote([img])
+        ray.get(invalid_ref2)

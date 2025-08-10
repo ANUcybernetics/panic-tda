@@ -31,7 +31,7 @@ def test_cluster_all_data_no_downsampling(db_session):
             networks=[["DummyT2I", "DummyI2T"]],
             seeds=[-1],
             prompts=[f"test clustering {i}"],
-            embedding_models=["Dummy", "Dummy2"],
+            embedding_models=["DummyText", "DummyText2"],
             max_length=50,
         )
         db_session.add(config)
@@ -53,7 +53,7 @@ def test_cluster_all_data_no_downsampling(db_session):
     # 2 experiments * 50 invocations = 100 total embeddings
     assert result["total_embeddings"] == 100
     assert result["clustered_embeddings"] == 100  # All embeddings should be clustered
-    assert result["embedding_models_count"] == 2  # Dummy and Dummy2
+    assert result["embedding_models_count"] == 2  # DummyText and DummyText2
     assert result["total_clusters"] > 0  # Should have at least one cluster
 
     # Verify clustering results are stored in database
@@ -62,7 +62,7 @@ def test_cluster_all_data_no_downsampling(db_session):
 
     # Verify each clustering result has correct properties
     for cr in clustering_results:
-        assert cr.embedding_model in ["Dummy", "Dummy2"]
+        assert cr.embedding_model in ["DummyText", "DummyText2"]
         assert cr.algorithm == "hdbscan"
         assert cr.parameters == {
             "cluster_selection_epsilon": 0.4,
@@ -93,7 +93,7 @@ def test_cluster_all_data_with_downsampling(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test clustering with downsampling"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=100,
     )
 
@@ -134,7 +134,7 @@ def test_cluster_all_data_no_embeddings(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test no embeddings"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
 
@@ -157,7 +157,7 @@ def test_cluster_all_data_already_clustered(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test already clustered"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=20,
     )
 
@@ -199,7 +199,7 @@ def test_clustering_persistence_across_sessions(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test persistence"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=25,
     )
 
@@ -230,9 +230,9 @@ def test_clustering_persistence_across_sessions(db_session):
 
         # Find the clustering result for our embedding model
         cr = next(
-            (cr for cr in clustering_results if cr.embedding_model == "Dummy"), None
+            (cr for cr in clustering_results if cr.embedding_model == "DummyText"), None
         )
-        assert cr is not None, "Should have clustering result for Dummy model"
+        assert cr is not None, "Should have clustering result for DummyText model"
 
         # Check embedding assignments exist
         assignments = new_session.exec(
@@ -275,7 +275,7 @@ def test_medoid_embedding_id_stored(db_session):
         networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
         seeds=[-1],
         prompts=["test multiple models"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=15,
     )
 
@@ -294,7 +294,7 @@ def test_medoid_embedding_id_stored(db_session):
     assert result["clustered_embeddings"] > 0  # Make sure they were clustered
 
     # Verify both models have clustering results with medoid_embedding_id
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         clustering_result = db_session.exec(
             select(ClusteringResult).where(ClusteringResult.embedding_model == model)
         ).first()
@@ -336,7 +336,7 @@ def test_cluster_all_data_multiple_models(db_session):
             "another prompt",
             "third prompt",
         ],  # Multiple prompts for more data
-        embedding_models=["Dummy", "Dummy2"],  # Only use existing models
+        embedding_models=["DummyText", "DummyText2"],  # Only use existing models
         max_length=30,
     )
 
@@ -367,7 +367,7 @@ def test_cluster_all_data_multiple_models(db_session):
     assert len(clustering_results) == 2  # One for each embedding model
 
     for cr in clustering_results:
-        assert cr.embedding_model in ["Dummy", "Dummy2"]
+        assert cr.embedding_model in ["DummyText", "DummyText2"]
 
 
 def test_cluster_creation_with_known_medoids(db_session):
@@ -377,7 +377,7 @@ def test_cluster_creation_with_known_medoids(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
     db_session.add(experiment)
@@ -414,7 +414,7 @@ def test_cluster_creation_with_known_medoids(db_session):
         vector = np.random.randn(10)  # 10-dimensional embeddings
         emb = Embedding(
             invocation_id=inv.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=vector,
         )
         db_session.add(emb)
@@ -443,7 +443,7 @@ def test_cluster_creation_with_known_medoids(db_session):
 
     result = _save_clustering_results(
         session=db_session,
-        model_name="Dummy",
+        model_name="DummyText",
         embedding_ids=embedding_ids,
         cluster_result=cluster_result,
         texts=texts,
@@ -457,7 +457,7 @@ def test_cluster_creation_with_known_medoids(db_session):
 
     # Verify the clustering result was created
     clustering_result = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "Dummy")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).first()
     assert clustering_result is not None
 
@@ -505,7 +505,7 @@ def test_medoid_index_bounds_checking(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=5,
     )
     db_session.add(experiment)
@@ -539,7 +539,7 @@ def test_medoid_index_bounds_checking(db_session):
 
         emb = Embedding(
             invocation_id=inv.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=np.random.randn(10),
         )
         db_session.add(emb)
@@ -564,7 +564,7 @@ def test_medoid_index_bounds_checking(db_session):
 
     result = _save_clustering_results(
         session=db_session,
-        model_name="Dummy",
+        model_name="DummyText",
         embedding_ids=embedding_ids,
         cluster_result=cluster_result,
         texts=texts,
@@ -579,7 +579,7 @@ def test_medoid_index_bounds_checking(db_session):
 
     # Check that the outlier cluster was created but not the invalid cluster
     clustering_result = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "Dummy")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).first()
 
     # Count unique medoid IDs to verify clusters
@@ -610,7 +610,7 @@ def test_uuid_type_validation(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test uuid validation"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=20,
     )
     db_session.add(experiment)
@@ -674,7 +674,7 @@ def test_delete_cluster_data_all(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test delete all"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=10,
     )
     db_session.add(config)
@@ -730,7 +730,7 @@ def test_delete_cluster_data_specific_model(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test delete specific"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=10,
     )
     db_session.add(config)
@@ -750,10 +750,10 @@ def test_delete_cluster_data_specific_model(db_session):
     assert len(clustering_results) == 2
 
     dummy_result = next(
-        (cr for cr in clustering_results if cr.embedding_model == "Dummy"), None
+        (cr for cr in clustering_results if cr.embedding_model == "DummyText"), None
     )
     dummy2_result = next(
-        (cr for cr in clustering_results if cr.embedding_model == "Dummy2"), None
+        (cr for cr in clustering_results if cr.embedding_model == "DummyText2"), None
     )
     assert dummy_result is not None
     assert dummy2_result is not None
@@ -772,8 +772,8 @@ def test_delete_cluster_data_specific_model(db_session):
     initial_dummy_count = len(dummy_assignments)
     initial_dummy2_count = len(dummy2_assignments)
 
-    # Delete only Dummy model's clustering data
-    delete_result = delete_cluster_data(db_session, "Dummy")
+    # Delete only DummyText model's clustering data
+    delete_result = delete_cluster_data(db_session, "DummyText")
     assert delete_result["status"] == "success"
     assert delete_result["deleted_results"] == 1
     assert delete_result["deleted_assignments"] == initial_dummy_count
@@ -781,12 +781,12 @@ def test_delete_cluster_data_specific_model(db_session):
     # Refresh the session to see committed changes
     db_session.expire_all()
 
-    # Verify only Dummy model's data is deleted
+    # Verify only DummyText model's data is deleted
     clustering_results = db_session.exec(select(ClusteringResult)).all()
     assert len(clustering_results) == 1
-    assert clustering_results[0].embedding_model == "Dummy2"
+    assert clustering_results[0].embedding_model == "DummyText2"
 
-    # Verify Dummy2's assignments still exist
+    # Verify DummyText2's assignments still exist
     dummy2_assignments_after = db_session.exec(
         select(EmbeddingCluster).where(
             EmbeddingCluster.clustering_result_id == dummy2_result.id
@@ -818,7 +818,7 @@ def test_delete_single_cluster(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test delete single"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
     db_session.add(config)

@@ -50,7 +50,7 @@ def test_db():
             networks=[["DummyT2I", "DummyI2T"]],
             seeds=[42],
             prompts=["Test prompt"],
-            embedding_models=["Dummy", "Dummy2"],
+            embedding_models=["DummyText", "DummyText2"],
             max_length=3,
         )
         session.add(experiment)
@@ -88,11 +88,11 @@ def test_db():
         session.add(inv0)
         session.add(inv2)
 
-        # Create embeddings (only for Dummy, missing Dummy2)
+        # Create embeddings (only for DummyText, missing DummyText2)
         emb1 = Embedding(
             id=uuid4(),
             invocation_id=inv0.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=[0.1, 0.2, 0.3],
         )
         session.add(emb1)
@@ -101,16 +101,16 @@ def test_db():
         orphan_emb = Embedding(
             id=uuid4(),
             invocation_id=uuid4(),  # Non-existent invocation
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=[0.4, 0.5, 0.6],
         )
         session.add(orphan_emb)
 
-        # Create persistence diagram (only for Dummy, missing Dummy2)
+        # Create persistence diagram (only for DummyText, missing DummyText2)
         pd1 = PersistenceDiagram(
             id=uuid4(),
             run_id=run.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             diagram_data=None,  # Use None for testing
         )
         session.add(pd1)
@@ -161,7 +161,7 @@ def clean_db():
             networks=[["DummyT2I"]],
             seeds=[42],
             prompts=["Test"],
-            embedding_models=["Dummy"],
+            embedding_models=["DummyText"],
             max_length=2,
         )
         session.add(experiment)
@@ -193,7 +193,7 @@ def clean_db():
             emb = Embedding(
                 id=uuid4(),
                 invocation_id=inv.id,
-                embedding_model="Dummy",
+                embedding_model="DummyText",
                 vector=[0.1 * i, 0.2 * i, 0.3 * i],
             )
             session.add(emb)
@@ -203,7 +203,7 @@ def clean_db():
         pd = PersistenceDiagram(
             id=uuid4(),
             run_id=run.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             diagram_data={"test": []},  # Use a simple dict for testing
         )
         session.add(pd)
@@ -241,7 +241,7 @@ def multi_experiment_db():
             networks=[["DummyT2I"]],
             seeds=[42],
             prompts=["Clean"],
-            embedding_models=["Dummy"],
+            embedding_models=["DummyText"],
             max_length=2,
         )
         session.add(clean_experiment)
@@ -273,7 +273,7 @@ def multi_experiment_db():
             emb = Embedding(
                 id=uuid4(),
                 invocation_id=inv.id,
-                embedding_model="Dummy",
+                embedding_model="DummyText",
                 vector=[0.1 * i, 0.2 * i, 0.3 * i],
             )
             session.add(emb)
@@ -282,7 +282,7 @@ def multi_experiment_db():
         pd = PersistenceDiagram(
             id=uuid4(),
             run_id=clean_run.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             diagram_data={"test": []},
         )
         session.add(pd)
@@ -293,7 +293,7 @@ def multi_experiment_db():
             networks=[["DummyT2I"]],
             seeds=[42],
             prompts=["Problem"],
-            embedding_models=["Dummy", "Dummy2"],
+            embedding_models=["DummyText", "DummyText2"],
             max_length=3,
         )
         session.add(problematic_experiment)
@@ -321,12 +321,12 @@ def multi_experiment_db():
             )
             session.add(inv)
 
-            # Only create Dummy embedding, missing Dummy2
+            # Only create DummyText embedding, missing DummyText2
             if i == 0:
                 emb = Embedding(
                     id=uuid4(),
                     invocation_id=inv.id,
-                    embedding_model="Dummy",
+                    embedding_model="DummyText",
                     vector=[0.1, 0.2, 0.3],
                 )
                 session.add(emb)
@@ -422,11 +422,13 @@ class TestCheckFunctions:
 
             issues = check_experiment_embeddings(experiment, session, report)
 
-            # Should find issues: missing Dummy2 for both invocations, and missing Dummy for inv2
+            # Should find issues: missing DummyText2 for both invocations, and missing DummyText for inv2
             assert len(issues) > 0
-            # Check for missing Dummy2 embeddings
-            dummy2_issues = [i for i in issues if i.get("embedding_model") == "Dummy2"]
-            assert len(dummy2_issues) == 2  # Both invocations missing Dummy2
+            # Check for missing DummyText2 embeddings
+            dummy2_issues = [
+                i for i in issues if i.get("embedding_model") == "DummyText2"
+            ]
+            assert len(dummy2_issues) == 2  # Both invocations missing DummyText2
 
     def test_check_experiment_persistence_diagrams(self, test_db):
         """Test checking persistence diagrams."""
@@ -436,13 +438,13 @@ class TestCheckFunctions:
 
             issues = check_experiment_persistence_diagrams(experiment, session, report)
 
-            # Should find issues: invalid_model PD, Dummy with null data, and missing Dummy2 PD
+            # Should find issues: invalid_model PD, DummyText with null data, and missing DummyText2 PD
             assert len(issues) == 3
             assert any(issue["issue_type"] == "invalid_model" for issue in issues)
-            assert any(issue["embedding_model"] == "Dummy2" for issue in issues)
-            # Dummy PD exists but has null data, so it's considered missing
+            assert any(issue["embedding_model"] == "DummyText2" for issue in issues)
+            # DummyText PD exists but has null data, so it's considered missing
             assert any(
-                issue["embedding_model"] == "Dummy" and issue["has_null_data"]
+                issue["embedding_model"] == "DummyText" and issue["has_null_data"]
                 for issue in issues
             )
 
@@ -479,7 +481,7 @@ class TestEmbeddingNullVectorCheck:
                     networks=[["DummyT2I"]],
                     seeds=[42],
                     prompts=["Test"],
-                    embedding_models=["TestModel"],
+                    embedding_models=["DummyText"],
                     max_length=2,
                 )
                 session.add(experiment)
@@ -511,7 +513,7 @@ class TestEmbeddingNullVectorCheck:
                 emb_valid = Embedding(
                     id=uuid4(),
                     invocation_id=inv.id,
-                    embedding_model="TestModel",
+                    embedding_model="DummyText",
                     vector=[0.1, 0.2, 0.3],  # Valid numpy array
                 )
                 session.add(emb_valid)
@@ -532,7 +534,7 @@ class TestEmbeddingNullVectorCheck:
                 emb_null = Embedding(
                     id=uuid4(),
                     invocation_id=inv2.id,
-                    embedding_model="TestModel",
+                    embedding_model="DummyText",
                     vector=None,  # Actual null vector
                 )
                 session.add(emb_null)
@@ -645,7 +647,7 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
                     emb = Embedding(
                         id=uuid4(),
                         invocation_id=inv.id,
-                        embedding_model="TestModel",
+                        embedding_model="DummyText",
                         vector=np.random.random(100).tolist(),  # Valid vectors
                         started_at=datetime.now(),
                         completed_at=datetime.now(),

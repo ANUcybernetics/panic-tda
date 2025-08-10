@@ -230,7 +230,7 @@ def test_experiment_config():
         networks=[["DummyI2T", "DummyT2I"]],
         seeds=[42, 123],
         prompts=["First prompt", "Second prompt"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=5,
     )
 
@@ -242,7 +242,7 @@ def test_experiment_config():
     assert config.networks[0] == ["DummyI2T", "DummyT2I"]
     assert config.seeds == [42, 123]
     assert config.prompts == ["First prompt", "Second prompt"]
-    assert config.embedding_models == ["Dummy", "Dummy2"]
+    assert config.embedding_models == ["DummyText", "DummyText2"]
     assert config.max_length == 5
 
     # Test validation error with empty seeds list
@@ -250,7 +250,7 @@ def test_experiment_config():
         networks=[["DummyI2T", "DummyT2I"]],
         seeds=[],  # empty seeds list
         prompts=["First prompt", "Second prompt"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=5,
     )
     with pytest.raises(ValueError):

@@ -38,7 +38,7 @@ def test_load_invocations_df(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test invocations dataframe"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=10,
     )
 
@@ -104,7 +104,7 @@ def test_load_embeddings_df(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test embedding dataframe"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=100,
     )
 
@@ -152,8 +152,8 @@ def test_load_embeddings_df(db_session):
     assert set(df.columns) == set(expected_columns)
 
     # Check values
-    assert df.filter(pl.col("embedding_model") == "Dummy").height == 50
-    assert df.filter(pl.col("embedding_model") == "Dummy2").height == 50
+    assert df.filter(pl.col("embedding_model") == "DummyText").height == 50
+    assert df.filter(pl.col("embedding_model") == "DummyText2").height == 50
 
     # Verify field values using named columns instead of indices
     text_rows = df.filter(pl.col("text_model") == "DummyI2T")
@@ -179,7 +179,7 @@ def test_load_clusters_df(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test embedding clustering"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=100,
     )
 
@@ -279,7 +279,7 @@ def test_load_clusters_df_with_downsampling(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test embedding clustering with downsampling"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=200,  # More data points
     )
 
@@ -325,8 +325,8 @@ def test_load_clusters_df_with_downsampling(db_session):
     assert clusters_df.height == 100
 
     # Check that each embedding model has clusters (considering downsampling)
-    dummy_clusters = clusters_df.filter(pl.col("embedding_model") == "Dummy")
-    dummy2_clusters = clusters_df.filter(pl.col("embedding_model") == "Dummy2")
+    dummy_clusters = clusters_df.filter(pl.col("embedding_model") == "DummyText")
+    dummy2_clusters = clusters_df.filter(pl.col("embedding_model") == "DummyText2")
 
     # Verify that both models have at least one cluster assignment
     assert dummy_clusters.height > 0
@@ -358,7 +358,7 @@ def test_initial_prompt_embeddings(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test prompt embeddings", "another test prompt"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
 
@@ -410,7 +410,7 @@ def test_add_semantic_drift(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test semantic drift"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=100,
     )
 
@@ -452,7 +452,7 @@ def test_load_runs_df(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test runs dataframe"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
 
@@ -524,7 +524,7 @@ def test_load_pd_df(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1],
         prompts=["test persistence diagram data loading"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=100,  # Longer run to get more interesting persistence diagrams
     )
 
@@ -608,7 +608,7 @@ def test_add_persistence_entropy(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1],
         prompts=["test persistence entropy"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=100,  # Longer run to get more interesting persistence diagrams
     )
 
@@ -710,7 +710,7 @@ def test_cache_dfs(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],
         prompts=["test caching dataframes"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=100,  # Keep it small for testing
     )
     db_session.add(config)
@@ -798,7 +798,7 @@ def test_cache_dfs(db_session):
 
     # Verify both embedding models have clustering results
     models_in_clusters = clusters_df_cached["embedding_model"].unique().sort()
-    assert models_in_clusters.to_list() == ["Dummy", "Dummy2"], (
+    assert models_in_clusters.to_list() == ["DummyText", "DummyText2"], (
         f"Expected both embedding models in clusters, got {models_in_clusters.to_list()}"
     )
 
@@ -921,17 +921,17 @@ def test_filter_top_n_clusters():
     data = {
         "clustering_result_id": ["result1"] * 60 + ["result2"] * 40,
         "embedding_id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(100)],
-        "embedding_model": ["Dummy"] * 60 + ["Dummy2"] * 40,
+        "embedding_model": ["DummyText"] * 60 + ["DummyText2"] * 40,
         "cluster_id": list(range(100)),  # Unique cluster IDs
         "cluster_label": (
-            # Dummy model clusters with varying frequencies
+            # DummyText model clusters with varying frequencies
             ["cluster_A"] * 25  # Most common
             + ["cluster_B"] * 15  # Second most common
             + ["cluster_C"] * 10  # Third most common
             + ["cluster_D"] * 5  # Fourth most common
             + ["cluster_E"] * 5  # Fifth most common
             +
-            # Dummy2 model clusters with varying frequencies
+            # DummyText2 model clusters with varying frequencies
             ["cluster_X"] * 20  # Most common
             + ["cluster_Y"] * 10  # Second most common
             + ["cluster_Z"] * 8  # Third most common
@@ -957,7 +957,7 @@ def test_filter_top_n_clusters():
     )
 
     # Check results
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         model_row = top_clusters_by_model.filter(
             pl.col("embedding_model") == model
         ).row(0, named=True)
@@ -966,7 +966,7 @@ def test_filter_top_n_clusters():
         # Verify we got the expected number of top clusters
         expected_clusters = (
             ["cluster_A", "cluster_B"]
-            if model == "Dummy"
+            if model == "DummyText"
             else ["cluster_X", "cluster_Y"]
         )
         assert set(top_clusters) == set(expected_clusters), (
@@ -986,13 +986,13 @@ def test_filter_top_n_clusters():
     )
 
     # Check each model keeps only the single most common cluster
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         model_row = top_clusters_n1.filter(pl.col("embedding_model") == model).row(
             0, named=True
         )
         top_clusters = model_row["top_clusters"]
 
-        expected_top = ["cluster_A"] if model == "Dummy" else ["cluster_X"]
+        expected_top = ["cluster_A"] if model == "DummyText" else ["cluster_X"]
         assert set(top_clusters) == set(expected_top), (
             f"Expected top cluster for {model} to be {expected_top}, got {set(top_clusters)}"
         )
@@ -1012,7 +1012,7 @@ def test_filter_top_n_clusters():
     )
 
     # Check each combination has the expected top cluster
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         for prompt_num in range(1, 6):
             prompt = f"Test prompt {prompt_num}"
 
@@ -1025,7 +1025,7 @@ def test_filter_top_n_clusters():
             top_clusters = combination_row["top_clusters"]
 
             # Verify the top cluster for each combination
-            expected_top = ["cluster_A"] if model == "Dummy" else ["cluster_X"]
+            expected_top = ["cluster_A"] if model == "DummyText" else ["cluster_X"]
             assert set(top_clusters) == set(expected_top), (
                 f"Expected top cluster for {model}/{prompt} to be {expected_top}, got {set(top_clusters)}"
             )
@@ -1510,25 +1510,25 @@ def test_filter_top_n_clusters_by_model_and_network():
     data = {
         "clustering_result_id": ["result1"] * 60 + ["result2"] * 60,
         "embedding_id": [f"00000000-0000-0000-0000-{i:012d}" for i in range(120)],
-        "embedding_model": (["Dummy"] * 60 + ["Dummy2"] * 60),
+        "embedding_model": (["DummyText"] * 60 + ["DummyText2"] * 60),
         "cluster_id": list(range(120)),
         "cluster_label": (
-            # Dummy model, Network1 clusters
+            # DummyText model, Network1 clusters
             ["cluster_A1"] * 15  # Most common
             + ["cluster_B1"] * 10  # Second most common
             + ["cluster_C1"] * 5  # Third most common
             +
-            # Dummy model, Network2 clusters
+            # DummyText model, Network2 clusters
             ["cluster_A2"] * 12  # Most common
             + ["cluster_B2"] * 10  # Second most common
             + ["cluster_C2"] * 8  # Third most common
             +
-            # Dummy2 model, Network1 clusters
+            # DummyText2 model, Network1 clusters
             ["cluster_X1"] * 20  # Most common
             + ["cluster_Y1"] * 8  # Second most common
             + ["cluster_Z1"] * 2  # Third most common
             +
-            # Dummy2 model, Network2 clusters
+            # DummyText2 model, Network2 clusters
             ["cluster_X2"] * 18  # Most common
             + ["cluster_Y2"] * 12  # Second most common
             + ["cluster_Z2"] * 0  # No instances
@@ -1554,13 +1554,13 @@ def test_filter_top_n_clusters_by_model_and_network():
 
     # Check results for each combination
     expected_top_clusters = {
-        ("Dummy", "Network1"): ["cluster_A1", "cluster_B1"],
-        ("Dummy", "Network2"): ["cluster_A2", "cluster_B2"],
-        ("Dummy2", "Network1"): ["cluster_X1", "cluster_Y1"],
-        ("Dummy2", "Network2"): ["cluster_X2", "cluster_Y2"],
+        ("DummyText", "Network1"): ["cluster_A1", "cluster_B1"],
+        ("DummyText", "Network2"): ["cluster_A2", "cluster_B2"],
+        ("DummyText2", "Network1"): ["cluster_X1", "cluster_Y1"],
+        ("DummyText2", "Network2"): ["cluster_X2", "cluster_Y2"],
     }
 
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         for network in ["Network1", "Network2"]:
             combo_row = top_clusters_by_combo.filter(
                 (pl.col("embedding_model") == model) & (pl.col("network") == network)
@@ -1588,13 +1588,13 @@ def test_filter_top_n_clusters_by_model_and_network():
 
     # Check each combination keeps only the single most common cluster
     expected_top_one = {
-        ("Dummy", "Network1"): ["cluster_A1"],
-        ("Dummy", "Network2"): ["cluster_A2"],
-        ("Dummy2", "Network1"): ["cluster_X1"],
-        ("Dummy2", "Network2"): ["cluster_X2"],
+        ("DummyText", "Network1"): ["cluster_A1"],
+        ("DummyText", "Network2"): ["cluster_A2"],
+        ("DummyText2", "Network1"): ["cluster_X1"],
+        ("DummyText2", "Network2"): ["cluster_X2"],
     }
 
-    for model in ["Dummy", "Dummy2"]:
+    for model in ["DummyText", "DummyText2"]:
         for network in ["Network1", "Network2"]:
             combo_row = top_clusters_n1.filter(
                 (pl.col("embedding_model") == model) & (pl.col("network") == network)
@@ -1904,7 +1904,7 @@ def test_calculate_wasserstein_distances(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1, -1],  # Use -1 for random outputs
         prompts=["test wasserstein distances", "another test prompt"],
-        embedding_models=["Dummy", "Dummy2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=50,  # Ensure enough embeddings per run for PD computation
     )
 
@@ -1918,7 +1918,7 @@ def test_calculate_wasserstein_distances(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Test for each embedding model
-    for embedding_model in ["Dummy", "Dummy2"]:
+    for embedding_model in ["DummyText", "DummyText2"]:
         # Calculate Wasserstein distances
         distance_matrices = calculate_wasserstein_distances(db_session, embedding_model)
 
@@ -1966,7 +1966,7 @@ def test_calculate_wasserstein_distances_edge_cases(db_session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1],  # Single run
         prompts=["test edge case"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=50,
     )
 
@@ -1980,7 +1980,7 @@ def test_calculate_wasserstein_distances_edge_cases(db_session):
     perform_experiment(str(config.id), db_url)
 
     # Calculate distances for single persistence diagram
-    distance_matrices = calculate_wasserstein_distances(db_session, "Dummy")
+    distance_matrices = calculate_wasserstein_distances(db_session, "DummyText")
 
     # Should still work with single diagram
     assert isinstance(distance_matrices, dict)

@@ -4,27 +4,27 @@ import ray
 from PIL import Image
 
 from panic_tda.cpd import find_breakpoints
-from panic_tda.embeddings import Dummy, Dummy2
+from panic_tda.embeddings import DummyText, DummyText2
 
 
 # Fixture to create dummy embedding actors
 @pytest.fixture(scope="module")
 def dummy_actors():
-    dummy_model = Dummy.remote()
-    dummy2_model = Dummy2.remote()
+    dummy_model = DummyText.remote()
+    dummy2_model = DummyText2.remote()
     yield dummy_model, dummy2_model
     # Clean up actors
     ray.kill(dummy_model)
     ray.kill(dummy2_model)
 
 
-# Helper function to generate sample embeddings using Dummy/Dummy2 models
+# Helper function to generate sample embeddings using DummyText/DummyText2 models
 def generate_dummy_embeddings(dummy_actors, n_samples=100, change_points=None):
     """
     Generates a sequence of embeddings with simulated change points.
 
     Args:
-        dummy_actors: Tuple containing Dummy and Dummy2 Ray actors.
+        dummy_actors: Tuple containing DummyText and DummyText2 Ray actors.
         n_samples: Total number of embeddings to generate.
         change_points: List of indices where the data generation process changes.
                        If None, generates a homogeneous sequence.

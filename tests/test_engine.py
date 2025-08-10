@@ -228,7 +228,7 @@ def test_init_runs(db_session: Session):
         networks=[["DummyT2I", "DummyI2T"], ["SDXLTurbo", "Moondream"]],
         seeds=[42, 43],
         prompts=["Test prompt A", "Test prompt B"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=3,
     )
 
@@ -351,7 +351,7 @@ def test_compute_embeddings(db_session: Session):
     db_url = str(db_session.get_bind().engine.url)
 
     # Create an embedding actor
-    embedding_model = "Dummy"
+    embedding_model = "DummyText"
     actor = get_embedding_actor_class(embedding_model).remote()
 
     # Get invocation IDs as strings for the batch
@@ -428,7 +428,7 @@ def test_compute_embeddings_skips_existing(db_session: Session):
         invocations.append(invocation)
 
     # Create an embedding for the first invocation
-    embedding_model = "Dummy"
+    embedding_model = "DummyText"
     existing_embedding = Embedding(
         invocation_id=invocations[0].id,
         embedding_model=embedding_model,
@@ -529,7 +529,7 @@ def test_perform_embeddings_stage(db_session: Session):
     db_url = str(db_session.get_bind().engine.url)
 
     # Call the perform_embeddings_stage function with two embedding models
-    embedding_models = ["Dummy", "Dummy2"]
+    embedding_models = ["DummyText", "DummyText2"]
     embedding_ids = perform_embeddings_stage(
         invocation_ids, embedding_models, db_url, num_actors=2
     )
@@ -592,7 +592,7 @@ def test_compute_persistence_diagram(db_session: Session):
         # Compute embedding for the invocation
         embedding = Embedding(
             invocation_id=invocation.id,
-            embedding_model="Dummy",
+            embedding_model="DummyText",
             vector=None,
         )
         db_session.add(embedding)
@@ -612,7 +612,7 @@ def test_compute_persistence_diagram(db_session: Session):
     # Get the SQLite connection string from the session
     db_url = str(db_session.get_bind().engine.url)
     # Call the compute_persistence_diagram function
-    pd_id_ref = compute_persistence_diagram.remote(str(run.id), "Dummy", db_url)
+    pd_id_ref = compute_persistence_diagram.remote(str(run.id), "DummyText", db_url)
     pd_id = ray.get(pd_id_ref)
     # Convert string UUID to UUID object
     pd_uuid = UUID(pd_id)
@@ -621,7 +621,7 @@ def test_compute_persistence_diagram(db_session: Session):
     pd = db_session.get(PersistenceDiagram, pd_uuid)
     assert pd is not None
     assert pd.run_id == run.id
-    assert pd.embedding_model == "Dummy"
+    assert pd.embedding_model == "DummyText"
     assert pd.diagram_data is not None
 
     # Verify the persistence diagram has start and complete timestamps
@@ -651,7 +651,7 @@ def test_perform_pd_stage(db_session: Session):
         runs.append(run)
 
     # For each run, create invocations and embeddings
-    embedding_models = ["Dummy", "Dummy2"]
+    embedding_models = ["DummyText", "DummyText2"]
 
     for run in runs:
         for i in range(3):  # 3 invocations per run
@@ -723,7 +723,7 @@ def test_perform_experiment(db_session: Session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1],
         prompts=["Test prompt A", "Test prompt B"],
-        embedding_models=["Dummy", "Dummy2"],  # Added second embedding model
+        embedding_models=["DummyText", "DummyText2"],  # Added second embedding model
         max_length=10,  # Increased max length (especially for -1 seed)
     )
 
@@ -788,7 +788,7 @@ def test_restart_experiment(db_session: Session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[-1, -1],  # Two random seeds
         prompts=["Test prompt for restart"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,
     )
 
@@ -1269,7 +1269,7 @@ def test_model_combination(t2i_model, i2t_model, db_session: Session):
     assert len(invocation_ids) > 0
 
     # Compute embeddings for all invocations using a simple embedding model
-    embedding_model = "Dummy"
+    embedding_model = "DummyText"
     embedding_ids = perform_embeddings_stage(invocation_ids, [embedding_model], db_url)
 
     # Verify we got embeddings (only for TEXT invocations)
@@ -1296,7 +1296,7 @@ def test_experiment_doctor_with_fix(db_session: Session):
         networks=[["DummyT2I", "DummyI2T"]],
         seeds=[42],
         prompts=["Test prompt for doctor"],
-        embedding_models=["Dummy", "Dummy2"],  # Using two embedding models
+        embedding_models=["DummyText", "DummyText2"],  # Using two embedding models
         max_length=4,  # Increased to 4 to ensure at least 2 text invocations for PD
     )
 
@@ -1348,13 +1348,13 @@ def test_experiment_doctor_with_fix(db_session: Session):
             # and completely missing the other embedding model
             embedding = Embedding(
                 invocation_id=invocation.id,
-                embedding_model="Dummy",
+                embedding_model="DummyText",
                 vector=None,  # Null vector - will be detected as an issue
                 started_at=datetime.now(),
                 completed_at=datetime.now(),
             )
             db_session.add(embedding)
-            # We don't create an embedding for "Dummy2" at all - will be detected as missing
+            # We don't create an embedding for "DummyText2" at all - will be detected as missing
 
         db_session.add(invocation)
         db_session.commit()
@@ -1417,3 +1417,165 @@ def test_experiment_doctor_with_fix(db_session: Session):
     assert invalid_pd is None, (
         "Persistence diagram with invalid embedding model should be deleted"
     )
+
+
+def test_experiment_with_vision_embedding_models(db_session):
+    """Test that experiments with vision embedding models work correctly."""
+    from panic_tda.embeddings import get_model_type, EmbeddingModelType
+
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Create experiment config with vision models and image-generating network
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],  # Includes image generation
+        seeds=[42],
+        prompts=["Test prompt for vision"],
+        embedding_models=["DummyVision", "DummyVision2"],  # Vision embedding models
+        max_length=5,  # Need more steps to get enough image embeddings
+    )
+
+    # Verify our models are vision models
+    assert get_model_type("DummyVision") == EmbeddingModelType.IMAGE
+    assert get_model_type("DummyVision2") == EmbeddingModelType.IMAGE
+
+    # Store config in database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment
+    perform_experiment(str(config.id), db_url)
+
+    # Refresh the config from the database to see changes
+    db_session.expire_all()
+    config = db_session.get(ExperimentConfig, config.id)
+    assert config is not None
+    assert config.completed_at is not None  # Marked as completed
+
+    run = db_session.exec(select(Run)).first()
+    assert run is not None
+
+    # Check that we have invocations with both text and image types
+    text_invocations = [
+        inv for inv in run.invocations if inv.type == InvocationType.TEXT
+    ]
+    image_invocations = [
+        inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+    ]
+
+    assert len(text_invocations) > 0
+    assert len(image_invocations) > 0
+
+    # Check that image invocations have embeddings from vision models
+    for inv in image_invocations:
+        for model in config.embedding_models:
+            embedding = inv.embedding(model)
+            assert embedding is not None
+            assert embedding.vector is not None
+            assert len(embedding.vector) > 0
+
+    # Text invocations should not have embeddings from vision models (they're image-only)
+    for inv in text_invocations:
+        for model in config.embedding_models:
+            embedding = inv.embedding(model)
+            assert embedding is None  # Vision models don't embed text
+
+    # Should have persistence diagrams for vision models (from image invocations)
+    assert len(run.persistence_diagrams) == len(config.embedding_models)
+    for pd in run.persistence_diagrams:
+        assert pd.embedding_model in config.embedding_models
+        assert pd.diagram_data is not None
+
+
+def test_mixed_text_and_vision_embedding_models(db_session):
+    """Test that experiments with both text and vision embedding models work correctly."""
+    from datetime import datetime
+    from panic_tda.embeddings import get_model_type, EmbeddingModelType
+    from panic_tda.engine import init_runs, perform_runs_stage, perform_embeddings_stage
+
+    db_url = str(db_session.get_bind().engine.url)
+
+    # Create experiment config with both text and vision models
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],  # Includes both text and image generation
+        seeds=[42],
+        prompts=["Test mixed embeddings"],
+        embedding_models=["DummyText", "DummyVision"],  # Mixed model types
+        max_length=5,
+    )
+
+    # Verify model types
+    assert get_model_type("DummyText") == EmbeddingModelType.TEXT
+    assert get_model_type("DummyVision") == EmbeddingModelType.IMAGE
+
+    # Store config in database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment stages manually to avoid persistence diagram issues
+    # 1. Initialize runs
+    run_groups = init_runs(config.id, db_url)
+    all_run_ids = [run_id for group in run_groups for run_id in group]
+
+    # 2. Perform invocations
+    invocation_ids = []
+    for run_group in run_groups:
+        group_invocation_ids = perform_runs_stage(run_group, db_url)
+        invocation_ids.extend(group_invocation_ids)
+
+    # 3. Perform embeddings
+    embedding_models = config.embedding_models
+    perform_embeddings_stage(invocation_ids, embedding_models, db_url)
+
+    # Skip persistence diagrams stage since we may not have enough embeddings
+    # Mark experiment as completed
+    config.completed_at = datetime.now()
+    db_session.add(config)
+    db_session.commit()
+
+    # Verify the results
+    db_session.expire_all()
+    run = db_session.exec(select(Run)).first()
+    assert run is not None
+
+    # Check that we have invocations with both text and image types
+    text_invocations = [
+        inv for inv in run.invocations if inv.type == InvocationType.TEXT
+    ]
+    image_invocations = [
+        inv for inv in run.invocations if inv.type == InvocationType.IMAGE
+    ]
+
+    assert len(text_invocations) > 0
+    assert len(image_invocations) > 0
+
+    # Check that text invocations have embeddings from text models only
+    for inv in text_invocations:
+        text_embedding = inv.embedding("DummyText")
+        assert text_embedding is not None
+        assert text_embedding.vector is not None
+
+        vision_embedding = inv.embedding("DummyVision")
+        assert vision_embedding is None  # Vision models don't embed text
+
+    # Check that image invocations have embeddings from vision models only
+    for inv in image_invocations:
+        text_embedding = inv.embedding("DummyText")
+        assert text_embedding is None  # Text models don't embed images
+
+        vision_embedding = inv.embedding("DummyVision")
+        assert vision_embedding is not None
+        assert vision_embedding.vector is not None
+
+    # Verify proper separation of embeddings by type
+    text_embeddings = run.embeddings.get("DummyText", [])
+    vision_embeddings = run.embeddings.get("DummyVision", [])
+
+    # All text embeddings should be from text invocations
+    for emb in text_embeddings:
+        assert emb.invocation.type == InvocationType.TEXT
+
+    # All vision embeddings should be from image invocations
+    for emb in vision_embeddings:
+        assert emb.invocation.type == InvocationType.IMAGE

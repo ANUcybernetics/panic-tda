@@ -405,7 +405,7 @@ class STSBDistilRoberta(EmbeddingModel):
 
 
 @ray.remote
-class Dummy(EmbeddingModel):
+class DummyText(EmbeddingModel):
     model_type = EmbeddingModelType.TEXT
 
     def __init__(self):
@@ -536,7 +536,7 @@ class JinaClipVision(EmbeddingModel):
 
 
 @ray.remote
-class Dummy2(EmbeddingModel):
+class DummyText2(EmbeddingModel):
     model_type = EmbeddingModelType.TEXT
 
     def __init__(self):
@@ -559,6 +559,81 @@ class Dummy2(EmbeddingModel):
             # Normalize to 0-1 range
             vector = np.array(chars) / 255.0
             embeddings.append(vector.astype(np.float32))
+
+        return embeddings
+
+
+@ray.remote
+class DummyVision(EmbeddingModel):
+    model_type = EmbeddingModelType.IMAGE
+
+    def __init__(self):
+        """Initialize the dummy vision model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of image items and return embeddings."""
+        embeddings = []
+
+        # For image embedding models, contents should be PIL Images
+        for item in contents:
+            if isinstance(item, Image.Image):
+                # For images, use image properties to seed a deterministic vector
+                # Use width, height, and sum of first few pixels as seed
+                width, height = item.size
+                pixels = list(item.getdata())[:100] if item.mode != "P" else []
+                pixel_sum = sum(sum(p) if isinstance(p, tuple) else p for p in pixels)
+                seed = width + height + pixel_sum
+                np.random.seed(seed % (2**32))  # Ensure seed is valid
+
+                # Generate a deterministic vector using the seeded random number generator
+                vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+                embeddings.append(vector)
+            else:
+                raise ValueError(f"Expected PIL Image but got {type(item)}")
+
+        # Reset the random seed to avoid affecting other code
+        np.random.seed(None)
+        return embeddings
+
+
+@ray.remote
+class DummyVision2(EmbeddingModel):
+    model_type = EmbeddingModelType.IMAGE
+
+    def __init__(self):
+        """Initialize the dummy vision model."""
+        logger.info(f"Model {self.__class__.__name__} loaded successfully")
+
+    def embed(self, contents: List[str]) -> List[np.ndarray]:
+        """Process a batch of image items and return embeddings."""
+        embeddings = []
+
+        # For image embedding models, contents should be PIL Images
+        for item in contents:
+            if isinstance(item, Image.Image):
+                # For images, create deterministic values based on image properties
+                width, height = item.size
+                # Get average color of the image (simplified)
+                pixels = list(item.getdata())[:EMBEDDING_DIM]
+                if item.mode == "P":
+                    # Palette mode, just use pixel values
+                    pixel_values = pixels + [0] * (EMBEDDING_DIM - len(pixels))
+                else:
+                    # Extract color values
+                    pixel_values = []
+                    for p in pixels:
+                        if isinstance(p, tuple):
+                            pixel_values.extend(p)
+                        else:
+                            pixel_values.append(p)
+                    pixel_values = (pixel_values + [0] * EMBEDDING_DIM)[:EMBEDDING_DIM]
+
+                # Normalize to 0-1 range
+                vector = np.array(pixel_values) / 255.0
+                embeddings.append(vector.astype(np.float32))
+            else:
+                raise ValueError(f"Expected PIL Image but got {type(item)}")
 
         return embeddings
 

@@ -140,7 +140,7 @@ def test_export_video(db_session: Session, tmp_path):
         networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
         seeds=[-1] * 4,
         prompts=["north", "south", "east", "west"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,  # Short sequences for testing
     )
 
@@ -195,7 +195,7 @@ def test_export_wrapped_video(db_session: Session, tmp_path):
         ],
         seeds=[-1] * 12,
         prompts=["up", "down"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=10,  # Short sequences for testing
     )
 
@@ -240,7 +240,7 @@ def test_export_timeline(db_session: Session, tmp_path):
         networks=[["DummyT2I", "DummyI2T"], ["DummyT2I2", "DummyI2T2"]],
         seeds=[-1] * 4,
         prompts=["north", "south", "east", "west"],
-        embedding_models=["Dummy"],
+        embedding_models=["DummyText"],
         max_length=100,  # Short sequences for testing
     )
 

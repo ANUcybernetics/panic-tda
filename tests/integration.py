@@ -31,7 +31,7 @@ def test_end_to_end_with_caching(db_session):
             networks=[["DummyT2I", "DummyI2T"]],
             seeds=[-1],
             prompts=["Integration test with caching"],
-            embedding_models=["Dummy", "Dummy2"],
+            embedding_models=["DummyText", "DummyText2"],
             max_length=50,  # Reasonable size for testing
         )
         db_session.add(config)
@@ -176,8 +176,8 @@ def test_end_to_end_with_caching(db_session):
             "Expected 50 embeddings (25 per model)"
         )
         assert embeddings_df_cached["embedding_model"].unique().sort().to_list() == [
-            "Dummy",
-            "Dummy2",
+            "DummyText",
+            "DummyText2",
         ]
         assert embeddings_df_cached["text"].is_not_null().all(), (
             "Found null text in embeddings"
