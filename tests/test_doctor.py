@@ -614,7 +614,7 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
                     networks=[["DummyT2I"]],
                     seeds=[42],
                     prompts=["Test"],
-                    embedding_models=["TestModel", "FailingModel"],
+                    embedding_models=["DummyText", "DummyText2"],
                     max_length=5,
                 )
                 session.add(experiment)
@@ -645,7 +645,7 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
                     session.add(inv)
                     invocations.append(inv)
 
-                # Create embeddings for TestModel (all have vectors)
+                # Create embeddings for DummyText (all have vectors)
                 for inv in invocations:
                     emb = Embedding(
                         id=uuid4(),
@@ -657,12 +657,12 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
                     )
                     session.add(emb)
 
-                # Create embeddings for FailingModel (started but never completed, no vectors)
+                # Create embeddings for DummyText2 (started but never completed, no vectors)
                 for inv in invocations:
                     emb = Embedding(
                         id=uuid4(),
                         invocation_id=inv.id,
-                        embedding_model="FailingModel",
+                        embedding_model="DummyText2",
                         vector=None,  # No vector - failed computation
                         started_at=datetime.now(),
                         completed_at=None,  # Never completed
@@ -680,15 +680,15 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
                 # Should find that we need PDs for both models
                 assert len(issues) == 2
 
-                # The TestModel should be missing a PD (can be computed)
+                # The DummyText should be missing a PD (can be computed)
                 test_model_issues = [
-                    i for i in issues if i.get("embedding_model") == "TestModel"
+                    i for i in issues if i.get("embedding_model") == "DummyText"
                 ]
                 assert len(test_model_issues) == 1
 
-                # The FailingModel should also be missing a PD
+                # The DummyText2 should also be missing a PD
                 failing_model_issues = [
-                    i for i in issues if i.get("embedding_model") == "FailingModel"
+                    i for i in issues if i.get("embedding_model") == "DummyText2"
                 ]
                 assert len(failing_model_issues) == 1
 
@@ -712,7 +712,7 @@ class TestUUIDJsonSerialization:
         embedding_id2 = uuid4()
 
         issue = {
-            "embedding_model": "TestModel",
+            "embedding_model": "DummyText",
             "embedding_count": 2,
             "has_null_vector": False,
             "embedding_ids": [embedding_id1, embedding_id2],  # UUID objects
@@ -744,7 +744,7 @@ class TestUUIDJsonSerialization:
         report = DoctorReport()
 
         issue = {
-            "embedding_model": "TestModel",
+            "embedding_model": "DummyText",
             "embedding_count": 0,
             "has_null_vector": False,
             "embedding_ids": [],  # Empty list
@@ -773,7 +773,7 @@ class TestUUIDJsonSerialization:
 
         # Embedding issue with UUIDs
         embedding_issue = {
-            "embedding_model": "TestModel",
+            "embedding_model": "DummyText",
             "embedding_count": 1,
             "has_null_vector": True,
             "embedding_ids": [uuid4()],

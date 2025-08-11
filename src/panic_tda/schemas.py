@@ -418,6 +418,12 @@ class Run(SQLModel, table=True):
     )
     experiment: Optional["ExperimentConfig"] = Relationship(back_populates="runs")
 
+    def __init__(self, **data):
+        """Initialize and validate the Run."""
+        super().__init__(**data)
+        # Always validate after construction
+        self.validate_fields()
+
     @model_validator(mode="after")
     def validate_fields(self):
         """
@@ -426,6 +432,7 @@ class Run(SQLModel, table=True):
         Ensures:
         - network list is not empty
         - max_length is positive
+        - first model in network accepts text input (is a T2I model)
 
         Returns:
             Self if validation passes
@@ -437,6 +444,27 @@ class Run(SQLModel, table=True):
             raise ValueError("Network list cannot be empty")
         if self.max_length <= 0:
             raise ValueError("Max. run length must be greater than 0")
+
+        # Validate that the first model accepts text input
+        # Import here to avoid circular dependency
+        from panic_tda.genai_models import get_output_type
+
+        first_model = self.network[0]
+        try:
+            first_model_output = get_output_type(first_model)
+        except ValueError:
+            # Model not found - let the ExperimentConfig validator handle this
+            return self
+
+        # If the first model outputs TEXT, it's an I2T model (expects image input)
+        # If the first model outputs IMAGE, it's a T2I model (expects text input)
+        if first_model_output == InvocationType.TEXT:
+            raise ValueError(
+                f"Network must start with a text-to-image model, but '{first_model}' "
+                f"is an image-to-text model. Networks must start with models that accept "
+                f"text input since the initial prompt is text."
+            )
+
         return self
 
     @property
@@ -773,6 +801,12 @@ class ExperimentConfig(SQLModel, table=True):
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
     )
 
+    def __init__(self, **data):
+        """Initialize and validate the ExperimentConfig."""
+        super().__init__(**data)
+        # Always validate after construction
+        self.validate_fields()
+
     @model_validator(mode="after")
     def validate_fields(self):
         """
@@ -786,6 +820,7 @@ class ExperimentConfig(SQLModel, table=True):
         - Maximum length is positive
         - All models in networks are valid models in genai_models.list_models()
         - All models in embedding_models are valid models in embeddings.list_models()
+        - All networks start with T2I models
 
         Returns:
             Self if validation passes
@@ -807,10 +842,25 @@ class ExperimentConfig(SQLModel, table=True):
         # Import here to avoid circular imports
         from panic_tda.embeddings import list_models as list_embedding_models
         from panic_tda.genai_models import list_models as list_genai_models
+        from panic_tda.genai_models import get_output_type
 
         # Validate genai models
         valid_genai_models = list_genai_models()
         for network in self.networks:
+            if not network:
+                raise ValueError("Each network must contain at least one model")
+
+            # Check that first model in network is T2I (accepts text input)
+            first_model = network[0]
+            if first_model in valid_genai_models:
+                first_model_output = get_output_type(first_model)
+                if first_model_output == InvocationType.TEXT:
+                    raise ValueError(
+                        f"Network must start with a text-to-image model, but '{first_model}' "
+                        f"is an image-to-text model. Networks must start with models that accept "
+                        f"text input since the initial prompt is text."
+                    )
+
             for model in network:
                 if model not in valid_genai_models:
                     raise ValueError(

@@ -111,7 +111,7 @@ def test_image_invocation_output_setter_validation():
 def test_run_validation_success():
     """Test Run validation with correctly ordered invocations."""
     run_id = uuid7()
-    network = ["DummyI2T", "DummyT2I"]
+    network = ["DummyT2I", "DummyI2T"]
 
     invocations = [
         Invocation(
@@ -149,7 +149,7 @@ def test_invocation_input_property():
         id=run_id,
         seed=42,
         max_length=5,
-        network=["DummyI2T", "DummyT2I"],
+        network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test initial prompt",
     )
 
@@ -212,14 +212,14 @@ def test_embedding_creation():
 
 def test_run_network_property():
     """Test the network property serializes and deserializes correctly."""
-    network = ["DummyI2T", "DummyT2I"]
+    network = ["DummyT2I", "DummyI2T"]
     run = Run(seed=1, max_length=3, network=network)
 
     # Test that we can get the network back as model classes
     retrieved_network = run.network
     assert len(retrieved_network) == 2
-    assert retrieved_network[0] == "DummyI2T"
-    assert retrieved_network[1] == "DummyT2I"
+    assert retrieved_network[0] == "DummyT2I"
+    assert retrieved_network[1] == "DummyI2T"
 
 
 def test_experiment_config():
@@ -227,81 +227,119 @@ def test_experiment_config():
 
     # Create config directly without going through JSON file
     config = ExperimentConfig(
-        networks=[["DummyI2T", "DummyT2I"]],
+        networks=[["DummyT2I", "DummyI2T"]],
         seeds=[42, 123],
         prompts=["First prompt", "Second prompt"],
         embedding_models=["DummyText", "DummyText2"],
         max_length=5,
     )
 
-    # Manually call validate_fields since it doesn't happen in constructor
-    config.validate_fields()
+    # Validation happens in constructor now
 
     # Validate the config
     assert len(config.networks) == 1
-    assert config.networks[0] == ["DummyI2T", "DummyT2I"]
+    assert config.networks[0] == ["DummyT2I", "DummyI2T"]
     assert config.seeds == [42, 123]
     assert config.prompts == ["First prompt", "Second prompt"]
     assert config.embedding_models == ["DummyText", "DummyText2"]
     assert config.max_length == 5
 
     # Test validation error with empty seeds list
-    config_with_empty_seeds = ExperimentConfig(
-        networks=[["DummyI2T", "DummyT2I"]],
-        seeds=[],  # empty seeds list
-        prompts=["First prompt", "Second prompt"],
-        embedding_models=["DummyText", "DummyText2"],
-        max_length=5,
-    )
-    with pytest.raises(ValueError):
-        config_with_empty_seeds.validate_fields()
+    with pytest.raises(ValueError, match="Seeds list cannot be empty"):
+        config_with_empty_seeds = ExperimentConfig(
+            networks=[["DummyT2I", "DummyI2T"]],
+            seeds=[],  # empty seeds list
+            prompts=["First prompt", "Second prompt"],
+            embedding_models=["DummyText", "DummyText2"],
+            max_length=5,
+        )
 
 
 def test_experiment_config_invalid_values():
     """Test that ExperimentConfig raises errors for invalid values."""
     # Test empty list validation
-    config = ExperimentConfig(
-        networks=[],
-        seeds=[42],
-        prompts=["test"],
-        embedding_models=["test"],
-        max_length=5,
-    )
     with pytest.raises(ValueError, match="Networks list cannot be empty"):
-        config.validate_fields()
+        config = ExperimentConfig(
+            networks=[],
+            seeds=[42],
+            prompts=["test"],
+            embedding_models=["DummyText"],
+            max_length=5,
+        )
 
     # Test zero max_length validation
-    config = ExperimentConfig(
-        networks=[["DummyI2T"]],
-        seeds=[42],
-        prompts=["test"],
-        embedding_models=["test"],
-        max_length=0,
-    )
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
-        config.validate_fields()
+        config = ExperimentConfig(
+            networks=[["DummyT2I"]],
+            seeds=[42],
+            prompts=["test"],
+            embedding_models=["DummyText"],
+            max_length=0,
+        )
 
     # Test negative max_length validation
-    config = ExperimentConfig(
-        networks=[["DummyI2T"]],
-        seeds=[42],
-        prompts=["test"],
-        embedding_models=["test"],
-        max_length=-5,
-    )
     with pytest.raises(ValueError, match="Run length must be greater than 0"):
-        config.validate_fields()
+        config = ExperimentConfig(
+            networks=[["DummyT2I"]],
+            seeds=[42],
+            prompts=["test"],
+            embedding_models=["DummyText"],
+            max_length=-5,
+        )
 
     # Test missing required field
     with pytest.raises(ValueError):
         config = ExperimentConfig(
-            networks=[["DummyI2T"]],
+            networks=[["DummyT2I"]],
             seeds=[42],
             prompts=["test"],
             # Missing embedding_models
             max_length=5,
         )
-        config.validate_fields()  # Call validate explicitly
+
+
+def test_network_must_start_with_t2i_model():
+    """Test that networks must start with a text-to-image model."""
+    # Test Run with network starting with I2T model (invalid)
+    with pytest.raises(
+        ValueError, match="Network must start with a text-to-image model"
+    ):
+        run = Run(
+            seed=42,
+            max_length=5,
+            network=["DummyI2T", "DummyT2I"],  # Starts with I2T - invalid!
+            initial_prompt="Test prompt",
+        )
+
+    # Test ExperimentConfig with network starting with I2T model (invalid)
+    with pytest.raises(
+        ValueError, match="Network must start with a text-to-image model"
+    ):
+        config = ExperimentConfig(
+            networks=[["DummyI2T", "DummyT2I"]],  # Starts with I2T - invalid!
+            seeds=[42],
+            prompts=["test"],
+            embedding_models=["DummyText"],
+            max_length=5,
+        )
+
+    # Valid configurations should work
+    run = Run(
+        seed=42,
+        max_length=5,
+        network=["DummyT2I", "DummyI2T"],  # Starts with T2I - valid
+        initial_prompt="Test prompt",
+    )
+    assert run.network[0] == "DummyT2I"
+
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],  # Starts with T2I - valid
+        seeds=[42],
+        prompts=["test"],
+        embedding_models=["DummyText"],
+        max_length=5,
+    )
+    assert config.networks[0][0] == "DummyT2I"
 
 
 def test_invocation_duration_property():

@@ -40,7 +40,10 @@ def test_read_invocation(db_session: Session):
     """Test the read_invocation function."""
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test read_invocation", network=["model1"], seed=42, max_length=3
+        initial_prompt="test read_invocation",
+        network=["DummyT2I"],
+        seed=42,
+        max_length=3,
     )
 
     # Create a sample invocation
@@ -78,7 +81,7 @@ def test_read_run(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test read_run",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
     )
@@ -92,7 +95,7 @@ def test_read_run(db_session: Session):
     assert run is not None
     assert run.id == sample_run.id
     assert run.initial_prompt == "test read_run"
-    assert run.network == ["model1", "model2"]
+    assert run.network == ["DummyT2I", "DummyI2T"]
     assert run.seed == 42
 
     # Test with invalid ID
@@ -106,7 +109,7 @@ def test_run_creation(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="once upon a...",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
     )
@@ -118,7 +121,7 @@ def test_run_creation(db_session: Session):
 
     assert retrieved_run is not None
     assert retrieved_run.id == sample_run.id
-    assert retrieved_run.network == ["model1", "model2"]
+    assert retrieved_run.network == ["DummyT2I", "DummyI2T"]
     assert retrieved_run.seed == 42
     assert retrieved_run.max_length == 5
 
@@ -128,7 +131,7 @@ def test_text_invocation(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="once upon a...",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
     )
@@ -161,7 +164,7 @@ def test_image_invocation(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="once upon a...",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
     )
@@ -203,7 +206,7 @@ def test_embedding(db_session: Session):
     # Create a sample text invocation
     sample_run = Run(
         initial_prompt="once upon a...",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
     )
@@ -243,7 +246,7 @@ def test_read_embedding(db_session: Session):
     # Create a sample run and invocation
     sample_run = Run(
         initial_prompt="test read embedding",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=1,
     )
@@ -289,7 +292,7 @@ def test_find_embedding_for_vector(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test find embedding",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
@@ -365,7 +368,7 @@ def test_incomplete_embeddings(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test incomplete embeddings",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
@@ -435,7 +438,7 @@ def test_list_invocations(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test list invocations",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
@@ -486,7 +489,10 @@ def test_list_embeddings(db_session: Session):
 
     # Create a sample run
     sample_run = Run(
-        initial_prompt="test list embeddings", network=["model1"], seed=42, max_length=3
+        initial_prompt="test list embeddings",
+        network=["DummyT2I"],
+        seed=42,
+        max_length=3,
     )
 
     # Create invocations
@@ -544,7 +550,7 @@ def test_delete_invocation(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test delete_invocation",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
@@ -601,10 +607,10 @@ def test_experiment_config_storage(db_session: Session):
     """Test storing and retrieving ExperimentConfig objects."""
     # Create a sample experiment config
     experiment_config = ExperimentConfig(
-        networks=[["model1", "model2"], ["model3"]],
+        networks=[["DummyT2I", "DummyI2T"], ["DummyT2I"]],
         seeds=[42, 43],
         prompts=["test prompt 1", "test prompt 2"],
-        embedding_models=["embedding_model_1", "embedding_model_2"],
+        embedding_models=["DummyText", "DummyText2"],
         max_length=5,
     )
 
@@ -616,17 +622,17 @@ def test_experiment_config_storage(db_session: Session):
 
     assert retrieved is not None
     assert retrieved.id == experiment_config.id
-    assert retrieved.networks == [["model1", "model2"], ["model3"]]
+    assert retrieved.networks == [["DummyT2I", "DummyI2T"], ["DummyT2I"]]
     assert retrieved.seeds == [42, 43]
     assert retrieved.prompts == ["test prompt 1", "test prompt 2"]
-    assert retrieved.embedding_models == ["embedding_model_1", "embedding_model_2"]
+    assert retrieved.embedding_models == ["DummyText", "DummyText2"]
     assert retrieved.max_length == 5
 
     # Test relationships
     # Create a run linked to this experiment
     sample_run = Run(
         initial_prompt="test experiment config",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=5,
         experiment_id=experiment_config.id,
@@ -647,17 +653,17 @@ def test_experiment_config_cascading_delete(db_session: Session):
     """Test that deleting an ExperimentConfig cascades to all related entities."""
     # Create experiment config
     experiment_config = ExperimentConfig(
-        networks=[["model1"]],
+        networks=[["DummyT2I"]],
         seeds=[42],
         prompts=["test prompt"],
-        embedding_models=["embedding_model"],
+        embedding_models=["DummyText"],
         max_length=3,
     )
 
     # Create a run linked to this experiment
     run = Run(
         initial_prompt="test cascade delete",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
         experiment_id=experiment_config.id,
@@ -717,19 +723,19 @@ def test_latest_experiment(db_session: Session):
     """Test the latest_experiment function."""
     # Create multiple experiment configs with different timestamps
     experiment_config1 = ExperimentConfig(
-        networks=[["model1"]],
+        networks=[["DummyT2I"]],
         seeds=[42],
         prompts=["test prompt 1"],
-        embedding_models=["embedding_model_1"],
+        embedding_models=["DummyText"],
         max_length=3,
         started_at=datetime.now(),
     )
 
     experiment_config2 = ExperimentConfig(
-        networks=[["model2"]],
+        networks=[["DummyT2I2"]],
         seeds=[43],
         prompts=["test prompt 2"],
-        embedding_models=["embedding_model_2"],
+        embedding_models=["DummyText2"],
         max_length=4,
         started_at=datetime.now(),
     )
@@ -750,7 +756,7 @@ def test_latest_experiment(db_session: Session):
     assert latest is not None
     assert latest.id == experiment_config2.id
     assert latest.prompts == ["test prompt 2"]
-    assert latest.networks == [["model2"]]
+    assert latest.networks == [["DummyT2I2"]]
 
     # Test with no experiments in the database
     db_session.delete(experiment_config1)
@@ -826,7 +832,7 @@ def test_droplet_and_leaf_invocations(db_session: Session):
     # Create a sample run
     sample_run = Run(
         initial_prompt="test leaf and droplet",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
@@ -971,21 +977,21 @@ def test_list_completed_run_ids(db_session: Session):
     # Group 1: prompt A, network 1 (many runs with this combination)
     run1 = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
     )
 
     run2 = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=43,
         max_length=3,
     )
 
     run3 = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=44,
         max_length=3,
     )
@@ -993,21 +999,21 @@ def test_list_completed_run_ids(db_session: Session):
     # Adding more runs for prompt A, network 1 to test imbalanced distribution
     run3a = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=101,
         max_length=3,
     )
 
     run3b = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=102,
         max_length=3,
     )
 
     run3c = Run(
         initial_prompt="test prompt A",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=103,
         max_length=3,
     )
@@ -1015,14 +1021,14 @@ def test_list_completed_run_ids(db_session: Session):
     # Group 2: prompt A, network 2
     run4 = Run(
         initial_prompt="test prompt A",
-        network=["model2"],
+        network=["DummyT2I2"],
         seed=45,
         max_length=3,
     )
 
     run5 = Run(
         initial_prompt="test prompt A",
-        network=["model2"],
+        network=["DummyT2I2"],
         seed=46,
         max_length=3,
     )
@@ -1030,14 +1036,14 @@ def test_list_completed_run_ids(db_session: Session):
     # Group 3: prompt B, network 1
     run6 = Run(
         initial_prompt="test prompt B",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=47,
         max_length=3,
     )
 
     run7 = Run(
         initial_prompt="test prompt B",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=48,
         max_length=3,
     )
@@ -1045,7 +1051,7 @@ def test_list_completed_run_ids(db_session: Session):
     # Group 4: prompt C, network 3 (only one run)
     run8 = Run(
         initial_prompt="test prompt C",
-        network=["model3"],
+        network=["DummyT2I"],
         seed=49,
         max_length=3,
     )
@@ -1138,7 +1144,7 @@ def test_list_completed_run_ids(db_session: Session):
     # Should include up to 2 runs from each prompt+network combination that have persistence diagrams
     assert (
         len(results) == 7
-    )  # 2 from (A,model1), 2 from (A,model2), 2 from (B,model1), 1 from (C,model3)
+    )  # 2 from (A,DummyT2I), 2 from (A,DummyT2I2), 2 from (B,DummyT2I), 1 from (C,DummyT2I)
 
     # Verify runs from Group 1 - should only include 2 despite having 4 valid runs
     group1_count = sum(
@@ -1202,18 +1208,18 @@ def test_export_experiments(db_session: Session, tmp_path):
     """Test the export_experiments function."""
     # Create two experiment configs
     experiment1 = ExperimentConfig(
-        networks=[["model1", "model2"]],
+        networks=[["DummyT2I", "DummyI2T"]],
         seeds=[42, 43],
         prompts=["test prompt 1"],
-        embedding_models=["embedding_model_1"],
+        embedding_models=["DummyText"],
         max_length=3,
     )
 
     experiment2 = ExperimentConfig(
-        networks=[["model3"]],
+        networks=[["DummyT2I"]],
         seeds=[44],
         prompts=["test prompt 2", "test prompt 3"],
-        embedding_models=["embedding_model_2"],
+        embedding_models=["DummyText2"],
         max_length=2,
     )
 
@@ -1221,7 +1227,7 @@ def test_export_experiments(db_session: Session, tmp_path):
     run1_1 = Run(
         experiment_id=experiment1.id,
         initial_prompt="test prompt 1",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=3,
     )
@@ -1229,7 +1235,7 @@ def test_export_experiments(db_session: Session, tmp_path):
     run1_2 = Run(
         experiment_id=experiment1.id,
         initial_prompt="test prompt 1",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=43,
         max_length=3,
     )
@@ -1238,7 +1244,7 @@ def test_export_experiments(db_session: Session, tmp_path):
     run2_1 = Run(
         experiment_id=experiment2.id,
         initial_prompt="test prompt 2",
-        network=["model3"],
+        network=["DummyT2I"],
         seed=44,
         max_length=2,
     )
@@ -1264,11 +1270,11 @@ def test_export_experiments(db_session: Session, tmp_path):
 
     invocation3 = Invocation(
         run_id=run2_1.id,
-        model="model3",
+        model="DummyT2I",
         type=InvocationType.TEXT,
         seed=44,
         sequence_number=0,
-        output_text="Output from model3",
+        output_text="Output from DummyT2I",
     )
 
     # Create embeddings
@@ -1286,7 +1292,7 @@ def test_export_experiments(db_session: Session, tmp_path):
 
     embedding3 = Embedding(
         invocation_id=invocation3.id,
-        embedding_model="embedding_model_2",
+        embedding_model="DummyText2",
         vector=np.array([0.7, 0.8, 0.9], dtype=np.float32),
     )
 
@@ -1299,7 +1305,7 @@ def test_export_experiments(db_session: Session, tmp_path):
 
     diagram2 = PersistenceDiagram(
         run_id=run2_1.id,
-        embedding_model="embedding_model_2",
+        embedding_model="DummyText2",
         generators=[np.array([[0.3, 0.6], [0.4, 0.8]])],
     )
 

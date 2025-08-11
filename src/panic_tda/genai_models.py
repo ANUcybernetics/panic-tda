@@ -360,16 +360,15 @@ class DummyI2T(GenAIModel):
 
     def invoke(self, image: Image.Image, seed: int) -> str:
         """Return a dummy text caption that incorporates image properties deterministically"""
-        # Handle case where test data passes a string instead of an image
-        if isinstance(image, str):
-            # Use hash of string for deterministic variation
-            input_hash = hash(image)
-        else:
-            # Get deterministic hash from image content
-            pixels = list(image.getdata())
-            # Use first few pixels for a quick hash (deterministic)
-            sample_pixels = pixels[: min(10, len(pixels))]
-            input_hash = hash(tuple(sample_pixels))
+        import hashlib
+
+        # Get deterministic hash from image content
+        pixels = list(image.getdata())
+        # Use first few pixels for a quick hash (deterministic)
+        sample_pixels = pixels[: min(10, len(pixels))]
+        # Convert to bytes and hash deterministically
+        pixel_bytes = str(sample_pixels).encode()
+        input_hash = int(hashlib.sha256(pixel_bytes).hexdigest()[:8], 16)
 
         if seed == -1:
             # Non-deterministic: generate unique output using timestamp + random
@@ -417,8 +416,10 @@ class DummyT2I(GenAIModel):
 
     def invoke(self, prompt: str, seed: int) -> Image.Image:
         """Return a dummy colored image deterministically based on prompt and seed"""
-        # Get deterministic hash from prompt
-        prompt_hash = hash(prompt)
+        import hashlib
+
+        # Get deterministic hash from prompt using SHA256
+        prompt_hash = int(hashlib.sha256(prompt.encode()).hexdigest()[:8], 16)
 
         if seed == -1:
             # Non-deterministic: generate unique colors using time + random
@@ -453,16 +454,15 @@ class DummyI2T2(GenAIModel):
 
     def invoke(self, image: Image.Image, seed: int) -> str:
         """Return a dummy text caption (version 2) deterministically based on image and seed"""
-        # Handle case where test data passes a string instead of an image
-        if isinstance(image, str):
-            # Use hash of string for deterministic variation
-            input_hash = hash(image)
-        else:
-            # Get deterministic hash from image content
-            pixels = list(image.getdata())
-            # Use first few pixels for a quick hash (deterministic)
-            sample_pixels = pixels[: min(10, len(pixels))]
-            input_hash = hash(tuple(sample_pixels))
+        import hashlib
+
+        # Get deterministic hash from image content
+        pixels = list(image.getdata())
+        # Use first few pixels for a quick hash (deterministic)
+        sample_pixels = pixels[: min(10, len(pixels))]
+        # Convert to bytes and hash deterministically
+        pixel_bytes = str(sample_pixels).encode()
+        input_hash = int(hashlib.sha256(pixel_bytes).hexdigest()[:8], 16)
 
         if seed == -1:
             # Non-deterministic: generate unique output using UUID
@@ -509,8 +509,10 @@ class DummyT2I2(GenAIModel):
 
     def invoke(self, prompt: str, seed: int) -> Image.Image:
         """Return a dummy colored image (magenta-tinted) deterministically based on prompt and seed"""
-        # Get deterministic hash from prompt
-        prompt_hash = hash(prompt)
+        import hashlib
+
+        # Get deterministic hash from prompt using SHA256
+        prompt_hash = int(hashlib.sha256(prompt.encode()).hexdigest()[:8], 16)
 
         if seed == -1:
             # Non-deterministic: generate unique colors using time + random
