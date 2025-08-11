@@ -647,11 +647,15 @@ class TestPersistenceDiagramWithNullVectorEmbeddings:
 
                 # Create embeddings for DummyText (all have vectors)
                 for inv in invocations:
+                    from panic_tda.embeddings import EMBEDDING_DIM
+
                     emb = Embedding(
                         id=uuid4(),
                         invocation_id=inv.id,
                         embedding_model="DummyText",
-                        vector=np.random.random(100).tolist(),  # Valid vectors
+                        vector=np.random.random(
+                            EMBEDDING_DIM
+                        ).tolist(),  # Valid vectors
                         started_at=datetime.now(),
                         completed_at=datetime.now(),
                     )
@@ -1226,10 +1230,13 @@ def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
                             inv_type == InvocationType.IMAGE
                             and model_type == EmbeddingModelType.IMAGE
                         ):
+                            # Import EMBEDDING_DIM for consistency
+                            from panic_tda.embeddings import EMBEDDING_DIM
+
                             embedding = Embedding(
                                 invocation_id=invocation.id,
                                 embedding_model=emb_model,
-                                vector=np.random.random(10).tolist()
+                                vector=np.random.random(EMBEDDING_DIM).tolist()
                                 if i < 10
                                 else None,  # Some null vectors
                                 started_at=datetime.now(),
@@ -1275,10 +1282,12 @@ def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
         db_session.add(null_pd)
 
     # Create orphaned records (not related to the experiment)
+    from panic_tda.embeddings import EMBEDDING_DIM
+
     orphan_emb = Embedding(
         invocation_id=uuid4(),  # Non-existent invocation
         embedding_model="DummyText",
-        vector=np.random.random(10).tolist(),
+        vector=np.random.random(EMBEDDING_DIM).tolist(),
         started_at=datetime.now(),
         completed_at=datetime.now(),
     )
