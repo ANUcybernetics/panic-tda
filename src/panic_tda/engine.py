@@ -665,7 +665,7 @@ def perform_embeddings_stage(
     return all_embedding_ids
 
 
-def perform_pd_stage(run_ids, embedding_models, db_str):
+def perform_pd_stage(run_ids, embedding_models, db_str, max_concurrent=4):
     """
     Compute persistence diagrams for all runs using specified embedding models.
 
@@ -673,6 +673,8 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
         run_ids: List of run UUIDs as strings
         embedding_models: List of embedding model names to use
         db_str: Database connection string
+        max_concurrent: Maximum number of concurrent PD computations (default: 4)
+                       Each task uses 8 CPUs, so 4 tasks = 32 CPUs max
 
     Returns:
         List of persistence diagram IDs
@@ -681,18 +683,34 @@ def perform_pd_stage(run_ids, embedding_models, db_str):
     task_count = len(run_ids) * len(embedding_models)
     logger.info(f"Computing {task_count} persistence diagrams for {len(run_ids)} runs")
 
-    # Create compute tasks for all run/model combinations
+    # Create all task specifications (but don't submit them yet)
+    task_specs = []
     for run_id in run_ids:
         for embedding_model in embedding_models:
-            pd_tasks.append(
+            task_specs.append((run_id, embedding_model))
+
+    # Process tasks in batches to limit concurrency
+    all_pd_ids = []
+    for i in range(0, len(task_specs), max_concurrent):
+        batch = task_specs[i : i + max_concurrent]
+        batch_tasks = []
+
+        # Submit batch of tasks
+        for run_id, embedding_model in batch:
+            batch_tasks.append(
                 compute_persistence_diagram.remote(run_id, embedding_model, db_str)
             )
 
-    # Get results from all tasks
-    pd_ids = ray.get(pd_tasks)
-    logger.info(f"Completed {len(pd_ids)} persistence diagrams")
+        # Wait for batch to complete before starting next batch
+        batch_results = ray.get(batch_tasks)
+        all_pd_ids.extend(batch_results)
 
-    return pd_ids
+        completed = min(i + max_concurrent, len(task_specs))
+        logger.info(f"Completed {completed}/{task_count} persistence diagrams")
+
+    logger.info(f"Completed all {len(all_pd_ids)} persistence diagrams")
+
+    return all_pd_ids
 
 
 def perform_experiment(experiment_config_id: str, db_str: str) -> None:
