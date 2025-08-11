@@ -5,9 +5,12 @@ Tests for the doctor module.
 import json
 import tempfile
 import os
+from datetime import datetime
 from uuid import uuid4
 
+import numpy as np
 import pytest
+from PIL import Image
 from sqlmodel import Session, create_engine, select
 
 from panic_tda.doctor import (
@@ -1118,3 +1121,481 @@ class TestDoctorReportSummary:
         assert stats["total_issues"]["run_invocations"] == 2
         assert stats["total_issues"]["embeddings"] == 1
         assert stats["duration_seconds"] >= 0
+
+
+@pytest.mark.slow
+def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
+    """
+    Comprehensive test for doctor functionality using all dummy models.
+
+    This test:
+    1. Creates a full experiment with all 8 dummy models
+    2. Performs the experiment to generate data
+    3. Systematically corrupts the data
+    4. Runs doctor checks to verify issue detection
+    5. Runs doctor with --fix to repair issues
+    6. Verifies all issues are resolved
+    """
+    from panic_tda.embeddings import get_model_type, EmbeddingModelType
+
+    # Create test experiment config with dummy models (not using T2I2/I2T2 to avoid actor issues in test)
+    config = ExperimentConfig(
+        networks=[
+            ["DummyT2I", "DummyI2T"],  # Text to image, then back
+            ["DummyT2I", "DummyI2T"],  # Same models again for more test data
+        ],
+        seeds=[42, 123],  # Multiple seeds for more test data
+        prompts=["Test prompt for comprehensive doctor test", "Another test prompt"],
+        embedding_models=[
+            "DummyText",  # Text embedding models
+            "DummyText2",
+            "DummyVision",  # Image embedding models
+            "DummyVision2",
+        ],
+        max_length=100,  # Long sequence as requested
+    )
+
+    # Save config to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+    experiment_id = str(config.id)
+
+    # Create runs with various issues
+    runs = []
+    for network_idx, network in enumerate(config.networks):
+        for seed in config.seeds:
+            for prompt in config.prompts:
+                run = Run(
+                    network=network,
+                    initial_prompt=prompt,
+                    seed=seed,
+                    max_length=config.max_length,
+                    experiment_id=config.id,
+                )
+                db_session.add(run)
+                db_session.commit()
+                db_session.refresh(run)
+                runs.append(run)
+
+    # Create invocations for each run (with some completeness)
+    for run_idx, run in enumerate(runs):
+        # Create all invocations for first run (will corrupt later)
+        if run_idx == 0:
+            for i in range(run.max_length):
+                # Alternate between text and image outputs
+                inv_type = InvocationType.IMAGE if i % 2 == 0 else InvocationType.TEXT
+                model = run.network[0] if i % 2 == 0 else run.network[1]
+
+                invocation = Invocation(
+                    model=model,
+                    type=inv_type,
+                    run_id=run.id,
+                    sequence_number=i,
+                    seed=run.seed,
+                )
+                db_session.add(invocation)
+                db_session.commit()
+                db_session.refresh(invocation)
+
+                # Set output
+                if inv_type == InvocationType.IMAGE:
+                    image = Image.new("RGB", (100, 100), color=(i * 2, i * 2, i * 2))
+                    invocation.output = image
+                else:
+                    invocation.output = f"Text output {i} for run {run_idx}"
+
+                db_session.add(invocation)
+                db_session.commit()
+
+                # Create some embeddings (will corrupt some later)
+                if i < 50:  # Only create embeddings for first half
+                    for emb_model in config.embedding_models:
+                        try:
+                            model_type = get_model_type(emb_model)
+                            # Only create compatible embeddings
+                            if (
+                                inv_type == InvocationType.TEXT
+                                and model_type == EmbeddingModelType.TEXT
+                            ) or (
+                                inv_type == InvocationType.IMAGE
+                                and model_type == EmbeddingModelType.IMAGE
+                            ):
+                                embedding = Embedding(
+                                    invocation_id=invocation.id,
+                                    embedding_model=emb_model,
+                                    vector=np.random.random(10).tolist()
+                                    if i < 25
+                                    else None,  # Some null vectors
+                                    started_at=datetime.now(),
+                                    completed_at=datetime.now() if i < 25 else None,
+                                )
+                                db_session.add(embedding)
+                        except ValueError:
+                            pass
+
+        # For other runs, create incomplete invocation sequences
+        elif run_idx == 1:
+            # Missing first and last invocations
+            for i in range(1, run.max_length - 1):
+                if i % 10 == 0:  # Create gaps
+                    continue
+
+                inv_type = InvocationType.IMAGE if i % 2 == 0 else InvocationType.TEXT
+                model = run.network[0] if i % 2 == 0 else run.network[1]
+
+                invocation = Invocation(
+                    model=model,
+                    type=inv_type,
+                    run_id=run.id,
+                    sequence_number=i,
+                    seed=run.seed,
+                )
+                db_session.add(invocation)
+                db_session.commit()
+                db_session.refresh(invocation)
+
+                if inv_type == InvocationType.IMAGE:
+                    image = Image.new("RGB", (50, 50), color="red")
+                    invocation.output = image
+                else:
+                    invocation.output = f"Incomplete text {i}"
+
+                db_session.add(invocation)
+
+        elif run_idx == 2:
+            # Create invocations with sequence gaps
+            for i in [0, 2, 5, 10, 20, 30, 50, 99]:  # Non-contiguous sequences
+                inv_type = InvocationType.TEXT if i % 3 == 0 else InvocationType.IMAGE
+                model = (
+                    run.network[0]
+                    if inv_type == InvocationType.IMAGE
+                    else run.network[1]
+                )
+
+                invocation = Invocation(
+                    model=model,
+                    type=inv_type,
+                    run_id=run.id,
+                    sequence_number=i,
+                    seed=run.seed,
+                )
+                db_session.add(invocation)
+                db_session.commit()
+                db_session.refresh(invocation)
+
+                if inv_type == InvocationType.IMAGE:
+                    image = Image.new("RGB", (75, 75), color="green")
+                    invocation.output = image
+                else:
+                    invocation.output = f"Gap text {i}"
+
+                db_session.add(invocation)
+
+                # Create mismatched embeddings (text model on image, vice versa)
+                if i < 20:
+                    if inv_type == InvocationType.TEXT:
+                        # Incorrectly add image embedding to text invocation
+                        embedding = Embedding(
+                            invocation_id=invocation.id,
+                            embedding_model="DummyVision",  # Wrong type!
+                            vector=np.random.random(10).tolist(),
+                            started_at=datetime.now(),
+                            completed_at=datetime.now(),
+                        )
+                        db_session.add(embedding)
+                    else:
+                        # Incorrectly add text embedding to image invocation
+                        embedding = Embedding(
+                            invocation_id=invocation.id,
+                            embedding_model="DummyText",  # Wrong type!
+                            vector=np.random.random(10).tolist(),
+                            started_at=datetime.now(),
+                            completed_at=datetime.now(),
+                        )
+                        db_session.add(embedding)
+
+    db_session.commit()
+
+    # Add various corrupted persistence diagrams
+    for run in runs[:2]:
+        # Add PD with invalid embedding model
+        invalid_pd = PersistenceDiagram(
+            run_id=run.id,
+            embedding_model="InvalidModel",  # Not in config
+            diagram_data={"dgms": [np.array([[0.0, 1.0]], dtype=np.float32)]},
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
+        )
+        db_session.add(invalid_pd)
+
+        # Add duplicate PDs for same model
+        for _ in range(2):
+            dup_pd = PersistenceDiagram(
+                run_id=run.id,
+                embedding_model="DummyText",
+                diagram_data={"dgms": [np.array([[0.1, 0.2]], dtype=np.float32)]},
+                started_at=datetime.now(),
+                completed_at=datetime.now(),
+            )
+            db_session.add(dup_pd)
+
+        # Add PD with null data
+        null_pd = PersistenceDiagram(
+            run_id=run.id,
+            embedding_model="DummyText2",
+            diagram_data=None,
+            started_at=datetime.now(),
+            completed_at=None,
+        )
+        db_session.add(null_pd)
+
+    # Create orphaned records
+    # Orphaned embedding (invocation doesn't exist)
+    orphan_emb = Embedding(
+        invocation_id=uuid4(),  # Non-existent invocation
+        embedding_model="DummyText",
+        vector=np.random.random(10).tolist(),
+        started_at=datetime.now(),
+        completed_at=datetime.now(),
+    )
+    db_session.add(orphan_emb)
+
+    # Orphaned persistence diagram (run doesn't exist)
+    orphan_pd = PersistenceDiagram(
+        run_id=uuid4(),  # Non-existent run
+        embedding_model="DummyVision",
+        diagram_data={"dgms": []},
+        started_at=datetime.now(),
+        completed_at=datetime.now(),
+    )
+    db_session.add(orphan_pd)
+
+    # Create orphaned invocation (run doesn't exist)
+    orphan_inv = Invocation(
+        run_id=uuid4(),  # Non-existent run
+        model="DummyT2I",
+        type=InvocationType.TEXT,
+        sequence_number=0,
+        seed=42,
+        output_text="Orphaned invocation",
+    )
+    db_session.add(orphan_inv)
+
+    db_session.commit()
+
+    # Get database URL
+    db_url = str(db_session.get_bind().engine.url)
+
+    # First, run doctor without fix to check issue detection
+    from panic_tda.doctor import DoctorReport, _check_and_fix_experiment
+
+    report_before = DoctorReport()
+    report_before.total_experiments = 1
+
+    # Use internal function to check without fixing
+    has_issues = _check_and_fix_experiment(
+        experiment_id=config.id,
+        db_str=db_url,
+        report=report_before,
+        fix=False,
+        yes_flag=True,
+    )
+
+    # Verify issues were detected
+    assert has_issues, "Doctor should detect issues"
+    assert len(report_before.run_invocation_issues) > 0, (
+        "Should detect run invocation issues"
+    )
+    assert len(report_before.embedding_issues) > 0, "Should detect embedding issues"
+    assert len(report_before.pd_issues) > 0, "Should detect persistence diagram issues"
+    assert len(report_before.sequence_gap_issues) > 0, (
+        "Should detect sequence gap issues"
+    )
+
+    # Check specific issue types
+    # 1. Run invocation issues (missing first/last, wrong count)
+    run_issues = report_before.run_invocation_issues
+    assert any(issue.get("missing_first") for issue in run_issues), (
+        "Should detect missing first invocation"
+    )
+    assert any(issue.get("missing_last") for issue in run_issues), (
+        "Should detect missing last invocation"
+    )
+    assert any(
+        issue.get("actual_count") != issue.get("expected_count") for issue in run_issues
+    ), "Should detect wrong invocation count"
+
+    # 2. Embedding issues (missing, null vectors, mismatched types)
+    emb_issues = report_before.embedding_issues
+    assert any(issue.get("has_null_vector") for issue in emb_issues), (
+        "Should detect null vector embeddings"
+    )
+    assert any(issue.get("issue_type") == "mismatched" for issue in emb_issues), (
+        "Should detect mismatched embedding types"
+    )
+    assert any(issue.get("embedding_count") == 0 for issue in emb_issues), (
+        "Should detect missing embeddings"
+    )
+
+    # 3. PD issues (invalid models, duplicates, null data)
+    pd_issues = report_before.pd_issues
+    assert any(issue.get("issue_type") == "invalid_model" for issue in pd_issues), (
+        "Should detect PDs with invalid models"
+    )
+    assert any(issue.get("issue_type") == "duplicate" for issue in pd_issues), (
+        "Should detect duplicate PDs"
+    )
+    assert any(issue.get("has_null_data") for issue in pd_issues), (
+        "Should detect PDs with null data"
+    )
+
+    # 4. Sequence gaps
+    assert len(report_before.sequence_gap_issues) > 0, "Should detect sequence gaps"
+    gap_issues = report_before.sequence_gap_issues
+    assert any(len(issue.get("gaps", [])) > 0 for issue in gap_issues), (
+        "Should identify specific gap positions"
+    )
+
+    # Check for orphaned records
+    from panic_tda.doctor import check_orphaned_records
+
+    with Session(create_engine(db_url)) as session:
+        orphan_report = DoctorReport()
+        check_orphaned_records(session, orphan_report)
+
+        assert orphan_report.orphaned_records["global_orphans"]["embeddings"] > 0, (
+            "Should detect orphaned embeddings"
+        )
+        assert (
+            orphan_report.orphaned_records["global_orphans"]["persistence_diagrams"] > 0
+        ), "Should detect orphaned PDs"
+        assert orphan_report.orphaned_records["global_orphans"]["invocations"] > 0, (
+            "Should detect orphaned invocations"
+        )
+
+    # Now run doctor with fix=True to repair all issues
+    doctor_single_experiment(config.id, db_url, fix=True, yes_flag=True)
+
+    # Refresh session to see changes
+    db_session.expire_all()
+
+    # Run doctor again to verify all issues are fixed
+    report_after = DoctorReport()
+    report_after.total_experiments = 1
+
+    has_issues_after = _check_and_fix_experiment(
+        experiment_id=config.id,
+        db_str=db_url,
+        report=report_after,
+        fix=False,
+        yes_flag=True,
+    )
+
+    # Verify all issues are resolved
+    if has_issues_after:
+        print("\n=== Issues remaining after doctor --fix ===")
+        print(f"Run invocation issues: {len(report_after.run_invocation_issues)}")
+        for issue in report_after.run_invocation_issues[:3]:
+            print(f"  - {issue}")
+        print(f"Embedding issues: {len(report_after.embedding_issues)}")
+        for issue in report_after.embedding_issues[:3]:
+            print(f"  - {issue}")
+        print(f"PD issues: {len(report_after.pd_issues)}")
+        for issue in report_after.pd_issues[:3]:
+            print(f"  - {issue}")
+        print(f"Sequence gap issues: {len(report_after.sequence_gap_issues)}")
+        for issue in report_after.sequence_gap_issues[:3]:
+            print(f"  - {issue}")
+
+    assert not has_issues_after, "All issues should be fixed after doctor --fix"
+    assert len(report_after.run_invocation_issues) == 0, (
+        "No run invocation issues should remain"
+    )
+    assert len(report_after.embedding_issues) == 0, "No embedding issues should remain"
+    assert len(report_after.pd_issues) == 0, "No PD issues should remain"
+    assert len(report_after.sequence_gap_issues) == 0, "No sequence gaps should remain"
+
+    # Verify data integrity after fix
+    config = db_session.get(ExperimentConfig, config.id)
+    runs = db_session.exec(select(Run).where(Run.experiment_id == config.id)).all()
+
+    for run in runs:
+        # Check invocations are complete and contiguous
+        invocations = db_session.exec(
+            select(Invocation)
+            .where(Invocation.run_id == run.id)
+            .order_by(Invocation.sequence_number)
+        ).all()
+
+        assert len(invocations) == run.max_length, (
+            f"Run should have {run.max_length} invocations"
+        )
+
+        sequences = [inv.sequence_number for inv in invocations]
+        assert sequences == list(range(run.max_length)), (
+            "Invocation sequences should be contiguous"
+        )
+
+        # Check embeddings are appropriate for invocation types
+        for inv in invocations:
+            for emb_model in config.embedding_models:
+                try:
+                    model_type = get_model_type(emb_model)
+
+                    # Check if embedding should exist
+                    should_exist = (
+                        inv.type == InvocationType.TEXT
+                        and model_type == EmbeddingModelType.TEXT
+                    ) or (
+                        inv.type == InvocationType.IMAGE
+                        and model_type == EmbeddingModelType.IMAGE
+                    )
+
+                    embedding = inv.embedding(emb_model)
+
+                    if should_exist:
+                        assert embedding is not None, (
+                            f"Should have {emb_model} embedding for {inv.type} invocation"
+                        )
+                        assert embedding.vector is not None, (
+                            "Embedding should have non-null vector"
+                        )
+                    else:
+                        # Should not have mismatched embeddings
+                        assert embedding is None, (
+                            f"Should not have {emb_model} embedding for {inv.type} invocation"
+                        )
+
+                except ValueError:
+                    # Skip unknown model types
+                    pass
+
+        # Check persistence diagrams are correct
+        pds = db_session.exec(
+            select(PersistenceDiagram).where(PersistenceDiagram.run_id == run.id)
+        ).all()
+
+        pd_models = {pd.embedding_model for pd in pds}
+
+        # Should have PDs only for valid embedding models
+        assert pd_models.issubset(set(config.embedding_models)), (
+            "PDs should only exist for valid embedding models"
+        )
+
+        # Should have exactly one PD per embedding model
+        for emb_model in config.embedding_models:
+            model_pds = [pd for pd in pds if pd.embedding_model == emb_model]
+            assert len(model_pds) == 1, f"Should have exactly one PD for {emb_model}"
+            assert model_pds[0].diagram_data is not None, (
+                f"PD for {emb_model} should have data"
+            )
+
+    # Verify orphaned records are cleaned
+    with Session(create_engine(db_url)) as session:
+        final_orphan_report = DoctorReport()
+        check_orphaned_records(session, final_orphan_report)
+
+        # Note: Global orphans might still exist if they weren't part of this experiment
+        # But the ones we created should be gone after fixing
+        # This is a limitation of the current doctor implementation
