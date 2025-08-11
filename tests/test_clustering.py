@@ -209,6 +209,274 @@ def test_hdbscan_scalability(n_samples):
     assert len(medoids) == len(unique_clusters)
 
 
+def test_hdbscan_medoids_and_outliers_with_constructed_data():
+    """Test HDBSCAN with carefully constructed point clouds to verify medoid and outlier handling."""
+
+    # Set seed for reproducibility
+    np.random.seed(42)
+
+    # Create three well-separated dense clusters
+    embeddings = []
+
+    # Cluster 0: Dense cluster in positive space (indices 0-19)
+    # Using normalized vectors for cosine-like distance
+    for i in range(20):
+        vector = np.ones(EMBEDDING_DIM)
+        vector[: EMBEDDING_DIM // 2] = 1.0 + np.random.normal(
+            0, 0.05, EMBEDDING_DIM // 2
+        )
+        vector[EMBEDDING_DIM // 2 :] = 0.1 + np.random.normal(
+            0, 0.05, EMBEDDING_DIM - EMBEDDING_DIM // 2
+        )
+        # Normalize to unit length
+        vector = vector / np.linalg.norm(vector)
+        embeddings.append(vector)
+
+    # Cluster 1: Dense cluster with opposite pattern (indices 20-39)
+    for i in range(20):
+        vector = np.ones(EMBEDDING_DIM)
+        vector[: EMBEDDING_DIM // 2] = 0.1 + np.random.normal(
+            0, 0.05, EMBEDDING_DIM // 2
+        )
+        vector[EMBEDDING_DIM // 2 :] = 1.0 + np.random.normal(
+            0, 0.05, EMBEDDING_DIM - EMBEDDING_DIM // 2
+        )
+        # Normalize to unit length
+        vector = vector / np.linalg.norm(vector)
+        embeddings.append(vector)
+
+    # Cluster 2: Dense cluster with alternating pattern (indices 40-59)
+    for i in range(20):
+        vector = np.zeros(EMBEDDING_DIM)
+        for j in range(EMBEDDING_DIM):
+            vector[j] = (1.0 if j % 2 == 0 else -1.0) + np.random.normal(0, 0.05)
+        # Normalize to unit length
+        vector = vector / np.linalg.norm(vector)
+        embeddings.append(vector)
+
+    # Some random points that might be outliers (indices 60-64)
+    # With small dataset and min_cluster_size=2, these might still cluster
+    for i in range(5):
+        vector = np.random.randn(EMBEDDING_DIM)
+        # Normalize to unit length (avoid zero vectors)
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector = vector / norm
+        else:
+            vector = np.ones(EMBEDDING_DIM) / np.sqrt(EMBEDDING_DIM)
+        embeddings.append(vector)
+
+    # Convert to numpy array
+    embeddings_arr = np.array(embeddings, dtype=np.float32)
+
+    # Run HDBSCAN
+    result = hdbscan(embeddings_arr, epsilon=0.4)
+
+    # Basic structure checks
+    assert isinstance(result, dict)
+    assert "labels" in result
+    assert "medoids" in result
+    assert "medoid_indices" in result
+
+    labels = result["labels"]
+    medoids = result["medoids"]
+    medoid_indices = result["medoid_indices"]
+
+    # Check dimensions
+    assert len(labels) == len(embeddings_arr)
+    assert isinstance(medoid_indices, dict)
+
+    # Count clusters and outliers
+    unique_labels = set(labels)
+    n_outliers = np.sum(labels == -1)
+    n_clusters = len(unique_labels - {-1})
+
+    # With this data, we should have at least 2 clusters
+    assert n_clusters >= 2, f"Expected at least 2 clusters, got {n_clusters}"
+
+    # Verify outliers don't have medoids
+    assert -1 not in medoid_indices, "Outliers should not have medoid indices"
+
+    # KEY TEST: Verify each non-outlier cluster has a valid medoid
+    for label in unique_labels:
+        if label != -1:
+            assert label in medoid_indices, f"Cluster {label} missing medoid index"
+            medoid_idx = medoid_indices[label]
+
+            # Verify medoid index is valid
+            assert 0 <= medoid_idx < len(embeddings_arr), (
+                f"Invalid medoid index {medoid_idx}"
+            )
+
+            # Verify the medoid is actually from this cluster
+            assert labels[medoid_idx] == label, (
+                f"Medoid at index {medoid_idx} not in cluster {label}"
+            )
+
+            # Verify medoid vector matches
+            if label < len(medoids):
+                expected_medoid = embeddings_arr[medoid_idx]
+                actual_medoid = medoids[label]
+                np.testing.assert_array_almost_equal(
+                    actual_medoid,
+                    expected_medoid,
+                    err_msg=f"Medoid vector mismatch for cluster {label}",
+                )
+
+    # If there are outliers, verify they're handled correctly
+    if n_outliers > 0:
+        outlier_indices = [i for i, l in enumerate(labels) if l == -1]
+        # Outliers should not be medoids for any cluster
+        for cluster_label, medoid_idx in medoid_indices.items():
+            assert medoid_idx not in outlier_indices, (
+                f"Outlier at index {medoid_idx} is medoid for cluster {cluster_label}"
+            )
+
+    # Verify the first two constructed clusters are mostly preserved
+    cluster0_labels = labels[0:20]
+    cluster1_labels = labels[20:40]
+
+    # Most points in each constructed cluster should have the same label
+    from collections import Counter
+
+    cluster0_majority = Counter(cluster0_labels).most_common(1)[0]
+    cluster1_majority = Counter(cluster1_labels).most_common(1)[0]
+
+    # At least half should be in the same cluster
+    assert cluster0_majority[1] >= 10, (
+        f"Cluster 0 not well preserved: {cluster0_majority}"
+    )
+    assert cluster1_majority[1] >= 10, (
+        f"Cluster 1 not well preserved: {cluster1_majority}"
+    )
+
+    # The two groups should mostly be in different clusters
+    if cluster0_majority[0] != -1 and cluster1_majority[0] != -1:
+        assert cluster0_majority[0] != cluster1_majority[0], (
+            "Clusters 0 and 1 should be separate"
+        )
+
+
+def test_hdbscan_all_outliers():
+    """Test HDBSCAN behavior when all points are outliers (no clusters formed)."""
+
+    np.random.seed(42)
+
+    # Create very sparse random data where no clusters should form
+    embeddings = []
+    for i in range(10):
+        # Each point is far from all others
+        vector = np.random.randn(EMBEDDING_DIM) * (i + 1) * 10
+        embeddings.append(vector)
+
+    embeddings_arr = np.array(embeddings, dtype=np.float32)
+
+    # Run HDBSCAN with normal parameters
+    result = hdbscan(embeddings_arr, epsilon=0.4)
+
+    labels = result["labels"]
+    medoid_indices = result["medoid_indices"]
+
+    # All points should be outliers
+    assert np.all(labels == -1), "All sparse points should be outliers"
+
+    # No medoid indices should exist
+    assert len(medoid_indices) == 0, (
+        "No medoids should exist when all points are outliers"
+    )
+
+
+def test_hdbscan_single_cluster():
+    """Test HDBSCAN with data that forms a single large cluster."""
+
+    np.random.seed(42)
+
+    # Create one large, dense cluster
+    center = np.ones(EMBEDDING_DIM) * 0.5
+    embeddings = []
+
+    for i in range(50):
+        # Small variance for tight clustering
+        vector = center + np.random.normal(0, 0.01, EMBEDDING_DIM)
+        embeddings.append(vector)
+
+    embeddings_arr = np.array(embeddings, dtype=np.float32)
+
+    # Run HDBSCAN with parameters that should find a single cluster
+    result = hdbscan(embeddings_arr, epsilon=0.5)
+
+    labels = result["labels"]
+    medoid_indices = result["medoid_indices"]
+
+    # Should have exactly one cluster (label 0)
+    unique_labels = set(labels) - {-1}
+    assert len(unique_labels) == 1, f"Expected 1 cluster, got {len(unique_labels)}"
+
+    cluster_label = list(unique_labels)[0]
+
+    # Verify medoid exists and is valid
+    assert cluster_label in medoid_indices
+    medoid_idx = medoid_indices[cluster_label]
+    assert 0 <= medoid_idx < len(embeddings_arr)
+    assert labels[medoid_idx] == cluster_label
+
+    # Most points should be in the cluster (allow for a few outliers)
+    n_in_cluster = np.sum(labels == cluster_label)
+    assert n_in_cluster >= 45, f"Only {n_in_cluster} of 50 points in cluster"
+
+
+def test_hdbscan_medoid_selection():
+    """Test that HDBSCAN selects appropriate medoids (central points) for clusters."""
+
+    np.random.seed(42)
+
+    # Create a cluster where we know which point should be the medoid
+    # Make one point exactly at the center, others around it
+    embeddings = []
+
+    # Point 10 will be our exact center
+    center = np.ones(EMBEDDING_DIM) * 0.5
+
+    for i in range(20):
+        if i == 10:
+            # This point is exactly at the center
+            vector = center.copy()
+        else:
+            # Other points are distributed around the center
+            vector = center + np.random.normal(0, 0.05, EMBEDDING_DIM)
+        embeddings.append(vector)
+
+    embeddings_arr = np.array(embeddings, dtype=np.float32)
+
+    # Run HDBSCAN
+    result = hdbscan(embeddings_arr, epsilon=0.5)
+
+    labels = result["labels"]
+    medoid_indices = result["medoid_indices"]
+
+    # Should form one cluster
+    unique_labels = set(labels) - {-1}
+    assert len(unique_labels) >= 1
+
+    if len(unique_labels) == 1:
+        cluster_label = list(unique_labels)[0]
+        medoid_idx = medoid_indices[cluster_label]
+
+        # The medoid should be close to the center
+        medoid_point = embeddings_arr[medoid_idx]
+        distance_to_center = np.linalg.norm(medoid_point - center)
+
+        # Calculate average distance to center for comparison
+        cluster_mask = labels == cluster_label
+        cluster_points = embeddings_arr[cluster_mask]
+        avg_distance = np.mean([np.linalg.norm(p - center) for p in cluster_points])
+
+        # Medoid should be closer to center than average
+        assert distance_to_center <= avg_distance * 1.1, (
+            f"Medoid too far from center: {distance_to_center:.3f} vs avg {avg_distance:.3f}"
+        )
+
+
 @pytest.mark.skip(reason="This is flaky, and the whole approach needs to be rethought")
 def test_hdbscan_outlier_detection():
     """Test that HDBSCAN correctly identifies outliers as noise points."""
