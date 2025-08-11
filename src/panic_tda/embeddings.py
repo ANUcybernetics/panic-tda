@@ -577,7 +577,13 @@ class DummyVision(EmbeddingModel):
 
         # For image embedding models, contents should be PIL Images
         for item in contents:
-            if isinstance(item, Image.Image):
+            if item is None:
+                # Handle None values (from corrupted invocations)
+                # Use a fixed seed for None values
+                np.random.seed(0)
+                vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+                embeddings.append(vector)
+            elif isinstance(item, Image.Image):
                 # For images, use image properties to seed a deterministic vector
                 # Use width, height, and sum of first few pixels as seed
                 width, height = item.size
@@ -611,7 +617,13 @@ class DummyVision2(EmbeddingModel):
 
         # For image embedding models, contents should be PIL Images
         for item in contents:
-            if isinstance(item, Image.Image):
+            if item is None:
+                # Handle None values (from corrupted invocations)
+                # Use a fixed seed different from Vision1 for variety
+                np.random.seed(1)
+                vector = np.random.rand(EMBEDDING_DIM).astype(np.float32)
+                embeddings.append(vector)
+            elif isinstance(item, Image.Image):
                 # For images, create deterministic values based on image properties
                 width, height = item.size
                 # Get average color of the image (simplified)

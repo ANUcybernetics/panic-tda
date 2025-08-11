@@ -534,29 +534,91 @@ def confirm_fix(message: str, yes_flag: bool) -> bool:
 
 
 def fix_run_invocations(issues: List[Dict], db_str: str):
-    """Fix missing or extra invocations for runs."""
+    """Fix missing or extra invocations for runs.
+
+    Strategy:
+    1. Find the first missing or incomplete invocation
+    2. Delete all invocations from that point onward
+    3. Resume generation from the break point
+    """
     from panic_tda.engine import perform_runs_stage
 
     with get_session_from_connection_string(db_str) as session:
         run_ids_to_fix = []
         for issue in issues:
             run_id = issue["run_id"]
-            session.get(Run, run_id)
+            run = session.get(Run, run_id)
 
-            # Delete all existing invocations for this run
-            session.exec(select(Invocation).where(Invocation.run_id == run_id)).all()
-            for inv in session.exec(
-                select(Invocation).where(Invocation.run_id == run_id)
-            ):
+            if not run:
+                logger.warning(f"Run {run_id} not found, skipping")
+                continue
+
+            # Get all existing invocations sorted by sequence number
+            existing_invocations = session.exec(
+                select(Invocation)
+                .where(Invocation.run_id == run_id)
+                .order_by(Invocation.sequence_number)
+            ).all()
+
+            # Find the first missing or incomplete invocation
+            first_missing_seq = 0
+            for expected_seq in range(run.max_length):
+                # Check if this sequence exists
+                inv = next(
+                    (
+                        inv
+                        for inv in existing_invocations
+                        if inv.sequence_number == expected_seq
+                    ),
+                    None,
+                )
+
+                if inv is None:
+                    # Found missing invocation
+                    first_missing_seq = expected_seq
+                    break
+                elif inv.output is None:
+                    # Found incomplete invocation (no output)
+                    first_missing_seq = expected_seq
+                    break
+            else:
+                # All sequences 0 to max_length-1 exist and have outputs
+                # This shouldn't happen if the run was flagged as having issues
+                logger.warning(f"Run {run_id} appears complete, skipping")
+                continue
+
+            logger.info(
+                f"Run {run_id}: First missing/incomplete invocation at sequence {first_missing_seq}. "
+                f"Deleting invocations from sequence {first_missing_seq} onward."
+            )
+
+            # Delete all invocations from first_missing_seq onward
+            invocations_to_delete = [
+                inv
+                for inv in existing_invocations
+                if inv.sequence_number >= first_missing_seq
+            ]
+
+            for inv in invocations_to_delete:
+                # Also delete associated embeddings
+                for embedding in session.exec(
+                    select(Embedding).where(Embedding.invocation_id == inv.id)
+                ):
+                    session.delete(embedding)
                 session.delete(inv)
+
+            logger.info(
+                f"Deleted {len(invocations_to_delete)} invocations from sequence {first_missing_seq} onward"
+            )
 
             run_ids_to_fix.append(str(run_id))
 
         session.commit()
 
     # Re-run the runs to generate proper invocations
+    # run_generator will automatically continue from the last existing invocation
     if run_ids_to_fix:
-        logger.info(f"Re-running {len(run_ids_to_fix)} runs to fix invocations")
+        logger.info(f"Resuming {len(run_ids_to_fix)} runs from their break points")
         perform_runs_stage(run_ids_to_fix, db_str)
 
 

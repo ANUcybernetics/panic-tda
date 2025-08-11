@@ -359,16 +359,54 @@ class DummyI2T(GenAIModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def invoke(self, image: Image.Image, seed: int) -> str:
-        """Return a dummy text caption"""
-        base_text = "dummy text caption"
+        """Return a dummy text caption that incorporates image properties deterministically"""
+        # Handle case where test data passes a string instead of an image
+        if isinstance(image, str):
+            # Use hash of string for deterministic variation
+            input_hash = hash(image)
+        else:
+            # Get deterministic hash from image content
+            pixels = list(image.getdata())
+            # Use first few pixels for a quick hash (deterministic)
+            sample_pixels = pixels[: min(10, len(pixels))]
+            input_hash = hash(tuple(sample_pixels))
 
         if seed == -1:
-            # Use system randomness for unpredictable result
-            random_suffix = f" (random {random.randint(1000, 9999)})"
-            return base_text + random_suffix
+            # Non-deterministic: generate unique output using timestamp + random
+            import uuid
+
+            # Use UUID to guarantee uniqueness
+            unique_id = str(uuid.uuid4())[:8]
+            return f"dummy text caption {unique_id}"
         else:
-            # Deterministic output based on seed
-            return f"{base_text} (seed {seed})"
+            # Deterministic output based on seed AND input content
+            # Combine seed with input hash for deterministic randomness
+            random.seed(seed + input_hash)
+            # Generate deterministic but varied output
+            adjectives = [
+                "bright",
+                "dark",
+                "vivid",
+                "muted",
+                "complex",
+                "simple",
+                "detailed",
+                "abstract",
+            ]
+            nouns = [
+                "scene",
+                "image",
+                "picture",
+                "view",
+                "composition",
+                "artwork",
+                "photo",
+                "visual",
+            ]
+            adj = adjectives[random.randint(0, len(adjectives) - 1)]
+            noun = nouns[random.randint(0, len(nouns) - 1)]
+            num = random.randint(100, 999)
+            return f"dummy caption: {adj} {noun} #{num}"
 
 
 @ray.remote(num_gpus=0)
@@ -378,17 +416,32 @@ class DummyT2I(GenAIModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def invoke(self, prompt: str, seed: int) -> Image.Image:
-        """Return a dummy colored image"""
-        # Set the random seed if specified
-        if seed != -1:
-            random.seed(seed)
+        """Return a dummy colored image deterministically based on prompt and seed"""
+        # Get deterministic hash from prompt
+        prompt_hash = hash(prompt)
 
-        # Generate random color (cyan bias)
-        r = random.randint(0, 100)
-        g = random.randint(200, 255)
-        b = random.randint(200, 255)
+        if seed == -1:
+            # Non-deterministic: generate unique colors using time + random
+            import time
 
-        # Create an image with the random color
+            # Use current time microseconds for uniqueness
+            microseconds = int(time.time() * 1000000)
+            # Create unique but still cyan-tinted colors
+            r = microseconds % 100
+            g = 200 + (microseconds % 56)
+            b = 200 + ((microseconds // 100) % 56)
+        else:
+            # Deterministic output based on seed AND prompt content
+            # Use seed + prompt_hash for deterministic randomness
+            random.seed(seed + prompt_hash)
+
+            # Generate deterministic but varied colors (cyan bias maintained)
+            # The variation ensures different prompts produce different images
+            r = random.randint(0, 100)
+            g = random.randint(200, 255)
+            b = random.randint(200, 255)
+
+        # Create an image with the deterministic color
         return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
 
 
@@ -399,16 +452,53 @@ class DummyI2T2(GenAIModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def invoke(self, image: Image.Image, seed: int) -> str:
-        """Return a dummy text caption (version 2)"""
-        base_text = "dummy text caption v2"
+        """Return a dummy text caption (version 2) deterministically based on image and seed"""
+        # Handle case where test data passes a string instead of an image
+        if isinstance(image, str):
+            # Use hash of string for deterministic variation
+            input_hash = hash(image)
+        else:
+            # Get deterministic hash from image content
+            pixels = list(image.getdata())
+            # Use first few pixels for a quick hash (deterministic)
+            sample_pixels = pixels[: min(10, len(pixels))]
+            input_hash = hash(tuple(sample_pixels))
 
         if seed == -1:
-            # Use system randomness for unpredictable result
-            random_suffix = f" (random {random.randint(1000, 9999)})"
-            return base_text + random_suffix
+            # Non-deterministic: generate unique output using UUID
+            import uuid
+
+            unique_id = str(uuid.uuid4())[:8]
+            return f"dummy text v2 {unique_id}"
         else:
-            # Deterministic output based on seed
-            return f"{base_text} (seed {seed})"
+            # Deterministic output based on seed AND input content
+            # Combine seed with input hash for deterministic randomness
+            random.seed(seed + input_hash + 1000)  # Add offset to differ from v1
+            # Generate deterministic but varied output (different words than v1)
+            adjectives = [
+                "colorful",
+                "monochrome",
+                "sharp",
+                "blurred",
+                "dynamic",
+                "static",
+                "bold",
+                "subtle",
+            ]
+            nouns = [
+                "display",
+                "capture",
+                "moment",
+                "frame",
+                "snapshot",
+                "impression",
+                "rendering",
+                "portrayal",
+            ]
+            adj = adjectives[random.randint(0, len(adjectives) - 1)]
+            noun = nouns[random.randint(0, len(nouns) - 1)]
+            num = random.randint(1000, 9999)
+            return f"dummy v2: {adj} {noun} #{num}"
 
 
 @ray.remote(num_gpus=0)
@@ -418,17 +508,32 @@ class DummyT2I2(GenAIModel):
         logger.info(f"Model {self.__class__.__name__} loaded successfully")
 
     def invoke(self, prompt: str, seed: int) -> Image.Image:
-        """Return a dummy colored image (mostly magenta-tinted)"""
-        # Set the random seed if specified
-        if seed != -1:
-            random.seed(seed)
+        """Return a dummy colored image (magenta-tinted) deterministically based on prompt and seed"""
+        # Get deterministic hash from prompt
+        prompt_hash = hash(prompt)
 
-        # Generate random color (with magenta bias)
-        r = random.randint(200, 255)
-        g = random.randint(0, 100)
-        b = random.randint(200, 255)
+        if seed == -1:
+            # Non-deterministic: generate unique colors using time + random
+            import time
 
-        # Create an image with the random color
+            # Use current time microseconds for uniqueness
+            microseconds = int(time.time() * 1000000)
+            # Create unique but still magenta-tinted colors
+            r = 200 + (microseconds % 56)
+            g = microseconds % 100
+            b = 200 + ((microseconds // 100) % 56)
+        else:
+            # Deterministic output based on seed AND prompt content
+            # Use seed + prompt_hash + offset for deterministic randomness
+            random.seed(seed + prompt_hash + 2000)  # Different offset than T2I v1
+
+            # Generate deterministic but varied colors (magenta bias maintained)
+            # The variation ensures different prompts produce different images
+            r = random.randint(200, 255)
+            g = random.randint(0, 100)
+            b = random.randint(200, 255)
+
+        # Create an image with the deterministic color
         return Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
 
 

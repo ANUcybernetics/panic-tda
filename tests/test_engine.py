@@ -161,13 +161,12 @@ def test_run_generator_duplicate_detection(db_session: Session):
     """Test that run_generator correctly detects and stops on duplicate outputs."""
 
     # Create a test run with network that will produce duplicates
-    # Since DummyT2I always produces the same output for the same seed,
-    # we should get a duplicate when the cycle repeats
+    # The dummy models now incorporate inputs, so cycles are longer but still occur
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for duplication",
         seed=123,  # Use a fixed seed to ensure deterministic outputs
-        max_length=10,  # Set higher than expected to verify early termination
+        max_length=100,  # Set high enough to ensure we hit a duplicate
     )
     db_session.add(run)
     db_session.commit()
@@ -192,13 +191,14 @@ def test_run_generator_duplicate_detection(db_session: Session):
         invocation_id = ray.get(invocation_id_ref)
         invocation_ids.append(invocation_id)
 
-    # We expect 4 invocations before detecting a duplicate:
-    # 1. DummyT2I (produces image A)
-    # 2. DummyI2T (produces text B)
-    # 3. DummyT2I (produces image A again - should be detected as duplicate)
-    # 4. DummyI2T (this should not be executed due to duplicate detection)
-    assert len(invocation_ids) == 3, (
-        f"Expected 3 invocations but got {len(invocation_ids)}"
+    # With the improved dummy models that incorporate inputs, duplicates occur later
+    # but should still happen before max_length due to finite variation space
+    # With seed=123, we expect around 32-43 invocations before a cycle
+    assert len(invocation_ids) < 100, (
+        f"Expected duplicate detection before max_length, but got {len(invocation_ids)} invocations"
+    )
+    assert len(invocation_ids) > 3, (
+        f"Expected more than 3 invocations with input-aware models, but got {len(invocation_ids)}"
     )
 
     # Verify the invocations in the database
