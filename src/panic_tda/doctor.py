@@ -799,17 +799,16 @@ def fix_embeddings(issues: List[Dict], experiment_id: UUID, db_str: str):
 
 def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: str):
     """Fix missing or invalid persistence diagrams."""
-    from panic_tda.engine import perform_pd_stage
+    from panic_tda.engine import perform_pd_stage_selective
 
-    # Group issues by type
-    runs_to_recompute = set()
+    # Track specific (run_id, embedding_model) pairs that need recomputation
+    pd_pairs_to_recompute = set()
 
     with get_session_from_connection_string(db_str) as session:
         # Fetch the experiment in this session to get embedding_models
         experiment = session.get(ExperimentConfig, experiment_id)
         if not experiment:
             raise ValueError(f"Experiment with ID {experiment_id} not found")
-        embedding_models = list(experiment.embedding_models)  # Make a copy
 
         for issue in issues:
             if issue["issue_type"] == "invalid_model":
@@ -823,7 +822,11 @@ def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: st
                 for pd in pds:
                     session.delete(pd)
             elif issue["issue_type"] in ["missing", "duplicate"]:
-                runs_to_recompute.add(str(issue["run_id"]))
+                # Track the specific (run, model) pair that needs recomputation
+                pd_pairs_to_recompute.add((
+                    str(issue["run_id"]),
+                    issue["embedding_model"],
+                ))
                 # Delete existing PDs if duplicates
                 if issue["issue_type"] == "duplicate":
                     pds = session.exec(
@@ -838,11 +841,11 @@ def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: st
 
         session.commit()
 
-    # Recompute PDs for affected runs
-    if runs_to_recompute:
-        run_ids = list(runs_to_recompute)
-        logger.info(f"Computing persistence diagrams for {len(run_ids)} runs")
-        perform_pd_stage(run_ids, embedding_models, db_str)
+    # Recompute only the specific PDs that need it
+    if pd_pairs_to_recompute:
+        pd_pairs_list = list(pd_pairs_to_recompute)
+        logger.info(f"Computing {len(pd_pairs_list)} specific persistence diagrams")
+        perform_pd_stage_selective(pd_pairs_list, db_str, max_concurrent=8)
 
 
 def fix_sequence_gaps(gaps_issues: List[Dict], db_str: str):
