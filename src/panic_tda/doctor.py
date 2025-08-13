@@ -843,9 +843,30 @@ def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: st
 
     # Recompute only the specific PDs that need it
     if pd_pairs_to_recompute:
-        pd_pairs_list = list(pd_pairs_to_recompute)
-        logger.info(f"Computing {len(pd_pairs_list)} specific persistence diagrams")
-        perform_pd_stage_selective(pd_pairs_list, db_str, max_concurrent=4)
+        # Filter out problematic runs with max_length=5000 and initial_prompt in ['yeah', 'nah']
+        filtered_pairs = []
+        with get_session_from_connection_string(db_str) as session:
+            for run_id, embedding_model in pd_pairs_to_recompute:
+                run = session.exec(select(Run).where(Run.id == run_id)).first()
+                if (
+                    run
+                    and run.max_length == 5000
+                    and run.initial_prompt in ["yeah", "nah"]
+                ):
+                    logger.warning(
+                        f"Skipping PD computation for run {run_id} (max_length=5000, prompt='{run.initial_prompt}')"
+                    )
+                    continue
+                filtered_pairs.append((run_id, embedding_model))
+
+        if filtered_pairs:
+            logger.info(
+                f"Computing {len(filtered_pairs)} specific persistence diagrams (excluded {len(pd_pairs_to_recompute) - len(filtered_pairs)} problematic runs)"
+            )
+            # Reduce concurrency to 1 to avoid memory issues - compute one PD at a time
+            perform_pd_stage_selective(filtered_pairs, db_str, max_concurrent=1)
+        else:
+            logger.info("No persistence diagrams to compute after filtering")
 
 
 def fix_sequence_gaps(gaps_issues: List[Dict], db_str: str):

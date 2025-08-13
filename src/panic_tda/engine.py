@@ -324,7 +324,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         return all_embedding_ids
 
 
-@ray.remote(num_cpus=8)
+@ray.remote(num_cpus=24)
 def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store persistence diagram for a run.
