@@ -324,7 +324,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         return all_embedding_ids
 
 
-@ray.remote(num_cpus=4)
+@ray.remote(num_cpus=8)
 def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) -> str:
     """
     Compute and store persistence diagram for a run.
@@ -713,15 +713,15 @@ def perform_pd_stage(run_ids, embedding_models, db_str, max_concurrent=8):
     return all_pd_ids
 
 
-def perform_pd_stage_selective(pd_pairs, db_str, max_concurrent=8):
+def perform_pd_stage_selective(pd_pairs, db_str, max_concurrent=4):
     """
     Compute persistence diagrams for specific (run, embedding_model) pairs.
 
     Args:
         pd_pairs: List of (run_id, embedding_model) tuples that need computation
         db_str: Database connection string
-        max_concurrent: Maximum number of concurrent PD computations (default: 8)
-                       Each task uses 4 CPUs, so 8 tasks = 32 CPUs max
+        max_concurrent: Maximum number of concurrent PD computations (default: 4)
+                       Each task uses 8 CPUs, so 4 tasks = 32 CPUs max
 
     Returns:
         List of persistence diagram IDs

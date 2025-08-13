@@ -19,8 +19,9 @@ def giotto_phd(point_cloud: np.ndarray, max_dim: int = 2) -> Dict:
     from persim.persistent_entropy import persistent_entropy
 
     # NOTE n_threads needs to be fine-tuned for machine & problem sizes
+    # Removed return_generators=True to reduce memory usage - generators were only used for display
     dgm = ripser_parallel(
-        point_cloud, maxdim=max_dim, return_generators=True, n_threads=4
+        point_cloud, maxdim=max_dim, return_generators=False, n_threads=4
     )
     dgm["entropy"] = persistent_entropy(dgm["dgms"], normalize=False)
     return dgm

@@ -845,7 +845,7 @@ def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: st
     if pd_pairs_to_recompute:
         pd_pairs_list = list(pd_pairs_to_recompute)
         logger.info(f"Computing {len(pd_pairs_list)} specific persistence diagrams")
-        perform_pd_stage_selective(pd_pairs_list, db_str, max_concurrent=8)
+        perform_pd_stage_selective(pd_pairs_list, db_str, max_concurrent=4)
 
 
 def fix_sequence_gaps(gaps_issues: List[Dict], db_str: str):
