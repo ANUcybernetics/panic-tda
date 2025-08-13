@@ -151,7 +151,7 @@ def test_persistence_diagram_type_decorator(db_session):
     assert retrieved.diagram_data is not None
     assert "dgms" in retrieved.diagram_data
     assert "entropy" in retrieved.diagram_data
-    assert "gens" in retrieved.diagram_data
+    # Note: "gens" is no longer included since we removed return_generators=True
 
     # Check that the diagrams match
     original_dgms = result["dgms"]
@@ -165,22 +165,6 @@ def test_persistence_diagram_type_decorator(db_session):
 
     # Verify entropy values match
     assert np.array_equal(result["entropy"], retrieved.diagram_data["entropy"])
-
-    # Verify generators match
-    original_gens = result["gens"]
-    retrieved_gens = retrieved.diagram_data["gens"]
-
-    assert len(original_gens) == len(retrieved_gens)
-
-    # Check generators for each dimension
-    for dim in range(len(original_gens)):
-        # For non-empty generator lists
-        if len(original_gens[dim]) > 0:
-            assert len(original_gens[dim]) == len(retrieved_gens[dim])
-
-            # Check each generator
-            for i in range(len(original_gens[dim])):
-                assert np.array_equal(original_gens[dim][i], retrieved_gens[dim][i])
 
 
 def test_compute_wasserstein_distance():
