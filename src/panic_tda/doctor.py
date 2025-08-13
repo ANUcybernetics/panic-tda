@@ -847,7 +847,7 @@ def fix_persistence_diagrams(issues: List[Dict], experiment_id: UUID, db_str: st
         filtered_pairs = []
         with get_session_from_connection_string(db_str) as session:
             for run_id, embedding_model in pd_pairs_to_recompute:
-                run = session.exec(select(Run).where(Run.id == run_id)).first()
+                run = session.exec(select(Run).where(Run.id == UUID(run_id))).first()
                 if (
                     run
                     and run.max_length == 5000
