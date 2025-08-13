@@ -869,9 +869,7 @@ class TestDoctorAllExperiments:
         db_url = test_db["db_url"]
 
         # Run doctor without fix
-        exit_code = doctor_all_experiments(
-            db_url, fix=False, yes_flag=False, output_format="text"
-        )
+        exit_code = doctor_all_experiments(db_url, fix=False, output_format="text")
 
         # Should return 1 (issues found)
         assert exit_code == 1
@@ -886,9 +884,7 @@ class TestDoctorAllExperiments:
         """Test JSON output format."""
         db_url = test_db["db_url"]
 
-        exit_code = doctor_all_experiments(
-            db_url, fix=False, yes_flag=False, output_format="json"
-        )
+        exit_code = doctor_all_experiments(db_url, fix=False, output_format="json")
 
         captured = capsys.readouterr()
 
@@ -903,9 +899,7 @@ class TestDoctorAllExperiments:
         """Test doctor_all_experiments with a clean database."""
         db_url = clean_db["db_url"]
 
-        exit_code = doctor_all_experiments(
-            db_url, fix=False, yes_flag=False, output_format="text"
-        )
+        exit_code = doctor_all_experiments(db_url, fix=False, output_format="text")
 
         # Should return 0 (no issues)
         assert exit_code == 0
@@ -927,7 +921,6 @@ class TestDoctorAllExperiments:
         exit_code = doctor_all_experiments(
             db_url,
             fix=False,
-            yes_flag=False,
             output_format="text",
             experiment_id=experiment_id,
         )
@@ -953,7 +946,7 @@ class TestDoctorSingleExperiment:
 
         # Run doctor without fix
         exit_code = doctor_single_experiment(
-            experiment_id, db_url, fix=False, yes_flag=False, output_format="text"
+            experiment_id, db_url, fix=False, output_format="text"
         )
 
         # Should return 1 (issues found)
@@ -972,7 +965,7 @@ class TestDoctorSingleExperiment:
         experiment_id = test_db["experiment_id"]
 
         exit_code = doctor_single_experiment(
-            experiment_id, db_url, fix=False, yes_flag=False, output_format="json"
+            experiment_id, db_url, fix=False, output_format="json"
         )
 
         captured = capsys.readouterr()
@@ -990,7 +983,7 @@ class TestDoctorSingleExperiment:
         experiment_id = clean_db["experiment_id"]
 
         exit_code = doctor_single_experiment(
-            experiment_id, db_url, fix=False, yes_flag=False, output_format="text"
+            experiment_id, db_url, fix=False, output_format="text"
         )
 
         # Should return 0 (no issues)
@@ -1003,7 +996,7 @@ class TestDoctorSingleExperiment:
 
         # Run doctor with non-existent ID
         exit_code = doctor_single_experiment(
-            fake_id, db_url, fix=False, yes_flag=False, output_format="text"
+            fake_id, db_url, fix=False, output_format="text"
         )
 
         # Should return 1 (error)
@@ -1020,7 +1013,7 @@ class TestDoctorSingleExperiment:
 
         # Run doctor with non-existent ID
         exit_code = doctor_single_experiment(
-            fake_id, db_url, fix=False, yes_flag=False, output_format="json"
+            fake_id, db_url, fix=False, output_format="json"
         )
 
         # Should return 1 (error)
@@ -1041,9 +1034,7 @@ class TestMultiExperimentScenarios:
         db_url = multi_experiment_db["db_url"]
 
         # Run doctor for all experiments
-        exit_code = doctor_all_experiments(
-            db_url, fix=False, yes_flag=False, output_format="text"
-        )
+        exit_code = doctor_all_experiments(db_url, fix=False, output_format="text")
 
         # Should return 1 (one experiment has issues)
         assert exit_code == 1
@@ -1061,7 +1052,7 @@ class TestMultiExperimentScenarios:
 
         # Run doctor on clean experiment
         exit_code = doctor_single_experiment(
-            clean_id, db_url, fix=False, yes_flag=False, output_format="text"
+            clean_id, db_url, fix=False, output_format="text"
         )
 
         # Should return 0 (no issues)
@@ -1074,7 +1065,7 @@ class TestMultiExperimentScenarios:
 
         # Run doctor on problematic experiment
         exit_code = doctor_single_experiment(
-            problem_id, db_url, fix=False, yes_flag=False, output_format="text"
+            problem_id, db_url, fix=False, output_format="text"
         )
 
         # Should return 1 (has issues)
@@ -1087,7 +1078,7 @@ class TestMultiExperimentScenarios:
 
         # Run doctor on single problematic experiment
         exit_code_single = doctor_single_experiment(
-            problem_id, db_url, fix=False, yes_flag=False, output_format="json"
+            problem_id, db_url, fix=False, output_format="json"
         )
 
         captured_single = capsys.readouterr()
@@ -1328,7 +1319,6 @@ def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
         db_str=db_url,
         report=report_before,
         fix=False,
-        yes_flag=True,
     )
 
     # Verify issues were detected
@@ -1383,7 +1373,7 @@ def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
         )
 
     # Now run doctor with fix=True to repair all issues
-    doctor_single_experiment(config.id, db_url, fix=True, yes_flag=True)
+    doctor_single_experiment(config.id, db_url, fix=True)
 
     # Refresh session to see changes
     db_session.expire_all()
@@ -1397,7 +1387,6 @@ def test_one_big_doctor_test_to_rule_them_all(db_session: Session):
         db_str=db_url,
         report=report_after,
         fix=False,
-        yes_flag=True,
     )
 
     # Check that critical corruption was fixed

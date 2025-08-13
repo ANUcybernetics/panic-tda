@@ -11,10 +11,6 @@ while [[ $# -gt 0 ]]; do
             OPTIONS="$OPTIONS --fix"
             shift
             ;;
-        --yes|-y)
-            OPTIONS="$OPTIONS --yes"
-            shift
-            ;;
         --experiment|-e)
             EXPERIMENT_ID="--experiment $2"
             shift 2
@@ -33,13 +29,13 @@ while [[ $# -gt 0 ]]; do
                 EXPERIMENT_ID="--experiment $1"
             else
                 echo "Unknown option: $1"
-                echo "Usage: $0 [UUID] [--fix] [--yes] [--experiment UUID] [--format text|json] [--db-path PATH]"
+                echo "Usage: $0 [UUID] [--fix] [--experiment UUID] [--format text|json] [--db-path PATH]"
                 echo ""
                 echo "Examples:"
                 echo "  $0                           # Check all experiments"
                 echo "  $0 --fix                     # Fix issues in all experiments"
                 echo "  $0 UUID                      # Check specific experiment"
-                echo "  $0 UUID --fix --yes          # Fix specific experiment without prompts"
+                echo "  $0 UUID --fix                # Fix specific experiment"
                 echo "  $0 --experiment UUID --fix   # Alternative syntax"
                 exit 1
             fi

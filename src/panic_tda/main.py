@@ -619,9 +619,6 @@ def doctor_command(
     fix: bool = typer.Option(
         False, "--fix", "-f", help="Fix issues that are found (default: report only)"
     ),
-    yes: bool = typer.Option(
-        False, "--yes", "-y", help="Skip confirmation prompts (useful for automation)"
-    ),
     output_format: str = typer.Option(
         "text",
         "--format",
@@ -651,7 +648,6 @@ def doctor_command(
 
     Use the --fix flag to automatically repair issues that are found.
     Use --format json for structured output suitable for CI/CD integration.
-    Use --yes to skip confirmation prompts for automated workflows.
 
     Returns exit code 0 if no issues found, 1 if issues detected.
     """
@@ -683,14 +679,11 @@ def doctor_command(
 
     if fix:
         logger.info("Fix mode enabled - will attempt to repair issues found")
-        if yes:
-            logger.info("Auto-confirm mode enabled - skipping confirmation prompts")
 
     # Call the doctor function with optional experiment ID
     exit_code = doctor_all_experiments(
         db_str,
         fix=fix,
-        yes_flag=yes,
         output_format=output_format,
         experiment_id=exp_uuid,
     )

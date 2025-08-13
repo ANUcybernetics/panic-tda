@@ -16,7 +16,6 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
@@ -526,13 +525,6 @@ def check_orphaned_records(session: Session, report: DoctorReport):
     )
 
 
-def confirm_fix(message: str, yes_flag: bool) -> bool:
-    """Prompt for confirmation unless --yes flag is set."""
-    if yes_flag:
-        return True
-    return typer.confirm(message)
-
-
 def fix_run_invocations(issues: List[Dict], db_str: str):
     """Fix missing or extra invocations for runs.
 
@@ -931,7 +923,6 @@ def _check_and_fix_experiment(
     db_str: str,
     report: DoctorReport,
     fix: bool,
-    yes_flag: bool,
     progress=None,
     task=None,
     experiment_index: Optional[int] = None,
@@ -972,10 +963,10 @@ def _check_and_fix_experiment(
 
             if fix:
                 # Fix issues for this experiment
-                if run_issues and confirm_fix(
-                    f"Fix {len(run_issues)} run invocation issues for experiment {experiment_id}?",
-                    yes_flag,
-                ):
+                if run_issues:
+                    logger.info(
+                        f"Fixing {len(run_issues)} run invocation issues for experiment {experiment_id}"
+                    )
                     fix_run_invocations(run_issues, db_str)
                     # Re-check embeddings after fixing invocations
                     with get_session_from_connection_string(db_str) as session:
@@ -984,10 +975,10 @@ def _check_and_fix_experiment(
                             experiment, session, DoctorReport()
                         )
 
-                if embedding_issues and confirm_fix(
-                    f"Fix {len(embedding_issues)} embedding issues for experiment {experiment_id}?",
-                    yes_flag,
-                ):
+                if embedding_issues:
+                    logger.info(
+                        f"Fixing {len(embedding_issues)} embedding issues for experiment {experiment_id}"
+                    )
                     fix_embeddings(embedding_issues, experiment_id, db_str)
                     # Re-check persistence diagrams after fixing embeddings
                     with get_session_from_connection_string(db_str) as session:
@@ -996,10 +987,10 @@ def _check_and_fix_experiment(
                             experiment, session, DoctorReport()
                         )
 
-                if pd_issues and confirm_fix(
-                    f"Fix {len(pd_issues)} persistence diagram issues for experiment {experiment_id}?",
-                    yes_flag,
-                ):
+                if pd_issues:
+                    logger.info(
+                        f"Fixing {len(pd_issues)} persistence diagram issues for experiment {experiment_id}"
+                    )
                     fix_persistence_diagrams(pd_issues, experiment_id, db_str)
 
     # Update progress if provided
@@ -1017,7 +1008,6 @@ def doctor_single_experiment(
     experiment_id: UUID,
     db_str: str,
     fix: bool = False,
-    yes_flag: bool = False,
     output_format: str = "text",
 ) -> int:
     """
@@ -1027,7 +1017,6 @@ def doctor_single_experiment(
         experiment_id: UUID of the experiment to check
         db_str: Database connection string
         fix: If True, fix issues; if False, only report
-        yes_flag: Skip confirmation prompts if True
         output_format: Output format ('text' or 'json')
 
     Returns:
@@ -1096,7 +1085,6 @@ def doctor_single_experiment(
                 db_str=db_str,
                 report=report,
                 fix=fix,
-                yes_flag=yes_flag,
                 progress=progress if show_progress else None,
                 task=task,
             )
@@ -1130,19 +1118,15 @@ def doctor_single_experiment(
             report.orphaned_records["embeddings"]
             or report.orphaned_records["persistence_diagrams"]
         ):
-            if confirm_fix(
-                "Clean orphaned records (globally)?",
-                yes_flag,
-            ):
-                clean_orphaned_records(report.orphaned_records, db_str)
+            logger.info("Cleaning orphaned records (globally)")
+            clean_orphaned_records(report.orphaned_records, db_str)
 
         # Fix sequence gaps if requested
         if fix and report.sequence_gap_issues:
-            if confirm_fix(
-                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs for experiment {experiment_id}?",
-                yes_flag,
-            ):
-                fix_sequence_gaps(report.sequence_gap_issues, db_str)
+            logger.info(
+                f"Fixing sequence gaps in {len(report.sequence_gap_issues)} runs for experiment {experiment_id}"
+            )
+            fix_sequence_gaps(report.sequence_gap_issues, db_str)
 
     report.finalize()
 
@@ -1288,7 +1272,6 @@ def doctor_single_experiment(
 def doctor_all_experiments(
     db_str: str,
     fix: bool = False,
-    yes_flag: bool = False,
     output_format: str = "text",
     experiment_id: Optional[UUID] = None,
 ) -> int:
@@ -1298,7 +1281,6 @@ def doctor_all_experiments(
     Args:
         db_str: Database connection string
         fix: If True, fix issues; if False, only report
-        yes_flag: Skip confirmation prompts if True
         output_format: Output format ('text' or 'json')
         experiment_id: Optional UUID of a specific experiment to check
 
@@ -1307,9 +1289,7 @@ def doctor_all_experiments(
     """
     # If a specific experiment is requested, use the single experiment function
     if experiment_id is not None:
-        return doctor_single_experiment(
-            experiment_id, db_str, fix, yes_flag, output_format
-        )
+        return doctor_single_experiment(experiment_id, db_str, fix, output_format)
 
     report = DoctorReport()
 
@@ -1363,7 +1343,6 @@ def doctor_all_experiments(
                     db_str=db_str,
                     report=report,
                     fix=fix,
-                    yes_flag=yes_flag,
                     progress=progress if show_progress else None,
                     task=task,
                     experiment_index=i,
@@ -1391,19 +1370,17 @@ def doctor_all_experiments(
 
         # Fix orphaned records if requested
         if fix and report.orphaned_records["global_orphans"]["invocations"] > 0:
-            if confirm_fix(
-                f"Clean {sum(report.orphaned_records['global_orphans'].values())} orphaned records?",
-                yes_flag,
-            ):
-                clean_orphaned_records(report.orphaned_records, db_str)
+            logger.info(
+                f"Cleaning {sum(report.orphaned_records['global_orphans'].values())} orphaned records"
+            )
+            clean_orphaned_records(report.orphaned_records, db_str)
 
         # Fix sequence gaps if requested
         if fix and report.sequence_gap_issues:
-            if confirm_fix(
-                f"Fix sequence gaps in {len(report.sequence_gap_issues)} runs?",
-                yes_flag,
-            ):
-                fix_sequence_gaps(report.sequence_gap_issues, db_str)
+            logger.info(
+                f"Fixing sequence gaps in {len(report.sequence_gap_issues)} runs"
+            )
+            fix_sequence_gaps(report.sequence_gap_issues, db_str)
 
     report.finalize()
 
