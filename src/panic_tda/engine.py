@@ -131,23 +131,7 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
             sequence_number = 0
             current_input = run.initial_prompt
             previous_invocation_uuid = None
-
-            # Create the first invocation
-            model_index = 0
-            model_name = run.network[model_index]
-
-            current_invocation = Invocation(
-                model=model_name,
-                type=get_output_type(model_name),
-                run_id=run_uuid,
-                sequence_number=sequence_number,
-                input_invocation_id=previous_invocation_uuid,
-                seed=run.seed,
-            )
-
-            session.add(current_invocation)
-            session.commit()
-            session.refresh(current_invocation)
+            current_invocation = None  # Will be created after first computation
 
         # Process each invocation in the run
         while sequence_number < run.max_length:
@@ -162,30 +146,49 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
             model_index = sequence_number % network_length
             model_name = run.network[model_index]
 
-            invocation = current_invocation
+            # If we have an existing invocation (resuming), use it
+            if current_invocation and current_invocation.output is not None:
+                # This invocation is already complete, move to next
+                invocation = current_invocation
+            else:
+                # Compute the invocation first
+                logger.debug(
+                    f"Invoking model {model_name} with {type(current_input).__name__} input"
+                )
+
+                # Get the actor for this model
+                actor = model_actors.get(model_name)
+                if not actor:
+                    raise ValueError(f"No actor found for model {model_name}")
+
+                # Record start time and invoke the model
+                started_at = datetime.now()
+                seed = run.seed
+                result = ray.get(actor.invoke.remote(current_input, seed))
+                completed_at = datetime.now()
+
+                # Now create the invocation with all data
+                invocation = Invocation(
+                    model=model_name,
+                    type=get_output_type(model_name),
+                    run_id=run_uuid,
+                    sequence_number=sequence_number,
+                    input_invocation_id=previous_invocation_uuid,
+                    seed=seed,
+                    started_at=started_at,
+                    completed_at=completed_at,
+                    output_text=result if isinstance(result, str) else None,
+                    output_image_data=None,  # Will be set by the output setter
+                )
+                invocation.output = result  # Use setter to handle image conversion
+
+                # Save the fully-formed invocation
+                session.add(invocation)
+                session.commit()
+                session.refresh(invocation)
+
             invocation_id = str(invocation.id)
-            logger.debug(f"Working with invocation ID: {invocation_id}")
-
-            # Execute the invocation using the appropriate actor from model_actors
-            logger.debug(
-                f"Invoking model {invocation.model} with {type(current_input).__name__} input"
-            )
-            invocation.started_at = datetime.now()
-
-            # Get the actor for this model
-            actor = model_actors.get(model_name)
-            if not actor:
-                raise ValueError(f"No actor found for model {model_name}")
-
-            # Call the invoke method on the actor
-            result = ray.get(actor.invoke.remote(current_input, invocation.seed))
-
-            invocation.completed_at = datetime.now()
-            invocation.output = result
-
-            # Save changes to database
-            session.add(invocation)
-            session.commit()
+            logger.debug(f"Invocation {invocation_id} complete")
 
             # Check for duplicate outputs if tracking is enabled
             if track_duplicates:
@@ -209,22 +212,9 @@ def run_generator(run_id: str, db_str: str, model_actors: dict):
             sequence_number += 1
 
             if sequence_number < run.max_length:
-                # Create next invocation
-                next_model_index = sequence_number % network_length
-                next_model_name = run.network[next_model_index]
-
-                current_invocation = Invocation(
-                    model=next_model_name,
-                    type=get_output_type(next_model_name),
-                    run_id=run_uuid,
-                    sequence_number=sequence_number,
-                    input_invocation_id=previous_invocation_uuid,
-                    seed=run.seed,
-                )
-
-                session.add(current_invocation)
-                session.commit()
-                session.refresh(current_invocation)
+                # Don't pre-create the next invocation - it will be created
+                # when we compute it in the next iteration
+                current_invocation = None
 
             logger.debug(
                 f"Completed invocation {sequence_number - 1}/{run.max_length}: {model_name}"
@@ -255,9 +245,7 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
         if missing_invocations:
             raise ValueError(f"Invocations not found: {missing_invocations}")
 
-        # Create embedding objects for invocations that don't already have them
-        embeddings = []
-        embedding_mapping = {}  # Maps invocation_id to corresponding embedding
+        # Prepare data for invocations that don't already have embeddings
         contents = []  # Contents to be embedded
         invocations_to_process = {}  # Only invocations that need new embeddings
 
@@ -276,42 +264,37 @@ def compute_embeddings(actor, invocation_ids, embedding_model, db_str):
                     session.delete(existing_embedding)
                     session.commit()
 
-                # Create new embedding
-                embedding = Embedding(
-                    invocation_id=UUID(invocation_id),
-                    embedding_model=embedding_model,
-                    vector=None,
-                    started_at=datetime.now(),
-                )
-                embeddings.append(embedding)
-                embedding_mapping[invocation_id] = embedding
+                # Don't create embedding yet - will create after computation
                 contents.append(invocation.output)
                 invocations_to_process[invocation_id] = invocation
 
         # If all invocations already have embeddings, return their IDs
-        if not embeddings:
+        if not invocations_to_process:
             logger.debug(
                 f"All {len(existing_embedding_ids)} embeddings already exist, skipping computation"
             )
             return existing_embedding_ids
 
-        # Save empty embeddings
-        session.add_all(embeddings)
-        session.commit()
-        for embedding in embeddings:
-            session.refresh(embedding)
-
-        # Compute embeddings in batch if there's content to process
+        # Compute embeddings in batch
         if contents:
+            # Record start time and compute vectors
+            started_at = datetime.now()
             vectors = ray.get(actor.embed.remote(contents))
+            completed_at = datetime.now()
 
-            # Match vectors back to embeddings
+            # Create fully-formed embeddings with vectors
+            embeddings = []
             for i, invocation_id in enumerate(invocations_to_process.keys()):
-                embedding = embedding_mapping[invocation_id]
-                embedding.vector = vectors[i]
-                embedding.completed_at = datetime.now()
+                embedding = Embedding(
+                    invocation_id=UUID(invocation_id),
+                    embedding_model=embedding_model,
+                    vector=vectors[i],
+                    started_at=started_at,
+                    completed_at=completed_at,
+                )
+                embeddings.append(embedding)
 
-            # Save updated embeddings
+            # Save fully-formed embeddings
             session.add_all(embeddings)
             session.commit()
 
@@ -363,18 +346,8 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
             session.delete(existing_pd)
             session.commit()
 
-        # Create persistence diagram object with empty diagram data
-        pd = PersistenceDiagram(
-            run_id=run_uuid, embedding_model=embedding_model, diagram_data=None
-        )
-
-        # Save to database
-        session.add(pd)
-        session.commit()
-        session.refresh(pd)
-
-        pd_id = str(pd.id)
-        logger.debug(f"Created empty persistence diagram {pd_id} for run {run_id}")
+        # Don't create persistence diagram until we have data
+        logger.debug(f"Starting persistence diagram computation for run {run_id}")
 
         # Get embeddings for the specific embedding model
         embeddings = run.embeddings[embedding_model]
@@ -400,30 +373,35 @@ def compute_persistence_diagram(run_id: str, embedding_model: str, db_str: str) 
         # Create point cloud from embedding vectors
         point_cloud = np.array([emb.vector for emb in sorted_embeddings])
 
-        # Set start timestamp
-        pd.started_at = datetime.now()
-
         # Compute persistence diagram - store the entire result
+        start_time = datetime.now()
         try:
-            pd.diagram_data = giotto_phd(point_cloud)
+            diagram_data = giotto_phd(point_cloud)
         except MemoryError as e:
             logger.error(
                 f"Memory allocation (bad_alloc) error during persistence diagram computation for run {run_id}: {e}"
             )
-            pd.diagram_data = None
+            return None  # Don't create a PD without data
         except Exception as e:
             logger.error(f"Error computing persistence diagram for run {run_id}: {e}")
-            pd.diagram_data = None
+            return None  # Don't create a PD without data
 
-        # Set completion timestamp
-        pd.completed_at = datetime.now()
+        # Create persistence diagram with computed data
+        pd = PersistenceDiagram(
+            run_id=run_uuid,
+            embedding_model=embedding_model,
+            diagram_data=diagram_data,
+            started_at=start_time,
+            completed_at=datetime.now(),
+        )
 
         # Save to database
         session.add(pd)
         session.commit()
+        session.refresh(pd)
 
         logger.debug(f"Successfully computed persistence diagram for run {run_id}")
-        return pd_id
+        return str(pd.id)
 
 
 def init_runs(experiment_id, db_str):

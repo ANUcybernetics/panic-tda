@@ -272,7 +272,7 @@ class Invocation(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
-    started_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = Field(default=None)
     model: str = Field(..., description="Model class name")
     type: InvocationType
@@ -403,9 +403,7 @@ class Run(SQLModel, table=True):
     seed: int
     max_length: int
     initial_prompt: str
-    experiment_id: Optional[UUID] = Field(
-        default=None, foreign_key="experimentconfig.id", index=True
-    )
+    experiment_id: UUID = Field(foreign_key="experimentconfig.id", index=True)
     invocations: List[Invocation] = Relationship(
         back_populates="run",
         sa_relationship_kwargs={
@@ -416,7 +414,7 @@ class Run(SQLModel, table=True):
     persistence_diagrams: List["PersistenceDiagram"] = Relationship(
         back_populates="run", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
     )
-    experiment: Optional["ExperimentConfig"] = Relationship(back_populates="runs")
+    experiment: "ExperimentConfig" = Relationship(back_populates="runs")
 
     def __init__(self, **data):
         """Initialize and validate the Run."""
@@ -579,12 +577,12 @@ class Embedding(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
-    started_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = Field(default=None)
 
     invocation_id: UUID = Field(foreign_key="invocation.id", index=True)
     embedding_model: str = Field(..., description="Embedding model class name")
-    vector: np.ndarray = Field(default=None, sa_column=Column(NumpyArrayType))
+    vector: np.ndarray = Field(sa_column=Column(NumpyArrayType))
 
     # Relationship attributes
     invocation: Invocation = Relationship(back_populates="embeddings")
@@ -631,7 +629,7 @@ class ClusteringResult(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    started_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = Field(default=None)
 
     embedding_model: str = Field(..., description="Embedding model used for clustering")
@@ -717,7 +715,7 @@ class PersistenceDiagram(SQLModel, table=True):
     model_config = {"arbitrary_types_allowed": True}
 
     id: UUID = Field(default_factory=uuid7, primary_key=True)
-    started_at: Optional[datetime] = Field(default=None)
+    started_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = Field(default=None)
 
     diagram_data: Optional[Dict] = Field(
