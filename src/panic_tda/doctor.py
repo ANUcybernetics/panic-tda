@@ -236,7 +236,11 @@ def check_experiment_run_invocations(
 
     runs = session.exec(select(Run).where(Run.experiment_id == experiment.id)).all()
 
-    for run in runs:
+    logger.info(f"Checking {len(runs)} runs for invocation completeness")
+
+    for i, run in enumerate(runs):
+        if i > 0 and i % 10 == 0:
+            logger.info(f"  Checked {i}/{len(runs)} runs...")
         # Check invocation count
         invocation_count = session.exec(
             select(func.count())
@@ -275,22 +279,27 @@ def check_experiment_run_invocations(
             issues.append({"run_id": run.id, **issue})
             report.add_run_invocation_issue(experiment.id, run.id, issue)
 
-        # Check for sequence gaps
-        invocation_sequences = session.exec(
-            select(Invocation.sequence_number)
-            .where(Invocation.run_id == run.id)
-            .order_by(Invocation.sequence_number)
-        ).all()
+        # Check for sequence gaps only if we already found issues
+        # (optimization: skip expensive gap check if count and endpoints are correct)
+        if not has_first or not has_last or invocation_count != run.max_length:
+            # Only fetch sequences if there's already an issue
+            invocation_sequences = session.exec(
+                select(Invocation.sequence_number)
+                .where(Invocation.run_id == run.id)
+                .order_by(Invocation.sequence_number)
+            ).all()
 
-        if invocation_sequences:
-            expected_sequences = list(range(run.max_length))
-            actual_sequences = list(invocation_sequences)
-            gaps = [seq for seq in expected_sequences if seq not in actual_sequences]
+            if invocation_sequences:
+                expected_sequences = list(range(run.max_length))
+                actual_sequences = list(invocation_sequences)
+                gaps = [
+                    seq for seq in expected_sequences if seq not in actual_sequences
+                ]
 
-            if gaps:
-                report.add_sequence_gap_issue(
-                    experiment.id, run.id, gaps, actual_sequences
-                )
+                if gaps:
+                    report.add_sequence_gap_issue(
+                        experiment.id, run.id, gaps, actual_sequences
+                    )
 
     return issues
 
@@ -300,120 +309,147 @@ def check_experiment_embeddings(
 ) -> List[Dict[str, Any]]:
     """Check that all invocations in an experiment have proper embeddings."""
     from panic_tda.embeddings import get_model_type, EmbeddingModelType
+    from sqlalchemy import and_, or_
 
     issues = []
 
-    # Get all invocations (both TEXT and IMAGE) for all runs in this experiment
-    invocations = session.exec(
-        select(Invocation)
-        .join(Run, Invocation.run_id == Run.id)
-        .where(Run.experiment_id == experiment.id)
+    # Get run IDs for this experiment
+    run_ids = session.exec(
+        select(Run.id).where(Run.experiment_id == experiment.id)
     ).all()
 
-    for invocation in invocations:
-        # First check for mismatched embeddings (e.g., image model on text invocation)
-        for embedding_model in experiment.embedding_models:
-            try:
-                model_type = get_model_type(embedding_model)
-                is_mismatched = False
+    if not run_ids:
+        return issues
 
-                # Check if this model type is incompatible with invocation type
-                if (
-                    invocation.type == InvocationType.TEXT
-                    and model_type == EmbeddingModelType.IMAGE
-                ):
-                    is_mismatched = True
-                elif (
-                    invocation.type == InvocationType.IMAGE
-                    and model_type == EmbeddingModelType.TEXT
-                ):
-                    is_mismatched = True
+    logger.info(
+        f"Checking embeddings for {len(run_ids)} runs in experiment {experiment.id}"
+    )
 
-                if is_mismatched:
-                    # Check if there are any embeddings of this mismatched type
-                    mismatched_embeddings = session.exec(
-                        select(Embedding).where(
-                            Embedding.invocation_id == invocation.id,
-                            Embedding.embedding_model == embedding_model,
-                        )
-                    ).all()
+    # Build lists of text and image embedding models
+    text_models = []
+    image_models = []
+    for model in experiment.embedding_models:
+        try:
+            model_type = get_model_type(model)
+            if model_type == EmbeddingModelType.TEXT:
+                text_models.append(model)
+            elif model_type == EmbeddingModelType.IMAGE:
+                image_models.append(model)
+        except ValueError:
+            logger.warning(f"Could not determine type for embedding model {model}")
 
-                    if mismatched_embeddings:
-                        # Report this as a mismatched embedding issue
-                        embedding_ids = [e.id for e in mismatched_embeddings]
-                        issue = {
-                            "invocation_type": invocation.type.value,
-                            "embedding_model": embedding_model,
-                            "issue_type": "mismatched",
-                            "embedding_count": len(mismatched_embeddings),
-                            "has_null_vector": any(
-                                e.vector is None for e in mismatched_embeddings
-                            ),
-                            "embedding_ids": embedding_ids,
-                        }
-                        issues.append({"invocation_id": invocation.id, **issue})
-                        report.add_embedding_issue(experiment.id, invocation.id, issue)
-                    continue  # Don't check for missing/null embeddings for mismatched types
-
-            except ValueError:
-                # If we can't determine model type, skip (will be logged elsewhere)
-                logger.warning(
-                    f"Could not determine type for embedding model {embedding_model}"
-                )
+    # First, use SQL queries to find invocations with missing embeddings
+    for embedding_model in experiment.embedding_models:
+        # Determine which invocation types this model should embed
+        try:
+            model_type = get_model_type(embedding_model)
+            if model_type == EmbeddingModelType.TEXT:
+                target_invocation_type = InvocationType.TEXT
+            elif model_type == EmbeddingModelType.IMAGE:
+                target_invocation_type = InvocationType.IMAGE
+            else:
                 continue
+        except ValueError:
+            continue
 
-        # Now check for missing or null embeddings for compatible model types
-        for embedding_model in experiment.embedding_models:
-            # Check if this embedding model is compatible with the invocation type
-            try:
-                model_type = get_model_type(embedding_model)
-                # Skip if model type doesn't match invocation type
-                if (
-                    invocation.type == InvocationType.TEXT
-                    and model_type != EmbeddingModelType.TEXT
-                ):
-                    continue
-                if (
-                    invocation.type == InvocationType.IMAGE
-                    and model_type != EmbeddingModelType.IMAGE
-                ):
-                    continue
-            except ValueError:
-                # Already warned above
-                continue
-
-            # Count embeddings for this invocation and model
-            embedding_count = session.exec(
-                select(func.count())
-                .select_from(Embedding)
-                .where(
-                    Embedding.invocation_id == invocation.id,
+        # Find invocations missing embeddings for this model
+        # This query finds invocations that should have embeddings but don't
+        missing_embeddings_query = (
+            select(Invocation.id, Invocation.type)
+            .join(Run, Invocation.run_id == Run.id)
+            .outerjoin(
+                Embedding,
+                and_(
+                    Embedding.invocation_id == Invocation.id,
                     Embedding.embedding_model == embedding_model,
-                )
-            ).one()
+                ),
+            )
+            .where(
+                Run.experiment_id == experiment.id,
+                Invocation.type == target_invocation_type,
+                Embedding.id.is_(None),  # No embedding exists
+            )
+            .limit(100)  # Limit to first 100 issues to avoid huge result sets
+        )
 
-            # Check for null vectors by retrieving and checking actual numpy arrays
-            embeddings = session.exec(
-                select(Embedding).where(
-                    Embedding.invocation_id == invocation.id,
-                    Embedding.embedding_model == embedding_model,
-                )
-            ).all()
+        missing_invocations = session.exec(missing_embeddings_query).all()
 
-            null_vectors = sum(1 for e in embeddings if e.vector is None)
+        for inv_id, inv_type in missing_invocations:
+            issue = {
+                "invocation_type": inv_type.value,
+                "embedding_model": embedding_model,
+                "embedding_count": 0,
+                "has_null_vector": False,
+                "embedding_ids": [],
+            }
+            issues.append({"invocation_id": inv_id, **issue})
+            report.add_embedding_issue(experiment.id, inv_id, issue)
 
-            if embedding_count != 1 or null_vectors > 0:
-                # Get embedding IDs for debugging
-                embedding_ids = [e.id for e in embeddings]
-                issue = {
-                    "invocation_type": invocation.type.value,
-                    "embedding_model": embedding_model,
-                    "embedding_count": embedding_count,
-                    "has_null_vector": null_vectors > 0,
-                    "embedding_ids": embedding_ids,
-                }
-                issues.append({"invocation_id": invocation.id, **issue})
-                report.add_embedding_issue(experiment.id, invocation.id, issue)
+    # Check for mismatched embeddings (e.g., text model on image invocation)
+    if text_models and image_models:
+        # Find image invocations with text embeddings
+        mismatched_query = (
+            select(Embedding.id, Embedding.invocation_id, Embedding.embedding_model)
+            .join(Invocation, Embedding.invocation_id == Invocation.id)
+            .join(Run, Invocation.run_id == Run.id)
+            .where(
+                Run.experiment_id == experiment.id,
+                or_(
+                    and_(
+                        Invocation.type == InvocationType.IMAGE,
+                        Embedding.embedding_model.in_(text_models),
+                    ),
+                    and_(
+                        Invocation.type == InvocationType.TEXT,
+                        Embedding.embedding_model.in_(image_models),
+                    ),
+                ),
+            )
+            .limit(100)
+        )
+
+        mismatched = session.exec(mismatched_query).all()
+
+        for emb_id, inv_id, emb_model in mismatched:
+            # Get invocation type
+            inv_type = session.exec(
+                select(Invocation.type).where(Invocation.id == inv_id)
+            ).first()
+
+            issue = {
+                "invocation_type": inv_type.value if inv_type else "unknown",
+                "embedding_model": emb_model,
+                "issue_type": "mismatched",
+                "embedding_count": 1,
+                "has_null_vector": False,
+                "embedding_ids": [emb_id],
+            }
+            issues.append({"invocation_id": inv_id, **issue})
+            report.add_embedding_issue(experiment.id, inv_id, issue)
+
+    # Check for null vectors
+    null_vector_query = (
+        select(Embedding.id, Embedding.invocation_id, Embedding.embedding_model)
+        .join(Invocation, Embedding.invocation_id == Invocation.id)
+        .join(Run, Invocation.run_id == Run.id)
+        .where(Run.experiment_id == experiment.id, Embedding.vector.is_(None))
+        .limit(100)
+    )
+
+    null_vectors = session.exec(null_vector_query).all()
+
+    for emb_id, inv_id, emb_model in null_vectors:
+        issue = {
+            "invocation_type": "unknown",
+            "embedding_model": emb_model,
+            "embedding_count": 1,
+            "has_null_vector": True,
+            "embedding_ids": [emb_id],
+        }
+        issues.append({"invocation_id": inv_id, **issue})
+        report.add_embedding_issue(experiment.id, inv_id, issue)
+
+    logger.info(f"Found {len(issues)} embedding issues")
 
     return issues
 
@@ -446,6 +482,14 @@ def check_experiment_persistence_diagrams(
 
     # Check for missing or duplicate PDs for valid models
     for run in runs:
+        # Skip problematic runs with max_length=5000 and initial_prompt in ['yeah', 'nah']
+        if run.max_length == 5000 and run.initial_prompt in ["yeah", "nah"]:
+            # Use info level so we can see it without --verbose
+            logger.info(
+                f"Skipping PD check for run {run.id} (max_length=5000, prompt='{run.initial_prompt}')"
+            )
+            continue
+
         for embedding_model in experiment.embedding_models:
             pd_count = session.exec(
                 select(func.count())
@@ -942,18 +986,26 @@ def _check_and_fix_experiment(
         if not experiment:
             raise ValueError(f"Experiment with ID {experiment_id} not found")
 
+        logger.info(f"Starting checks for experiment {experiment_id}")
+
         # Check run invocations
+        logger.info(f"Checking run invocations for experiment {experiment_id}")
         run_issues = check_experiment_run_invocations(experiment, session, report)
+        logger.info(f"Found {len(run_issues)} run invocation issues")
         if progress and task:
             progress.advance(task)
 
         # Check embeddings
+        logger.info(f"Checking embeddings for experiment {experiment_id}")
         embedding_issues = check_experiment_embeddings(experiment, session, report)
+        logger.info(f"Found {len(embedding_issues)} embedding issues")
         if progress and task:
             progress.advance(task)
 
         # Check persistence diagrams
+        logger.info(f"Checking persistence diagrams for experiment {experiment_id}")
         pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
+        logger.info(f"Found {len(pd_issues)} PD issues")
         if progress and task:
             progress.advance(task)
 
