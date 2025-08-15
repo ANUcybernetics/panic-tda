@@ -236,11 +236,11 @@ def check_experiment_run_invocations(
 
     runs = session.exec(select(Run).where(Run.experiment_id == experiment.id)).all()
 
-    logger.info(f"Checking {len(runs)} runs for invocation completeness")
+    logger.debug(f"Checking {len(runs)} runs for invocation completeness")
 
     for i, run in enumerate(runs):
         if i > 0 and i % 10 == 0:
-            logger.info(f"  Checked {i}/{len(runs)} runs...")
+            logger.debug(f"  Checked {i}/{len(runs)} runs...")
         # Check invocation count
         invocation_count = session.exec(
             select(func.count())
@@ -321,7 +321,7 @@ def check_experiment_embeddings(
     if not run_ids:
         return issues
 
-    logger.info(
+    logger.debug(
         f"Checking embeddings for {len(run_ids)} runs in experiment {experiment.id}"
     )
 
@@ -449,7 +449,7 @@ def check_experiment_embeddings(
         issues.append({"invocation_id": inv_id, **issue})
         report.add_embedding_issue(experiment.id, inv_id, issue)
 
-    logger.info(f"Found {len(issues)} embedding issues")
+    logger.debug(f"Found {len(issues)} embedding issues")
 
     return issues
 
@@ -959,26 +959,26 @@ def _check_and_fix_experiment(
         if not experiment:
             raise ValueError(f"Experiment with ID {experiment_id} not found")
 
-        logger.info(f"Starting checks for experiment {experiment_id}")
+        logger.debug(f"Starting checks for experiment {experiment_id}")
 
         # Check run invocations
-        logger.info(f"Checking run invocations for experiment {experiment_id}")
+        logger.debug(f"Checking run invocations for experiment {experiment_id}")
         run_issues = check_experiment_run_invocations(experiment, session, report)
-        logger.info(f"Found {len(run_issues)} run invocation issues")
+        logger.debug(f"Found {len(run_issues)} run invocation issues")
         if progress and task:
             progress.advance(task)
 
         # Check embeddings
-        logger.info(f"Checking embeddings for experiment {experiment_id}")
+        logger.debug(f"Checking embeddings for experiment {experiment_id}")
         embedding_issues = check_experiment_embeddings(experiment, session, report)
-        logger.info(f"Found {len(embedding_issues)} embedding issues")
+        logger.debug(f"Found {len(embedding_issues)} embedding issues")
         if progress and task:
             progress.advance(task)
 
         # Check persistence diagrams
-        logger.info(f"Checking persistence diagrams for experiment {experiment_id}")
+        logger.debug(f"Checking persistence diagrams for experiment {experiment_id}")
         pd_issues = check_experiment_persistence_diagrams(experiment, session, report)
-        logger.info(f"Found {len(pd_issues)} PD issues")
+        logger.debug(f"Found {len(pd_issues)} PD issues")
         if progress and task:
             progress.advance(task)
 
