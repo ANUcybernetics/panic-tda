@@ -1,21 +1,30 @@
-# task-39 - Clean up failed invocations and enforce data integrity
+---
+status: Done
+created: 2025-08-05 09:38:39
+updated: 2025-08-05 09:38:39
+tags:
+  - data-integrity
+  - database
+  - cleanup
+---
 
-**Status:** Pending  
-**Created:** 2025-08-05 09:38:39  
-**Updated:** 2025-08-05 09:38:39  
-**Tags:** data-integrity, database, cleanup  
+# task-39 - Clean up failed invocations and enforce data integrity
 
 ## Description
 
-Investigate and clean up 24 failed SDXLTurbo invocations with NULL outputs, and implement database constraints to prevent incomplete data.
+Investigate and clean up 24 failed SDXLTurbo invocations with NULL outputs, and
+implement database constraints to prevent incomplete data.
 
 ## Context
 
-During the process of ensuring 100% NomicVision embedding coverage for IMAGE invocations, we discovered 24 IMAGE invocations that have NULL outputs. These represent failed model executions that cannot be embedded.
+During the process of ensuring 100% NomicVision embedding coverage for IMAGE
+invocations, we discovered 24 IMAGE invocations that have NULL outputs. These
+represent failed model executions that cannot be embedded.
 
 ### Failed Invocations Analysis
 
 **Summary:**
+
 - Total failed invocations: 24
 - All failures are from model: SDXLTurbo
 - All have network configuration: ['SDXLTurbo', 'Moondream']
@@ -23,11 +32,13 @@ During the process of ensuring 100% NomicVision embedding coverage for IMAGE inv
 - All have NULL outputs
 
 **Sequence Number Distribution:**
+
 ```
 [80, 100, 210, 530, 532, 534, 536, 540, 542, 546, 548, 550, 552, 562, 564, 574, 582, 584, 584, 584, 584, 584, 584, 584]
 ```
 
 Key observations:
+
 - 8 failures (33%) at sequence number 584
 - Most failures occur at high sequence numbers (500+)
 - Suggests failures happen late in long runs, possibly due to:
@@ -46,21 +57,26 @@ Key observations:
 ### 1. Check for Retry Patterns
 
 Investigate whether these failed invocations were retried:
-- Check if there's another Invocation in the same run with the same `input_invocation_id`
+
+- Check if there's another Invocation in the same run with the same
+  `input_invocation_id`
 - Verify no "next" invocation uses the failed one as its `input_invocation_id`
 - If confirmed as retried and orphaned, these can be safely deleted
 
 ### 2. Database Constraints to Consider
 
 **Option A: NOT NULL constraint on output**
+
 - Pros: Prevents NULL outputs from being saved
 - Cons: May break retry logic if failures need to be recorded
 
 **Option B: Check constraint**
+
 - Add constraint ensuring if `type = IMAGE` then `output IS NOT NULL`
 - More flexible, could allow temporary NULLs during processing
 
 **Option C: Trigger-based validation**
+
 - Before insert/update trigger to validate data completeness
 - Could auto-delete or flag incomplete records
 
@@ -74,6 +90,7 @@ Investigate whether these failed invocations were retried:
 ### 4. Cleanup Script
 
 Create a script to:
+
 1. Identify all invocations with NULL outputs
 2. Check if they were successfully retried
 3. Delete orphaned failed invocations
@@ -81,7 +98,8 @@ Create a script to:
 
 ## Implementation Steps
 
-1. [ ] Write analysis query to identify retry patterns for the 24 failed invocations
+1. [ ] Write analysis query to identify retry patterns for the 24 failed
+       invocations
 2. [ ] Document findings about whether these were retried
 3. [ ] Design appropriate database constraints
 4. [ ] Implement cleanup script
@@ -94,16 +112,16 @@ Create a script to:
 -- Find failed invocations that were likely retried
 WITH failed_invocations AS (
     SELECT id, run_id, input_invocation_id, sequence_number
-    FROM invocation 
+    FROM invocation
     WHERE type = 'IMAGE' AND output IS NULL
 ),
 potential_retries AS (
-    SELECT f.id as failed_id, 
+    SELECT f.id as failed_id,
            r.id as retry_id,
            f.sequence_number as failed_seq,
            r.sequence_number as retry_seq
     FROM failed_invocations f
-    JOIN invocation r ON f.run_id = r.run_id 
+    JOIN invocation r ON f.run_id = r.run_id
                      AND f.input_invocation_id = r.input_invocation_id
                      AND r.id != f.id
                      AND r.output IS NOT NULL
