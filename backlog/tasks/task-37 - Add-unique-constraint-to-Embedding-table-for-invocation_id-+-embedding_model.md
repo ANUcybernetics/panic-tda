@@ -1,44 +1,62 @@
 ---
 id: task-37
 title: Add unique constraint to Embedding table for invocation_id + embedding_model
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-08-03'
-labels: [database, migration, constraint]
+updated_date: '2025-08-15 00:46'
+labels:
+  - database
+  - migration
+  - constraint
 dependencies: []
 ---
 
 ## Description
 
-Add a database constraint to prevent duplicate embeddings for the same invocation and embedding model combination. This ensures data integrity by guaranteeing that each invocation can only have one embedding per embedding model.
+Add a database constraint to prevent duplicate embeddings for the same
+invocation and embedding model combination. This ensures data integrity by
+guaranteeing that each invocation can only have one embedding per embedding
+model.
 
 ## Implementation Plan
 
 ### 1. Wait for current computation to complete
-- Do not start this task until any long-running embedding computations are finished
+
+- Do not start this task until any long-running embedding computations are
+  finished
 - This prevents disruption to ongoing database operations
 
 ### 2. Check for existing duplicates
-Before creating the migration, run this query to identify any duplicate embeddings:
+
+Before creating the migration, run this query to identify any duplicate
+embeddings:
+
 ```sql
 SELECT invocation_id, embedding_model, COUNT(*) as count
-FROM embedding 
-GROUP BY invocation_id, embedding_model 
+FROM embedding
+GROUP BY invocation_id, embedding_model
 HAVING COUNT(*) > 1;
 ```
 
 ### 3. Create Alembic migration
+
 Generate a new migration file:
+
 ```bash
 uv run alembic revision -m "add_unique_constraint_embedding_invocation_model"
 ```
 
 ### 4. Write migration script
+
 The migration should:
-1. Remove duplicate embeddings (keeping only one per invocation_id + embedding_model pair)
+
+1. Remove duplicate embeddings (keeping only one per invocation_id +
+   embedding_model pair)
 2. Add the unique constraint
 
 Example migration content:
+
 ```python
 """add unique constraint embedding invocation model
 
@@ -71,7 +89,7 @@ def upgrade() -> None:
             AND e2.id < e1.id
         )
     """)
-    
+
     # Now add the unique constraint
     op.create_unique_constraint(
         'unique_invocation_embedding_model',
@@ -86,21 +104,24 @@ def downgrade() -> None:
 ```
 
 ### 5. Update the SQLModel schema
+
 Add the unique constraint to the Embedding class in `src/panic_tda/schemas.py`:
+
 ```python
 class Embedding(SQLModel, table=True):
     """..."""
-    
+
     __table_args__ = (
         UniqueConstraint(
             "invocation_id", "embedding_model", name="unique_invocation_embedding_model"
         ),
     )
-    
+
     # ... rest of the class
 ```
 
 ### 6. Test the migration
+
 1. Backup the database before running the migration
 2. Run the migration in a test environment first if possible
 3. Execute the migration:
@@ -110,49 +131,66 @@ class Embedding(SQLModel, table=True):
 4. Verify the constraint is in place and working correctly
 
 ### 7. Verify post-migration
+
 After migration, run verification queries:
+
 ```sql
 -- Check no duplicates remain
 SELECT invocation_id, embedding_model, COUNT(*) as count
-FROM embedding 
-GROUP BY invocation_id, embedding_model 
+FROM embedding
+GROUP BY invocation_id, embedding_model
 HAVING COUNT(*) > 1;
 
 -- Verify constraint exists (PostgreSQL)
-SELECT conname FROM pg_constraint 
+SELECT conname FROM pg_constraint
 WHERE conname = 'unique_invocation_embedding_model';
 ```
 
 ## Success Criteria
+
 - [x] No duplicate (invocation_id, embedding_model) pairs exist in the database
 - [x] Unique constraint is successfully added to the embedding table
 - [x] Embedding model in schemas.py reflects the constraint
-- [x] Future attempts to insert duplicate embeddings are rejected by the database
+- [x] Future attempts to insert duplicate embeddings are rejected by the
+      database
 - [x] Existing application code continues to work correctly
 
 ## Notes
-- The duplicate removal strategy keeps the embedding with the smallest ID (oldest)
+
+- The duplicate removal strategy keeps the embedding with the smallest ID
+  (oldest)
 - Alternative strategies could keep the most recent or compare vector values
-- Consider the impact on any code that might expect multiple embeddings per invocation/model pair
+- Consider the impact on any code that might expect multiple embeddings per
+  invocation/model pair
 
 ## Related
+
 - File: `src/panic_tda/schemas.py` (Embedding class definition)
 - Alembic migrations directory: `alembic/versions/`
 
 ## Implementation Notes
 
 ### Migration Implementation
+
 - Created Alembic migration: `9c62d27ee223_add_unique_constraint_embedding_.py`
-- Due to the large size of the embedding table (7.3M rows), used a unique index instead of a constraint
-- This avoids the slow batch table operation required by SQLite for adding constraints
+- Due to the large size of the embedding table (7.3M rows), used a unique index
+  instead of a constraint
+- This avoids the slow batch table operation required by SQLite for adding
+  constraints
 - The unique index provides the same uniqueness guarantee as a constraint
 
 ### Changes Made
-1. **Migration file**: Created migration with duplicate removal and unique index creation
-2. **schemas.py**: Added `__table_args__` with UniqueConstraint to the Embedding model
-3. **Testing**: Verified the index was created and duplicate inserts are rejected with IntegrityError
+
+1. **Migration file**: Created migration with duplicate removal and unique index
+   creation
+2. **schemas.py**: Added `__table_args__` with UniqueConstraint to the Embedding
+   model
+3. **Testing**: Verified the index was created and duplicate inserts are
+   rejected with IntegrityError
 
 ### Verification Results
+
 - No duplicates found in the database before migration
-- Unique index successfully created: `CREATE UNIQUE INDEX unique_invocation_embedding_model ON embedding (invocation_id, embedding_model)`
+- Unique index successfully created:
+  `CREATE UNIQUE INDEX unique_invocation_embedding_model ON embedding (invocation_id, embedding_model)`
 - Duplicate insertion attempts are properly rejected

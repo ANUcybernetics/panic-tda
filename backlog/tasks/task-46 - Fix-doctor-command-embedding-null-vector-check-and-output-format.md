@@ -1,9 +1,10 @@
 ---
 id: task-46
 title: Fix doctor command embedding null vector check and output format
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-08-07 22:44'
+updated_date: '2025-08-15 01:01'
 labels: []
 dependencies: []
 ---

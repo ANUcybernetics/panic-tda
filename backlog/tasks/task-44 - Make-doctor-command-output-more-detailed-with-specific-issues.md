@@ -1,9 +1,10 @@
 ---
 id: task-44
 title: Make doctor command output more detailed with specific issues
-status: In Progress
+status: Done
 assignee: []
-created_date: "2025-08-07 06:31"
+created_date: '2025-08-07 06:31'
+updated_date: '2025-08-15 01:01'
 labels: []
 dependencies: []
 ---

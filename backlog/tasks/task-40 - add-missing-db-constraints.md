@@ -1,9 +1,10 @@
 ---
 id: task-40
 title: add missing db constraints
-status: To Do
+status: Done
 assignee: []
-created_date: "2025-08-05 05:04"
+created_date: '2025-08-05 05:04'
+updated_date: '2025-08-15 01:01'
 labels: []
 dependencies: []
 ---

@@ -1,9 +1,10 @@
 ---
 id: task-42
 title: update doctor command
-status: In Progress
+status: Done
 assignee: []
-created_date: "2025-08-06 07:07"
+created_date: '2025-08-06 07:07'
+updated_date: '2025-08-15 01:01'
 labels: []
 dependencies: []
 ---
