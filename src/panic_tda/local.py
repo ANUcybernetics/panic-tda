@@ -22,4 +22,4 @@ def paper_charts(session: Session) -> None:
     #     clusters=True,
     # )
 
-    artificial_futures_slides_charts(session)
+    cybernetics_26_charts(session)

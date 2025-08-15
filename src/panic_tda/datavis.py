@@ -1347,4 +1347,50 @@ def plot_invocation_duration(
 
     # Save plot with high resolution
     saved_file = save(plot, output_file)
-    logging.info(f"Saved invocation duration plot to {saved_file}")
+
+
+def plot_wasserstein_distribution(
+    distances: list,
+    labels: list,
+    output_file: str = "output/vis/wasserstein_distribution.pdf",
+) -> None:
+    """
+    Create and save a visualization of Wasserstein distance distribution,
+    colored by whether the pair comes from the same or different initial prompts.
+
+    Args:
+        distances: List of Wasserstein distances
+        labels: List of boolean values (True if same prompt, False if different)
+        output_file: Path to save the visualization
+    """
+    from plotnine import geom_histogram, scale_fill_manual
+
+    # Create DataFrame
+    df = pd.DataFrame({
+        "distance": distances,
+        "same_prompt": ["Same Prompt" if l else "Different Prompt" for l in labels],
+    })
+
+    # Create the plot
+    plot = (
+        ggplot(df, aes(x="distance", fill="same_prompt"))
+        + geom_histogram(bins=30, alpha=0.7, position="identity")
+        + labs(
+            x="Wasserstein Distance",
+            y="Count",
+            fill="Initial Prompt",
+            title="Distribution of Wasserstein Distances Between Persistence Diagrams",
+        )
+        + scale_fill_manual(
+            values=["#2E7D32", "#C62828"]
+        )  # Green for same, red for different
+        + theme(
+            figure_size=(12, 6),
+            legend_position="top",
+            plot_title=element_text(size=14, weight="bold"),
+        )
+    )
+
+    # Save plot
+    saved_file = save(plot, output_file)
+    print(f"Saved Wasserstein distribution plot to {saved_file}")
