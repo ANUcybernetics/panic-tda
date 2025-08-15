@@ -1,11 +1,11 @@
 ---
+id: task-39
+title: clean up failed invocations and enforce data integrity
 status: Done
-created: 2025-08-05 09:38:39
-updated: 2025-08-05 09:38:39
-tags:
-  - data-integrity
-  - database
-  - cleanup
+created_date: 2025-08-05 09:38:39
+assignee: []
+labels: []
+dependencies: []
 ---
 
 # task-39 - Clean up failed invocations and enforce data integrity
