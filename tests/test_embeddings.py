@@ -15,7 +15,13 @@ from panic_tda.embeddings import (
     get_actor_class,
     list_models,
 )
-from panic_tda.schemas import Embedding, Invocation, InvocationType, Run
+from panic_tda.schemas import (
+    Embedding,
+    ExperimentConfig,
+    Invocation,
+    InvocationType,
+    Run,
+)
 
 
 @pytest.fixture(scope="module")
@@ -48,12 +54,24 @@ def embedding_model_actors():
 
 def test_run_embeddings_by_model(db_session, dummy_actors):
     """Test the Run.embeddings method returns embeddings for a specific model."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedding_models=["DummyText", "DummyText2"],
+        max_length=2,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=2,
         initial_prompt="Test prompt",
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -143,12 +161,24 @@ def test_run_embeddings_by_model(db_session, dummy_actors):
 
 def test_invocation_embedding_property(db_session):
     """Test that the Invocation.embedding() method returns the correct embedding for a model."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedding_models=["DummyText", "DummyText2"],
+        max_length=2,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=2,
         initial_prompt="Test prompt",
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -274,12 +304,24 @@ def test_get_actor_class():
 
 def test_run_missing_embeddings(db_session, dummy_actors):
     """Test that the Run.missing_embeddings method correctly identifies invocations without embeddings."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=3,
         initial_prompt="Test prompt",
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()

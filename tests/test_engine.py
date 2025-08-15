@@ -100,12 +100,24 @@ def test_get_output_hash():
 def test_run_generator(db_session: Session):
     """Test that run_generator correctly generates a sequence of invocations."""
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.flush()
+
     # Create a test run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt",
         seed=42,
         max_length=3,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -160,6 +172,17 @@ def test_run_generator(db_session: Session):
 def test_run_generator_duplicate_detection(db_session: Session):
     """Test that run_generator correctly detects and stops on duplicate outputs."""
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[123],
+        prompts=["Test prompt for duplication"],
+        embedding_models=["DummyText"],
+        max_length=1000,
+    )
+    db_session.add(experiment)
+    db_session.flush()
+
     # Create a test run with network that will produce duplicates
     # The dummy models now incorporate inputs, so cycles are longer but still occur
     # Use a large max_length to ensure we hit a duplicate eventually
@@ -168,6 +191,7 @@ def test_run_generator_duplicate_detection(db_session: Session):
         initial_prompt="Test prompt for duplication",
         seed=123,  # Use a fixed seed to ensure deterministic outputs
         max_length=1000,  # Set much higher to ensure we hit a duplicate
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -281,6 +305,17 @@ def test_init_runs(db_session: Session):
 
 def test_perform_runs_stage(db_session: Session):
     """Test that perform_runs_stage correctly processes multiple runs."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42, 43, 44],
+        prompts=[f"Test prompt {i}" for i in range(3)],
+        embedding_models=["DummyText"],
+        max_length=2,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create multiple test runs
     runs = []
     for i in range(3):
@@ -289,6 +324,7 @@ def test_perform_runs_stage(db_session: Session):
             initial_prompt=f"Test prompt {i}",
             seed=42 + i,
             max_length=2,
+            experiment_id=experiment.id,
         )
         db_session.add(run)
         db_session.commit()
@@ -319,12 +355,24 @@ def test_perform_runs_stage(db_session: Session):
 def test_compute_embeddings(db_session: Session):
     """Test that compute_embeddings correctly computes embeddings for multiple invocations."""
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt for embedding"],
+        embedding_models=["DummyText"],
+        max_length=2,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a test run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for embedding",
         seed=42,
         max_length=2,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -399,12 +447,24 @@ def test_compute_embeddings(db_session: Session):
 def test_compute_embeddings_skips_existing(db_session: Session):
     """Test that compute_embeddings skips invocations that already have embeddings."""
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt for embedding skipping"],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a test run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for embedding skipping",
         seed=42,
         max_length=3,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -488,12 +548,24 @@ def test_compute_embeddings_skips_existing(db_session: Session):
 
 def test_perform_embeddings_stage(db_session: Session):
     """Test that perform_embeddings_stage correctly processes embeddings for multiple invocations."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt for embeddings stage"],
+        embedding_models=["DummyText", "DummyText2"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a test run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for embeddings stage",
         seed=42,
         max_length=3,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -558,12 +630,24 @@ def test_perform_embeddings_stage(db_session: Session):
 
 def test_compute_persistence_diagram(db_session: Session):
     """Test that compute_persistence_diagram correctly computes a persistence diagram for a run."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt for persistence diagram"],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a test run
     run = Run(
         network=["DummyT2I", "DummyI2T"],
         initial_prompt="Test prompt for persistence diagram",
         seed=42,
         max_length=3,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -641,6 +725,17 @@ def test_compute_persistence_diagram(db_session: Session):
 
 def test_perform_pd_stage(db_session: Session):
     """Test that perform_pd_stage correctly computes persistence diagrams for multiple runs."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42, 43],
+        prompts=[f"Test prompt for PD stage {i}" for i in range(2)],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create multiple test runs
     runs = []
     for i in range(2):
@@ -649,6 +744,7 @@ def test_perform_pd_stage(db_session: Session):
             initial_prompt=f"Test prompt for PD stage {i}",
             seed=42 + i,
             max_length=3,
+            experiment_id=experiment.id,
         )
         db_session.add(run)
         db_session.commit()
@@ -786,8 +882,17 @@ def test_perform_experiment(db_session: Session):
         assert len(pd.diagram_data["dgms"]) > 0
 
 
+@pytest.mark.skip(
+    reason="This functionality is now tested in test_doctor.py - doctor handles incomplete experiments"
+)
 def test_restart_experiment(db_session: Session):
-    """Test that perform_experiment can restart and complete a partially executed experiment."""
+    """Test that perform_experiment can restart and complete a partially executed experiment.
+
+    NOTE: This test is being skipped because the functionality of handling incomplete
+    experiments is now better tested in test_doctor.py, particularly in
+    test_one_big_doctor_test_to_rule_them_all() which tests creating incomplete
+    experiments and using doctor --fix to complete them.
+    """
     # Create a test experiment config with two -1 seeds
     config = ExperimentConfig(
         networks=[["DummyT2I", "DummyI2T"]],

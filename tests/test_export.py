@@ -22,12 +22,24 @@ def test_export_run_images(db_session: Session, tmp_path):
     initial_prompt = "Test prompt for image export"
     seed = 42
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[network],
+        seeds=[seed],
+        prompts=[initial_prompt],
+        embedding_models=["DummyText"],
+        max_length=4,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create the run directly
     run = Run(
         network=network,
         initial_prompt=initial_prompt,
         max_length=4,
         seed=seed,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()

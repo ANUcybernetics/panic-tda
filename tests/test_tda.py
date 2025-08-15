@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from gtda.plotting import plot_diagram
 
-from panic_tda.schemas import PersistenceDiagram, Run
+from panic_tda.schemas import ExperimentConfig, PersistenceDiagram, Run
 from panic_tda.tda import giotto_phd, compute_wasserstein_distance
 
 
@@ -123,12 +123,24 @@ def test_persistence_diagram_type_decorator(db_session):
 
     # Create a run to associate with the diagram
 
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I"]],
+        seeds=[42],
+        prompts=["test persistence diagram storage"],
+        embedding_models=["DummyText"],
+        max_length=3,
+    )
+    db_session.add(experiment)
+    db_session.commit()
+
     # Create a sample run
     sample_run = Run(
         initial_prompt="test persistence diagram storage",
-        network=["model1"],
+        network=["DummyT2I"],
         seed=42,
         max_length=3,
+        experiment_id=experiment.id,
     )
 
     # Create a persistence diagram

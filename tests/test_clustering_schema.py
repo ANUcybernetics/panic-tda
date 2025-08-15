@@ -5,11 +5,13 @@ Test the new clustering schema with Cluster table and updated relationships.
 import pytest
 from sqlmodel import select
 import numpy as np
+from datetime import datetime
 
 from panic_tda.schemas import (
     ClusteringResult,
     Embedding,
     EmbeddingCluster,
+    ExperimentConfig,
     Invocation,
     InvocationType,
     Run,
@@ -25,11 +27,23 @@ from panic_tda.data_prep import load_clusters_df
 @pytest.fixture
 def sample_run(db_session):
     """Create a sample run for testing."""
+    # Create an experiment first (required for Run)
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[42],
+        prompts=["Test prompt"],
+        embedding_models=["DummyText"],
+        max_length=10,
+    )
+    db_session.add(experiment)
+    db_session.flush()
+
     run = Run(
         initial_prompt="Test prompt",
-        network=["model1", "model2"],
+        network=["DummyT2I", "DummyI2T"],
         seed=42,
         max_length=10,
+        experiment_id=experiment.id,
     )
     db_session.add(run)
     db_session.commit()
@@ -48,8 +62,10 @@ def sample_embeddings(db_session, sample_run: Run):
             sequence_number=i * 2 + 1,  # Odd numbers for TEXT
             type=InvocationType.TEXT,
             output_text=f"Test text {i}",
-            model="model1" if i % 2 == 0 else "model2",
+            model="DummyT2I" if i % 2 == 0 else "DummyI2T",
             seed=42,
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
         )
         db_session.add(invocation)
         db_session.flush()
@@ -74,8 +90,10 @@ def sample_embeddings(db_session, sample_run: Run):
 
         embedding = Embedding(
             invocation_id=invocation.id,
-            embedding_model="test_model",
+            embedding_model="DummyText",
             vector=vector,  # Keep as numpy array
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
         )
         db_session.add(embedding)
         embeddings.append(embedding)
@@ -88,7 +106,7 @@ def test_cluster_table_creation(db_session, sample_embeddings):
     """Test that clustering assignments are created correctly during clustering."""
     # Run clustering
     result = cluster_all_data(
-        session=db_session, downsample=1, embedding_model_id="test_model", epsilon=0.5
+        session=db_session, downsample=1, embedding_model_id="DummyText", epsilon=0.5
     )
 
     assert result["status"] == "success"
@@ -98,7 +116,7 @@ def test_cluster_table_creation(db_session, sample_embeddings):
 
     # Check that ClusteringResult was created
     clustering_result = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "test_model")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).first()
     assert clustering_result is not None
 
@@ -139,7 +157,7 @@ def test_embedding_cluster_references(db_session, sample_embeddings):
     """Test that EmbeddingCluster correctly uses medoid references."""
     # Run clustering
     cluster_all_data(
-        session=db_session, downsample=1, embedding_model_id="test_model", epsilon=0.5
+        session=db_session, downsample=1, embedding_model_id="DummyText", epsilon=0.5
     )
 
     # Get all embedding cluster assignments
@@ -160,13 +178,13 @@ def test_cluster_details_retrieval(db_session, sample_embeddings):
     """Test retrieving cluster details using the new schema."""
     # Run clustering
     cluster_all_data(
-        session=db_session, downsample=1, embedding_model_id="test_model", epsilon=0.5
+        session=db_session, downsample=1, embedding_model_id="DummyText", epsilon=0.5
     )
 
     # Get cluster details
-    details = get_cluster_details("test_model", db_session)
+    details = get_cluster_details("DummyText", db_session)
     assert details is not None
-    assert details["embedding_model"] == "test_model"
+    assert details["embedding_model"] == "DummyText"
     assert details["algorithm"] == "hdbscan"
     assert len(details["clusters"]) > 0
 
@@ -181,16 +199,16 @@ def test_medoid_invocation_retrieval(db_session, sample_embeddings):
     """Test retrieving medoid invocation through the new relationships."""
     # Run clustering
     cluster_all_data(
-        session=db_session, downsample=1, embedding_model_id="test_model", epsilon=0.5
+        session=db_session, downsample=1, embedding_model_id="DummyText", epsilon=0.5
     )
 
     # Get clustering result
     clustering_result = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "test_model")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).first()
 
     # Get cluster details to find non-outlier clusters
-    details = get_cluster_details("test_model", db_session)
+    details = get_cluster_details("DummyText", db_session)
 
     # Find a non-outlier cluster
     non_outlier_clusters = [c for c in details["clusters"] if c["id"] != -1]
@@ -242,12 +260,12 @@ def test_load_clusters_df(db_session, sample_embeddings):
     """Test loading cluster data into a DataFrame using new schema."""
     # Run clustering
     cluster_all_data(
-        session=db_session, downsample=1, embedding_model_id="test_model", epsilon=0.5
+        session=db_session, downsample=1, embedding_model_id="DummyText", epsilon=0.5
     )
 
     # Check that clustering created results
     clustering_result = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "test_model")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).first()
     assert clustering_result is not None
 
@@ -309,8 +327,10 @@ def test_clustering_with_downsampling(db_session, sample_embeddings):
             sequence_number=i * 2 + 1,
             type=InvocationType.TEXT,
             output_text=f"Test text {i}",
-            model="model1",
+            model="DummyT2I",
             seed=42,
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
         )
         db_session.add(invocation)
         db_session.flush()
@@ -331,8 +351,10 @@ def test_clustering_with_downsampling(db_session, sample_embeddings):
 
         embedding = Embedding(
             invocation_id=invocation.id,
-            embedding_model="test_model",
+            embedding_model="DummyText",
             vector=vector,  # Keep as numpy array
+            started_at=datetime.now(),
+            completed_at=datetime.now(),
         )
         db_session.add(embedding)
 
@@ -342,7 +364,7 @@ def test_clustering_with_downsampling(db_session, sample_embeddings):
     result = cluster_all_data(
         session=db_session,
         downsample=10,  # Only process every 10th embedding
-        embedding_model_id="test_model",
+        embedding_model_id="DummyText",
         epsilon=0.1,
     )
 
@@ -361,14 +383,14 @@ def test_multiple_clustering_results(db_session, sample_embeddings):
         result = cluster_all_data(
             session=db_session,
             downsample=1,
-            embedding_model_id="test_model",
+            embedding_model_id="DummyText",
             epsilon=epsilon,
         )
         assert result["status"] == "success"
 
     # Check that we have 3 different clustering results
     clustering_results = db_session.exec(
-        select(ClusteringResult).where(ClusteringResult.embedding_model == "test_model")
+        select(ClusteringResult).where(ClusteringResult.embedding_model == "DummyText")
     ).all()
     assert len(clustering_results) == 3
 

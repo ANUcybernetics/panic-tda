@@ -28,7 +28,7 @@ def test_invocation_creation():
     )
 
     assert isinstance(invocation.id, UUID)
-    assert invocation.started_at is None
+    assert invocation.started_at is not None  # Now has a default value
     assert invocation.completed_at is None
     assert invocation.model == "DummyI2T"
     assert invocation.model == "DummyI2T"
