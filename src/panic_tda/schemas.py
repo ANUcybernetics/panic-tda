@@ -740,6 +740,18 @@ class PersistenceDiagram(SQLModel, table=True):
         delta = self.completed_at - self.started_at
         return delta.total_seconds()
 
+    @property
+    def embedding_type(self) -> str:
+        """
+        Get the type (text/image) of the embedding model used for this persistence diagram.
+
+        Returns:
+            "text" or "image" based on the embedding model type
+        """
+        from panic_tda.embeddings import get_model_type
+
+        return get_model_type(self.embedding_model).value
+
     def get_generators_as_arrays(self) -> List[np.ndarray]:
         """
         Get generators from the persistence diagram as a list of numpy arrays.

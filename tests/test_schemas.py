@@ -390,3 +390,24 @@ def test_persistence_diagram_duration_property():
     diagram.completed_at = now + timedelta(seconds=3)
 
     assert diagram.duration == 3.0
+
+
+def test_persistence_diagram_embedding_type_property():
+    """Test the embedding_type property of PersistenceDiagram."""
+    run_id = uuid7()
+
+    # Test with text embedding model
+    text_diagram = PersistenceDiagram(run_id=run_id, embedding_model="DummyText")
+    assert text_diagram.embedding_type == "text"
+
+    # Test with another text embedding model
+    text_diagram2 = PersistenceDiagram(run_id=run_id, embedding_model="DummyText2")
+    assert text_diagram2.embedding_type == "text"
+
+    # Test with image embedding model
+    image_diagram = PersistenceDiagram(run_id=run_id, embedding_model="DummyVision")
+    assert image_diagram.embedding_type == "image"
+
+    # Test with another image embedding model
+    image_diagram2 = PersistenceDiagram(run_id=run_id, embedding_model="DummyVision2")
+    assert image_diagram2.embedding_type == "image"
