@@ -222,6 +222,7 @@ def cybernetics_26_charts(session: Session) -> None:
     # For each embedding model, compute pairwise distances
     all_distances = []
     labels = []  # Whether the pair is same prompt (True) or different (False)
+    homology_dimensions = []  # Track which homology dimension each distance is for
 
     from panic_tda.tda import compute_wasserstein_distance
 
@@ -261,33 +262,43 @@ def cybernetics_26_charts(session: Session) -> None:
 
                     if run1 and run2 and pd1.diagram_data and pd2.diagram_data:
                         if "dgms" in pd1.diagram_data and "dgms" in pd2.diagram_data:
-                            # Compute distance for dimension 0 (connected components)
-                            dgm1 = pd1.diagram_data["dgms"][0]
-                            dgm2 = pd2.diagram_data["dgms"][0]
+                            # Compute distance for each homology dimension (0, 1, 2)
+                            num_dims = min(
+                                len(pd1.diagram_data["dgms"]),
+                                len(pd2.diagram_data["dgms"]),
+                            )
 
-                            if isinstance(dgm1, np.ndarray) and isinstance(
-                                dgm2, np.ndarray
-                            ):
-                                # Skip if either diagram is empty
-                                if dgm1.size > 0 and dgm2.size > 0:
-                                    # Filter out points with infinite death times
-                                    finite_mask1 = ~np.isinf(dgm1).any(axis=1)
-                                    finite_mask2 = ~np.isinf(dgm2).any(axis=1)
-                                    dgm1_finite = dgm1[finite_mask1]
-                                    dgm2_finite = dgm2[finite_mask2]
+                            for dim in range(num_dims):
+                                dgm1 = pd1.diagram_data["dgms"][dim]
+                                dgm2 = pd2.diagram_data["dgms"][dim]
 
-                                    # Only compute if we have finite points
-                                    if dgm1_finite.size > 0 and dgm2_finite.size > 0:
-                                        distance = compute_wasserstein_distance(
-                                            dgm1_finite, dgm2_finite
-                                        )
-                                        # Only add if distance is not NaN
-                                        if not np.isnan(distance):
-                                            all_distances.append(distance)
-                                            labels.append(
-                                                run1.initial_prompt
-                                                == run2.initial_prompt
+                                if isinstance(dgm1, np.ndarray) and isinstance(
+                                    dgm2, np.ndarray
+                                ):
+                                    # Skip if either diagram is empty
+                                    if dgm1.size > 0 and dgm2.size > 0:
+                                        # Filter out points with infinite death times
+                                        finite_mask1 = ~np.isinf(dgm1).any(axis=1)
+                                        finite_mask2 = ~np.isinf(dgm2).any(axis=1)
+                                        dgm1_finite = dgm1[finite_mask1]
+                                        dgm2_finite = dgm2[finite_mask2]
+
+                                        # Only compute if we have finite points
+                                        if (
+                                            dgm1_finite.size > 0
+                                            and dgm2_finite.size > 0
+                                        ):
+                                            distance = compute_wasserstein_distance(
+                                                dgm1_finite, dgm2_finite
                                             )
+                                            # Only add if distance is not NaN
+                                            if not np.isnan(distance):
+                                                all_distances.append(distance)
+                                                labels.append(
+                                                    run1.initial_prompt
+                                                    == run2.initial_prompt
+                                                )
+                                                homology_dimensions.append(dim)
 
     print(f"\nComputed {len(all_distances)} pairwise distances")
     if all_distances:
@@ -297,27 +308,47 @@ def cybernetics_26_charts(session: Session) -> None:
         print(f"  Mean: {np.mean(all_distances):.4f}")
         print(f"  Std: {np.std(all_distances):.4f}")
 
-        # Statistics by same/different prompt
-        same_prompt_distances = [d for d, l in zip(all_distances, labels) if l]
-        diff_prompt_distances = [d for d, l in zip(all_distances, labels) if not l]
+        # Statistics by homology dimension
+        for dim in sorted(set(homology_dimensions)):
+            dim_distances = [
+                d for d, h in zip(all_distances, homology_dimensions) if h == dim
+            ]
+            print(f"\nHomology dimension {dim} ({len(dim_distances)} pairs):")
+            print(f"  Mean: {np.mean(dim_distances):.4f}")
+            print(f"  Std: {np.std(dim_distances):.4f}")
 
-        if same_prompt_distances:
-            print(f"\nSame prompt pairs ({len(same_prompt_distances)} pairs):")
-            print(f"  Mean: {np.mean(same_prompt_distances):.4f}")
-            print(f"  Std: {np.std(same_prompt_distances):.4f}")
+        # Statistics by same/different prompt and homology dimension
+        for dim in sorted(set(homology_dimensions)):
+            dim_same = [
+                d
+                for d, l, h in zip(all_distances, labels, homology_dimensions)
+                if l and h == dim
+            ]
+            dim_diff = [
+                d
+                for d, l, h in zip(all_distances, labels, homology_dimensions)
+                if not l and h == dim
+            ]
 
-        if diff_prompt_distances:
-            print(f"\nDifferent prompt pairs ({len(diff_prompt_distances)} pairs):")
-            print(f"  Mean: {np.mean(diff_prompt_distances):.4f}")
-            print(f"  Std: {np.std(diff_prompt_distances):.4f}")
+            print(f"\nH{dim} - Same prompt pairs ({len(dim_same)} pairs):")
+            if dim_same:
+                print(f"  Mean: {np.mean(dim_same):.4f}")
+                print(f"  Std: {np.std(dim_same):.4f}")
+
+            print(f"H{dim} - Different prompt pairs ({len(dim_diff)} pairs):")
+            if dim_diff:
+                print(f"  Mean: {np.mean(dim_diff):.4f}")
+                print(f"  Std: {np.std(dim_diff):.4f}")
 
         # Step 4: Create visualization
         print("\n=== Step 4: Creating visualization ===")
         from panic_tda.datavis import plot_wasserstein_distribution
 
-        # Create the plot
+        # Create the plot with homology dimensions
         output_file = "output/vis/wasserstein_distribution.pdf"
-        plot_wasserstein_distribution(all_distances, labels, output_file)
+        plot_wasserstein_distribution(
+            all_distances, labels, homology_dimensions, output_file
+        )
         print(f"Visualization saved to {output_file}")
 
     # #### Persistence Diagram Density Comparison

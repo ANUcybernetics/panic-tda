@@ -1352,6 +1352,7 @@ def plot_invocation_duration(
 def plot_wasserstein_distribution(
     distances: list,
     labels: list,
+    homology_dims: list = None,
     output_file: str = "output/vis/wasserstein_distribution.pdf",
 ) -> None:
     """
@@ -1361,35 +1362,65 @@ def plot_wasserstein_distribution(
     Args:
         distances: List of Wasserstein distances
         labels: List of boolean values (True if same prompt, False if different)
+        homology_dims: List of homology dimensions for each distance (optional)
         output_file: Path to save the visualization
     """
-    from plotnine import geom_histogram, scale_fill_manual
+    from plotnine import geom_histogram, scale_fill_manual, facet_grid
 
     # Create DataFrame
-    df = pd.DataFrame({
+    df_data = {
         "distance": distances,
         "same_prompt": ["Same Prompt" if l else "Different Prompt" for l in labels],
-    })
+    }
+
+    # Add homology dimension if provided
+    if homology_dims is not None:
+        df_data["homology_dim"] = [f"H{dim}" for dim in homology_dims]
+
+    df = pd.DataFrame(df_data)
 
     # Create the plot
-    plot = (
-        ggplot(df, aes(x="distance", fill="same_prompt"))
-        + geom_histogram(bins=30, alpha=0.7, position="identity")
-        + labs(
-            x="Wasserstein Distance",
-            y="Count",
-            fill="Initial Prompt",
-            title="Distribution of Wasserstein Distances Between Persistence Diagrams",
+    if homology_dims is not None:
+        # Faceted plot by homology dimension
+        plot = (
+            ggplot(df, aes(x="distance", fill="same_prompt"))
+            + geom_histogram(bins=30, alpha=0.7, position="identity")
+            + facet_grid("homology_dim ~ same_prompt", scales="free_x")
+            + labs(
+                x="Wasserstein Distance",
+                y="Count",
+                fill="Initial Prompt",
+                title="Distribution of Wasserstein Distances by Homology Dimension",
+            )
+            + scale_fill_manual(
+                values=["#2E7D32", "#C62828"]
+            )  # Green for same, red for different
+            + theme(
+                figure_size=(14, 10),
+                legend_position="top",
+                plot_title=element_text(size=14, weight="bold"),
+            )
         )
-        + scale_fill_manual(
-            values=["#2E7D32", "#C62828"]
-        )  # Green for same, red for different
-        + theme(
-            figure_size=(12, 6),
-            legend_position="top",
-            plot_title=element_text(size=14, weight="bold"),
+    else:
+        # Original plot without faceting
+        plot = (
+            ggplot(df, aes(x="distance", fill="same_prompt"))
+            + geom_histogram(bins=30, alpha=0.7, position="identity")
+            + labs(
+                x="Wasserstein Distance",
+                y="Count",
+                fill="Initial Prompt",
+                title="Distribution of Wasserstein Distances Between Persistence Diagrams",
+            )
+            + scale_fill_manual(
+                values=["#2E7D32", "#C62828"]
+            )  # Green for same, red for different
+            + theme(
+                figure_size=(12, 6),
+                legend_position="top",
+                plot_title=element_text(size=14, weight="bold"),
+            )
         )
-    )
 
     # Save plot
     saved_file = save(plot, output_file)
