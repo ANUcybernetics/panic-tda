@@ -1353,6 +1353,8 @@ def plot_wasserstein_distribution(
     distances: list,
     labels: list,
     homology_dims: list = None,
+    embedding_types: list = None,
+    embedding_models: list = None,
     output_file: str = "output/vis/wasserstein_distribution.pdf",
 ) -> None:
     """
@@ -1363,6 +1365,8 @@ def plot_wasserstein_distribution(
         distances: List of Wasserstein distances
         labels: List of boolean values (True if same prompt, False if different)
         homology_dims: List of homology dimensions for each distance (optional)
+        embedding_types: List of embedding types ("text" or "image") for each distance (optional)
+        embedding_models: List of embedding model names for each distance (optional)
         output_file: Path to save the visualization
     """
     from plotnine import geom_histogram, scale_fill_manual, facet_grid
@@ -1377,20 +1381,38 @@ def plot_wasserstein_distribution(
     if homology_dims is not None:
         df_data["homology_dim"] = [f"H{dim}" for dim in homology_dims]
 
+    # Add embedding type if provided
+    if embedding_types is not None:
+        df_data["embedding_type"] = [t.capitalize() for t in embedding_types]
+
+    # Add embedding model if provided
+    if embedding_models is not None:
+        df_data["embedding_model"] = embedding_models
+
     df = pd.DataFrame(df_data)
 
     # Create the plot
     if homology_dims is not None:
-        # Faceted plot by homology dimension
+        # Determine faceting formula based on whether embedding_types is provided
+        if embedding_types is not None:
+            # Facet by homology dimension and embedding type
+            facet_formula = "homology_dim ~ embedding_type"
+            plot_title = "Distribution of Wasserstein Distances by Homology Dimension and Embedding Type"
+        else:
+            # Original faceting by homology dimension and same_prompt
+            facet_formula = "homology_dim ~ same_prompt"
+            plot_title = "Distribution of Wasserstein Distances by Homology Dimension"
+
+        # Faceted plot
         plot = (
             ggplot(df, aes(x="distance", fill="same_prompt"))
             + geom_histogram(bins=30, alpha=0.7, position="identity")
-            + facet_grid("homology_dim ~ same_prompt", scales="free_x")
+            + facet_grid(facet_formula, scales="free_x")
             + labs(
                 x="Wasserstein Distance",
                 y="Count",
                 fill="Initial Prompt",
-                title="Distribution of Wasserstein Distances by Homology Dimension",
+                title=plot_title,
             )
             + scale_fill_manual(
                 values=["#2E7D32", "#C62828"]
