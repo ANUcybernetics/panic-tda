@@ -21,6 +21,7 @@ from panic_tda.data_prep import (
     load_invocations_df,
     load_pd_df,
     load_runs_df,
+    pd_list_to_wasserstein_df,
 )
 from panic_tda.db import list_runs
 from panic_tda.embeddings import EMBEDDING_DIM
@@ -1991,3 +1992,163 @@ def test_calculate_wasserstein_distances_edge_cases(db_session):
 
         # Distance to self should be 0
         assert distance_matrix[0, 0] == 0.0
+
+
+def test_pd_list_to_wasserstein_df(db_session):
+    """Test that pd_list_to_wasserstein_df correctly computes pairwise distances and returns a DataFrame."""
+
+    from sqlmodel import select
+    from panic_tda.schemas import PersistenceDiagram
+
+    # Create a test configuration with multiple runs to get multiple persistence diagrams
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -1],  # Two runs with random outputs
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["DummyText", "DummyText2"],
+        max_length=50,
+    )
+
+    # Save config to database
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    # Run the experiment
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Get all persistence diagrams from the database
+    statement = select(PersistenceDiagram)
+    pd_list = list(db_session.exec(statement).all())
+
+    # Ensure we have persistence diagrams
+    assert len(pd_list) > 0, "No persistence diagrams found in database"
+
+    # Call the function under test
+    result_df = pd_list_to_wasserstein_df(pd_list)
+
+    # Check that we got a DataFrame
+    assert isinstance(result_df, pl.DataFrame)
+
+    # Check expected columns
+    expected_columns = {
+        "persistence_diagram_id_a",
+        "persistence_diagram_id_b",
+        "homology_dimension",
+        "embedding_model",
+        "embedding_type",
+        "initial_prompt_a",
+        "initial_prompt_b",
+        "network_a",
+        "network_b",
+        "distance",
+    }
+    assert set(result_df.columns) == expected_columns
+
+    # Check data types
+    assert result_df["homology_dimension"].dtype == pl.Int64
+    assert result_df["distance"].dtype == pl.Float64
+
+    # If we have results, check properties
+    if result_df.height > 0:
+        # All distances should be non-negative
+        assert (result_df["distance"] >= 0).all()
+
+        # Check that we only compare within same embedding model
+        grouped = result_df.group_by([
+            "embedding_model",
+            "persistence_diagram_id_a",
+            "persistence_diagram_id_b",
+        ]).count()
+        # Each pair should appear at most once per homology dimension (3 dimensions max)
+        assert (grouped["count"] <= 3).all()
+
+        # Check embedding types are correctly assigned
+        embedding_types = result_df["embedding_type"].unique()
+        assert all(et in ["text", "image"] for et in embedding_types)
+
+        # Verify network format (should contain arrow separator)
+        networks = result_df.filter(pl.col("network_a").is_not_null())[
+            "network_a"
+        ].unique()
+        for network in networks:
+            assert "→" in network, (
+                f"Network string should contain arrow separator: {network}"
+            )
+
+    # Test with empty list
+    empty_df = pd_list_to_wasserstein_df([])
+    assert isinstance(empty_df, pl.DataFrame)
+    assert empty_df.height == 0
+    assert set(empty_df.columns) == expected_columns
+
+
+def test_pd_list_to_wasserstein_df_single_model(db_session):
+    """Test pd_list_to_wasserstein_df with a single embedding model."""
+
+    from sqlmodel import select
+    from panic_tda.schemas import PersistenceDiagram
+
+    # Create a configuration with single embedding model
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -1, -1],  # Three runs
+        prompts=["test single model"],
+        embedding_models=["DummyText"],  # Single model
+        max_length=50,
+    )
+
+    # Save and run experiment
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Get persistence diagrams for this single model
+    statement = select(PersistenceDiagram).where(
+        PersistenceDiagram.embedding_model == "DummyText"
+    )
+    pd_list = list(db_session.exec(statement).all())
+
+    # We should have 3 PDs (one per run)
+    assert len(pd_list) == 3
+
+    # Call the function
+    result_df = pd_list_to_wasserstein_df(pd_list)
+
+    # Check that all results are for the same model
+    unique_models = result_df["embedding_model"].unique()
+    assert len(unique_models) == 1
+    assert unique_models[0] == "DummyText"
+
+    # Check embedding type
+    unique_types = result_df["embedding_type"].unique()
+    assert len(unique_types) == 1
+    assert unique_types[0] == "text"  # DummyText is a text embedding model
+
+    # With 3 PDs, we should have 3 choose 2 = 3 unique pairs
+    # Each pair can have up to 3 homology dimensions
+    unique_pairs = result_df.select([
+        "persistence_diagram_id_a",
+        "persistence_diagram_id_b",
+    ]).unique()
+    assert unique_pairs.height <= 3 * 3  # 3 pairs * 3 dimensions max
+
+    # Check symmetry isn't duplicated (only upper triangle)
+    for row in result_df.iter_rows(named=True):
+        # We shouldn't have both (a,b) and (b,a) in the results
+        reverse_exists = (
+            result_df.filter(
+                (pl.col("persistence_diagram_id_a") == row["persistence_diagram_id_b"])
+                & (
+                    pl.col("persistence_diagram_id_b")
+                    == row["persistence_diagram_id_a"]
+                )
+                & (pl.col("homology_dimension") == row["homology_dimension"])
+            ).height
+            > 0
+        )
+        assert not reverse_exists, "Found symmetric duplicate in results"

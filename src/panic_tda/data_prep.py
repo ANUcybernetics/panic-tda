@@ -1314,6 +1314,156 @@ def load_runs_df(session: Session) -> pl.DataFrame:
     return df
 
 
+def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
+    """
+    Compute pairwise Wasserstein distances between persistence diagrams and return as DataFrame.
+
+    Args:
+        pd_list: List of PersistenceDiagram objects from the database
+
+    Returns:
+        DataFrame with columns:
+        - persistence_diagram_id_a: UUID of first PD
+        - persistence_diagram_id_b: UUID of second PD
+        - homology_dimension: Dimension (0, 1, or 2)
+        - embedding_model: Model used for embeddings
+        - embedding_type: Type of embedding (text/image)
+        - initial_prompt_a: Initial prompt of first PD's run
+        - initial_prompt_b: Initial prompt of second PD's run
+        - network_a: Network configuration of first PD's run
+        - network_b: Network configuration of second PD's run
+        - distance: Wasserstein distance between the two PDs
+    """
+    from panic_tda.tda import compute_wasserstein_distance
+    from panic_tda.embeddings import get_model_type
+
+    if not pd_list:
+        # Return empty DataFrame with correct schema
+        return pl.DataFrame(
+            schema={
+                "persistence_diagram_id_a": pl.Utf8,
+                "persistence_diagram_id_b": pl.Utf8,
+                "homology_dimension": pl.Int64,
+                "embedding_model": pl.Utf8,
+                "embedding_type": pl.Utf8,
+                "initial_prompt_a": pl.Utf8,
+                "initial_prompt_b": pl.Utf8,
+                "network_a": pl.Utf8,
+                "network_b": pl.Utf8,
+                "distance": pl.Float64,
+            }
+        )
+
+    # Group PDs by embedding model to only compare within same model
+    pds_by_model = {}
+    for pd in pd_list:
+        if pd.embedding_model not in pds_by_model:
+            pds_by_model[pd.embedding_model] = []
+        pds_by_model[pd.embedding_model].append(pd)
+
+    # Collect all distance calculations
+    rows = []
+
+    for embedding_model, model_pds in pds_by_model.items():
+        # Get embedding type for this model
+        embedding_type = get_model_type(embedding_model).value  # "text" or "image"
+
+        # Compute pairwise distances for this model
+        for i, pd_a in enumerate(model_pds):
+            for j, pd_b in enumerate(model_pds):
+                if i < j:  # Only compute upper triangle (symmetric)
+                    # Skip if either PD lacks diagram data
+                    if not pd_a.diagram_data or not pd_b.diagram_data:
+                        continue
+                    if (
+                        "dgms" not in pd_a.diagram_data
+                        or "dgms" not in pd_b.diagram_data
+                    ):
+                        continue
+
+                    # Get network as string (from list)
+                    network_a = (
+                        "→".join(pd_a.run.network)
+                        if pd_a.run and pd_a.run.network
+                        else None
+                    )
+                    network_b = (
+                        "→".join(pd_b.run.network)
+                        if pd_b.run and pd_b.run.network
+                        else None
+                    )
+
+                    # Compute distance for each homology dimension
+                    num_dims = min(
+                        len(pd_a.diagram_data["dgms"]), len(pd_b.diagram_data["dgms"])
+                    )
+
+                    for dim in range(num_dims):
+                        dgm_a = pd_a.diagram_data["dgms"][dim]
+                        dgm_b = pd_b.diagram_data["dgms"][dim]
+
+                        # Ensure proper numpy arrays
+                        if not isinstance(dgm_a, np.ndarray) or not isinstance(
+                            dgm_b, np.ndarray
+                        ):
+                            continue
+
+                        # Handle empty diagrams
+                        if dgm_a.size == 0 or dgm_b.size == 0:
+                            # For empty diagrams, distance is 0 if both empty, else skip
+                            if dgm_a.size == 0 and dgm_b.size == 0:
+                                distance = 0.0
+                            else:
+                                continue
+                        else:
+                            # Filter out infinite persistence points
+                            finite_mask_a = ~np.isinf(dgm_a).any(axis=1)
+                            finite_mask_b = ~np.isinf(dgm_b).any(axis=1)
+                            dgm_a_finite = dgm_a[finite_mask_a]
+                            dgm_b_finite = dgm_b[finite_mask_b]
+
+                            # Compute distance if we have finite points
+                            if dgm_a_finite.size > 0 and dgm_b_finite.size > 0:
+                                distance = compute_wasserstein_distance(
+                                    dgm_a_finite, dgm_b_finite
+                                )
+                            elif dgm_a_finite.size == 0 and dgm_b_finite.size == 0:
+                                distance = 0.0
+                            else:
+                                continue
+
+                        # Skip if distance is NaN
+                        if np.isnan(distance):
+                            continue
+
+                        # Add row to results
+                        rows.append({
+                            "persistence_diagram_id_a": str(pd_a.id),
+                            "persistence_diagram_id_b": str(pd_b.id),
+                            "homology_dimension": dim,
+                            "embedding_model": embedding_model,
+                            "embedding_type": embedding_type,
+                            "initial_prompt_a": pd_a.run.initial_prompt
+                            if pd_a.run
+                            else None,
+                            "initial_prompt_b": pd_b.run.initial_prompt
+                            if pd_b.run
+                            else None,
+                            "network_a": network_a,
+                            "network_b": network_b,
+                            "distance": float(distance),
+                        })
+
+    # Create DataFrame with explicit schema
+    return pl.DataFrame(
+        rows,
+        schema_overrides={
+            "homology_dimension": pl.Int64,
+            "distance": pl.Float64,
+        },
+    )
+
+
 def calculate_wasserstein_distances(
     session: Session, embedding_model: str
 ) -> Dict[int, np.ndarray]:
