@@ -1350,11 +1350,7 @@ def plot_invocation_duration(
 
 
 def plot_wasserstein_distribution(
-    distances: list,
-    labels: list,
-    homology_dims: list = None,
-    embedding_types: list = None,
-    embedding_models: list = None,
+    wasserstein_df: pl.DataFrame,
     output_file: str = "output/vis/wasserstein_distribution.pdf",
 ) -> None:
     """
@@ -1362,41 +1358,55 @@ def plot_wasserstein_distribution(
     colored by whether the pair comes from the same or different initial prompts.
 
     Args:
-        distances: List of Wasserstein distances
-        labels: List of boolean values (True if same prompt, False if different)
-        homology_dims: List of homology dimensions for each distance (optional)
-        embedding_types: List of embedding types ("text" or "image") for each distance (optional)
-        embedding_models: List of embedding model names for each distance (optional)
+        wasserstein_df: DataFrame from pd_list_to_wasserstein_df containing:
+            - distance: Wasserstein distances
+            - initial_prompt_a, initial_prompt_b: Initial prompts for comparison
+            - homology_dimension: Homology dimension (0, 1, or 2)
+            - embedding_type: Type of embedding ("text" or "image")
+            - embedding_model: Name of embedding model
         output_file: Path to save the visualization
     """
     from plotnine import geom_histogram, scale_fill_manual, facet_grid
 
-    # Create DataFrame
-    df_data = {
-        "distance": distances,
-        "same_prompt": ["Same Prompt" if l else "Different Prompt" for l in labels],
-    }
+    # Create same_prompt indicator
+    wasserstein_df = wasserstein_df.with_columns(
+        (pl.col("initial_prompt_a") == pl.col("initial_prompt_b"))
+        .map_elements(
+            lambda x: "Same Prompt" if x else "Different Prompt", return_dtype=pl.Utf8
+        )
+        .alias("same_prompt")
+    )
 
-    # Add homology dimension if provided
-    if homology_dims is not None:
-        df_data["homology_dim"] = [f"H{dim}" for dim in homology_dims]
+    # Format homology dimension for display
+    wasserstein_df = wasserstein_df.with_columns(
+        pl.col("homology_dimension")
+        .map_elements(lambda x: f"H{x}", return_dtype=pl.Utf8)
+        .alias("homology_dim")
+    )
 
-    # Add embedding type if provided
-    if embedding_types is not None:
-        df_data["embedding_type"] = [t.capitalize() for t in embedding_types]
+    # Capitalize embedding type for display
+    wasserstein_df = wasserstein_df.with_columns(
+        pl.col("embedding_type").str.to_titlecase().alias("embedding_type_display")
+    )
 
-    # Add embedding model if provided
-    if embedding_models is not None:
-        df_data["embedding_model"] = embedding_models
+    # Convert to pandas for plotnine
+    df = wasserstein_df.to_pandas()
 
-    df = pd.DataFrame(df_data)
+    # Check if we have data for faceting
+    has_homology_data = (
+        "homology_dim" in df.columns and df["homology_dim"].notna().any()
+    )
+    has_embedding_type_data = (
+        "embedding_type_display" in df.columns
+        and df["embedding_type_display"].notna().any()
+    )
 
     # Create the plot
-    if homology_dims is not None:
+    if has_homology_data:
         # Determine faceting formula based on whether embedding_types is provided
-        if embedding_types is not None:
+        if has_embedding_type_data:
             # Facet by homology dimension and embedding type
-            facet_formula = "homology_dim ~ embedding_type"
+            facet_formula = "homology_dim ~ embedding_type_display"
             plot_title = "Distribution of Wasserstein Distances by Homology Dimension and Embedding Type"
         else:
             # Original faceting by homology dimension and same_prompt

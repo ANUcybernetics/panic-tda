@@ -30,6 +30,7 @@ from panic_tda.datavis import (
     plot_persistence_entropy,
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
+    plot_wasserstein_distribution,
 )  # Temporary import for clarity
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
@@ -690,3 +691,54 @@ def test_format_label_map_as_markdown():
     )
     # Count occurrences of "..." - should have more with shorter max length
     assert markdown_short.count("...") >= 1
+
+
+def test_plot_wasserstein_distribution(db_session):
+    """Test the plot_wasserstein_distribution function with wasserstein DataFrame."""
+    from panic_tda.data_prep import pd_list_to_wasserstein_df
+    from sqlmodel import select
+    from panic_tda.schemas import PersistenceDiagram
+
+    # Setup experiment with persistence diagrams
+    experiment = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        prompts=["test prompt 1", "test prompt 2"],
+        seeds=[-1, -1],
+        embedding_models=["DummyText"],
+        max_length=50,
+    )
+
+    # Save and run experiment
+    db_session.add(experiment)
+    db_session.commit()
+    db_session.refresh(experiment)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(experiment.id), db_url)
+
+    # Get persistence diagrams
+    statement = select(PersistenceDiagram)
+    pd_list = list(db_session.exec(statement).all())
+
+    # Ensure we have persistence diagrams
+    assert len(pd_list) > 0, "No persistence diagrams found"
+
+    # Create wasserstein distance DataFrame
+    wasserstein_df = pd_list_to_wasserstein_df(pd_list)
+
+    # Verify we have data
+    assert wasserstein_df.height > 0, "No wasserstein distances computed"
+    assert "distance" in wasserstein_df.columns
+    assert "initial_prompt_a" in wasserstein_df.columns
+    assert "initial_prompt_b" in wasserstein_df.columns
+    assert "homology_dimension" in wasserstein_df.columns
+    assert "embedding_type" in wasserstein_df.columns
+
+    # Define output file
+    output_file = "output/test/wasserstein_distribution.pdf"
+
+    # Generate the plot
+    plot_wasserstein_distribution(wasserstein_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"

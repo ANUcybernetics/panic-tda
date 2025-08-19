@@ -9,6 +9,7 @@ from panic_tda.data_prep import (
     cache_dfs,
     load_pd_from_cache,
     calculate_wasserstein_distances,
+    pd_list_to_wasserstein_df,
 )
 from panic_tda.local_modules.shared import cluster_counts, example_run_ids, run_counts
 from panic_tda.schemas import Run, PersistenceDiagram
@@ -207,113 +208,17 @@ def cybernetics_26_charts(session: Session) -> None:
     for prompt, pds in pds_by_prompt.items():
         print(f"  {prompt}: {len(pds)} persistence diagrams")
 
-    # Step 3: Compute pairwise Wasserstein distances
+    # Step 3: Compute pairwise Wasserstein distances using the new function
     print("\n=== Step 3: Computing pairwise Wasserstein distances ===")
 
-    # We'll compute distances for text embeddings
-    # Get unique embedding models in our PDs
-    embedding_models = set()
-    for pd in persistence_diagrams:
-        if pd.embedding_model:
-            embedding_models.add(pd.embedding_model)
+    # Use the new pd_list_to_wasserstein_df function to compute all distances
+    wasserstein_df = pd_list_to_wasserstein_df(persistence_diagrams)
 
-    print(f"Found embedding models: {embedding_models}")
+    print(f"\nComputed {wasserstein_df.height} pairwise distances")
 
-    # For each embedding model, compute pairwise distances
-    all_distances = []
-    labels = []  # Whether the pair is same prompt (True) or different (False)
-    homology_dimensions = []  # Track which homology dimension each distance is for
-    embedding_types = []  # Track the embedding type (text/image) for each distance
-    embedding_models_list = []  # Track which embedding model each distance is from
-
-    from panic_tda.tda import compute_wasserstein_distance
-    from panic_tda.embeddings import get_model_type
-
-    # Debug: Check first few PDs to understand structure
-    if persistence_diagrams:
-        sample_pd = persistence_diagrams[0]
-        if sample_pd.diagram_data and "dgms" in sample_pd.diagram_data:
-            print("\nSample PD structure:")
-            print(f"  Number of dimensions: {len(sample_pd.diagram_data['dgms'])}")
-            for i, dgm in enumerate(sample_pd.diagram_data["dgms"]):
-                if isinstance(dgm, np.ndarray):
-                    print(f"  Dimension {i}: shape {dgm.shape}, size {dgm.size}")
-                    if dgm.size > 0:
-                        print(f"    Contains inf: {np.any(np.isinf(dgm))}")
-                        print(
-                            f"    Min/Max values: {np.min(dgm[~np.isinf(dgm)]):.3f} / {np.max(dgm[~np.isinf(dgm)]):.3f}"
-                            if np.any(~np.isinf(dgm))
-                            else "All inf"
-                        )
-
-    for embedding_model in embedding_models:
-        print(f"\nProcessing embedding model: {embedding_model}")
-
-        # Get the embedding type for this model
-        model_type = get_model_type(
-            embedding_model
-        ).value  # Get "text" or "image" string
-
-        # Get PDs for this embedding model
-        model_pds = [
-            pd for pd in persistence_diagrams if pd.embedding_model == embedding_model
-        ]
-        print(f"  Found {len(model_pds)} PDs for this model (type: {model_type})")
-
-        # Compute pairwise distances
-        for i, pd1 in enumerate(model_pds):
-            for j, pd2 in enumerate(model_pds):
-                if i < j:  # Only compute upper triangle (symmetric matrix)
-                    # Get the initial prompts for these PDs
-                    run1 = next((r for r in runs if r.id == pd1.run_id), None)
-                    run2 = next((r for r in runs if r.id == pd2.run_id), None)
-
-                    if run1 and run2 and pd1.diagram_data and pd2.diagram_data:
-                        if "dgms" in pd1.diagram_data and "dgms" in pd2.diagram_data:
-                            # Compute distance for each homology dimension (0, 1, 2)
-                            num_dims = min(
-                                len(pd1.diagram_data["dgms"]),
-                                len(pd2.diagram_data["dgms"]),
-                            )
-
-                            for dim in range(num_dims):
-                                dgm1 = pd1.diagram_data["dgms"][dim]
-                                dgm2 = pd2.diagram_data["dgms"][dim]
-
-                                if isinstance(dgm1, np.ndarray) and isinstance(
-                                    dgm2, np.ndarray
-                                ):
-                                    # Skip if either diagram is empty
-                                    if dgm1.size > 0 and dgm2.size > 0:
-                                        # Filter out points with infinite death times
-                                        finite_mask1 = ~np.isinf(dgm1).any(axis=1)
-                                        finite_mask2 = ~np.isinf(dgm2).any(axis=1)
-                                        dgm1_finite = dgm1[finite_mask1]
-                                        dgm2_finite = dgm2[finite_mask2]
-
-                                        # Only compute if we have finite points
-                                        if (
-                                            dgm1_finite.size > 0
-                                            and dgm2_finite.size > 0
-                                        ):
-                                            distance = compute_wasserstein_distance(
-                                                dgm1_finite, dgm2_finite
-                                            )
-                                            # Only add if distance is not NaN
-                                            if not np.isnan(distance):
-                                                all_distances.append(distance)
-                                                labels.append(
-                                                    run1.initial_prompt
-                                                    == run2.initial_prompt
-                                                )
-                                                homology_dimensions.append(dim)
-                                                embedding_types.append(model_type)
-                                                embedding_models_list.append(
-                                                    embedding_model
-                                                )
-
-    print(f"\nComputed {len(all_distances)} pairwise distances")
-    if all_distances:
+    if wasserstein_df.height > 0:
+        # Extract distances for statistics
+        all_distances = wasserstein_df["distance"].to_list()
         print("Distance statistics:")
         print(f"  Min: {np.min(all_distances):.4f}")
         print(f"  Max: {np.max(all_distances):.4f}")
@@ -322,35 +227,39 @@ def cybernetics_26_charts(session: Session) -> None:
 
         # Statistics by embedding model
         print("\n=== Statistics by embedding model ===")
-        for model in sorted(set(embedding_models_list)):
-            model_distances = [
-                d for d, m in zip(all_distances, embedding_models_list) if m == model
-            ]
+        for model in wasserstein_df["embedding_model"].unique():
+            model_df = wasserstein_df.filter(pl.col("embedding_model") == model)
+            model_distances = model_df["distance"].to_list()
             print(f"\n{model} ({len(model_distances)} pairs):")
             print(f"  Mean: {np.mean(model_distances):.4f}")
             print(f"  Std: {np.std(model_distances):.4f}")
 
         # Statistics by homology dimension
-        for dim in sorted(set(homology_dimensions)):
-            dim_distances = [
-                d for d, h in zip(all_distances, homology_dimensions) if h == dim
-            ]
+        for dim in wasserstein_df["homology_dimension"].unique().sort():
+            dim_df = wasserstein_df.filter(pl.col("homology_dimension") == dim)
+            dim_distances = dim_df["distance"].to_list()
             print(f"\nHomology dimension {dim} ({len(dim_distances)} pairs):")
             print(f"  Mean: {np.mean(dim_distances):.4f}")
             print(f"  Std: {np.std(dim_distances):.4f}")
 
         # Statistics by same/different prompt and homology dimension
-        for dim in sorted(set(homology_dimensions)):
-            dim_same = [
-                d
-                for d, l, h in zip(all_distances, labels, homology_dimensions)
-                if l and h == dim
-            ]
-            dim_diff = [
-                d
-                for d, l, h in zip(all_distances, labels, homology_dimensions)
-                if not l and h == dim
-            ]
+        # Add same_prompt indicator to DataFrame
+        wasserstein_df = wasserstein_df.with_columns(
+            (pl.col("initial_prompt_a") == pl.col("initial_prompt_b")).alias(
+                "same_prompt"
+            )
+        )
+
+        for dim in wasserstein_df["homology_dimension"].unique().sort():
+            dim_same_df = wasserstein_df.filter(
+                (pl.col("homology_dimension") == dim) & pl.col("same_prompt")
+            )
+            dim_diff_df = wasserstein_df.filter(
+                (pl.col("homology_dimension") == dim) & ~pl.col("same_prompt")
+            )
+
+            dim_same = dim_same_df["distance"].to_list()
+            dim_diff = dim_diff_df["distance"].to_list()
 
             print(f"\nH{dim} - Same prompt pairs ({len(dim_same)} pairs):")
             if dim_same:
@@ -364,15 +273,14 @@ def cybernetics_26_charts(session: Session) -> None:
 
         # Statistics by embedding type and homology dimension
         print("\n=== Statistics by embedding type and homology dimension ===")
-        for emb_type in sorted(set(embedding_types)):
-            for dim in sorted(set(homology_dimensions)):
-                type_dim_distances = [
-                    d
-                    for d, e, h in zip(
-                        all_distances, embedding_types, homology_dimensions
-                    )
-                    if e == emb_type and h == dim
-                ]
+        for emb_type in wasserstein_df["embedding_type"].unique().sort():
+            for dim in wasserstein_df["homology_dimension"].unique().sort():
+                type_dim_df = wasserstein_df.filter(
+                    (pl.col("embedding_type") == emb_type)
+                    & (pl.col("homology_dimension") == dim)
+                )
+                type_dim_distances = type_dim_df["distance"].to_list()
+
                 if type_dim_distances:
                     print(
                         f"\n{emb_type.capitalize()} embeddings - H{dim} ({len(type_dim_distances)} pairs):"
@@ -381,20 +289,12 @@ def cybernetics_26_charts(session: Session) -> None:
                     print(f"  Std: {np.std(type_dim_distances):.4f}")
 
                     # Also break down by same/different prompt
-                    type_dim_same = [
-                        d
-                        for d, l, e, h in zip(
-                            all_distances, labels, embedding_types, homology_dimensions
-                        )
-                        if l and e == emb_type and h == dim
-                    ]
-                    type_dim_diff = [
-                        d
-                        for d, l, e, h in zip(
-                            all_distances, labels, embedding_types, homology_dimensions
-                        )
-                        if not l and e == emb_type and h == dim
-                    ]
+                    type_dim_same_df = type_dim_df.filter(pl.col("same_prompt"))
+                    type_dim_diff_df = type_dim_df.filter(~pl.col("same_prompt"))
+
+                    type_dim_same = type_dim_same_df["distance"].to_list()
+                    type_dim_diff = type_dim_diff_df["distance"].to_list()
+
                     if type_dim_same:
                         print(
                             f"    Same prompt: Mean={np.mean(type_dim_same):.4f}, Std={np.std(type_dim_same):.4f} (n={len(type_dim_same)})"
@@ -408,16 +308,9 @@ def cybernetics_26_charts(session: Session) -> None:
         print("\n=== Step 4: Creating visualization ===")
         from panic_tda.datavis import plot_wasserstein_distribution
 
-        # Create the plot with homology dimensions, embedding types, and models
+        # Create the plot using the DataFrame
         output_file = "output/vis/wasserstein_distribution.pdf"
-        plot_wasserstein_distribution(
-            all_distances,
-            labels,
-            homology_dimensions,
-            embedding_types,
-            embedding_models_list,
-            output_file,
-        )
+        plot_wasserstein_distribution(wasserstein_df, output_file)
         print(f"Visualization saved to {output_file}")
 
     # #### Persistence Diagram Density Comparison
