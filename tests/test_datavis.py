@@ -729,8 +729,8 @@ def test_plot_wasserstein_distribution(db_session):
     # Verify we have data
     assert wasserstein_df.height > 0, "No wasserstein distances computed"
     assert "distance" in wasserstein_df.columns
-    assert "initial_prompt_a" in wasserstein_df.columns
-    assert "initial_prompt_b" in wasserstein_df.columns
+    assert "initial_conditions_a" in wasserstein_df.columns
+    assert "initial_conditions_b" in wasserstein_df.columns
     assert "homology_dimension" in wasserstein_df.columns
     assert "embedding_type" in wasserstein_df.columns
 

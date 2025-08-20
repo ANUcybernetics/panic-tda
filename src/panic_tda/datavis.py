@@ -1355,12 +1355,12 @@ def plot_wasserstein_distribution(
 ) -> None:
     """
     Create and save a visualization of Wasserstein distance distribution,
-    colored by whether the pair comes from the same or different initial prompts.
+    colored by whether the pair comes from the same or different initial conditions.
 
     Args:
         wasserstein_df: DataFrame from pd_list_to_wasserstein_df containing:
             - distance: Wasserstein distances
-            - initial_prompt_a, initial_prompt_b: Initial prompts for comparison
+            - initial_conditions_a, initial_conditions_b: Initial conditions for comparison
             - homology_dimension: Homology dimension (0, 1, or 2)
             - embedding_type: Type of embedding ("text" or "image")
             - embedding_model: Name of embedding model
@@ -1368,13 +1368,16 @@ def plot_wasserstein_distribution(
     """
     from plotnine import geom_histogram, scale_fill_manual, facet_grid
 
-    # Create same_prompt indicator
+    # Create same_initial_conditions indicator
     wasserstein_df = wasserstein_df.with_columns(
-        (pl.col("initial_prompt_a") == pl.col("initial_prompt_b"))
+        (pl.col("initial_conditions_a") == pl.col("initial_conditions_b"))
         .map_elements(
-            lambda x: "Same Prompt" if x else "Different Prompt", return_dtype=pl.Utf8
+            lambda x: "Same Initial Conditions"
+            if x
+            else "Different Initial Conditions",
+            return_dtype=pl.Utf8,
         )
-        .alias("same_prompt")
+        .alias("same_initial_conditions")
     )
 
     # Format homology dimension for display
@@ -1393,40 +1396,28 @@ def plot_wasserstein_distribution(
     df = wasserstein_df.to_pandas()
 
     # Check if we have data for faceting
-    has_homology_data = (
-        "homology_dim" in df.columns and df["homology_dim"].notna().any()
-    )
-    has_embedding_type_data = (
-        "embedding_type_display" in df.columns
-        and df["embedding_type_display"].notna().any()
+    has_initial_conditions_data = (
+        "initial_conditions_a" in df.columns
+        and df["initial_conditions_a"].notna().any()
     )
 
     # Create the plot
-    if has_homology_data:
-        # Determine faceting formula based on whether embedding_types is provided
-        if has_embedding_type_data:
-            # Facet by homology dimension and embedding type
-            facet_formula = "homology_dim ~ embedding_type_display"
-            plot_title = "Distribution of Wasserstein Distances by Homology Dimension and Embedding Type"
-        else:
-            # Original faceting by homology dimension and same_prompt
-            facet_formula = "homology_dim ~ same_prompt"
-            plot_title = "Distribution of Wasserstein Distances by Homology Dimension"
+    if has_initial_conditions_data:
+        # Facet by initial_conditions_a (rows) and same_initial_conditions (columns)
+        facet_formula = "initial_conditions_a ~ same_initial_conditions"
+        plot_title = "Distribution of Wasserstein Distances by Initial Conditions"
 
         # Faceted plot
         plot = (
-            ggplot(df, aes(x="distance", fill="same_prompt"))
+            ggplot(df, aes(x="distance", fill="homology_dim"))
             + geom_histogram(bins=30, alpha=0.7, position="identity")
             + facet_grid(facet_formula, scales="free_x")
             + labs(
                 x="Wasserstein Distance",
                 y="Count",
-                fill="Initial Prompt",
+                fill="Homology Dimension",
                 title=plot_title,
             )
-            + scale_fill_manual(
-                values=["#2E7D32", "#C62828"]
-            )  # Green for same, red for different
             + theme(
                 figure_size=(14, 10),
                 legend_position="top",
@@ -1436,12 +1427,12 @@ def plot_wasserstein_distribution(
     else:
         # Original plot without faceting
         plot = (
-            ggplot(df, aes(x="distance", fill="same_prompt"))
+            ggplot(df, aes(x="distance", fill="same_initial_conditions"))
             + geom_histogram(bins=30, alpha=0.7, position="identity")
             + labs(
                 x="Wasserstein Distance",
                 y="Count",
-                fill="Initial Prompt",
+                fill="Initial Conditions",
                 title="Distribution of Wasserstein Distances Between Persistence Diagrams",
             )
             + scale_fill_manual(

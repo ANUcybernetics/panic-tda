@@ -242,31 +242,33 @@ def cybernetics_26_charts(session: Session) -> None:
             print(f"  Mean: {np.mean(dim_distances):.4f}")
             print(f"  Std: {np.std(dim_distances):.4f}")
 
-        # Statistics by same/different prompt and homology dimension
-        # Add same_prompt indicator to DataFrame
+        # Statistics by same/different initial conditions and homology dimension
+        # Add same_initial_conditions indicator to DataFrame
         wasserstein_df = wasserstein_df.with_columns(
-            (pl.col("initial_prompt_a") == pl.col("initial_prompt_b")).alias(
-                "same_prompt"
+            (pl.col("initial_conditions_a") == pl.col("initial_conditions_b")).alias(
+                "same_initial_conditions"
             )
         )
 
         for dim in wasserstein_df["homology_dimension"].unique().sort():
             dim_same_df = wasserstein_df.filter(
-                (pl.col("homology_dimension") == dim) & pl.col("same_prompt")
+                (pl.col("homology_dimension") == dim)
+                & pl.col("same_initial_conditions")
             )
             dim_diff_df = wasserstein_df.filter(
-                (pl.col("homology_dimension") == dim) & ~pl.col("same_prompt")
+                (pl.col("homology_dimension") == dim)
+                & ~pl.col("same_initial_conditions")
             )
 
             dim_same = dim_same_df["distance"].to_list()
             dim_diff = dim_diff_df["distance"].to_list()
 
-            print(f"\nH{dim} - Same prompt pairs ({len(dim_same)} pairs):")
+            print(f"\nH{dim} - Same initial conditions ({len(dim_same)} pairs):")
             if dim_same:
                 print(f"  Mean: {np.mean(dim_same):.4f}")
                 print(f"  Std: {np.std(dim_same):.4f}")
 
-            print(f"H{dim} - Different prompt pairs ({len(dim_diff)} pairs):")
+            print(f"H{dim} - Different initial conditions ({len(dim_diff)} pairs):")
             if dim_diff:
                 print(f"  Mean: {np.mean(dim_diff):.4f}")
                 print(f"  Std: {np.std(dim_diff):.4f}")
@@ -288,29 +290,41 @@ def cybernetics_26_charts(session: Session) -> None:
                     print(f"  Mean: {np.mean(type_dim_distances):.4f}")
                     print(f"  Std: {np.std(type_dim_distances):.4f}")
 
-                    # Also break down by same/different prompt
-                    type_dim_same_df = type_dim_df.filter(pl.col("same_prompt"))
-                    type_dim_diff_df = type_dim_df.filter(~pl.col("same_prompt"))
+                    # Also break down by same/different initial conditions
+                    type_dim_same_df = type_dim_df.filter(
+                        pl.col("same_initial_conditions")
+                    )
+                    type_dim_diff_df = type_dim_df.filter(
+                        ~pl.col("same_initial_conditions")
+                    )
 
                     type_dim_same = type_dim_same_df["distance"].to_list()
                     type_dim_diff = type_dim_diff_df["distance"].to_list()
 
                     if type_dim_same:
                         print(
-                            f"    Same prompt: Mean={np.mean(type_dim_same):.4f}, Std={np.std(type_dim_same):.4f} (n={len(type_dim_same)})"
+                            f"    Same initial conditions: Mean={np.mean(type_dim_same):.4f}, Std={np.std(type_dim_same):.4f} (n={len(type_dim_same)})"
                         )
                     if type_dim_diff:
                         print(
-                            f"    Diff prompt: Mean={np.mean(type_dim_diff):.4f}, Std={np.std(type_dim_diff):.4f} (n={len(type_dim_diff)})"
+                            f"    Diff initial conditions: Mean={np.mean(type_dim_diff):.4f}, Std={np.std(type_dim_diff):.4f} (n={len(type_dim_diff)})"
                         )
 
         # Step 4: Create visualization
         print("\n=== Step 4: Creating visualization ===")
         from panic_tda.datavis import plot_wasserstein_distribution
 
-        # Create the plot using the DataFrame
+        # Filter to only homology dimension == 1 before plotting
+        filtered_wasserstein_df = wasserstein_df.filter(
+            pl.col("homology_dimension") == 1
+        )
+        print(
+            f"Filtered to homology dimension 1: {filtered_wasserstein_df.height} distances"
+        )
+
+        # Create the plot using the filtered DataFrame
         output_file = "output/vis/wasserstein_distribution.pdf"
-        plot_wasserstein_distribution(wasserstein_df, output_file)
+        plot_wasserstein_distribution(filtered_wasserstein_df, output_file)
         print(f"Visualization saved to {output_file}")
 
     # #### Persistence Diagram Density Comparison

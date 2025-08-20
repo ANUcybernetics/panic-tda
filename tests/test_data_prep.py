@@ -2038,10 +2038,8 @@ def test_pd_list_to_wasserstein_df(db_session):
         "homology_dimension",
         "embedding_model",
         "embedding_type",
-        "initial_prompt_a",
-        "initial_prompt_b",
-        "network_a",
-        "network_b",
+        "initial_conditions_a",
+        "initial_conditions_b",
         "distance",
     }
     assert set(result_df.columns) == expected_columns
@@ -2068,13 +2066,17 @@ def test_pd_list_to_wasserstein_df(db_session):
         embedding_types = result_df["embedding_type"].unique()
         assert all(et in ["text", "image"] for et in embedding_types)
 
-        # Verify network format (should contain arrow separator)
-        networks = result_df.filter(pl.col("network_a").is_not_null())[
-            "network_a"
-        ].unique()
-        for network in networks:
-            assert "→" in network, (
-                f"Network string should contain arrow separator: {network}"
+        # Verify initial_conditions format (should contain : separator)
+        initial_conditions = result_df.filter(
+            pl.col("initial_conditions_a").is_not_null()
+        )["initial_conditions_a"].unique()
+        for condition in initial_conditions:
+            assert ":" in condition, (
+                f"Initial conditions string should contain colon separator: {condition}"
+            )
+            # Also verify it contains the arrow separator from network
+            assert "→" in condition, (
+                f"Initial conditions string should contain arrow separator from network: {condition}"
             )
 
     # Test with empty list

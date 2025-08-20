@@ -1328,10 +1328,8 @@ def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
         - homology_dimension: Dimension (0, 1, or 2)
         - embedding_model: Model used for embeddings
         - embedding_type: Type of embedding (text/image)
-        - initial_prompt_a: Initial prompt of first PD's run
-        - initial_prompt_b: Initial prompt of second PD's run
-        - network_a: Network configuration of first PD's run
-        - network_b: Network configuration of second PD's run
+        - initial_conditions_a: Initial conditions of first PD's run (initial_prompt:network)
+        - initial_conditions_b: Initial conditions of second PD's run (initial_prompt:network)
         - distance: Wasserstein distance between the two PDs
     """
     from panic_tda.tda import compute_wasserstein_distance
@@ -1346,10 +1344,8 @@ def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
                 "homology_dimension": pl.Int64,
                 "embedding_model": pl.Utf8,
                 "embedding_type": pl.Utf8,
-                "initial_prompt_a": pl.Utf8,
-                "initial_prompt_b": pl.Utf8,
-                "network_a": pl.Utf8,
-                "network_b": pl.Utf8,
+                "initial_conditions_a": pl.Utf8,
+                "initial_conditions_b": pl.Utf8,
                 "distance": pl.Float64,
             }
         )
@@ -1381,7 +1377,10 @@ def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
                     ):
                         continue
 
-                    # Get network as string (from list)
+                    # Create initial_conditions strings by concatenating prompt:network
+                    initial_prompt_a = pd_a.run.initial_prompt if pd_a.run else None
+                    initial_prompt_b = pd_b.run.initial_prompt if pd_b.run else None
+
                     network_a = (
                         "→".join(pd_a.run.network)
                         if pd_a.run and pd_a.run.network
@@ -1390,6 +1389,18 @@ def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
                     network_b = (
                         "→".join(pd_b.run.network)
                         if pd_b.run and pd_b.run.network
+                        else None
+                    )
+
+                    # Concatenate initial_prompt and network with ":" separator
+                    initial_conditions_a = (
+                        f"{initial_prompt_a}:{network_a}"
+                        if initial_prompt_a and network_a
+                        else None
+                    )
+                    initial_conditions_b = (
+                        f"{initial_prompt_b}:{network_b}"
+                        if initial_prompt_b and network_b
                         else None
                     )
 
@@ -1443,14 +1454,8 @@ def pd_list_to_wasserstein_df(pd_list: list) -> pl.DataFrame:
                             "homology_dimension": dim,
                             "embedding_model": embedding_model,
                             "embedding_type": embedding_type,
-                            "initial_prompt_a": pd_a.run.initial_prompt
-                            if pd_a.run
-                            else None,
-                            "initial_prompt_b": pd_b.run.initial_prompt
-                            if pd_b.run
-                            else None,
-                            "network_a": network_a,
-                            "network_b": network_b,
+                            "initial_conditions_a": initial_conditions_a,
+                            "initial_conditions_b": initial_conditions_b,
                             "distance": float(distance),
                         })
 
