@@ -188,9 +188,13 @@ def cybernetics_26_charts(session: Session) -> None:
     runs = session.exec(statement).all()
     print(f"Found {len(runs)} runs for selected prompts")
 
-    # Get persistence diagrams for these runs
+    # Get persistence diagrams for these runs, filtering for Nomic and NomicVision embedding models
     run_ids = [run.id for run in runs]
-    statement = select(PersistenceDiagram).where(PersistenceDiagram.run_id.in_(run_ids))
+    statement = (
+        select(PersistenceDiagram)
+        .where(PersistenceDiagram.run_id.in_(run_ids))
+        .where(PersistenceDiagram.embedding_model.in_(["Nomic", "NomicVision"]))
+    )
     persistence_diagrams = session.exec(statement).all()
     print(f"Found {len(persistence_diagrams)} persistence diagrams for selected runs")
 
@@ -314,13 +318,25 @@ def cybernetics_26_charts(session: Session) -> None:
         print("\n=== Step 4: Creating visualization ===")
         from panic_tda.datavis import plot_wasserstein_distribution
 
-        # Filter to only homology dimension == 1 before plotting
+        # Filter to only homology dimension == 1
         filtered_wasserstein_df = wasserstein_df.filter(
             pl.col("homology_dimension") == 1
         )
         print(
             f"Filtered to homology dimension 1: {filtered_wasserstein_df.height} distances"
         )
+
+        # Further filter to only include rows where initial_conditions_a and initial_conditions_b
+        # match the first value in the initial_conditions_b column
+        if filtered_wasserstein_df.height > 0:
+            first_initial_condition = filtered_wasserstein_df["initial_conditions_b"][0]
+            filtered_wasserstein_df = filtered_wasserstein_df.filter(
+                (pl.col("initial_conditions_a") == first_initial_condition)
+                & (pl.col("initial_conditions_b") == first_initial_condition)
+            )
+            print(
+                f"Filtered to initial condition '{first_initial_condition}': {filtered_wasserstein_df.height} distances"
+            )
 
         # Create the plot using the filtered DataFrame
         output_file = "output/vis/wasserstein_distribution.pdf"

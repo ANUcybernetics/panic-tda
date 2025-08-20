@@ -1395,31 +1395,33 @@ def plot_wasserstein_distribution(
     # Convert to pandas for plotnine
     df = wasserstein_df.to_pandas()
 
-    # Check if we have data for faceting
-    has_initial_conditions_data = (
-        "initial_conditions_a" in df.columns
-        and df["initial_conditions_a"].notna().any()
+    # Check if we have embedding_model data for faceting
+    has_embedding_model_data = (
+        "embedding_model" in df.columns and df["embedding_model"].notna().any()
     )
 
     # Create the plot
-    if has_initial_conditions_data:
-        # Facet by initial_conditions_a (rows) and same_initial_conditions (columns)
-        facet_formula = "initial_conditions_a ~ same_initial_conditions"
-        plot_title = "Distribution of Wasserstein Distances by Initial Conditions"
+    if has_embedding_model_data:
+        # Facet by embedding_model
+        facet_formula = "~ embedding_model"
+        plot_title = "Distribution of Wasserstein Distances by Embedding Model"
 
         # Faceted plot
         plot = (
-            ggplot(df, aes(x="distance", fill="homology_dim"))
+            ggplot(df, aes(x="distance", fill="same_initial_conditions"))
             + geom_histogram(bins=30, alpha=0.7, position="identity")
             + facet_grid(facet_formula, scales="free_x")
             + labs(
                 x="Wasserstein Distance",
                 y="Count",
-                fill="Homology Dimension",
+                fill="Initial Conditions",
                 title=plot_title,
             )
+            + scale_fill_manual(
+                values=["#2E7D32", "#C62828"]
+            )  # Green for same, red for different
             + theme(
-                figure_size=(14, 10),
+                figure_size=(14, 6),
                 legend_position="top",
                 plot_title=element_text(size=14, weight="bold"),
             )
