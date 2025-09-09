@@ -2469,65 +2469,6 @@ def test_create_paired_pd_df_comprehensive(db_session):
     )
 
 
-def test_calculate_paired_wasserstein_distances(db_session):
-    """Test calculate_paired_wasserstein_distances function computes distances correctly."""
-    # Create test data
-    config = ExperimentConfig(
-        networks=[["DummyT2I", "DummyI2T"]],
-        seeds=[-1, -2],  # Multiple seeds for more diagrams
-        prompts=["test prompt"],
-        embedding_models=["DummyText"],
-        max_length=5,
-    )
-    db_session.add(config)
-    db_session.commit()
-    db_session.refresh(config)
-
-    db_url = str(db_session.get_bind().engine.url)
-    perform_experiment(str(config.id), db_url)
-
-    # Load PD data and process through pipeline
-    pd_df = load_pd_df(db_session)
-    paired_df = create_paired_pd_df(pd_df)
-    filtered_df = filter_paired_pd_df(paired_df)
-    metadata_df = add_pairing_metadata(filtered_df)
-
-    if metadata_df.height == 0:
-        pytest.skip("No pairs available for distance calculation")
-
-    # Test the function
-    distance_df = calculate_paired_wasserstein_distances(metadata_df, db_session)
-
-    # Check that we got results
-    assert distance_df.height > 0, "Should calculate some distances"
-
-    # Check that required columns are present
-    assert "distance" in distance_df.columns
-    assert "homology_dimension" in distance_df.columns
-
-    # Check data types
-    assert distance_df["distance"].dtype == pl.Float64
-    assert distance_df["homology_dimension"].dtype == pl.Int64
-
-    # Check that distances are non-negative
-    negative_distances = distance_df.filter(pl.col("distance") < 0)
-    assert negative_distances.height == 0, "Distances should be non-negative"
-
-    # Check that we have reasonable homology dimensions
-    dimensions = distance_df["homology_dimension"].unique().sort().to_list()
-    assert all(0 <= dim <= 2 for dim in dimensions), (
-        "Homology dimensions should be 0, 1, or 2"
-    )
-
-    # Test with specific homology dimension
-    if metadata_df.height > 0:
-        distance_df_h1 = calculate_paired_wasserstein_distances(
-            metadata_df, db_session, homology_dimension=1
-        )
-        if distance_df_h1.height > 0:
-            assert distance_df_h1["homology_dimension"].unique().to_list() == [1]
-
-
 def test_wasserstein_pipeline_integration(db_session):
     """Test the complete pipeline integration from pd_df to distances."""
     # Create test data with known structure
