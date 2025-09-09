@@ -1509,8 +1509,8 @@ def plot_wasserstein_violin(
             title="Distribution of Wasserstein Distances by Pairing Relationship",
         )
         + facet_grid(
-            "same_IC_label ~ homology_dim_label",
-            scales="free_y",  # Allow different y-scales for each dimension
+            "homology_dim_label ~ same_IC_label",
+            scales="fixed",  # Use same y-scale for all panels
         )
         + theme(
             figure_size=(14, 10),
