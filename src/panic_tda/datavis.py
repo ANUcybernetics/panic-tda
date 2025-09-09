@@ -1450,3 +1450,79 @@ def plot_wasserstein_distribution(
     # Save plot
     saved_file = save(plot, output_file)
     print(f"Saved Wasserstein distribution plot to {saved_file}")
+
+
+def plot_wasserstein_violin(
+    wasserstein_df: pl.DataFrame,
+    output_file: str = "output/vis/wasserstein_violin.pdf",
+) -> None:
+    """
+    Create and save a violin plot of Wasserstein distances faceted by pairing relationships.
+
+    This function creates a violin plot showing the distribution of Wasserstein distances
+    with separate panels for different initial conditions and homology dimensions.
+
+    Args:
+        wasserstein_df: DataFrame from calculate_paired_wasserstein_distances containing:
+            - distance: Wasserstein distances
+            - same_IC: Boolean indicating same initial conditions
+            - homology_dimension: Homology dimension (0, 1, or 2)
+            - embedding_model_a: Embedding model name
+        output_file: Path to save the visualization
+    """
+    import logging
+
+    logging.debug(
+        f"Creating Wasserstein violin plot from {wasserstein_df.height} distance measurements"
+    )
+
+    # Create readable labels for the faceting variables
+    wasserstein_df = wasserstein_df.with_columns([
+        pl.when(pl.col("same_IC"))
+        .then(pl.lit("Same Initial Conditions"))
+        .otherwise(pl.lit("Different Initial Conditions"))
+        .alias("same_IC_label")
+    ])
+
+    # Format homology dimension for display
+    wasserstein_df = wasserstein_df.with_columns([
+        pl.col("homology_dimension")
+        .map_elements(lambda x: f"H{x}", return_dtype=pl.Utf8)
+        .alias("homology_dim_label")
+    ])
+
+    # Convert to pandas for plotnine
+    df = wasserstein_df.to_pandas()
+
+    # Create the violin plot
+    plot = (
+        ggplot(
+            df,
+            aes(x="embedding_model_a", y="distance", fill="embedding_model_a"),
+        )
+        + geom_violin(alpha=0.7)
+        + geom_boxplot(width=0.3, fill="white", alpha=0.5)  # Add boxplot overlay
+        + labs(
+            x="Embedding Model",
+            y="Wasserstein Distance",
+            fill="Embedding Model",
+            title="Distribution of Wasserstein Distances by Pairing Relationship",
+        )
+        + facet_grid(
+            "same_IC_label ~ homology_dim_label",
+            scales="free_y",  # Allow different y-scales for each dimension
+        )
+        + theme(
+            figure_size=(14, 10),
+            plot_title=element_text(size=14, weight="bold"),
+            strip_text=element_text(size=10),
+            axis_text_x=element_blank(),  # Hide x-axis labels since we have fill legend
+            axis_title_x=element_blank(),
+            legend_position="bottom",
+        )
+    )
+
+    # Save plot
+    saved_file = save(plot, output_file)
+    logging.info(f"Saved Wasserstein violin plot to {saved_file}")
+    print(f"Saved Wasserstein violin plot to {saved_file}")

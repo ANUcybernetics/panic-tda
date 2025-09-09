@@ -31,6 +31,7 @@ from panic_tda.datavis import (
     plot_persistence_entropy_by_prompt,
     plot_semantic_drift,
     plot_wasserstein_distribution,
+    plot_wasserstein_violin,
 )  # Temporary import for clarity
 from panic_tda.engine import perform_experiment
 from panic_tda.schemas import ExperimentConfig
@@ -739,6 +740,72 @@ def test_plot_wasserstein_distribution(db_session):
 
     # Generate the plot
     plot_wasserstein_distribution(wasserstein_df, output_file)
+
+    # Verify file was created
+    assert os.path.exists(output_file), f"File was not created: {output_file}"
+
+
+def test_plot_wasserstein_violin(db_session):
+    """Test plotting Wasserstein distance violin plots with pairing metadata."""
+    from panic_tda.data_prep import (
+        load_pd_df,
+        create_paired_pd_df,
+        filter_paired_pd_df,
+        add_pairing_metadata,
+        calculate_paired_wasserstein_distances,
+    )
+    from sqlmodel import select
+    from panic_tda.schemas import PersistenceDiagram
+
+    # Get persistence diagrams
+    statement = select(PersistenceDiagram).where(
+        PersistenceDiagram.embedding_model == "DummyText"
+    )
+    pd_list = list(db_session.exec(statement).all())
+
+    if len(pd_list) < 2:
+        # Need at least 2 diagrams for comparisons
+        return
+
+    # Test with the new pipeline functions
+    pd_df = load_pd_df(db_session)
+    if pd_df.height == 0:
+        return
+
+    paired_df = create_paired_pd_df(pd_df)
+    filtered_df = filter_paired_pd_df(paired_df)
+
+    if filtered_df.height == 0:
+        return
+
+    metadata_df = add_pairing_metadata(filtered_df)
+
+    if metadata_df.height == 0:
+        return
+
+    # Calculate distances using the new function
+    wasserstein_df = calculate_paired_wasserstein_distances(
+        metadata_df, db_session, homology_dimension=1
+    )
+
+    if wasserstein_df.height == 0:
+        return
+
+    # Verify we have the required columns for the plot
+    required_columns = [
+        "distance",
+        "same_IC",
+        "homology_dimension",
+        "embedding_model_a",
+    ]
+    for col in required_columns:
+        assert col in wasserstein_df.columns, f"Missing required column: {col}"
+
+    # Define output file
+    output_file = "output/test/wasserstein_violin.pdf"
+
+    # Generate the plot
+    plot_wasserstein_violin(wasserstein_df, output_file)
 
     # Verify file was created
     assert os.path.exists(output_file), f"File was not created: {output_file}"

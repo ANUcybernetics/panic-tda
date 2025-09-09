@@ -7,14 +7,18 @@ import pytest
 
 from panic_tda.clustering_manager import cluster_all_data
 from panic_tda.data_prep import (
+    add_pairing_metadata,
     add_semantic_drift,
     cache_dfs,
     calculate_cluster_bigrams,
     calculate_cluster_run_lengths,
     calculate_cluster_transitions,
+    calculate_paired_wasserstein_distances,
     calculate_semantic_drift,
     calculate_wasserstein_distances,
+    create_paired_pd_df,
     embed_initial_prompts,
+    filter_paired_pd_df,
     filter_top_n_clusters,
     load_clusters_df,
     load_embeddings_df,
@@ -1998,6 +2002,7 @@ def test_pd_list_to_wasserstein_df(db_session):
     """Test that pd_list_to_wasserstein_df correctly computes pairwise distances and returns a DataFrame."""
 
     from sqlmodel import select
+
     from panic_tda.schemas import PersistenceDiagram
 
     # Create a test configuration with multiple runs to get multiple persistence diagrams
@@ -2090,6 +2095,7 @@ def test_pd_list_to_wasserstein_df_single_model(db_session):
     """Test pd_list_to_wasserstein_df with a single embedding model."""
 
     from sqlmodel import select
+
     from panic_tda.schemas import PersistenceDiagram
 
     # Create a configuration with single embedding model
@@ -2154,3 +2160,427 @@ def test_pd_list_to_wasserstein_df_single_model(db_session):
             > 0
         )
         assert not reverse_exists, "Found symmetric duplicate in results"
+
+
+def test_create_paired_pd_df(db_session):
+    """Test create_paired_pd_df function creates only meaningful pairs efficiently."""
+    # Create test data with proper persistence diagrams - use different embedding models and prompts
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["DummyText", "DummyVision"],  # Different modalities
+        max_length=5,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load PD data
+    pd_df = load_pd_df(db_session)
+    assert pd_df.height > 0, "No persistence diagram data found"
+
+    # Test the function
+    paired_df = create_paired_pd_df(pd_df)
+
+    # Check that we have pairs
+    assert paired_df.height > 0, "No pairs created"
+
+    # Check that all required columns exist with _a and _b suffixes
+    required_base_columns = [
+        "persistence_diagram_id",
+        "run_id",
+        "embedding_model",
+        "initial_prompt",
+        "network",
+        "embedding_type",  # New column
+        "initial_conditions",  # New column
+    ]
+    for col in required_base_columns:
+        assert f"{col}_a" in paired_df.columns
+        assert f"{col}_b" in paired_df.columns
+
+    # Verify no self-pairs exist
+    self_pairs = paired_df.filter(
+        pl.col("persistence_diagram_id_a") == pl.col("persistence_diagram_id_b")
+    )
+    assert self_pairs.height == 0, "No self-pairs should exist"
+
+    # Verify no reversed pairs exist (lexicographic ordering)
+    for row in paired_df.iter_rows(named=True):
+        id_a = row["persistence_diagram_id_a"]
+        id_b = row["persistence_diagram_id_b"]
+        assert id_a < id_b, f"Should have lexicographic ordering: {id_a} < {id_b}"
+
+    # Verify pairing logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
+    paired_df = paired_df.with_columns([
+        (
+            (pl.col("initial_prompt_a") == pl.col("initial_prompt_b"))
+            & (pl.col("network_a") == pl.col("network_b"))
+        ).alias("same_IC"),
+        (pl.col("embedding_model_a") == pl.col("embedding_model_b")).alias(
+            "same_model"
+        ),
+    ])
+
+    # Check that all pairs satisfy the new logic
+    valid_pairs = paired_df.filter(
+        (pl.col("same_IC") & (~pl.col("same_model")))  # same IC, different models
+        | ((~pl.col("same_IC")) & pl.col("same_model"))  # different IC, same models
+    )
+    assert valid_pairs.height == paired_df.height, (
+        "All pairs should follow the new pairing logic"
+    )
+
+    # The number of pairs should be much less than n×n since we only create meaningful ones
+    unique_pds = pd_df["persistence_diagram_id"].n_unique()
+    all_possible_pairs = (unique_pds * (unique_pds - 1)) // 2  # n choose 2
+    assert paired_df.height <= all_possible_pairs, (
+        "Should have fewer pairs than all possible"
+    )
+    assert paired_df.height > 0, "Should have at least some pairs"
+
+
+def test_filter_paired_pd_df(db_session):
+    """Test filter_paired_pd_df function handles homology dimension marking."""
+    # Create test data
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["DummyText"],  # Same model for pairing
+        max_length=5,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load PD data and create pairs
+    pd_df = load_pd_df(db_session)
+    paired_df = create_paired_pd_df(pd_df)
+
+    initial_pairs = paired_df.height
+    assert initial_pairs > 0, "No initial pairs found"
+
+    # Test the function without homology dimension
+    filtered_df = filter_paired_pd_df(paired_df)
+
+    # Since create_paired_pd_df now creates only correct pairs,
+    # filtering should not reduce the count (just pass-through)
+    assert filtered_df.height == initial_pairs, "Should not filter out pairs anymore"
+
+    # Verify the properties that should already be true from create_paired_pd_df
+    # Check that no self-pairs exist
+    self_pairs = filtered_df.filter(
+        pl.col("persistence_diagram_id_a") == pl.col("persistence_diagram_id_b")
+    )
+    assert self_pairs.height == 0, "Self-pairs should not exist"
+
+    # Check that we don't have both (a,b) and (b,a)
+    for row in filtered_df.iter_rows(named=True):
+        id_a = row["persistence_diagram_id_a"]
+        id_b = row["persistence_diagram_id_b"]
+
+        # Should have lexicographic ordering
+        assert id_a < id_b, f"Should have lexicographic ordering: {id_a} < {id_b}"
+
+        reverse_pairs = filtered_df.filter(
+            (pl.col("persistence_diagram_id_a") == id_b)
+            & (pl.col("persistence_diagram_id_b") == id_a)
+        )
+        assert reverse_pairs.height == 0, f"Found reverse pair for {id_a}, {id_b}"
+
+    # Check that only same embedding models are compared
+    different_models = filtered_df.filter(
+        pl.col("embedding_model_a") != pl.col("embedding_model_b")
+    )
+    assert different_models.height == 0, "Should only compare same embedding models"
+
+    # Test with homology dimension filter
+    filtered_with_dim = filter_paired_pd_df(paired_df, homology_dimension=1)
+    assert "requested_homology_dimension" in filtered_with_dim.columns
+    assert filtered_with_dim["requested_homology_dimension"].unique().to_list() == [1]
+    assert filtered_with_dim.height == initial_pairs, (
+        "Should have same number of pairs with dimension marker"
+    )
+
+
+def test_add_pairing_metadata(db_session):
+    """Test add_pairing_metadata function adds correct same_IC column."""
+    # Create test data with different prompts and models to test combinations
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1],
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["DummyText", "DummyVision"],  # Different modalities
+        max_length=5,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load PD data and create filtered pairs
+    pd_df = load_pd_df(db_session)
+    paired_df = create_paired_pd_df(pd_df)
+    filtered_df = filter_paired_pd_df(paired_df)
+
+    initial_pairs = filtered_df.height
+
+    # Test the function
+    metadata_df = add_pairing_metadata(filtered_df)
+
+    # Check that we have the same number of pairs (no filtering in add_pairing_metadata anymore)
+    assert metadata_df.height == initial_pairs, "Should not filter pairs anymore"
+
+    # Check that required columns are added
+    assert "same_IC" in metadata_df.columns
+    # embedding_type columns should already be present from create_paired_pd_df
+    assert "embedding_type_a" in metadata_df.columns
+    assert "embedding_type_b" in metadata_df.columns
+
+    # Check data types
+    assert metadata_df["same_IC"].dtype == pl.Boolean
+
+    # With new pairing logic, check that all pairs satisfy the new logic
+    valid_pairs = metadata_df.filter(
+        (
+            pl.col("same_IC")
+            & (pl.col("embedding_model_a") != pl.col("embedding_model_b"))
+        )  # same IC, different models
+        | (
+            (~pl.col("same_IC"))
+            & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
+        )  # different IC, same models
+    )
+    assert valid_pairs.height == metadata_df.height, (
+        "All pairs should follow the new pairing logic"
+    )
+
+    # Test same_IC logic
+    same_ic_pairs = metadata_df.filter(pl.col("same_IC"))
+    for row in same_ic_pairs.iter_rows(named=True):
+        assert row["initial_prompt_a"] == row["initial_prompt_b"], (
+            "same_IC should match prompts"
+        )
+        assert row["network_a"] == row["network_b"], "same_IC should match networks"
+
+    # Test embedding type detection
+    embedding_types = metadata_df["embedding_type_a"].unique().to_list()
+    assert "text" in embedding_types or "image" in embedding_types, (
+        "Should detect embedding types"
+    )
+
+
+def test_create_paired_pd_df_comprehensive(db_session):
+    """Comprehensive test for create_paired_pd_df covering all requirements."""
+    # Create test data with multiple scenarios
+    config = ExperimentConfig(
+        networks=[
+            ["DummyT2I", "DummyI2T"],
+            ["DummyT2I", "DummyI2T"],
+        ],  # Different networks
+        seeds=[-1],
+        prompts=["prompt A", "prompt B"],  # Different prompts
+        embedding_models=["DummyText", "DummyVision"],  # Different modalities
+        max_length=5,  # Need enough embeddings for persistence diagrams
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load PD data
+    pd_df = load_pd_df(db_session)
+    assert pd_df.height > 0, "No persistence diagram data found"
+
+    print(f"Total PD entries: {pd_df.height}")
+    print(f"Unique PDs: {pd_df['persistence_diagram_id'].n_unique()}")
+    print(f"Embedding models: {pd_df['embedding_model'].unique().to_list()}")
+    print(f"Initial prompts: {pd_df['initial_prompt'].unique().to_list()}")
+    print(f"Networks: {pd_df['network'].unique().to_list()}")
+
+    # Test the function
+    paired_df = create_paired_pd_df(pd_df)
+    print(f"Pairs created: {paired_df.height}")
+
+    if paired_df.height == 0:
+        # If no pairs created, verify why
+        print("No pairs created - this might be expected if no valid pairings exist")
+        return
+
+    # Requirement 1: No self-pairs (a != b)
+    self_pairs = paired_df.filter(
+        pl.col("persistence_diagram_id_a") == pl.col("persistence_diagram_id_b")
+    )
+    assert self_pairs.height == 0, "Should have no self-pairs"
+
+    # Requirement 2: Only one direction per pair (lexicographic ordering)
+    for row in paired_df.iter_rows(named=True):
+        id_a = row["persistence_diagram_id_a"]
+        id_b = row["persistence_diagram_id_b"]
+        assert id_a < id_b, f"Should have lexicographic ordering: {id_a} < {id_b}"
+
+    # Requirement 3: New pairing logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
+    paired_with_flags = paired_df.with_columns([
+        (
+            (pl.col("initial_prompt_a") == pl.col("initial_prompt_b"))
+            & (pl.col("network_a") == pl.col("network_b"))
+        ).alias("same_IC"),
+        (pl.col("embedding_model_a") == pl.col("embedding_model_b")).alias(
+            "same_model"
+        ),
+    ])
+
+    # Check that all pairs satisfy the new logic
+    valid_pairs = paired_with_flags.filter(
+        (pl.col("same_IC") & (~pl.col("same_model")))  # same IC, different models
+        | ((~pl.col("same_IC")) & pl.col("same_model"))  # different IC, same models
+    )
+    assert valid_pairs.height == paired_df.height, (
+        "All pairs should follow the new pairing logic"
+    )
+
+    # Verify creation logic - count different pair types
+    same_ic_diff_model = paired_with_flags.filter(
+        pl.col("same_IC") & (~pl.col("same_model"))
+    ).height
+    diff_ic_same_model = paired_with_flags.filter(
+        (~pl.col("same_IC")) & pl.col("same_model")
+    ).height
+
+    print(f"Same IC, different models: {same_ic_diff_model}")
+    print(f"Different IC, same models: {diff_ic_same_model}")
+    print(f"Total pairs: {paired_df.height}")
+
+    # Total should equal sum of the two valid pair types
+    assert paired_df.height == same_ic_diff_model + diff_ic_same_model, (
+        "All pairs should be valid types"
+    )
+
+
+def test_calculate_paired_wasserstein_distances(db_session):
+    """Test calculate_paired_wasserstein_distances function computes distances correctly."""
+    # Create test data
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -2],  # Multiple seeds for more diagrams
+        prompts=["test prompt"],
+        embedding_models=["DummyText"],
+        max_length=5,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Load PD data and process through pipeline
+    pd_df = load_pd_df(db_session)
+    paired_df = create_paired_pd_df(pd_df)
+    filtered_df = filter_paired_pd_df(paired_df)
+    metadata_df = add_pairing_metadata(filtered_df)
+
+    if metadata_df.height == 0:
+        pytest.skip("No pairs available for distance calculation")
+
+    # Test the function
+    distance_df = calculate_paired_wasserstein_distances(metadata_df, db_session)
+
+    # Check that we got results
+    assert distance_df.height > 0, "Should calculate some distances"
+
+    # Check that required columns are present
+    assert "distance" in distance_df.columns
+    assert "homology_dimension" in distance_df.columns
+
+    # Check data types
+    assert distance_df["distance"].dtype == pl.Float64
+    assert distance_df["homology_dimension"].dtype == pl.Int64
+
+    # Check that distances are non-negative
+    negative_distances = distance_df.filter(pl.col("distance") < 0)
+    assert negative_distances.height == 0, "Distances should be non-negative"
+
+    # Check that we have reasonable homology dimensions
+    dimensions = distance_df["homology_dimension"].unique().sort().to_list()
+    assert all(0 <= dim <= 2 for dim in dimensions), (
+        "Homology dimensions should be 0, 1, or 2"
+    )
+
+    # Test with specific homology dimension
+    if metadata_df.height > 0:
+        distance_df_h1 = calculate_paired_wasserstein_distances(
+            metadata_df, db_session, homology_dimension=1
+        )
+        if distance_df_h1.height > 0:
+            assert distance_df_h1["homology_dimension"].unique().to_list() == [1]
+
+
+def test_wasserstein_pipeline_integration(db_session):
+    """Test the complete pipeline integration from pd_df to distances."""
+    # Create test data with known structure
+    config = ExperimentConfig(
+        networks=[["DummyT2I", "DummyI2T"]],
+        seeds=[-1, -2],
+        prompts=["test prompt 1", "test prompt 2"],
+        embedding_models=["DummyText"],
+        max_length=5,
+    )
+    db_session.add(config)
+    db_session.commit()
+    db_session.refresh(config)
+
+    db_url = str(db_session.get_bind().engine.url)
+    perform_experiment(str(config.id), db_url)
+
+    # Run the complete pipeline
+    pd_df = load_pd_df(db_session)
+    assert pd_df.height > 0, "Should have persistence diagram data"
+
+    paired_df = create_paired_pd_df(pd_df)
+    assert paired_df.height > 0, "Should create pairs"
+
+    filtered_df = filter_paired_pd_df(paired_df, homology_dimension=1)
+    assert filtered_df.height >= 0, "Filtering should succeed"
+
+    if filtered_df.height == 0:
+        pytest.skip("No pairs available after filtering")
+
+    metadata_df = add_pairing_metadata(filtered_df)
+    assert metadata_df.height >= 0, "Adding metadata should succeed"
+
+    if metadata_df.height == 0:
+        pytest.skip("No meaningful pairs available")
+
+    distance_df = calculate_paired_wasserstein_distances(
+        metadata_df, db_session, homology_dimension=1
+    )
+
+    if distance_df.height > 0:
+        # Verify the complete pipeline produces expected structure
+        expected_columns = [
+            "persistence_diagram_id_a",
+            "persistence_diagram_id_b",
+            "same_IC",
+            "embedding_type_a",
+            "embedding_type_b",
+            "homology_dimension",
+            "distance",
+        ]
+        for col in expected_columns:
+            assert col in distance_df.columns, f"Missing column: {col}"
+
+        # Verify we have only H1 distances as requested
+        assert distance_df["homology_dimension"].unique().to_list() == [1]

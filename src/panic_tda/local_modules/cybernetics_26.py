@@ -8,9 +8,13 @@ from typing import Dict, List, Tuple
 from panic_tda.data_prep import (
     cache_dfs,
     load_pd_from_cache,
-    calculate_wasserstein_distances,
-    pd_list_to_wasserstein_df,
+    load_pd_df,
+    create_paired_pd_df,
+    filter_paired_pd_df,
+    add_pairing_metadata,
+    calculate_paired_wasserstein_distances,
 )
+from panic_tda.datavis import plot_wasserstein_violin
 from panic_tda.local_modules.shared import cluster_counts, example_run_ids, run_counts
 from panic_tda.schemas import Run, PersistenceDiagram
 
@@ -167,181 +171,156 @@ def cybernetics_26_charts(session: Session) -> None:
     # print(pd_df.columns)
     # print(pd_df.head())
 
-    # Task 49: Wasserstein PD analysis
-    # Step 1: Print unique list of initial prompts from database
-    print("\n=== Step 1: Unique initial prompts in database ===")
-    statement = select(Run.initial_prompt).distinct()
-    unique_prompts = session.exec(statement).all()
-    print(f"Found {len(unique_prompts)} unique initial prompts:")
-    for i, prompt in enumerate(unique_prompts, 1):
-        print(f"{i}. {prompt}")
+    # Wasserstein PD analysis using the new clean pipeline
+    print("\n=== Wasserstein Distance Analysis Using New Pipeline ===")
 
-    # Step 2: Select 2 prompts and load their persistence diagrams
-    print("\n=== Step 2: Selecting prompts and loading persistence diagrams ===")
+    # Step 1: Load persistence diagram data
+    print("\nStep 1: Loading persistence diagram data...")
+    pd_df = load_pd_df(session)
+    print(f"Loaded {pd_df.height} persistence diagram entries")
 
-    # Select "a cat" and "a dog" as our two prompts for analysis
-    selected_prompts = ["a cat", "a dog"]
-    print(f"Selected prompts for analysis: {selected_prompts}")
-
-    # Get all runs for these prompts
-    statement = select(Run).where(Run.initial_prompt.in_(selected_prompts))
-    runs = session.exec(statement).all()
-    print(f"Found {len(runs)} runs for selected prompts")
-
-    # Get persistence diagrams for these runs, filtering for Nomic and NomicVision embedding models
-    run_ids = [run.id for run in runs]
-    statement = (
-        select(PersistenceDiagram)
-        .where(PersistenceDiagram.run_id.in_(run_ids))
-        .where(PersistenceDiagram.embedding_model.in_(["Nomic", "NomicVision"]))
+    # Print unique initial prompts for reference
+    unique_prompts = (
+        pd_df.select("initial_prompt")
+        .unique()
+        .sort("initial_prompt")["initial_prompt"]
+        .to_list()
     )
-    persistence_diagrams = session.exec(statement).all()
-    print(f"Found {len(persistence_diagrams)} persistence diagrams for selected runs")
+    print(f"Found {len(unique_prompts)} unique initial prompts in PD data")
 
-    # Group PDs by initial prompt for analysis
-    pds_by_prompt = {}
-    for pd in persistence_diagrams:
-        # Find the run for this PD to get its initial prompt
-        run = next((r for r in runs if r.id == pd.run_id), None)
-        if run:
-            prompt = run.initial_prompt
-            if prompt not in pds_by_prompt:
-                pds_by_prompt[prompt] = []
-            pds_by_prompt[prompt].append(pd)
+    # For large datasets, sample a subset of initial prompts and PDs
+    # Select a subset of interesting prompts for analysis
+    selected_prompts = ["a cat", "a dog", "a flower", "a car", "a house"]
+    # Filter to only prompts that exist in the data
+    selected_prompts = [p for p in selected_prompts if p in unique_prompts]
 
-    for prompt, pds in pds_by_prompt.items():
-        print(f"  {prompt}: {len(pds)} persistence diagrams")
+    if not selected_prompts:
+        # If none of our preferred prompts exist, use the first 5
+        selected_prompts = unique_prompts[:5]
 
-    # Step 3: Compute pairwise Wasserstein distances using the new function
-    print("\n=== Step 3: Computing pairwise Wasserstein distances ===")
+    print(
+        f"\nSelecting {len(selected_prompts)} prompts for analysis: {selected_prompts}"
+    )
 
-    # Use the new pd_list_to_wasserstein_df function to compute all distances
-    wasserstein_df = pd_list_to_wasserstein_df(persistence_diagrams)
+    # Step 2: Create paired persistence diagrams (now efficiently creates only wanted pairs)
+    print("\nStep 2: Creating paired persistence diagrams...")
 
-    print(f"\nComputed {wasserstein_df.height} pairwise distances")
+    # Filter PD data to selected prompts and only Nomic/NomicVision models for this analysis
+    filtered_pd_df = pd_df.filter(
+        pl.col("initial_prompt").is_in(selected_prompts)
+        & pl.col("embedding_model").is_in(["Nomic", "NomicVision"])
+    )
+    print(f"Filtered to {filtered_pd_df.height} PD entries for analysis")
 
-    if wasserstein_df.height > 0:
-        # Extract distances for statistics
-        all_distances = wasserstein_df["distance"].to_list()
-        print("Distance statistics:")
-        print(f"  Min: {np.min(all_distances):.4f}")
-        print(f"  Max: {np.max(all_distances):.4f}")
-        print(f"  Mean: {np.mean(all_distances):.4f}")
-        print(f"  Std: {np.std(all_distances):.4f}")
+    # Sample PDs if needed to keep memory usage reasonable
+    unique_pds = filtered_pd_df.select("persistence_diagram_id").unique()
+    if unique_pds.height > 500:
+        print(f"Sampling 500 PDs from {unique_pds.height} total")
+        sampled_pds = unique_pds.sample(n=500, seed=42)
+        filtered_pd_df = filtered_pd_df.filter(
+            pl.col("persistence_diagram_id").is_in(
+                sampled_pds["persistence_diagram_id"]
+            )
+        )
+
+    paired_df = create_paired_pd_df(filtered_pd_df)
+    print(f"Created {paired_df.height} meaningful pairs")
+
+    # Step 3: Set up for homology dimension 1 analysis
+    print("\nStep 3: Preparing for H1 analysis...")
+    filtered_df = filter_paired_pd_df(paired_df, homology_dimension=1)
+    print(f"Marked {filtered_df.height} pairs for H1 analysis")
+
+    # Step 4: Add pairing metadata
+    print("\nStep 4: Adding pairing metadata...")
+    metadata_df = add_pairing_metadata(filtered_df)
+    print(f"Added metadata to {metadata_df.height} pairs")
+
+    # Show breakdown of pair types
+    if metadata_df.height > 0:
+        same_ic_different_models = metadata_df.filter(
+            pl.col("same_IC")
+            & (pl.col("embedding_model_a") != pl.col("embedding_model_b"))
+        ).height
+        different_ic_same_models = metadata_df.filter(
+            (~pl.col("same_IC"))
+            & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
+        ).height
+
+        print(
+            f"  - Same IC, different models (Nomic vs NomicVision): {same_ic_different_models}"
+        )
+        print(
+            f"  - Different IC, same models (Nomic vs Nomic or NomicVision vs NomicVision): {different_ic_same_models}"
+        )
+    else:
+        print("  - No pairs found for analysis")
+
+    # Step 5: Calculate Wasserstein distances
+    print("\nStep 5: Calculating Wasserstein distances...")
+    if metadata_df.height > 0:
+        distance_df = calculate_paired_wasserstein_distances(
+            metadata_df, session, homology_dimension=1
+        )
+        print(f"Successfully calculated {distance_df.height} distances")
+    else:
+        print("No pairs available for distance calculation")
+        return
+
+    if distance_df.height > 0:
+        # Print summary statistics
+        print("\n=== Summary Statistics ===")
+        # Create a new column that describes the pairing type
+        distance_df = distance_df.with_columns([
+            pl.when(
+                pl.col("same_IC")
+                & (pl.col("embedding_model_a") != pl.col("embedding_model_b"))
+            )
+            .then(pl.lit("Same IC, Different Models"))
+            .when(
+                (~pl.col("same_IC"))
+                & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
+            )
+            .then(pl.lit("Different IC, Same Models"))
+            .otherwise(pl.lit("Other"))  # This shouldn't happen with our filtering
+            .alias("pairing_type")
+        ])
+
+        stats = (
+            distance_df.group_by("pairing_type")
+            .agg([
+                pl.count("distance").alias("count"),
+                pl.mean("distance").alias("mean_distance"),
+                pl.std("distance").alias("std_distance"),
+                pl.min("distance").alias("min_distance"),
+                pl.max("distance").alias("max_distance"),
+            ])
+            .sort("pairing_type")
+        )
+
+        print("\nStatistics by pairing type:")
+        for row in stats.iter_rows(named=True):
+            print(f"\n{row['pairing_type']} ({row['count']} pairs):")
+            print(f"  Mean: {row['mean_distance']:.4f}")
+            print(f"  Std: {row['std_distance']:.4f}")
+            print(f"  Min: {row['min_distance']:.4f}")
+            print(f"  Max: {row['max_distance']:.4f}")
 
         # Statistics by embedding model
         print("\n=== Statistics by embedding model ===")
-        for model in wasserstein_df["embedding_model"].unique():
-            model_df = wasserstein_df.filter(pl.col("embedding_model") == model)
+        for model in distance_df["embedding_model_a"].unique():
+            model_df = distance_df.filter(pl.col("embedding_model_a") == model)
             model_distances = model_df["distance"].to_list()
-            print(f"\n{model} ({len(model_distances)} pairs):")
-            print(f"  Mean: {np.mean(model_distances):.4f}")
-            print(f"  Std: {np.std(model_distances):.4f}")
+            if model_distances:
+                print(f"\n{model} ({len(model_distances)} pairs):")
+                print(f"  Mean: {np.mean(model_distances):.4f}")
+                print(f"  Std: {np.std(model_distances):.4f}")
 
-        # Statistics by homology dimension
-        for dim in wasserstein_df["homology_dimension"].unique().sort():
-            dim_df = wasserstein_df.filter(pl.col("homology_dimension") == dim)
-            dim_distances = dim_df["distance"].to_list()
-            print(f"\nHomology dimension {dim} ({len(dim_distances)} pairs):")
-            print(f"  Mean: {np.mean(dim_distances):.4f}")
-            print(f"  Std: {np.std(dim_distances):.4f}")
-
-        # Statistics by same/different initial conditions and homology dimension
-        # Add same_initial_conditions indicator to DataFrame
-        wasserstein_df = wasserstein_df.with_columns(
-            (pl.col("initial_conditions_a") == pl.col("initial_conditions_b")).alias(
-                "same_initial_conditions"
-            )
-        )
-
-        for dim in wasserstein_df["homology_dimension"].unique().sort():
-            dim_same_df = wasserstein_df.filter(
-                (pl.col("homology_dimension") == dim)
-                & pl.col("same_initial_conditions")
-            )
-            dim_diff_df = wasserstein_df.filter(
-                (pl.col("homology_dimension") == dim)
-                & ~pl.col("same_initial_conditions")
-            )
-
-            dim_same = dim_same_df["distance"].to_list()
-            dim_diff = dim_diff_df["distance"].to_list()
-
-            print(f"\nH{dim} - Same initial conditions ({len(dim_same)} pairs):")
-            if dim_same:
-                print(f"  Mean: {np.mean(dim_same):.4f}")
-                print(f"  Std: {np.std(dim_same):.4f}")
-
-            print(f"H{dim} - Different initial conditions ({len(dim_diff)} pairs):")
-            if dim_diff:
-                print(f"  Mean: {np.mean(dim_diff):.4f}")
-                print(f"  Std: {np.std(dim_diff):.4f}")
-
-        # Statistics by embedding type and homology dimension
-        print("\n=== Statistics by embedding type and homology dimension ===")
-        for emb_type in wasserstein_df["embedding_type"].unique().sort():
-            for dim in wasserstein_df["homology_dimension"].unique().sort():
-                type_dim_df = wasserstein_df.filter(
-                    (pl.col("embedding_type") == emb_type)
-                    & (pl.col("homology_dimension") == dim)
-                )
-                type_dim_distances = type_dim_df["distance"].to_list()
-
-                if type_dim_distances:
-                    print(
-                        f"\n{emb_type.capitalize()} embeddings - H{dim} ({len(type_dim_distances)} pairs):"
-                    )
-                    print(f"  Mean: {np.mean(type_dim_distances):.4f}")
-                    print(f"  Std: {np.std(type_dim_distances):.4f}")
-
-                    # Also break down by same/different initial conditions
-                    type_dim_same_df = type_dim_df.filter(
-                        pl.col("same_initial_conditions")
-                    )
-                    type_dim_diff_df = type_dim_df.filter(
-                        ~pl.col("same_initial_conditions")
-                    )
-
-                    type_dim_same = type_dim_same_df["distance"].to_list()
-                    type_dim_diff = type_dim_diff_df["distance"].to_list()
-
-                    if type_dim_same:
-                        print(
-                            f"    Same initial conditions: Mean={np.mean(type_dim_same):.4f}, Std={np.std(type_dim_same):.4f} (n={len(type_dim_same)})"
-                        )
-                    if type_dim_diff:
-                        print(
-                            f"    Diff initial conditions: Mean={np.mean(type_dim_diff):.4f}, Std={np.std(type_dim_diff):.4f} (n={len(type_dim_diff)})"
-                        )
-
-        # Step 4: Create visualization
-        print("\n=== Step 4: Creating visualization ===")
-        from panic_tda.datavis import plot_wasserstein_distribution
-
-        # Filter to only homology dimension == 1
-        filtered_wasserstein_df = wasserstein_df.filter(
-            pl.col("homology_dimension") == 1
-        )
-        print(
-            f"Filtered to homology dimension 1: {filtered_wasserstein_df.height} distances"
-        )
-
-        # Further filter to only include rows where initial_conditions_a and initial_conditions_b
-        # match the first value in the initial_conditions_b column
-        if filtered_wasserstein_df.height > 0:
-            first_initial_condition = filtered_wasserstein_df["initial_conditions_b"][0]
-            filtered_wasserstein_df = filtered_wasserstein_df.filter(
-                (pl.col("initial_conditions_a") == first_initial_condition)
-                & (pl.col("initial_conditions_b") == first_initial_condition)
-            )
-            print(
-                f"Filtered to initial condition '{first_initial_condition}': {filtered_wasserstein_df.height} distances"
-            )
-
-        # Create the plot using the filtered DataFrame
-        output_file = "output/vis/wasserstein_distribution.pdf"
-        plot_wasserstein_distribution(filtered_wasserstein_df, output_file)
-        print(f"Visualization saved to {output_file}")
+        # Step 6: Create visualization
+        print("\n=== Creating Visualization ===")
+        output_file = "output/vis/wasserstein_violin.pdf"
+        plot_wasserstein_violin(distance_df, output_file)
+        print(f"Saved violin plot to {output_file}")
 
     # #### Persistence Diagram Density Comparison
     # from panic_tda.datavis import plot_persistence_density

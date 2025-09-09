@@ -1590,3 +1590,396 @@ def calculate_wasserstein_distances(
         distance_matrices[dim] = distance_matrix
 
     return distance_matrices
+
+
+def create_paired_pd_df(pd_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Create a dataframe of pairs of persistence diagrams with their metadata.
+
+    This function efficiently creates only the specific pairs we want:
+    - No self-pairs (a != b)
+    - Only one direction per pair (a, b) not both (a, b) and (b, a)
+    - Creates pairs where (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
+
+    Args:
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data
+
+    Returns:
+        DataFrame with columns for both "a" and "b" persistence diagrams:
+        - persistence_diagram_id_a, persistence_diagram_id_b: IDs of the paired diagrams
+        - run_id_a, run_id_b: Run IDs
+        - embedding_model_a, embedding_model_b: Embedding models
+        - initial_prompt_a, initial_prompt_b: Initial prompts
+        - network_a, network_b: Networks
+        - Plus other metadata columns with _a and _b suffixes
+    """
+    import logging
+    from panic_tda.embeddings import get_model_type
+
+    logging.debug(
+        f"Creating paired PD dataframe from {pd_df.height} persistence diagram entries"
+    )
+
+    # Get unique persistence diagram metadata (aggregating across homology dimensions)
+    pd_metadata = (
+        pd_df.group_by("persistence_diagram_id")
+        .agg([
+            pl.first("run_id").alias("run_id"),
+            pl.first("embedding_model").alias("embedding_model"),
+            pl.first("initial_prompt").alias("initial_prompt"),
+            pl.first("network").alias("network"),
+            pl.first("experiment_id").alias("experiment_id"),
+            pl.first("image_model").alias("image_model"),
+            pl.first("text_model").alias("text_model"),
+        ])
+        .sort("persistence_diagram_id")
+    )
+
+    logging.debug(f"Found {pd_metadata.height} unique persistence diagrams")
+
+    # Add embedding type information
+    def get_embedding_type(model_name: str) -> str:
+        """Get embedding type (text or image) for a model name."""
+        try:
+            model_type = get_model_type(model_name)
+            return model_type.value  # Returns "text" or "image"
+        except Exception:
+            # If we can't determine the type, assume text as default
+            logging.debug(
+                f"Could not determine embedding type for {model_name}, assuming text"
+            )
+            return "text"
+
+    pd_metadata = pd_metadata.with_columns([
+        pl.col("embedding_model")
+        .map_elements(get_embedding_type, return_dtype=pl.Utf8)
+        .alias("embedding_type")
+    ])
+
+    # Add initial conditions column (initial_prompt:network)
+    pd_metadata = pd_metadata.with_columns([
+        (pl.col("initial_prompt") + ":" + pl.col("network")).alias("initial_conditions")
+    ])
+
+    # Create pairs based on the chosen strategy
+    all_pairs = []
+    all_pd_ids = pd_metadata["persistence_diagram_id"].to_list()
+
+    # Create pairs by comparing every PD with every other PD
+    for i, id_a in enumerate(all_pd_ids):
+        for j, id_b in enumerate(all_pd_ids):
+            if i >= j:  # Only one direction, lexicographic ordering, no self-pairs
+                continue
+
+            # Get metadata for both PDs
+            pd_a_row = pd_metadata.filter(
+                pl.col("persistence_diagram_id") == id_a
+            ).to_dicts()[0]
+            pd_b_row = pd_metadata.filter(
+                pl.col("persistence_diagram_id") == id_b
+            ).to_dicts()[0]
+
+            # Apply pairing logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
+            # Check if this is one of our desired pair types:
+            # 1. Same initial conditions BUT different embedding models
+            same_ic = pd_a_row["initial_conditions"] == pd_b_row["initial_conditions"]
+            different_models = (
+                pd_a_row["embedding_model"] != pd_b_row["embedding_model"]
+            )
+
+            # 2. Different initial conditions BUT same embedding models
+            different_ic = (
+                pd_a_row["initial_conditions"] != pd_b_row["initial_conditions"]
+            )
+            same_models = pd_a_row["embedding_model"] == pd_b_row["embedding_model"]
+
+            should_include_pair = (same_ic and different_models) or (
+                different_ic and same_models
+            )
+
+            # Only keep pairs that match our criteria
+            if should_include_pair:
+                # Create combined row
+                pair_row = {}
+                for key, value in pd_a_row.items():
+                    pair_row[f"{key}_a"] = value
+                for key, value in pd_b_row.items():
+                    pair_row[f"{key}_b"] = value
+
+                all_pairs.append(pair_row)
+
+    logging.debug(f"Created {len(all_pairs)} specific pairs matching criteria")
+
+    if not all_pairs:
+        # Return empty dataframe with correct schema
+        empty_schema = {
+            "persistence_diagram_id_a": pl.Utf8,
+            "persistence_diagram_id_b": pl.Utf8,
+            "run_id_a": pl.Utf8,
+            "run_id_b": pl.Utf8,
+            "embedding_model_a": pl.Utf8,
+            "embedding_model_b": pl.Utf8,
+            "initial_prompt_a": pl.Utf8,
+            "initial_prompt_b": pl.Utf8,
+            "network_a": pl.Utf8,
+            "network_b": pl.Utf8,
+            "experiment_id_a": pl.Utf8,
+            "experiment_id_b": pl.Utf8,
+            "image_model_a": pl.Utf8,
+            "image_model_b": pl.Utf8,
+            "text_model_a": pl.Utf8,
+            "text_model_b": pl.Utf8,
+            "embedding_type_a": pl.Utf8,
+            "embedding_type_b": pl.Utf8,
+            "initial_conditions_a": pl.Utf8,
+            "initial_conditions_b": pl.Utf8,
+        }
+        logging.debug("No valid pairs found, returning empty dataframe")
+        return pl.DataFrame(schema=empty_schema)
+
+    # Create final dataframe
+    paired_df = pl.DataFrame(all_pairs)
+
+    logging.debug(f"Created {paired_df.height} pairs of persistence diagrams")
+
+    return paired_df
+
+
+def filter_paired_pd_df(
+    paired_df: pl.DataFrame, homology_dimension: int | None = None
+) -> pl.DataFrame:
+    """
+    Filter a paired persistence diagram dataframe for homology dimension.
+
+    Since create_paired_pd_df() now creates only the correct pairs (no self-pairs,
+    no reversed pairs, following the logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)),
+    this function now only handles homology dimension filtering.
+
+    Args:
+        paired_df: DataFrame from create_paired_pd_df()
+        homology_dimension: Optional homology dimension to filter for (0, 1, or 2)
+
+    Returns:
+        DataFrame with homology dimension marker added if specified
+    """
+    import logging
+
+    logging.debug(f"Processing paired PD dataframe with {paired_df.height} pairs")
+
+    filtered_df = paired_df
+
+    # Note: homology_dimension filtering would need to be applied during distance calculation
+    # since this dataframe contains persistence diagram metadata, not individual birth/death pairs
+    if homology_dimension is not None:
+        # Add a note about the requested homology dimension for later filtering
+        filtered_df = filtered_df.with_columns(
+            pl.lit(homology_dimension).alias("requested_homology_dimension")
+        )
+        logging.debug(
+            f"Marked for homology dimension {homology_dimension} filtering during distance calculation"
+        )
+
+    logging.debug(f"Filtered dataframe has {filtered_df.height} pairs")
+
+    return filtered_df
+
+
+def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Add metadata columns about the pairing relationships.
+
+    This function adds:
+    1. same_IC: Boolean indicating if both diagrams have the same initial conditions (initial_prompt and network)
+
+    Since create_paired_pd_df() now only creates specific pairs following the logic:
+    (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model),
+    this function no longer needs to filter or add modality metadata.
+
+    Args:
+        paired_df: DataFrame from filter_paired_pd_df()
+
+    Returns:
+        DataFrame with same_IC column added
+    """
+    import logging
+
+    logging.debug(f"Adding pairing metadata to {paired_df.height} pairs")
+
+    # Add same_IC column - same initial conditions means same initial_prompt AND same network
+    paired_df = paired_df.with_columns([
+        (
+            (pl.col("initial_prompt_a") == pl.col("initial_prompt_b"))
+            & (pl.col("network_a") == pl.col("network_b"))
+        ).alias("same_IC")
+    ])
+
+    logging.debug(f"Added metadata to {paired_df.height} pairs")
+    logging.debug(f"Same IC pairs: {paired_df.filter(pl.col('same_IC')).height}")
+    logging.debug(f"Different IC pairs: {paired_df.filter(~pl.col('same_IC')).height}")
+
+    return paired_df
+
+
+def calculate_paired_wasserstein_distances(
+    paired_df: pl.DataFrame, session: Session, homology_dimension: int | None = None
+) -> pl.DataFrame:
+    """
+    Calculate Wasserstein distances for pairs of persistence diagrams.
+
+    This function loads the actual diagram data from the database and computes
+    the Wasserstein distance for each pair in the dataframe.
+
+    Args:
+        paired_df: DataFrame from add_pairing_metadata() containing pairs to compare
+        session: SQLModel database session for loading diagram data
+        homology_dimension: Optional specific homology dimension to calculate distances for.
+                          If None, calculates for all dimensions and returns multiple rows per pair.
+
+    Returns:
+        DataFrame with distance column added. If homology_dimension is None,
+        returns multiple rows per pair (one for each homology dimension).
+    """
+    import logging
+    import numpy as np
+    from uuid import UUID
+    from sqlmodel import select
+    from panic_tda.schemas import PersistenceDiagram
+    from panic_tda.tda import compute_wasserstein_distance
+
+    logging.debug(f"Calculating Wasserstein distances for {paired_df.height} pairs")
+
+    # Get all unique persistence diagram IDs that we need to load
+    pd_ids_a = paired_df["persistence_diagram_id_a"].unique().to_list()
+    pd_ids_b = paired_df["persistence_diagram_id_b"].unique().to_list()
+    all_pd_ids = list(set(pd_ids_a + pd_ids_b))
+
+    logging.debug(
+        f"Loading {len(all_pd_ids)} unique persistence diagrams from database"
+    )
+
+    # Batch load all persistence diagrams we need
+    pd_uuids = [UUID(pd_id) for pd_id in all_pd_ids]
+    statement = select(PersistenceDiagram).where(PersistenceDiagram.id.in_(pd_uuids))
+    pd_objects = session.exec(statement).all()
+
+    # Create a lookup dictionary for quick access
+    pd_lookup = {str(pd.id): pd for pd in pd_objects}
+
+    logging.debug(f"Loaded {len(pd_lookup)} persistence diagrams")
+
+    # Process each pair and calculate distances
+    result_rows = []
+
+    for row in paired_df.iter_rows(named=True):
+        pd_id_a = row["persistence_diagram_id_a"]
+        pd_id_b = row["persistence_diagram_id_b"]
+
+        # Get the persistence diagram objects
+        pd_a = pd_lookup.get(pd_id_a)
+        pd_b = pd_lookup.get(pd_id_b)
+
+        if not pd_a or not pd_b:
+            logging.debug(
+                f"Missing persistence diagram data for pair {pd_id_a}, {pd_id_b}"
+            )
+            continue
+
+        if not pd_a.diagram_data or not pd_b.diagram_data:
+            logging.debug(f"Missing diagram data for pair {pd_id_a}, {pd_id_b}")
+            continue
+
+        if "dgms" not in pd_a.diagram_data or "dgms" not in pd_b.diagram_data:
+            logging.debug(f"Missing dgms in diagram data for pair {pd_id_a}, {pd_id_b}")
+            continue
+
+        # Determine which homology dimensions to process
+        if homology_dimension is not None:
+            dimensions_to_process = [homology_dimension]
+        else:
+            # Process all available dimensions
+            max_dims = min(
+                len(pd_a.diagram_data["dgms"]), len(pd_b.diagram_data["dgms"])
+            )
+            dimensions_to_process = list(range(max_dims))
+
+        # Calculate distance for each requested dimension
+        for dim in dimensions_to_process:
+            try:
+                # Get diagrams for this dimension
+                if dim >= len(pd_a.diagram_data["dgms"]) or dim >= len(
+                    pd_b.diagram_data["dgms"]
+                ):
+                    logging.debug(
+                        f"Dimension {dim} not available for pair {pd_id_a}, {pd_id_b}"
+                    )
+                    continue
+
+                dgm_a = pd_a.diagram_data["dgms"][dim]
+                dgm_b = pd_b.diagram_data["dgms"][dim]
+
+                # Ensure proper numpy arrays
+                if not isinstance(dgm_a, np.ndarray) or not isinstance(
+                    dgm_b, np.ndarray
+                ):
+                    logging.debug(
+                        f"Invalid diagram types for dimension {dim} in pair {pd_id_a}, {pd_id_b}"
+                    )
+                    continue
+
+                # Handle empty diagrams
+                if dgm_a.size == 0:
+                    dgm_a = dgm_a.reshape(0, 2)
+                if dgm_b.size == 0:
+                    dgm_b = dgm_b.reshape(0, 2)
+
+                # Filter out infinite persistence points (typically only in dimension 0)
+                if dgm_a.size > 0:
+                    finite_mask_a = ~np.isinf(dgm_a).any(axis=1)
+                    dgm_a = dgm_a[finite_mask_a]
+
+                if dgm_b.size > 0:
+                    finite_mask_b = ~np.isinf(dgm_b).any(axis=1)
+                    dgm_b = dgm_b[finite_mask_b]
+
+                # Calculate Wasserstein distance
+                distance = compute_wasserstein_distance(dgm_a, dgm_b)
+
+                # Skip if distance is NaN
+                if np.isnan(distance):
+                    logging.debug(
+                        f"NaN distance for dimension {dim} in pair {pd_id_a}, {pd_id_b}"
+                    )
+                    continue
+
+                # Create result row
+                result_row = dict(row)  # Copy all original columns
+                result_row["homology_dimension"] = dim
+                result_row["distance"] = float(distance)
+                result_rows.append(result_row)
+
+            except Exception as e:
+                logging.debug(
+                    f"Error calculating distance for dimension {dim} in pair {pd_id_a}, {pd_id_b}: {e}"
+                )
+                continue
+
+    if not result_rows:
+        # Return empty dataframe with correct schema
+        logging.warning("No valid distances calculated")
+        return paired_df.with_columns([
+            pl.lit(None, dtype=pl.Int64).alias("homology_dimension"),
+            pl.lit(None, dtype=pl.Float64).alias("distance"),
+        ]).limit(0)
+
+    # Create result dataframe
+    result_df = pl.DataFrame(
+        result_rows,
+        schema_overrides={
+            "homology_dimension": pl.Int64,
+            "distance": pl.Float64,
+        },
+    )
+
+    logging.debug(f"Successfully calculated {result_df.height} distances")
+
+    return result_df
