@@ -1790,6 +1790,10 @@ def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
 
     This function adds:
     1. same_IC: Boolean indicating if both diagrams have the same initial conditions (initial_prompt and network)
+    2. comparison_group: Categorical indicating which of three comparison groups this pair belongs to:
+       - "Same IC (different models)": Same initial conditions with different embedding models (Nomic vs NomicVision)
+       - "Different IC (text)": Different initial conditions with same text embedding model (Nomic)
+       - "Different IC (vision)": Different initial conditions with same vision embedding model (NomicVision)
 
     Since create_paired_pd_df() now only creates specific pairs following the logic:
     (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model),
@@ -1799,7 +1803,7 @@ def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
         paired_df: DataFrame from filter_paired_pd_df()
 
     Returns:
-        DataFrame with same_IC column added
+        DataFrame with same_IC and comparison_group columns added
     """
     import logging
 
@@ -1813,9 +1817,41 @@ def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
         ).alias("same_IC")
     ])
 
+    # Add comparison_group column based on pairing relationships
+    paired_df = paired_df.with_columns([
+        pl.when(
+            pl.col("same_IC")
+            & (pl.col("embedding_model_a") != pl.col("embedding_model_b"))
+        )
+        .then(pl.lit("Same IC (different models)"))
+        .when(
+            (~pl.col("same_IC"))
+            & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
+            & (pl.col("embedding_model_a") == "Nomic")
+        )
+        .then(pl.lit("Different IC (text)"))
+        .when(
+            (~pl.col("same_IC"))
+            & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
+            & (pl.col("embedding_model_a") == "NomicVision")
+        )
+        .then(pl.lit("Different IC (vision)"))
+        .otherwise(pl.lit("Other"))  # This shouldn't happen with our filtering
+        .alias("comparison_group")
+    ])
+
     logging.debug(f"Added metadata to {paired_df.height} pairs")
     logging.debug(f"Same IC pairs: {paired_df.filter(pl.col('same_IC')).height}")
     logging.debug(f"Different IC pairs: {paired_df.filter(~pl.col('same_IC')).height}")
+
+    # Log the distribution of comparison groups
+    group_counts = (
+        paired_df.group_by("comparison_group")
+        .agg(pl.count().alias("count"))
+        .sort("comparison_group")
+    )
+    for row in group_counts.iter_rows(named=True):
+        logging.debug(f"{row['comparison_group']}: {row['count']} pairs")
 
     return paired_df
 

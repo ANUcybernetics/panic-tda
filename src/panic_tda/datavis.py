@@ -23,6 +23,7 @@ from plotnine import (
     ggplot,
     labs,
     scale_color_brewer,
+    scale_fill_brewer,
     scale_size_continuous,
     scale_x_continuous,
     scale_y_continuous,
@@ -1457,17 +1458,19 @@ def plot_wasserstein_violin(
     output_file: str = "output/vis/wasserstein_violin.pdf",
 ) -> None:
     """
-    Create and save a violin plot of Wasserstein distances faceted by pairing relationships.
+    Create and save a single-panel violin plot of Wasserstein distances with three comparison groups.
 
     This function creates a violin plot showing the distribution of Wasserstein distances
-    with separate panels for different initial conditions and homology dimensions.
+    with three violins representing different comparison groups:
+    - "Same IC (different models)": Same initial conditions, different embedding models (Nomic vs NomicVision)
+    - "Different IC (text)": Different initial conditions, both using text embedding (Nomic)
+    - "Different IC (vision)": Different initial conditions, both using vision embedding (NomicVision)
 
     Args:
         wasserstein_df: DataFrame from calculate_paired_wasserstein_distances containing:
             - distance: Wasserstein distances
-            - same_IC: Boolean indicating same initial conditions
+            - comparison_group: String indicating which of the three comparison groups
             - homology_dimension: Homology dimension (0, 1, or 2)
-            - embedding_model_a: Embedding model name
         output_file: Path to save the visualization
     """
     import logging
@@ -1476,50 +1479,74 @@ def plot_wasserstein_violin(
         f"Creating Wasserstein violin plot from {wasserstein_df.height} distance measurements"
     )
 
-    # Create readable labels for the faceting variables
-    wasserstein_df = wasserstein_df.with_columns([
-        pl.when(pl.col("same_IC"))
-        .then(pl.lit("Same Initial Conditions"))
-        .otherwise(pl.lit("Different Initial Conditions"))
-        .alias("same_IC_label")
-    ])
+    # Verify we have the required comparison_group column
+    if "comparison_group" not in wasserstein_df.columns:
+        logging.error(
+            "comparison_group column not found in wasserstein_df. Ensure add_pairing_metadata was called."
+        )
+        raise ValueError("comparison_group column not found in wasserstein_df")
 
-    # Format homology dimension for display
-    wasserstein_df = wasserstein_df.with_columns([
-        pl.col("homology_dimension")
-        .map_elements(lambda x: f"H{x}", return_dtype=pl.Utf8)
-        .alias("homology_dim_label")
-    ])
+    # Filter out any "Other" groups that shouldn't exist with proper pairing
+    wasserstein_df = wasserstein_df.filter(pl.col("comparison_group") != "Other")
+
+    if wasserstein_df.height == 0:
+        logging.warning("No valid comparison groups found in the data")
+        return
 
     # Convert to pandas for plotnine
     df = wasserstein_df.to_pandas()
 
-    # Create the violin plot
+    # Define the desired order for comparison groups
+    group_order = [
+        "Same IC (different models)",
+        "Different IC (text)",
+        "Different IC (vision)",
+    ]
+
+    # Filter to only include groups that exist in our data and reorder
+    existing_groups = df["comparison_group"].unique()
+    ordered_groups = [g for g in group_order if g in existing_groups]
+
+    # Create ordered categorical for consistent plotting
+    df["comparison_group"] = pd.Categorical(
+        df["comparison_group"], categories=ordered_groups, ordered=True
+    )
+
+    # Filter out any rows with NaN in comparison_group (shouldn't happen but safety check)
+    df = df.dropna(subset=["comparison_group"])
+
+    if len(df) == 0:
+        logging.warning("No data remaining after filtering")
+        return
+
+    # Log group counts for debugging
+    group_counts = df.groupby("comparison_group", observed=False).size()
+    for group, count in group_counts.items():
+        logging.debug(f"{group}: {count} pairs")
+
+    # Create the single-panel violin plot
     plot = (
         ggplot(
             df,
-            aes(x="embedding_model_a", y="distance", fill="embedding_model_a"),
+            aes(x="comparison_group", y="distance", fill="comparison_group"),
         )
-        + geom_violin(alpha=0.7)
-        + geom_boxplot(width=0.3, fill="white", alpha=0.5)  # Add boxplot overlay
+        + geom_violin(alpha=0.7, width=0.8)
+        + geom_boxplot(
+            width=0.3, fill="white", alpha=0.8
+        )  # Add boxplot overlay for summary stats
         + labs(
-            x="Embedding Model",
+            x="Comparison Group",
             y="Wasserstein Distance",
-            fill="Embedding Model",
-            title="Distribution of Wasserstein Distances by Pairing Relationship",
-        )
-        + facet_grid(
-            "homology_dim_label ~ same_IC_label",
-            scales="fixed",  # Use same y-scale for all panels
+            title="Distribution of Wasserstein Distances by Comparison Type",
         )
         + theme(
-            figure_size=(14, 10),
+            figure_size=(12, 8),
             plot_title=element_text(size=14, weight="bold"),
-            strip_text=element_text(size=10),
-            axis_text_x=element_blank(),  # Hide x-axis labels since we have fill legend
-            axis_title_x=element_blank(),
-            legend_position="bottom",
+            axis_text_x=element_text(angle=45, hjust=1, size=10),
+            axis_title=element_text(size=12),
+            legend_position="none",  # Remove legend since x-axis labels are clear
         )
+        + scale_fill_brewer(type="qual", palette=2)  # Use qualitative color palette
     )
 
     # Save plot
