@@ -1458,18 +1458,18 @@ def plot_wasserstein_violin(
     output_file: str = "output/vis/wasserstein_violin.pdf",
 ) -> None:
     """
-    Create and save a single-panel violin plot of Wasserstein distances with three comparison groups.
+    Create and save a violin plot of Wasserstein distances with three comparison groups.
 
     This function creates a violin plot showing the distribution of Wasserstein distances
     with three violins representing different comparison groups:
-    - "Same IC (different models)": Same initial conditions, different embedding models (Nomic vs NomicVision)
-    - "Different IC (text)": Different initial conditions, both using text embedding (Nomic)
-    - "Different IC (vision)": Different initial conditions, both using vision embedding (NomicVision)
+    - "Same IC, different EM": Same initial conditions, different embedding models (Nomic vs NomicVision)
+    - "Same IC, Nomic": Same initial conditions, both using Nomic embedding
+    - "Same IC, NomicVision": Same initial conditions, both using NomicVision embedding
 
     Args:
         wasserstein_df: DataFrame from calculate_paired_wasserstein_distances containing:
             - distance: Wasserstein distances
-            - comparison_group: String indicating which of the three comparison groups
+            - grouping: String indicating which of the three comparison groups
             - homology_dimension: Homology dimension (0, 1, or 2)
         output_file: Path to save the visualization
     """
@@ -1479,56 +1479,56 @@ def plot_wasserstein_violin(
         f"Creating Wasserstein violin plot from {wasserstein_df.height} distance measurements"
     )
 
-    # Verify we have the required comparison_group column
-    if "comparison_group" not in wasserstein_df.columns:
+    # Verify we have the required grouping column
+    if "grouping" not in wasserstein_df.columns:
         logging.error(
-            "comparison_group column not found in wasserstein_df. Ensure add_pairing_metadata was called."
+            "grouping column not found in wasserstein_df. Ensure add_pairing_metadata was called."
         )
-        raise ValueError("comparison_group column not found in wasserstein_df")
+        raise ValueError("grouping column not found in wasserstein_df")
 
     # Filter out any "Other" groups that shouldn't exist with proper pairing
-    wasserstein_df = wasserstein_df.filter(pl.col("comparison_group") != "Other")
+    wasserstein_df = wasserstein_df.filter(pl.col("grouping") != "Other")
 
     if wasserstein_df.height == 0:
-        logging.warning("No valid comparison groups found in the data")
+        logging.warning("No valid groupings found in the data")
         return
 
     # Convert to pandas for plotnine
     df = wasserstein_df.to_pandas()
 
-    # Define the desired order for comparison groups
+    # Define the desired order for the three comparison groups
     group_order = [
-        "Same IC (different models)",
-        "Different IC (text)",
-        "Different IC (vision)",
+        "Same IC, different EM",
+        "Same IC, Nomic",
+        "Same IC, NomicVision",
     ]
 
     # Filter to only include groups that exist in our data and reorder
-    existing_groups = df["comparison_group"].unique()
+    existing_groups = df["grouping"].unique()
     ordered_groups = [g for g in group_order if g in existing_groups]
 
     # Create ordered categorical for consistent plotting
-    df["comparison_group"] = pd.Categorical(
-        df["comparison_group"], categories=ordered_groups, ordered=True
+    df["grouping"] = pd.Categorical(
+        df["grouping"], categories=ordered_groups, ordered=True
     )
 
-    # Filter out any rows with NaN in comparison_group (shouldn't happen but safety check)
-    df = df.dropna(subset=["comparison_group"])
+    # Filter out any rows with NaN in grouping (shouldn't happen but safety check)
+    df = df.dropna(subset=["grouping"])
 
     if len(df) == 0:
         logging.warning("No data remaining after filtering")
         return
 
     # Log group counts for debugging
-    group_counts = df.groupby("comparison_group", observed=False).size()
+    group_counts = df.groupby("grouping", observed=False).size()
     for group, count in group_counts.items():
         logging.debug(f"{group}: {count} pairs")
 
-    # Create the single-panel violin plot
+    # Create the violin plot with the three comparison groups
     plot = (
         ggplot(
             df,
-            aes(x="comparison_group", y="distance", fill="comparison_group"),
+            aes(x="grouping", y="distance", fill="grouping"),
         )
         + geom_violin(alpha=0.7, width=0.8)
         + geom_boxplot(
@@ -1540,9 +1540,11 @@ def plot_wasserstein_violin(
             title="Distribution of Wasserstein Distances by Comparison Type",
         )
         + theme(
-            figure_size=(12, 8),
+            figure_size=(12, 6),  # Slightly wider to accommodate 3 groups
             plot_title=element_text(size=14, weight="bold"),
-            axis_text_x=element_text(angle=45, hjust=1, size=10),
+            axis_text_x=element_text(
+                angle=15, hjust=1, size=9
+            ),  # Slight rotation for 3 groups
             axis_title=element_text(size=12),
             legend_position="none",  # Remove legend since x-axis labels are clear
         )

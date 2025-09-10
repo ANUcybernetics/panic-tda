@@ -9,7 +9,7 @@ import ray
 from humanize.time import naturaldelta
 from sqlmodel import Session, select
 
-from panic_tda.db import list_runs, read_embedding
+from panic_tda.db import list_runs, read_embedding, get_persistence_diagram
 from panic_tda.embeddings import get_actor_class
 from panic_tda.genai_models import get_output_type
 from panic_tda.schemas import InvocationType
@@ -1232,6 +1232,145 @@ def prompt_category_mapper(initial_prompt: str) -> str:
     return prompt_to_category.get(initial_prompt)
 
 
+def load_runs_df_with_pd_metadata(
+    session: Session, embedding_models: list[str] | None = None
+) -> pl.DataFrame:
+    """
+    Load runs from the database that have persistence diagrams for the specified embedding models.
+    This is more efficient than loading all PD data when we only need to know which runs have PDs.
+
+    Args:
+        session: SQLModel database session
+        embedding_models: List of embedding models to check for (e.g., ["Nomic", "NomicVision"]).
+                         If None, checks for any embedding model.
+
+    Returns:
+        A polars DataFrame containing run data with PD availability information
+    """
+    print("Loading runs with persistence diagram metadata...")
+
+    # Base query for runs with basic information
+    base_query = """
+    SELECT
+        run.id as run_id,
+        run.experiment_id as experiment_id,
+        run.network as network,
+        run.initial_prompt as initial_prompt,
+        run.seed as seed,
+        run.max_length as max_length,
+        (SELECT COUNT(*) FROM invocation WHERE invocation.run_id = run.id) as num_invocations
+    FROM run
+    WHERE EXISTS (SELECT 1 FROM invocation WHERE invocation.run_id = run.id)
+      AND run.initial_prompt NOT IN ('yeah', 'nah')
+    """
+
+    # Use polars to read directly from the database
+    db_url = _get_polars_db_uri(session)
+    runs_df = pl.read_database_uri(query=base_query, uri=db_url)
+
+    # Format UUID columns
+    runs_df = format_uuid_columns(runs_df, ["run_id", "experiment_id"])
+
+    # Parse network from JSON string to create string column
+    runs_df = runs_df.with_columns([
+        pl.col("network").str.json_decode().list.join("→").alias("network")
+    ])
+
+    # Add model extraction logic
+    def extract_models(network_str):
+        if not network_str:
+            return pl.Series([None, None])
+
+        network = network_str.split("→")
+        image_model = None
+        text_model = None
+        for model in network:
+            output_type = get_output_type(model)
+            if output_type == InvocationType.IMAGE and image_model is None:
+                image_model = model
+            elif output_type == InvocationType.TEXT and text_model is None:
+                text_model = model
+            if image_model is not None and text_model is not None:
+                break
+        return pl.Series([image_model, text_model])
+
+    runs_df = runs_df.with_columns([
+        pl.col("network")
+        .map_elements(extract_models, return_dtype=pl.List(pl.String))
+        .alias("models")
+    ])
+
+    runs_df = runs_df.with_columns([
+        pl.col("models").list.get(0).alias("image_model"),
+        pl.col("models").list.get(1).alias("text_model"),
+    ]).drop("models")
+
+    # Add prompt category column
+    runs_df = runs_df.with_columns([
+        pl.col("initial_prompt")
+        .map_elements(prompt_category_mapper, return_dtype=pl.List(pl.String))
+        .alias("prompt_category")
+    ])
+
+    # Now check which runs have persistence diagrams for the requested models
+    if embedding_models:
+        embedding_models_str = "', '".join(embedding_models)
+        pd_query = f"""
+        SELECT
+            pd.run_id as run_id,
+            pd.embedding_model as embedding_model,
+            COUNT(*) as pd_count
+        FROM persistencediagram pd
+        WHERE pd.embedding_model IN ('{embedding_models_str}')
+          AND pd.diagram_data IS NOT NULL
+        GROUP BY pd.run_id, pd.embedding_model
+        """
+    else:
+        pd_query = """
+        SELECT
+            pd.run_id as run_id,
+            pd.embedding_model as embedding_model,
+            COUNT(*) as pd_count
+        FROM persistencediagram pd
+        WHERE pd.diagram_data IS NOT NULL
+        GROUP BY pd.run_id, pd.embedding_model
+        """
+
+    pd_availability_df = pl.read_database_uri(query=pd_query, uri=db_url)
+    pd_availability_df = format_uuid_columns(pd_availability_df, ["run_id"])
+
+    # Create a summary of which embedding models each run has PDs for
+    pd_summary = pd_availability_df.group_by("run_id").agg([
+        pl.col("embedding_model").unique().alias("available_embedding_models"),
+        pl.col("pd_count").sum().alias("total_pd_count"),
+    ])
+
+    # Join with the runs dataframe
+    runs_with_pd_info = runs_df.join(pd_summary, on="run_id", how="left")
+
+    # Add boolean columns for specific embedding models if requested
+    if embedding_models:
+        for model in embedding_models:
+            runs_with_pd_info = runs_with_pd_info.with_columns([
+                pl.col("available_embedding_models")
+                .list.contains(model)
+                .alias(f"has_{model.lower()}_pd")
+            ])
+
+        # Add a column indicating if run has PDs for ALL requested models
+        has_all_models_expr = pl.lit(True)
+        for model in embedding_models:
+            has_all_models_expr = has_all_models_expr & pl.col(
+                f"has_{model.lower()}_pd"
+            )
+
+        runs_with_pd_info = runs_with_pd_info.with_columns([
+            has_all_models_expr.alias("has_all_requested_pds")
+        ])
+
+    return runs_with_pd_info
+
+
 def load_runs_df(session: Session) -> pl.DataFrame:
     """
     Load all runs from the database into a tidy polars DataFrame.
@@ -1594,15 +1733,24 @@ def calculate_wasserstein_distances(
 
 def create_paired_pd_df(pd_df: pl.DataFrame) -> pl.DataFrame:
     """
-    Create a dataframe of pairs of persistence diagrams with their metadata.
+    Create a dataframe of pairs of persistence diagrams for three specific comparison groups:
 
-    This function efficiently creates only the specific pairs we want:
-    - No self-pairs (a != b)
-    - Only one direction per pair (a, b) not both (a, b) and (b, a)
-    - Creates pairs where (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
+    Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision)
+    Group 2: Same IC, Nomic - Same initial conditions, both using Nomic embedding
+    Group 3: Same IC, NomicVision - Same initial conditions, both using NomicVision embedding
+
+    This function creates only meaningful pairs with no sampling (uses all available data):
+    - Group 1: All combinations of Nomic × NomicVision = 8 × 8 = 64 pairs per IC set
+    - Groups 2 & 3: n(n-1)/2 unique pairs = (8 × 7)/2 = 28 pairs per IC set
+
+    With 45 IC sets total, we expect:
+    - Group 1: 45 × 64 = 2,880 pairs
+    - Group 2: 45 × 28 = 1,260 pairs
+    - Group 3: 45 × 28 = 1,260 pairs
 
     Args:
-        pd_df: DataFrame from load_pd_df() containing persistence diagram data
+        pd_df: DataFrame from load_pd_df() containing persistence diagram data.
+               Must be pre-filtered to only Nomic/NomicVision and homology_dimension == 1
 
     Returns:
         DataFrame with columns for both "a" and "b" persistence diagrams:
@@ -1611,6 +1759,7 @@ def create_paired_pd_df(pd_df: pl.DataFrame) -> pl.DataFrame:
         - embedding_model_a, embedding_model_b: Embedding models
         - initial_prompt_a, initial_prompt_b: Initial prompts
         - network_a, network_b: Networks
+        - initial_conditions_a, initial_conditions_b: Combined initial_prompt:network
         - Plus other metadata columns with _a and _b suffixes
     """
     import logging
@@ -1668,7 +1817,7 @@ def create_paired_pd_df(pd_df: pl.DataFrame) -> pl.DataFrame:
     # Create pairs by comparing every PD with every other PD
     for i, id_a in enumerate(all_pd_ids):
         for j, id_b in enumerate(all_pd_ids):
-            if i >= j:  # Only one direction, lexicographic ordering, no self-pairs
+            if i == j:  # Skip self-pairs
                 continue
 
             # Get metadata for both PDs
@@ -1679,23 +1828,32 @@ def create_paired_pd_df(pd_df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("persistence_diagram_id") == id_b
             ).to_dicts()[0]
 
-            # Apply pairing logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)
-            # Check if this is one of our desired pair types:
-            # 1. Same initial conditions BUT different embedding models
+            # Apply the new pairing logic for the three specific comparison groups:
             same_ic = pd_a_row["initial_conditions"] == pd_b_row["initial_conditions"]
             different_models = (
                 pd_a_row["embedding_model"] != pd_b_row["embedding_model"]
             )
-
-            # 2. Different initial conditions BUT same embedding models
-            different_ic = (
-                pd_a_row["initial_conditions"] != pd_b_row["initial_conditions"]
-            )
             same_models = pd_a_row["embedding_model"] == pd_b_row["embedding_model"]
 
-            should_include_pair = (same_ic and different_models) or (
-                different_ic and same_models
-            )
+            # Group 1: Same IC, different EM (all combinations Nomic × NomicVision, not both directions)
+            # Only include pairs where Nomic is 'a' and NomicVision is 'b' to avoid double counting
+            if (
+                same_ic
+                and different_models
+                and pd_a_row["embedding_model"] == "Nomic"
+                and pd_b_row["embedding_model"] == "NomicVision"
+            ):
+                should_include_pair = True
+            # Group 2: Same IC, both Nomic (unique pairs i < j to avoid duplicates)
+            elif same_ic and same_models and pd_a_row["embedding_model"] == "Nomic":
+                should_include_pair = i < j
+            # Group 3: Same IC, both NomicVision (unique pairs i < j to avoid duplicates)
+            elif (
+                same_ic and same_models and pd_a_row["embedding_model"] == "NomicVision"
+            ):
+                should_include_pair = i < j
+            else:
+                should_include_pair = False
 
             # Only keep pairs that match our criteria
             if should_include_pair:
@@ -1751,9 +1909,8 @@ def filter_paired_pd_df(
     """
     Filter a paired persistence diagram dataframe for homology dimension.
 
-    Since create_paired_pd_df() now creates only the correct pairs (no self-pairs,
-    no reversed pairs, following the logic: (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model)),
-    this function now only handles homology dimension filtering.
+    Since create_paired_pd_df() now creates only pairs for the two comparison groups,
+    this function primarily handles homology dimension filtering.
 
     Args:
         paired_df: DataFrame from create_paired_pd_df()
@@ -1768,7 +1925,7 @@ def filter_paired_pd_df(
 
     filtered_df = paired_df
 
-    # Note: homology_dimension filtering would need to be applied during distance calculation
+    # Note: homology_dimension filtering is applied during distance calculation
     # since this dataframe contains persistence diagram metadata, not individual birth/death pairs
     if homology_dimension is not None:
         # Add a note about the requested homology dimension for later filtering
@@ -1786,24 +1943,20 @@ def filter_paired_pd_df(
 
 def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
     """
-    Add metadata columns about the pairing relationships.
+    Add metadata columns about the pairing relationships for the three comparison groups.
 
     This function adds:
-    1. same_IC: Boolean indicating if both diagrams have the same initial conditions (initial_prompt and network)
-    2. comparison_group: Categorical indicating which of three comparison groups this pair belongs to:
-       - "Same IC (different models)": Same initial conditions with different embedding models (Nomic vs NomicVision)
-       - "Different IC (text)": Different initial conditions with same text embedding model (Nomic)
-       - "Different IC (vision)": Different initial conditions with same vision embedding model (NomicVision)
-
-    Since create_paired_pd_df() now only creates specific pairs following the logic:
-    (same_IC AND different_embedding_model) OR (different_IC AND same_embedding_model),
-    this function no longer needs to filter or add modality metadata.
+    1. same_IC: Boolean indicating if both diagrams have the same initial conditions
+    2. grouping: Categorical with three values:
+       - "Same IC, different EM": Same initial conditions, different embedding models (Nomic vs NomicVision)
+       - "Same IC, Nomic": Same initial conditions, both using Nomic embedding
+       - "Same IC, NomicVision": Same initial conditions, both using NomicVision embedding
 
     Args:
         paired_df: DataFrame from filter_paired_pd_df()
 
     Returns:
-        DataFrame with same_IC and comparison_group columns added
+        DataFrame with same_IC and grouping columns added
     """
     import logging
 
@@ -1817,41 +1970,45 @@ def add_pairing_metadata(paired_df: pl.DataFrame) -> pl.DataFrame:
         ).alias("same_IC")
     ])
 
-    # Add comparison_group column based on pairing relationships
+    # Add grouping column based on the three pairing relationships
     paired_df = paired_df.with_columns([
         pl.when(
             pl.col("same_IC")
             & (pl.col("embedding_model_a") != pl.col("embedding_model_b"))
         )
-        .then(pl.lit("Same IC (different models)"))
+        .then(pl.lit("Same IC, different EM"))
         .when(
-            (~pl.col("same_IC"))
+            pl.col("same_IC")
             & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
             & (pl.col("embedding_model_a") == "Nomic")
         )
-        .then(pl.lit("Different IC (text)"))
+        .then(pl.lit("Same IC, Nomic"))
         .when(
-            (~pl.col("same_IC"))
+            pl.col("same_IC")
             & (pl.col("embedding_model_a") == pl.col("embedding_model_b"))
             & (pl.col("embedding_model_a") == "NomicVision")
         )
-        .then(pl.lit("Different IC (vision)"))
-        .otherwise(pl.lit("Other"))  # This shouldn't happen with our filtering
-        .alias("comparison_group")
+        .then(pl.lit("Same IC, NomicVision"))
+        .otherwise(pl.lit("Other"))  # This shouldn't happen with proper filtering
+        .alias("grouping")
     ])
 
     logging.debug(f"Added metadata to {paired_df.height} pairs")
     logging.debug(f"Same IC pairs: {paired_df.filter(pl.col('same_IC')).height}")
-    logging.debug(f"Different IC pairs: {paired_df.filter(~pl.col('same_IC')).height}")
 
-    # Log the distribution of comparison groups
+    # All pairs should have same IC now with the three-group approach
+    non_same_ic_pairs = paired_df.filter(~pl.col("same_IC")).height
+    if non_same_ic_pairs > 0:
+        logging.debug(
+            f"Warning: {non_same_ic_pairs} pairs with different IC found - unexpected for three-group approach"
+        )
+
+    # Log the distribution of groupings
     group_counts = (
-        paired_df.group_by("comparison_group")
-        .agg(pl.count().alias("count"))
-        .sort("comparison_group")
+        paired_df.group_by("grouping").agg(pl.count().alias("count")).sort("grouping")
     )
     for row in group_counts.iter_rows(named=True):
-        logging.debug(f"{row['comparison_group']}: {row['count']} pairs")
+        logging.debug(f"{row['grouping']}: {row['count']} pairs")
 
     return paired_df
 
@@ -2017,5 +2174,306 @@ def calculate_paired_wasserstein_distances(
     )
 
     logging.debug(f"Successfully calculated {result_df.height} distances")
+
+    return result_df
+
+
+def create_optimised_wasserstein_pairs(
+    runs_df: pl.DataFrame, embedding_models: list[str]
+) -> pl.DataFrame:
+    """
+    Create pairs of runs for the three specific wasserstein comparison groups using the optimised approach.
+
+    This function operates on runs metadata instead of full persistence diagram data,
+    creating pairs that will be used to fetch only the required PDs on-demand.
+
+    Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision)
+    Group 2: Same IC, Nomic - Same initial conditions, both using Nomic embedding
+    Group 3: Same IC, NomicVision - Same initial conditions, both using NomicVision embedding
+
+    Args:
+        runs_df: DataFrame from load_runs_df_with_pd_metadata() containing run metadata
+        embedding_models: List of embedding models to consider (should be ["Nomic", "NomicVision"])
+
+    Returns:
+        DataFrame with columns:
+        - run_id_a, run_id_b: Run IDs for the pair
+        - embedding_model_a, embedding_model_b: Embedding models for each run
+        - initial_prompt_a, initial_prompt_b: Initial prompts (should be same for all groups)
+        - network_a, network_b: Networks (should be same for all groups)
+        - initial_conditions_a, initial_conditions_b: Combined initial_prompt:network
+        - grouping: The comparison group this pair belongs to
+    """
+    import logging
+
+    logging.debug(f"Creating optimised wasserstein pairs from {runs_df.height} runs")
+
+    # Filter to only runs that have PDs for all requested embedding models
+    valid_runs = runs_df.filter(pl.col("has_all_requested_pds") == True)
+    logging.debug(f"Found {valid_runs.height} runs with all requested PDs")
+
+    if valid_runs.height == 0:
+        # Return empty dataframe with correct schema
+        empty_schema = {
+            "run_id_a": pl.Utf8,
+            "run_id_b": pl.Utf8,
+            "embedding_model_a": pl.Utf8,
+            "embedding_model_b": pl.Utf8,
+            "initial_prompt_a": pl.Utf8,
+            "initial_prompt_b": pl.Utf8,
+            "network_a": pl.Utf8,
+            "network_b": pl.Utf8,
+            "initial_conditions_a": pl.Utf8,
+            "initial_conditions_b": pl.Utf8,
+            "grouping": pl.Utf8,
+        }
+        return pl.DataFrame(schema=empty_schema)
+
+    # Add initial conditions column
+    valid_runs = valid_runs.with_columns([
+        (pl.col("initial_prompt") + ":" + pl.col("network")).alias("initial_conditions")
+    ])
+
+    # Create pairs for each of the three groups
+    all_pairs = []
+
+    # Get unique initial condition sets
+    ic_sets = valid_runs.select([
+        "initial_prompt",
+        "network",
+        "initial_conditions",
+    ]).unique()
+
+    for ic_row in ic_sets.iter_rows(named=True):
+        initial_prompt = ic_row["initial_prompt"]
+        network = ic_row["network"]
+        initial_conditions = ic_row["initial_conditions"]
+
+        # Get all runs for this initial condition set
+        ic_runs = valid_runs.filter(
+            (pl.col("initial_prompt") == initial_prompt)
+            & (pl.col("network") == network)
+        )
+
+        # Group 1: Same IC, different EM (Nomic vs NomicVision)
+        # Create all combinations where one run uses Nomic and the other uses NomicVision
+        # We create pairs in both directions but will filter to avoid duplicates during distance calculation
+
+        for run_a in ic_runs.iter_rows(named=True):
+            for run_b in ic_runs.iter_rows(named=True):
+                if run_a["run_id"] == run_b["run_id"]:
+                    continue  # Skip self pairs
+
+                # Group 1: Different embedding models (Nomic vs NomicVision in one direction only)
+                if (
+                    run_a["run_id"] < run_b["run_id"]
+                ):  # Avoid duplicate pairs by ordering
+                    # Create pairs for both Nomic vs NomicVision combinations
+                    for em_a in embedding_models:
+                        for em_b in embedding_models:
+                            if em_a != em_b:  # Different embedding models
+                                pair = {
+                                    "run_id_a": run_a["run_id"],
+                                    "run_id_b": run_b["run_id"],
+                                    "embedding_model_a": em_a,
+                                    "embedding_model_b": em_b,
+                                    "initial_prompt_a": initial_prompt,
+                                    "initial_prompt_b": initial_prompt,
+                                    "network_a": network,
+                                    "network_b": network,
+                                    "initial_conditions_a": initial_conditions,
+                                    "initial_conditions_b": initial_conditions,
+                                    "grouping": "Same IC, different EM",
+                                }
+                                all_pairs.append(pair)
+
+                # Groups 2 & 3: Same embedding model (both Nomic or both NomicVision)
+                if (
+                    run_a["run_id"] < run_b["run_id"]
+                ):  # Avoid duplicate pairs by ordering
+                    for em in embedding_models:
+                        pair = {
+                            "run_id_a": run_a["run_id"],
+                            "run_id_b": run_b["run_id"],
+                            "embedding_model_a": em,
+                            "embedding_model_b": em,
+                            "initial_prompt_a": initial_prompt,
+                            "initial_prompt_b": initial_prompt,
+                            "network_a": network,
+                            "network_b": network,
+                            "initial_conditions_a": initial_conditions,
+                            "initial_conditions_b": initial_conditions,
+                            "grouping": f"Same IC, {em}",
+                        }
+                        all_pairs.append(pair)
+
+    if not all_pairs:
+        logging.debug("No valid pairs found")
+        return pl.DataFrame(schema=empty_schema)
+
+    pairs_df = pl.DataFrame(all_pairs)
+    logging.debug(f"Created {pairs_df.height} optimised pairs")
+
+    # Log breakdown by group
+    if pairs_df.height > 0:
+        group_counts = (
+            pairs_df.group_by("grouping")
+            .agg(pl.count().alias("count"))
+            .sort("grouping")
+        )
+        for row in group_counts.iter_rows(named=True):
+            logging.debug(f"{row['grouping']}: {row['count']} pairs")
+
+    return pairs_df
+
+
+def calculate_optimised_wasserstein_distances(
+    pairs_df: pl.DataFrame, session: Session, homology_dimension: int = 1
+) -> pl.DataFrame:
+    """
+    Calculate Wasserstein distances for run pairs using on-demand PD fetching.
+
+    This is the optimised version that fetches only the required persistence diagrams
+    instead of loading all PD data upfront.
+
+    Args:
+        pairs_df: DataFrame from create_optimised_wasserstein_pairs()
+        session: SQLModel database session for fetching PDs on-demand
+        homology_dimension: Homology dimension to calculate distances for (default: 1)
+
+    Returns:
+        DataFrame with distance column added
+    """
+    import logging
+    import numpy as np
+    from uuid import UUID
+    from panic_tda.tda import compute_wasserstein_distance
+
+    logging.debug(
+        f"Calculating optimised Wasserstein distances for {pairs_df.height} pairs"
+    )
+
+    if pairs_df.height == 0:
+        return pairs_df.with_columns([
+            pl.lit(homology_dimension).alias("homology_dimension"),
+            pl.lit(None, dtype=pl.Float64).alias("distance"),
+        ])
+
+    # Process each pair and calculate distances
+    result_rows = []
+    failed_pairs = 0
+
+    for row in pairs_df.iter_rows(named=True):
+        run_id_a = UUID(row["run_id_a"])
+        run_id_b = UUID(row["run_id_b"])
+        embedding_model_a = row["embedding_model_a"]
+        embedding_model_b = row["embedding_model_b"]
+
+        try:
+            # Fetch persistence diagrams on-demand
+            pd_a = get_persistence_diagram(run_id_a, embedding_model_a, session)
+            pd_b = get_persistence_diagram(run_id_b, embedding_model_b, session)
+
+            if not pd_a or not pd_b:
+                logging.debug(
+                    f"Missing PD for pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            if not pd_a.diagram_data or not pd_b.diagram_data:
+                logging.debug(
+                    f"Missing diagram data for pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            if "dgms" not in pd_a.diagram_data or "dgms" not in pd_b.diagram_data:
+                logging.debug(
+                    f"Missing dgms for pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            # Extract the specific homology dimension
+            if homology_dimension >= len(
+                pd_a.diagram_data["dgms"]
+            ) or homology_dimension >= len(pd_b.diagram_data["dgms"]):
+                logging.debug(
+                    f"Dimension {homology_dimension} not available for pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            dgm_a = pd_a.diagram_data["dgms"][homology_dimension]
+            dgm_b = pd_b.diagram_data["dgms"][homology_dimension]
+
+            # Ensure proper numpy arrays
+            if not isinstance(dgm_a, np.ndarray) or not isinstance(dgm_b, np.ndarray):
+                logging.debug(
+                    f"Invalid diagram types for dimension {homology_dimension} in pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            # Handle empty diagrams
+            if dgm_a.size == 0:
+                dgm_a = dgm_a.reshape(0, 2)
+            if dgm_b.size == 0:
+                dgm_b = dgm_b.reshape(0, 2)
+
+            # Filter out infinite persistence points (typically only in dimension 0, but be safe)
+            if dgm_a.size > 0:
+                finite_mask_a = ~np.isinf(dgm_a).any(axis=1)
+                dgm_a = dgm_a[finite_mask_a]
+
+            if dgm_b.size > 0:
+                finite_mask_b = ~np.isinf(dgm_b).any(axis=1)
+                dgm_b = dgm_b[finite_mask_b]
+
+            # Calculate Wasserstein distance
+            distance = compute_wasserstein_distance(dgm_a, dgm_b)
+
+            # Skip if distance is NaN
+            if np.isnan(distance):
+                logging.debug(
+                    f"NaN distance for dimension {homology_dimension} in pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b})"
+                )
+                failed_pairs += 1
+                continue
+
+            # Create result row
+            result_row = dict(row)  # Copy all original columns
+            result_row["homology_dimension"] = homology_dimension
+            result_row["distance"] = float(distance)
+            result_rows.append(result_row)
+
+        except Exception as e:
+            logging.debug(
+                f"Error calculating distance for pair {run_id_a}({embedding_model_a}), {run_id_b}({embedding_model_b}): {e}"
+            )
+            failed_pairs += 1
+            continue
+
+    logging.debug(
+        f"Successfully calculated {len(result_rows)} distances, {failed_pairs} pairs failed"
+    )
+
+    if not result_rows:
+        # Return empty dataframe with correct schema
+        logging.warning("No valid distances calculated")
+        return pairs_df.with_columns([
+            pl.lit(homology_dimension).alias("homology_dimension"),
+            pl.lit(None, dtype=pl.Float64).alias("distance"),
+        ]).limit(0)
+
+    # Create result dataframe
+    result_df = pl.DataFrame(
+        result_rows,
+        schema_overrides={
+            "homology_dimension": pl.Int64,
+            "distance": pl.Float64,
+        },
+    )
 
     return result_df

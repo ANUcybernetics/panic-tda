@@ -794,25 +794,23 @@ def test_plot_wasserstein_violin(db_session):
     # Verify we have the required columns for the plot
     required_columns = [
         "distance",
-        "comparison_group",
+        "grouping",
         "homology_dimension",
     ]
     for col in required_columns:
         assert col in wasserstein_df.columns, f"Missing required column: {col}"
 
-    # Verify we have valid comparison groups
-    comparison_groups = wasserstein_df["comparison_group"].unique().to_list()
+    # Verify we have valid groupings
+    groupings = wasserstein_df["grouping"].unique().to_list()
     expected_groups = [
-        "Same IC (different models)",
-        "Different IC (text)",
-        "Different IC (vision)",
+        "Same IC, different EM",
+        "Same IC, Nomic",
+        "Same IC, NomicVision",
     ]
 
     # At least one of the expected groups should be present
-    valid_groups = [g for g in comparison_groups if g in expected_groups]
-    assert len(valid_groups) > 0, (
-        f"No valid comparison groups found. Got: {comparison_groups}"
-    )
+    valid_groups = [g for g in groupings if g in expected_groups]
+    assert len(valid_groups) > 0, f"No valid groupings found. Got: {groupings}"
 
     # Define output file
     output_file = "output/test/wasserstein_violin.pdf"

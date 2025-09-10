@@ -649,6 +649,25 @@ def print_experiment_info(
     print(status_report)
 
 
+def get_persistence_diagram(run_id: UUID, embedding_model: str, session: Session):
+    """
+    Fetch a single persistence diagram by run_id and embedding_model.
+
+    Args:
+        run_id: UUID of the run
+        embedding_model: Name of the embedding model (e.g., "Nomic", "NomicVision")
+        session: The database session
+
+    Returns:
+        A PersistenceDiagram object or None if not found
+    """
+    statement = select(PersistenceDiagram).where(
+        PersistenceDiagram.run_id == run_id,
+        PersistenceDiagram.embedding_model == embedding_model,
+    )
+    return session.exec(statement).first()
+
+
 def export_experiments(
     source_db_str: str,
     target_db_str: str,
