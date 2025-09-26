@@ -2182,14 +2182,15 @@ def create_optimised_wasserstein_pairs(
     runs_df: pl.DataFrame, embedding_models: list[str]
 ) -> pl.DataFrame:
     """
-    Create pairs of runs for the three specific wasserstein comparison groups using the optimised approach.
+    Create pairs of runs for the four specific wasserstein comparison groups using the optimised approach.
 
     This function operates on runs metadata instead of full persistence diagram data,
     creating pairs that will be used to fetch only the required PDs on-demand.
 
-    Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision)
+    Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision from different runs)
     Group 2: Same IC, Nomic - Same initial conditions, both using Nomic embedding
     Group 3: Same IC, NomicVision - Same initial conditions, both using NomicVision embedding
+    Group 4: Same run, different EM - Same run, different embedding models (Nomic vs NomicVision from same run)
 
     Args:
         runs_df: DataFrame from load_runs_df_with_pd_metadata() containing run metadata
@@ -2255,16 +2256,37 @@ def create_optimised_wasserstein_pairs(
             & (pl.col("network") == network)
         )
 
-        # Group 1: Same IC, different EM (Nomic vs NomicVision)
+        # Group 1: Same IC, different EM (Nomic vs NomicVision from different runs)
         # Create all combinations where one run uses Nomic and the other uses NomicVision
         # We create pairs in both directions but will filter to avoid duplicates during distance calculation
 
         for run_a in ic_runs.iter_rows(named=True):
             for run_b in ic_runs.iter_rows(named=True):
                 if run_a["run_id"] == run_b["run_id"]:
-                    continue  # Skip self pairs
+                    # Group 4: Same run, different EM (Nomic vs NomicVision from same run)
+                    # This compares text and image embeddings from the same trajectory
+                    if (
+                        len(embedding_models) == 2
+                        and "Nomic" in embedding_models
+                        and "NomicVision" in embedding_models
+                    ):
+                        pair = {
+                            "run_id_a": run_a["run_id"],
+                            "run_id_b": run_a["run_id"],  # Same run
+                            "embedding_model_a": "Nomic",  # Text embedding
+                            "embedding_model_b": "NomicVision",  # Image embedding
+                            "initial_prompt_a": initial_prompt,
+                            "initial_prompt_b": initial_prompt,
+                            "network_a": network,
+                            "network_b": network,
+                            "initial_conditions_a": initial_conditions,
+                            "initial_conditions_b": initial_conditions,
+                            "grouping": "Same run, different EM",
+                        }
+                        all_pairs.append(pair)
+                    continue  # Skip other self-pair comparisons
 
-                # Group 1: Different embedding models (Nomic vs NomicVision in one direction only)
+                # Group 1: Different embedding models from different runs (Nomic vs NomicVision in one direction only)
                 if (
                     run_a["run_id"] < run_b["run_id"]
                 ):  # Avoid duplicate pairs by ordering

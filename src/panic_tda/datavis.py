@@ -1458,13 +1458,14 @@ def plot_wasserstein_violin(
     output_file: str = "output/vis/wasserstein_violin.pdf",
 ) -> None:
     """
-    Create and save a violin plot of Wasserstein distances with three comparison groups.
+    Create and save a violin plot of Wasserstein distances with four comparison groups.
 
     This function creates a violin plot showing the distribution of Wasserstein distances
-    with three violins representing different comparison groups:
-    - "Same IC, different EM": Same initial conditions, different embedding models (Nomic vs NomicVision)
+    with four violins representing different comparison groups:
+    - "Same IC, different EM": Same initial conditions, different embedding models (Nomic vs NomicVision from different runs)
     - "Same IC, Nomic": Same initial conditions, both using Nomic embedding
     - "Same IC, NomicVision": Same initial conditions, both using NomicVision embedding
+    - "Same run, different EM": Same run, different embedding models (Nomic vs NomicVision from same run)
 
     Args:
         wasserstein_df: DataFrame from calculate_paired_wasserstein_distances containing:
@@ -1496,11 +1497,12 @@ def plot_wasserstein_violin(
     # Convert to pandas for plotnine
     df = wasserstein_df.to_pandas()
 
-    # Define the desired order for the three comparison groups
+    # Define the desired order for the four comparison groups
     group_order = [
         "Same IC, different EM",
         "Same IC, Nomic",
         "Same IC, NomicVision",
+        "Same run, different EM",
     ]
 
     # Filter to only include groups that exist in our data and reorder
@@ -1524,7 +1526,7 @@ def plot_wasserstein_violin(
     for group, count in group_counts.items():
         logging.debug(f"{group}: {count} pairs")
 
-    # Create the violin plot with the three comparison groups
+    # Create the violin plot with the four comparison groups
     plot = (
         ggplot(
             df,
@@ -1540,11 +1542,11 @@ def plot_wasserstein_violin(
             title="Distribution of Wasserstein Distances by Comparison Type",
         )
         + theme(
-            figure_size=(12, 6),  # Slightly wider to accommodate 3 groups
+            figure_size=(14, 6),  # Wider to accommodate 4 groups
             plot_title=element_text(size=14, weight="bold"),
             axis_text_x=element_text(
-                angle=15, hjust=1, size=9
-            ),  # Slight rotation for 3 groups
+                angle=20, hjust=1, size=9
+            ),  # More rotation for 4 groups
             axis_title=element_text(size=12),
             legend_position="none",  # Remove legend since x-axis labels are clear
         )

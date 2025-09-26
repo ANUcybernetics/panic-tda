@@ -174,16 +174,19 @@ def cybernetics_26_charts(session: Session) -> None:
     # print(pd_df.columns)
     # print(pd_df.head())
 
-    # Wasserstein distance analysis using the optimized three-group pipeline
-    print("\n=== Optimized Wasserstein Distance Analysis: Three-Group Comparison ===")
+    # Wasserstein distance analysis using the optimized four-group pipeline
+    print("\n=== Optimized Wasserstein Distance Analysis: Four-Group Comparison ===")
     print(
-        "Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision)"
+        "Group 1: Same IC, different EM - Same initial conditions, different embedding models (Nomic vs NomicVision from different runs)"
     )
     print(
         "Group 2: Same IC, Nomic - Same initial conditions, both using Nomic embedding"
     )
     print(
         "Group 3: Same IC, NomicVision - Same initial conditions, both using NomicVision embedding"
+    )
+    print(
+        "Group 4: Same run, different EM - Same run, different embedding models (Nomic vs NomicVision from same run)"
     )
 
     # Step 1: Load runs with persistence diagram metadata (much more efficient)
@@ -211,6 +214,7 @@ def cybernetics_26_charts(session: Session) -> None:
     # Expected pair counts (for validation)
     # Group 1: n_runs × n_runs × 2 (Nomic→NomicVision + NomicVision→Nomic pairs per IC set)
     # Groups 2&3: n_runs × (n_runs-1)/2 × 2 (unique pairs for each model per IC set)
+    # Group 4: n_runs per IC set (one pair per run comparing its Nomic vs NomicVision)
     runs_per_ic = (
         valid_runs_df.height // unique_ics.height if unique_ics.height > 0 else 0
     )
@@ -221,20 +225,22 @@ def cybernetics_26_charts(session: Session) -> None:
         expected_group2_3 = (
             unique_ics.height * (runs_per_ic * (runs_per_ic - 1) // 2) * 2
         )  # Both models
+        expected_group4 = unique_ics.height * runs_per_ic  # One pair per run
         print(f"  Runs per IC set: ~{runs_per_ic}")
         print(f"  Expected Group 1 pairs: ~{expected_group1}")
         print(f"  Expected Groups 2&3 pairs: ~{expected_group2_3}")
+        print(f"  Expected Group 4 pairs: ~{expected_group4}")
 
     # Step 2: Create optimized pairs (no full PD data loading)
     print("\nStep 2: Creating optimized run pairs...")
     pairs_df = create_optimised_wasserstein_pairs(valid_runs_df, embedding_models)
-    print(f"Created {pairs_df.height} run pairs for three-group analysis")
+    print(f"Created {pairs_df.height} run pairs for four-group analysis")
 
     if pairs_df.height == 0:
         print("No valid pairs created")
         return
 
-    # Show breakdown of the three comparison groups
+    # Show breakdown of the four comparison groups
     group_counts = (
         pairs_df.group_by("grouping").agg(pl.count().alias("count")).sort("grouping")
     )
@@ -255,7 +261,7 @@ def cybernetics_26_charts(session: Session) -> None:
     print(f"Successfully calculated {distance_df.height} distances")
 
     if distance_df.height > 0:
-        # Print summary statistics for the three groups
+        # Print summary statistics for the four groups
         print("\n=== Summary Statistics ===")
 
         stats = (
