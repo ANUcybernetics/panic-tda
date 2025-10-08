@@ -32,71 +32,82 @@
     #text(size: 3em, fill: anu-colors.gold)[*PANIC-TDA*]
 
     #text(size: 1.2em)[
-      Exploring the patterns that emerge when generative AI models are connected
-      in networks, feeding their outputs recursively back as inputs.
+      What happens when AI models talk to each other in an endless loop?
     ]
 
     #v(1cm)
 
     == What you're watching
 
-    Each square in the mosaic grid shows one independent trajectory through
-    semantic space. All trajectories begin with the same text prompt and follow
-    the same network of AI models, but with different random seeds.
+    Each square shows one trajectory starting from the same text prompt (like "a
+    cat" or "a dog"). The journey is simple:
 
-    Watch as the images evolve over time---sometimes converging to similar
-    patterns, sometimes diverging into completely different semantic
-    territories.
+    - text→image model generates a picture
+    - image→text model describes what it sees
+    - that description generates a new picture
+    - repeat 1000 times
+
+    All squares follow the same network of models with the same starting prompt,
+    but different random seeds. Watch how some converge to similar patterns
+    while others drift into entirely different semantic territories.
 
     #v(1cm)
 
-    == Why this matters
+    == Semantic telephone
 
-    These trajectories reveal how information flows through networks of
-    generative AI models. By systematically exploring thousands of runs, we can
-    understand the attractors, bifurcations, and topological structure of these
-    high-dimensional information processing systems.
+    Like the children's game of Telephone, information transforms with each
+    iteration. But unlike random drift, these trajectories reveal hidden
+    structure: some prompts create stable loops, others chaotic wandering, and
+    some collapse into strange attractors (notice all that green leafy
+    imagery?).
   ],
   [
-    == The PANIC-TDA pipeline
+    == Why study this?
 
-    === Stage 1: runs
+    These recursive networks are more than curiosities. They reveal fundamental
+    properties of how semantic information flows through AI systems. By running
+    thousands of trajectories we can:
 
-    Execute networks of generative AI models where outputs become inputs. Each
-    run follows a specific network (cyclic graph) of models:
+    - map the "semantic landscape" these models inhabit
+    - identify stable attractors and chaotic regions
+    - understand which model architectures preserve meaning vs introduce drift
+    - use topological data analysis to characterise trajectory structure
 
-    - start with an initial text prompt
-    - generate an image using a text-to-image model
-    - describe that image using an image-to-text model
-    - use that description to generate a new image
-    - repeat for thousands of iterations
+    #v(1cm)
 
-    === Stage 2: embeddings
+    == The three-stage pipeline
 
-    Embed each text output into high-dimensional semantic space using embedding
-    models. Text that is semantically similar will be close together in this
-    768-dimensional space, creating a continuous trajectory through semantic
-    territory.
+    === Stage 1: generate trajectories
+
+    Run the text→image→text loop 1000 times for each combination of models,
+    prompts, and random seeds.
+
+    === Stage 2: embed in semantic space
+
+    Map each text output to a point in 768-dimensional space where semantically
+    similar texts are close together. Each trajectory becomes a path through
+    this high-dimensional landscape.
 
     === Stage 3: topological analysis
 
-    Apply persistent homology to characterize the shape and structure of each
-    trajectory. This reveals:
-
-    - loops and cycles in semantic space
-    - convergence to stable attractors
-    - bifurcation points where trajectories diverge
-    - topological signatures that distinguish different networks
+    Use persistent homology to measure the shape of each trajectory: are there
+    loops? Convergence points? Bifurcations? This reveals patterns invisible to
+    clustering alone.
 
     #v(1cm)
 
-    == The bigger picture
+    == From art to science
 
-    This research grows out of the PANIC! interactive art installation at the
-    ANU School of Cybernetics, where visitors have been exploring these
-    AI-mediated transformations since 2022. By moving from real-time interaction
-    to systematic batch analysis, we can ask deeper questions about how
-    information propagates through these vast, nonlinear, multi-billion
-    parameter systems.
+    This research grew from the PANIC! interactive art installation at ANU
+    School of Cybernetics (2022), where visitors watched their prompts transform
+    through AI networks in real time. These systematic batch experiments let us
+    ask deeper questions about information transmission in complex,
+    multi-billion parameter systems.
+
+    #v(0.5cm)
+
+    #text(size: 0.9em, fill: gray)[
+      Code and data: #link("https://github.com/anucybernetics/panic-tda")
+    ]
   ],
 )
