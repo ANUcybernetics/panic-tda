@@ -17,3 +17,5 @@ db/
 mise.local.toml
 
 .benchmarks/
+
+docs/*.pdf
