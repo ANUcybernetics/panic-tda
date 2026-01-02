@@ -2790,7 +2790,7 @@ A comprehensive test suite ensures correctness and prevents regressions. Key too
 
 - **ExUnit** with property-based testing via **StreamData**
 - **Smokestack** for Ash-native test factories
-- **Patch** for function patching/mocking (simpler than Mox, no behaviours required)
+- **Repatch** for function patching/mocking (simpler than Mox, no behaviours required)
 - **Doctests** for documentation-as-tests
 
 ### 14.1 Test Structure
@@ -3443,15 +3443,15 @@ defmodule PanicTda.Models.SigLIPTest do
 end
 ```
 
-### 14.6 Engine Tests with Patch
+### 14.6 Engine Tests with Repatch
 
-Use **Patch** to mock model calls in unit tests (no GPU required):
+Use **Repatch** to mock model calls in unit tests (no GPU required):
 
 ```elixir
 # test/panic_tda/engine_test.exs
 defmodule PanicTda.EngineTest do
   use PanicTda.DataCase
-  use Patch  # Enable patching
+  use Repatch
 
   import PanicTda.Factory
   alias PanicTda.Engine
@@ -3460,11 +3460,11 @@ defmodule PanicTda.EngineTest do
   describe "run_batched/3 (unit test with mocks)" do
     test "processes runs in lock-step batches" do
       # Patch model functions to return fake data
-      patch(ZImage, :invoke_batch, fn prompts, _seeds ->
+      Repatch.patch(ZImage, :invoke_batch, fn prompts, _seeds ->
         {:ok, Enum.map(prompts, fn _ -> "fake_image_binary" end)}
       end)
 
-      patch(Florence2, :invoke_batch, fn _images ->
+      Repatch.patch(Florence2, :invoke_batch, fn _images ->
         {:ok, ["Generated caption 1", "Generated caption 2"]}
       end)
 
@@ -3472,10 +3472,6 @@ defmodule PanicTda.EngineTest do
       network = ["ZImage", "Florence2"]
 
       assert :ok = Engine.run_batched(runs, network)
-
-      # Verify models were called
-      assert_called ZImage.invoke_batch(_, _)
-      assert_called Florence2.invoke_batch(_)
 
       # Verify invocations saved
       for run <- runs do
@@ -3485,11 +3481,11 @@ defmodule PanicTda.EngineTest do
     end
 
     test "maintains correct input/output chaining" do
-      patch(ZImage, :invoke_batch, fn prompts, _seeds ->
+      Repatch.patch(ZImage, :invoke_batch, fn prompts, _seeds ->
         {:ok, Enum.map(prompts, &"image_for_#{&1}")}
       end)
 
-      patch(Florence2, :invoke_batch, fn images ->
+      Repatch.patch(Florence2, :invoke_batch, fn images ->
         {:ok, Enum.map(images, &"caption_for_#{&1}")}
       end)
 
@@ -3513,7 +3509,7 @@ defmodule PanicTda.EngineTest do
     test "computes embeddings for all invocations" do
       fake_embedding = Nx.broadcast(0.5, {768})
 
-      patch(SigLIP, :embed_batch, fn _type, items ->
+      Repatch.patch(SigLIP, :embed_batch, fn _type, items ->
         {:ok, Enum.map(items, fn _ -> fake_embedding end)}
       end)
 
@@ -3522,8 +3518,6 @@ defmodule PanicTda.EngineTest do
       insert!(Invocation, run_id: run.id, output_text: "Some text")
 
       assert :ok = Engine.compute_embeddings([run], ["SigLIP"])
-
-      assert_called SigLIP.embed_batch(:text, _)
     end
   end
 end
@@ -3578,11 +3572,11 @@ defmodule PanicTda.Integration.EngineIntegrationTest do
 end
 ```
 
-**Why Patch over Mox:**
+**Why Repatch over Mox:**
 - No behaviour definitions required
 - Patches actual module functions directly
 - Simpler setup for quick mocking
-- `assert_called` for verifying calls
+- Automatic cleanup after each test
 
 ### 14.7 TDA NIF Tests
 
@@ -3938,7 +3932,7 @@ defmodule PanicTda.DataCase do
 end
 ```
 
-**Note:** Factories are defined via Smokestack (see section 14.2), and mocking is done inline with Patch (see section 14.6). No separate factory.ex or model_mocks.ex files needed.
+**Note:** Factories are defined via Smokestack (see section 14.2), and mocking is done inline with Repatch (see section 14.6). No separate factory.ex or model_mocks.ex files needed.
 
 ### 14.11 Test Configuration
 
@@ -4079,7 +4073,7 @@ defp deps do
 
     # Testing
     {:smokestack, "~> 0.9", only: :test},           # Ash-native factories
-    {:patch, "~> 0.13", only: :test},               # Function patching/mocking
+    {:repatch, "~> 1.0", only: :test},              # Function patching/mocking
     {:stream_data, "~> 1.1", only: :test},          # Property-based testing
     {:excoveralls, "~> 0.18", only: :test},         # Coverage reporting
     {:credo, "~> 1.7", only: [:dev, :test]}         # Static analysis
