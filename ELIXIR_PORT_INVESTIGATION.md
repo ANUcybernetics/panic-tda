@@ -2786,7 +2786,12 @@ end
 
 ## 14. Testing Strategy
 
-A comprehensive test suite ensures correctness and prevents regressions. The Elixir port should use ExUnit with property-based testing via StreamData.
+A comprehensive test suite ensures correctness and prevents regressions. Key tools:
+
+- **ExUnit** with property-based testing via **StreamData**
+- **Smokestack** for Ash-native test factories
+- **Patch** for function patching/mocking (simpler than Mox, no behaviours required)
+- **Doctests** for documentation-as-tests
 
 ### 14.1 Test Structure
 
@@ -2799,7 +2804,7 @@ test/
 │   │   ├── invocation_test.exs
 │   │   ├── embedding_test.exs
 │   │   └── persistence_diagram_test.exs
-│   ├── types/               # Custom type tests
+│   ├── types/               # Custom type tests (+ doctests)
 │   │   ├── image_test.exs
 │   │   ├── vector_test.exs
 │   │   └── persistence_diagram_type_test.exs
@@ -2818,68 +2823,97 @@ test/
 │   └── migration_test.exs
 ├── support/
 │   ├── fixtures/            # Test images, prompts, etc.
-│   ├── factories.ex         # ExMachina factories
-│   ├── model_mocks.ex       # Mock model responses
 │   └── data_case.ex         # Database test setup
 └── test_helper.exs
 ```
 
-### 14.2 Ash Resource Tests
+### 14.2 Smokestack Factories (Ash-native)
+
+```elixir
+# lib/panic_tda/factory.ex
+defmodule PanicTda.Factory do
+  use Smokestack
+
+  factory PanicTda.Resources.Experiment do
+    attribute :name, &"experiment_#{&1}"
+    attribute :networks, fn _ -> [["ZImage", "Florence2"]] end
+    attribute :embedding_models, fn _ -> ["SigLIP"] end
+    attribute :seed, fn _ -> Enum.random(1..1_000_000) end
+  end
+
+  factory PanicTda.Resources.Run do
+    attribute :initial_prompt, &"Test prompt #{&1}"
+    attribute :max_length, fn _ -> 10 end
+    attribute :seed, fn _ -> Enum.random(1..1_000_000) end
+  end
+
+  factory PanicTda.Resources.Invocation do
+    attribute :sequence_number, fn _ -> 0 end
+    attribute :model_name, fn _ -> "ZImage" end
+    attribute :input_type, fn _ -> :text end
+    attribute :output_type, fn _ -> :image end
+  end
+end
+```
+
+### 14.3 Ash Resource Tests
 
 ```elixir
 # test/panic_tda/resources/experiment_test.exs
 defmodule PanicTda.Resources.ExperimentTest do
   use PanicTda.DataCase, async: true
+  import PanicTda.Factory
 
   alias PanicTda.Resources.Experiment
 
   describe "create/1" do
     test "creates experiment with valid attributes" do
-      attrs = %{
-        name: "test_experiment",
-        networks: [["ZImage", "Florence2"]],
-        embedding_models: ["SigLIP"],
-        seed: 42
-      }
+      assert {:ok, %Experiment{} = experiment} =
+               Experiment
+               |> Ash.Changeset.for_create(:create, %{
+                 name: "test_experiment",
+                 networks: [["ZImage", "Florence2"]],
+                 embedding_models: ["SigLIP"],
+                 seed: 42
+               })
+               |> Ash.create()
 
-      assert {:ok, experiment} = Experiment.create(attrs)
       assert experiment.name == "test_experiment"
       assert experiment.networks == [["ZImage", "Florence2"]]
-      assert experiment.seed == 42
-      assert experiment.id != nil
     end
 
     test "fails with missing required fields" do
-      assert {:error, changeset} = Experiment.create(%{})
-      assert "is required" in errors_on(changeset).name
+      assert {:error, %Ash.Error.Invalid{errors: errors}} =
+               Experiment
+               |> Ash.Changeset.for_create(:create, %{})
+               |> Ash.create()
+
+      assert Enum.any?(errors, &match?(%Ash.Error.Changes.Required{field: :name}, &1))
     end
 
     test "validates networks is non-empty list" do
-      attrs = %{name: "test", networks: [], embedding_models: ["SigLIP"]}
-      assert {:error, changeset} = Experiment.create(attrs)
-      assert "must have at least one network" in errors_on(changeset).networks
-    end
-
-    test "validates network contains valid model names" do
-      attrs = %{
-        name: "test",
-        networks: [["InvalidModel", "Florence2"]],
-        embedding_models: ["SigLIP"]
-      }
-      assert {:error, changeset} = Experiment.create(attrs)
-      assert "contains invalid model" in errors_on(changeset).networks
+      assert {:error, %Ash.Error.Invalid{}} =
+               Experiment
+               |> Ash.Changeset.for_create(:create, %{
+                 name: "test",
+                 networks: [],
+                 embedding_models: ["SigLIP"]
+               })
+               |> Ash.create()
     end
   end
 
   describe "add_run/2" do
-    setup do
-      {:ok, experiment} = create_experiment()
-      %{experiment: experiment}
-    end
+    test "adds run to experiment" do
+      experiment = insert!(Experiment)
 
-    test "adds run to experiment", %{experiment: experiment} do
-      attrs = %{initial_prompt: "A red apple", max_length: 10, seed: 123}
-      assert {:ok, run} = Experiment.add_run(experiment, attrs)
+      assert {:ok, run} =
+               Experiment.add_run(experiment, %{
+                 initial_prompt: "A red apple",
+                 max_length: 10,
+                 seed: 123
+               })
+
       assert run.experiment_id == experiment.id
       assert run.initial_prompt == "A red apple"
     end
@@ -2891,41 +2925,57 @@ end
 # test/panic_tda/resources/run_test.exs
 defmodule PanicTda.Resources.RunTest do
   use PanicTda.DataCase, async: true
+  import PanicTda.Factory
 
   alias PanicTda.Resources.Run
 
   describe "create/1" do
-    setup do
-      {:ok, experiment} = create_experiment()
-      %{experiment: experiment}
-    end
+    test "creates run with valid attributes" do
+      experiment = insert!(Experiment)
 
-    test "creates run with valid attributes", %{experiment: experiment} do
-      attrs = %{
-        experiment_id: experiment.id,
-        initial_prompt: "A beautiful sunset over mountains",
-        max_length: 20,
-        seed: 42
-      }
+      assert {:ok, %Run{} = run} =
+               Run
+               |> Ash.Changeset.for_create(:create, %{
+                 experiment_id: experiment.id,
+                 initial_prompt: "A beautiful sunset",
+                 max_length: 20,
+                 seed: 42
+               })
+               |> Ash.create()
 
-      assert {:ok, run} = Run.create(attrs)
-      assert run.initial_prompt == "A beautiful sunset over mountains"
+      assert run.initial_prompt == "A beautiful sunset"
       assert run.max_length == 20
     end
 
-    test "validates max_length is positive", %{experiment: experiment} do
-      attrs = %{experiment_id: experiment.id, initial_prompt: "test", max_length: 0}
-      assert {:error, changeset} = Run.create(attrs)
-      assert "must be greater than 0" in errors_on(changeset).max_length
+    test "validates max_length is positive" do
+      experiment = insert!(Experiment)
+
+      assert {:error, %Ash.Error.Invalid{errors: errors}} =
+               Run
+               |> Ash.Changeset.for_create(:create, %{
+                 experiment_id: experiment.id,
+                 initial_prompt: "test",
+                 max_length: 0
+               })
+               |> Ash.create()
+
+      assert Enum.any?(errors, fn error ->
+        match?(%Ash.Error.Changes.InvalidAttribute{field: :max_length}, error)
+      end)
     end
   end
 
   describe "invocations relationship" do
     test "loads invocations in sequence order" do
-      run = create_run_with_invocations(count: 5)
-      run = Run.load!(run, :invocations)
+      run = insert!(Run)
 
+      for seq <- 0..4 do
+        insert!(Invocation, run_id: run.id, sequence_number: seq)
+      end
+
+      run = Ash.load!(run, :invocations)
       sequence_numbers = Enum.map(run.invocations, & &1.sequence_number)
+
       assert sequence_numbers == [0, 1, 2, 3, 4]
     end
   end
@@ -2936,118 +2986,104 @@ end
 # test/panic_tda/resources/invocation_test.exs
 defmodule PanicTda.Resources.InvocationTest do
   use PanicTda.DataCase, async: true
+  import PanicTda.Factory
 
   alias PanicTda.Resources.Invocation
 
   describe "create/1" do
-    setup do
-      {:ok, run} = create_run()
-      %{run: run}
-    end
+    test "creates text invocation" do
+      run = insert!(Run)
 
-    test "creates text invocation", %{run: run} do
-      attrs = %{
-        run_id: run.id,
-        model_name: "Florence2",
-        sequence_number: 0,
-        input_type: :image,
-        output_type: :text,
-        input_image: sample_image_binary(),
-        output_text: "A cat sitting on a windowsill"
-      }
+      assert {:ok, %Invocation{} = inv} =
+               Invocation
+               |> Ash.Changeset.for_create(:create, %{
+                 run_id: run.id,
+                 model_name: "Florence2",
+                 sequence_number: 0,
+                 input_type: :image,
+                 output_type: :text,
+                 output_text: "A cat sitting on a windowsill"
+               })
+               |> Ash.create()
 
-      assert {:ok, inv} = Invocation.create(attrs)
       assert inv.output_text == "A cat sitting on a windowsill"
-      assert inv.output_image == nil
+      assert is_nil(inv.output_image)
     end
 
-    test "creates image invocation", %{run: run} do
-      attrs = %{
-        run_id: run.id,
-        model_name: "ZImage",
-        sequence_number: 1,
-        input_type: :text,
-        output_type: :image,
-        input_text: "A cat sitting on a windowsill",
-        output_image: sample_image_binary()
-      }
+    test "creates image invocation" do
+      run = insert!(Run)
 
-      assert {:ok, inv} = Invocation.create(attrs)
-      assert inv.output_image != nil
-      assert inv.output_text == nil
+      assert {:ok, %Invocation{} = inv} =
+               Invocation
+               |> Ash.Changeset.for_create(:create, %{
+                 run_id: run.id,
+                 model_name: "ZImage",
+                 sequence_number: 1,
+                 input_type: :text,
+                 output_type: :image,
+                 input_text: "A cat sitting on a windowsill"
+               })
+               |> Ash.create()
+
+      assert is_nil(inv.output_text)
     end
 
-    test "validates sequence_number is non-negative", %{run: run} do
-      attrs = %{run_id: run.id, model_name: "ZImage", sequence_number: -1}
-      assert {:error, changeset} = Invocation.create(attrs)
-      assert "must be greater than or equal to 0" in errors_on(changeset).sequence_number
+    test "validates sequence_number is non-negative" do
+      run = insert!(Run)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Invocation
+               |> Ash.Changeset.for_create(:create, %{
+                 run_id: run.id,
+                 model_name: "ZImage",
+                 sequence_number: -1
+               })
+               |> Ash.create()
     end
 
-    test "enforces unique sequence_number per run", %{run: run} do
-      attrs = %{run_id: run.id, model_name: "ZImage", sequence_number: 0}
-      assert {:ok, _} = Invocation.create(attrs)
-      assert {:error, changeset} = Invocation.create(attrs)
-      assert "has already been taken" in errors_on(changeset).sequence_number
+    test "enforces unique sequence_number per run" do
+      run = insert!(Run)
+      insert!(Invocation, run_id: run.id, sequence_number: 0)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Invocation
+               |> Ash.Changeset.for_create(:create, %{
+                 run_id: run.id,
+                 model_name: "ZImage",
+                 sequence_number: 0
+               })
+               |> Ash.create()
     end
   end
 end
 ```
 
-### 14.3 Custom Type Tests
+### 14.4 Custom Type Tests with Doctests
+
+First, add doctests to the type modules themselves:
 
 ```elixir
-# test/panic_tda/types/image_test.exs
-defmodule PanicTda.Types.ImageTest do
-  use ExUnit.Case, async: true
+# lib/panic_tda/types/vector.ex
+defmodule PanicTda.Types.Vector do
+  @moduledoc """
+  Custom Ash type for embedding vectors stored as binary.
 
-  alias PanicTda.Types.Image
+  Converts between Nx tensors and raw binary for efficient SQLite storage.
 
-  describe "cast_input/2" do
-    test "converts PNG to AVIF" do
-      png_binary = File.read!("test/support/fixtures/sample.png")
-      assert {:ok, avif_binary} = Image.cast_input(png_binary, [])
+  ## Examples
 
-      # Verify AVIF magic bytes
-      assert <<0x00, 0x00, 0x00, _, "ftyp", "avif", _::binary>> = avif_binary
-    end
+      iex> {:ok, binary} = Vector.cast_input([1.0, 2.0, 3.0], [])
+      iex> byte_size(binary)
+      12
 
-    test "converts JPEG to AVIF" do
-      jpeg_binary = File.read!("test/support/fixtures/sample.jpg")
-      assert {:ok, avif_binary} = Image.cast_input(jpeg_binary, [])
-      assert <<0x00, 0x00, 0x00, _, "ftyp", "avif", _::binary>> = avif_binary
-    end
-
-    test "passes through AVIF unchanged" do
-      avif_binary = File.read!("test/support/fixtures/sample.avif")
-      assert {:ok, ^avif_binary} = Image.cast_input(avif_binary, [])
-    end
-
-    test "returns nil for nil input" do
-      assert {:ok, nil} = Image.cast_input(nil, [])
-    end
-
-    test "rejects invalid image data" do
-      assert {:error, _} = Image.cast_input("not an image", [])
-    end
-  end
-
-  describe "cast_stored/2" do
-    test "returns binary as-is" do
-      binary = <<1, 2, 3, 4>>
-      assert {:ok, ^binary} = Image.cast_stored(binary, [])
-    end
-  end
-
-  describe "roundtrip" do
-    test "image survives database roundtrip" do
-      original = File.read!("test/support/fixtures/sample.png")
-      {:ok, stored} = Image.cast_input(original, [])
-      {:ok, retrieved} = Image.cast_stored(stored, [])
-
-      # Should be valid AVIF
-      assert {:ok, _img} = Vix.Vips.Image.new_from_buffer(retrieved)
-    end
-  end
+      iex> tensor = Nx.tensor([1.0, 2.0], type: :f32)
+      iex> {:ok, binary} = Vector.cast_input(tensor, [])
+      iex> {:ok, result} = Vector.cast_stored(binary, [])
+      iex> Nx.to_list(result)
+      [1.0, 2.0]
+  """
+  use Ash.Type
+  # ... implementation
 end
 ```
 
@@ -3056,19 +3092,22 @@ end
 defmodule PanicTda.Types.VectorTest do
   use ExUnit.Case, async: true
 
+  # Run doctests from the module
+  doctest PanicTda.Types.Vector
+
   alias PanicTda.Types.Vector
 
   describe "cast_input/2" do
     test "converts Nx tensor to binary" do
       tensor = Nx.tensor([1.0, 2.0, 3.0], type: :f32)
+
       assert {:ok, binary} = Vector.cast_input(tensor, [])
       assert is_binary(binary)
-      assert byte_size(binary) == 12  # 3 floats * 4 bytes
+      assert byte_size(binary) == 12
     end
 
     test "converts list to binary" do
-      list = [1.0, 2.0, 3.0]
-      assert {:ok, binary} = Vector.cast_input(list, [])
+      assert {:ok, binary} = Vector.cast_input([1.0, 2.0, 3.0], [])
       assert byte_size(binary) == 12
     end
 
@@ -3077,7 +3116,7 @@ defmodule PanicTda.Types.VectorTest do
       assert {:ok, ^binary} = Vector.cast_input(binary, [])
     end
 
-    test "returns nil for nil input" do
+    test "handles nil" do
       assert {:ok, nil} = Vector.cast_input(nil, [])
     end
   end
@@ -3171,7 +3210,9 @@ defmodule PanicTda.Types.PersistenceDiagramTypeTest do
 end
 ```
 
-### 14.4 Ortex Model Wrapper Tests
+### 14.5 Ortex Model Wrapper Tests
+
+Use `setup_all` for expensive GPU model loading (loaded once per module, not per test):
 
 ```elixir
 # test/panic_tda/models/z_image_test.exs
@@ -3183,32 +3224,26 @@ defmodule PanicTda.Models.ZImageTest do
   @moduletag :gpu
   @moduletag timeout: 120_000
 
-  describe "load/0" do
-    test "loads model successfully" do
-      assert {:ok, model} = ZImage.load()
-      assert model.session != nil
-    end
+  # Load model ONCE for all tests in this module (expensive operation)
+  setup_all do
+    {:ok, model} = ZImage.load()
+    %{model: model}
   end
 
   describe "invoke/3" do
-    setup do
-      {:ok, model} = ZImage.load()
-      %{model: model}
-    end
-
     test "generates image from text prompt", %{model: model} do
       prompt = "A simple red circle on white background"
       seed = 42
 
       assert {:ok, image_binary} = ZImage.invoke(model, prompt, seed)
       assert is_binary(image_binary)
-      assert byte_size(image_binary) > 1000  # Non-trivial image
+      assert byte_size(image_binary) > 1000
 
-      # Verify it's valid image data
+      # Pattern match on valid image
       assert {:ok, _img} = Vix.Vips.Image.new_from_buffer(image_binary)
     end
 
-    test "produces deterministic output with same seed", %{model: model} do
+    test "deterministic with same seed", %{model: model} do
       prompt = "A blue square"
       seed = 12345
 
@@ -3218,7 +3253,7 @@ defmodule PanicTda.Models.ZImageTest do
       assert image1 == image2
     end
 
-    test "produces different output with different seeds", %{model: model} do
+    test "different seeds produce different images", %{model: model} do
       prompt = "A green triangle"
 
       {:ok, image1} = ZImage.invoke(model, prompt, 1)
@@ -3229,12 +3264,7 @@ defmodule PanicTda.Models.ZImageTest do
   end
 
   describe "invoke_batch/3" do
-    setup do
-      {:ok, model} = ZImage.load()
-      %{model: model}
-    end
-
-    test "generates multiple images in batch", %{model: model} do
+    test "generates multiple images", %{model: model} do
       prompts = ["A red apple", "A blue banana", "A green cherry"]
       seeds = [1, 2, 3]
 
@@ -3243,14 +3273,15 @@ defmodule PanicTda.Models.ZImageTest do
       assert Enum.all?(images, &is_binary/1)
     end
 
-    test "batch results match individual invocations", %{model: model} do
+    test "batch matches individual invocations", %{model: model} do
       prompts = ["Test prompt 1", "Test prompt 2"]
       seeds = [100, 200]
 
       {:ok, batch_results} = ZImage.invoke_batch(model, prompts, seeds)
 
       individual_results =
-        Enum.zip(prompts, seeds)
+        [prompts, seeds]
+        |> Enum.zip()
         |> Enum.map(fn {p, s} ->
           {:ok, img} = ZImage.invoke(model, p, s)
           img
@@ -3412,117 +3443,148 @@ defmodule PanicTda.Models.SigLIPTest do
 end
 ```
 
-### 14.5 Engine Tests
+### 14.6 Engine Tests with Patch
+
+Use **Patch** to mock model calls in unit tests (no GPU required):
 
 ```elixir
 # test/panic_tda/engine_test.exs
 defmodule PanicTda.EngineTest do
   use PanicTda.DataCase
+  use Patch  # Enable patching
 
+  import PanicTda.Factory
   alias PanicTda.Engine
+  alias PanicTda.Models.{ZImage, Florence2, SigLIP}
 
-  @moduletag :gpu
-  @moduletag timeout: 600_000  # 10 minutes for full pipeline
+  describe "run_batched/3 (unit test with mocks)" do
+    test "processes runs in lock-step batches" do
+      # Patch model functions to return fake data
+      patch(ZImage, :invoke_batch, fn prompts, _seeds ->
+        {:ok, Enum.map(prompts, fn _ -> "fake_image_binary" end)}
+      end)
 
-  describe "perform_experiment/1" do
-    test "executes complete pipeline" do
-      {:ok, experiment} = create_experiment_with_runs(
-        networks: [["ZImage", "Florence2"]],
-        embedding_models: ["SigLIP"],
-        run_count: 2,
-        max_length: 3
-      )
+      patch(Florence2, :invoke_batch, fn _images ->
+        {:ok, ["Generated caption 1", "Generated caption 2"]}
+      end)
 
-      assert :ok = Engine.perform_experiment(experiment.id)
+      runs = for _ <- 1..2, do: insert!(Run, max_length: 3)
+      network = ["ZImage", "Florence2"]
 
-      # Verify invocations created
-      experiment = reload_experiment(experiment)
-      for run <- experiment.runs do
+      assert :ok = Engine.run_batched(runs, network)
+
+      # Verify models were called
+      assert_called ZImage.invoke_batch(_, _)
+      assert_called Florence2.invoke_batch(_)
+
+      # Verify invocations saved
+      for run <- runs do
+        run = Ash.load!(run, :invocations)
         assert length(run.invocations) == 3
       end
+    end
 
-      # Verify embeddings computed
-      embeddings = list_embeddings(experiment.id)
-      assert length(embeddings) > 0
+    test "maintains correct input/output chaining" do
+      patch(ZImage, :invoke_batch, fn prompts, _seeds ->
+        {:ok, Enum.map(prompts, &"image_for_#{&1}")}
+      end)
 
-      # Verify persistence diagrams computed
-      diagrams = list_persistence_diagrams(experiment.id)
-      assert length(diagrams) > 0
+      patch(Florence2, :invoke_batch, fn images ->
+        {:ok, Enum.map(images, &"caption_for_#{&1}")}
+      end)
+
+      run = insert!(Run, initial_prompt: "Start", max_length: 3)
+
+      :ok = Engine.run_batched([run], ["ZImage", "Florence2"])
+
+      invocations =
+        run
+        |> Ash.load!(:invocations)
+        |> Map.get(:invocations)
+        |> Enum.sort_by(& &1.sequence_number)
+
+      # Verify chaining: text -> image -> text -> image
+      assert hd(invocations).input_text == "Start"
+      assert Enum.at(invocations, 1).input_image == "image_for_Start"
     end
   end
 
-  describe "run_batched/3" do
-    setup do
-      {:ok, models} = load_test_models()
-      %{models: models}
-    end
-
-    test "processes runs in lock-step batches", %{models: models} do
-      runs = create_test_runs(count: 4, max_length: 5)
-      network = ["ZImage", "Florence2"]
-
-      assert :ok = Engine.run_batched(runs, network, models)
-
-      for run <- runs do
-        run = reload_run(run)
-        assert length(run.invocations) == 5
-
-        # Verify alternating model pattern
-        model_names = Enum.map(run.invocations, & &1.model_name)
-        assert model_names == ["ZImage", "Florence2", "ZImage", "Florence2", "ZImage"]
-      end
-    end
-
-    test "maintains correct input/output chaining", %{models: models} do
-      [run] = create_test_runs(count: 1, max_length: 4)
-      network = ["ZImage", "Florence2"]
-
-      :ok = Engine.run_batched([run], network, models)
-
-      invocations = reload_run(run).invocations |> Enum.sort_by(& &1.sequence_number)
-
-      # First: text -> image
-      assert invocations[0].input_text == run.initial_prompt
-      assert invocations[0].output_image != nil
-
-      # Second: image -> text (uses previous output)
-      assert invocations[1].input_image == invocations[0].output_image
-      assert invocations[1].output_text != nil
-
-      # Third: text -> image (uses previous output)
-      assert invocations[2].input_text == invocations[1].output_text
-    end
-  end
-
-  describe "compute_embeddings/2" do
+  describe "compute_embeddings/2 (unit test with mocks)" do
     test "computes embeddings for all invocations" do
-      experiment = create_experiment_with_invocations()
+      fake_embedding = Nx.broadcast(0.5, {768})
 
-      assert :ok = Engine.compute_embeddings(experiment.runs, ["SigLIP"])
+      patch(SigLIP, :embed_batch, fn _type, items ->
+        {:ok, Enum.map(items, fn _ -> fake_embedding end)}
+      end)
 
-      for run <- experiment.runs do
-        for inv <- run.invocations do
-          embeddings = list_embeddings_for_invocation(inv.id)
-          assert length(embeddings) == 1  # One per embedding model
-        end
-      end
-    end
-  end
+      experiment = insert!(Experiment)
+      run = insert!(Run, experiment_id: experiment.id)
+      insert!(Invocation, run_id: run.id, output_text: "Some text")
 
-  describe "compute_persistence_diagrams/2" do
-    test "computes diagrams for each embedding model" do
-      experiment = create_experiment_with_embeddings()
+      assert :ok = Engine.compute_embeddings([run], ["SigLIP"])
 
-      assert :ok = Engine.compute_persistence_diagrams(experiment.runs, ["SigLIP"])
-
-      diagrams = list_persistence_diagrams(experiment.id)
-      assert length(diagrams) == length(experiment.runs)
+      assert_called SigLIP.embed_batch(:text, _)
     end
   end
 end
 ```
 
-### 14.6 TDA NIF Tests
+GPU integration tests (no mocking):
+
+```elixir
+# test/integration/engine_integration_test.exs
+defmodule PanicTda.Integration.EngineIntegrationTest do
+  use PanicTda.DataCase
+  import PanicTda.Factory
+
+  alias PanicTda.Engine
+
+  @moduletag :gpu
+  @moduletag :integration
+  @moduletag timeout: 600_000
+
+  describe "perform_experiment/1" do
+    test "executes complete pipeline with real models" do
+      experiment = insert!(Experiment,
+        networks: [["ZImage", "Florence2"]],
+        embedding_models: ["SigLIP"]
+      )
+
+      for i <- 1..2 do
+        insert!(Run,
+          experiment_id: experiment.id,
+          initial_prompt: "Test prompt #{i}",
+          max_length: 3
+        )
+      end
+
+      assert :ok = Engine.perform_experiment(experiment.id)
+
+      experiment = Ash.load!(experiment, [:runs, :embeddings, :persistence_diagrams])
+
+      # All runs completed
+      for run <- experiment.runs do
+        run = Ash.load!(run, :invocations)
+        assert length(run.invocations) == 3
+      end
+
+      # Embeddings computed
+      assert length(experiment.embeddings) > 0
+
+      # Persistence diagrams computed
+      assert length(experiment.persistence_diagrams) == 2
+    end
+  end
+end
+```
+
+**Why Patch over Mox:**
+- No behaviour definitions required
+- Patches actual module functions directly
+- Simpler setup for quick mocking
+- `assert_called` for verifying calls
+
+### 14.7 TDA NIF Tests
 
 ```elixir
 # test/panic_tda/tda_test.exs
@@ -3846,18 +3908,25 @@ defmodule PanicTda.Integration.MigrationTest do
 end
 ```
 
-### 14.9 Test Support Modules
+### 14.10 Test Support Modules
 
 ```elixir
 # test/support/data_case.ex
 defmodule PanicTda.DataCase do
+  @moduledoc """
+  Test case for database tests. Uses Ecto sandbox for isolation.
+  """
   use ExUnit.CaseTemplate
 
   using do
     quote do
       alias PanicTda.Repo
-      import PanicTda.DataCase
+
+      # Import Smokestack factory functions
       import PanicTda.Factory
+
+      # Import Ash test helpers
+      import Ash.Test
     end
   end
 
@@ -3866,145 +3935,12 @@ defmodule PanicTda.DataCase do
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
     :ok
   end
-
-  def errors_on(changeset) do
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Regex.replace(~r"%{(\w+)}", msg, fn _, key ->
-        opts |> Keyword.get(String.to_existing_atom(key), key) |> to_string()
-      end)
-    end)
-  end
 end
 ```
 
-```elixir
-# test/support/factory.ex
-defmodule PanicTda.Factory do
-  alias PanicTda.Resources.{Experiment, Run, Invocation, Embedding}
+**Note:** Factories are defined via Smokestack (see section 14.2), and mocking is done inline with Patch (see section 14.6). No separate factory.ex or model_mocks.ex files needed.
 
-  def create_experiment(attrs \\ %{}) do
-    defaults = %{
-      name: "test_experiment_#{System.unique_integer([:positive])}",
-      networks: [["ZImage", "Florence2"]],
-      embedding_models: ["SigLIP"],
-      seed: :rand.uniform(1_000_000)
-    }
-
-    Experiment.create(Map.merge(defaults, attrs))
-  end
-
-  def create_run(attrs \\ %{}) do
-    experiment_id = attrs[:experiment_id] || elem(create_experiment(), 1).id
-
-    defaults = %{
-      experiment_id: experiment_id,
-      initial_prompt: "Test prompt #{System.unique_integer([:positive])}",
-      max_length: 10,
-      seed: :rand.uniform(1_000_000)
-    }
-
-    Run.create(Map.merge(defaults, attrs))
-  end
-
-  def create_experiment_with_runs(opts \\ []) do
-    run_count = Keyword.get(opts, :run_count, 3)
-    max_length = Keyword.get(opts, :max_length, 10)
-
-    {:ok, experiment} = create_experiment(Map.new(opts))
-
-    for i <- 1..run_count do
-      {:ok, _run} = create_run(%{
-        experiment_id: experiment.id,
-        initial_prompt: "Test prompt #{i}",
-        max_length: max_length
-      })
-    end
-
-    {:ok, reload_experiment(experiment)}
-  end
-
-  def create_run_with_invocations(opts \\ []) do
-    count = Keyword.get(opts, :count, 5)
-    {:ok, run} = create_run()
-
-    for seq <- 0..(count - 1) do
-      model = if rem(seq, 2) == 0, do: "ZImage", else: "Florence2"
-      {:ok, _inv} = Invocation.create(%{
-        run_id: run.id,
-        model_name: model,
-        sequence_number: seq,
-        input_type: if(rem(seq, 2) == 0, do: :text, else: :image),
-        output_type: if(rem(seq, 2) == 0, do: :image, else: :text)
-      })
-    end
-
-    reload_run(run)
-  end
-
-  def sample_image_binary do
-    File.read!("test/support/fixtures/sample.png")
-  end
-
-  def reload_experiment(experiment) do
-    Experiment.get!(experiment.id, load: [:runs])
-  end
-
-  def reload_run(run) do
-    Run.get!(run.id, load: [:invocations])
-  end
-end
-```
-
-```elixir
-# test/support/model_mocks.ex
-defmodule PanicTda.ModelMocks do
-  @moduledoc """
-  Mock model responses for fast unit tests.
-  Use real models only in integration tests.
-  """
-
-  def mock_z_image do
-    %{
-      invoke: fn _prompt, _seed ->
-        {:ok, File.read!("test/support/fixtures/generated.png")}
-      end,
-      invoke_batch: fn prompts, _seeds ->
-        images = for _ <- prompts, do: File.read!("test/support/fixtures/generated.png")
-        {:ok, images}
-      end
-    }
-  end
-
-  def mock_florence2 do
-    %{
-      invoke: fn _image ->
-        {:ok, "A mock caption describing the image content"}
-      end,
-      invoke_batch: fn images ->
-        captions = for i <- 1..length(images), do: "Mock caption #{i}"
-        {:ok, captions}
-      end
-    }
-  end
-
-  def mock_siglip do
-    %{
-      embed_text: fn _text ->
-        {:ok, Nx.random_uniform({768}, type: :f32)}
-      end,
-      embed_image: fn _image ->
-        {:ok, Nx.random_uniform({768}, type: :f32)}
-      end,
-      embed_batch: fn _type, items ->
-        embeddings = for _ <- items, do: Nx.random_uniform({768}, type: :f32)
-        {:ok, embeddings}
-      end
-    }
-  end
-end
-```
-
-### 14.10 Test Configuration
+### 14.11 Test Configuration
 
 ```elixir
 # test/test_helper.exs
@@ -4046,7 +3982,7 @@ config :panic_tda,
 config :logger, level: :warning
 ```
 
-### 14.11 CI Configuration
+### 14.12 CI Configuration
 
 ```yaml
 # .github/workflows/test.yml
@@ -4133,18 +4069,24 @@ jobs:
         timeout-minutes: 60
 ```
 
-### 14.12 Test Coverage
+### 14.13 Test Dependencies
 
 ```elixir
-# mix.exs - add to deps
+# mix.exs - test dependencies
 defp deps do
   [
     # ... other deps
-    {:excoveralls, "~> 0.18", only: :test}
+
+    # Testing
+    {:smokestack, "~> 0.9", only: :test},           # Ash-native factories
+    {:patch, "~> 0.13", only: :test},               # Function patching/mocking
+    {:stream_data, "~> 1.1", only: :test},          # Property-based testing
+    {:excoveralls, "~> 0.18", only: :test},         # Coverage reporting
+    {:credo, "~> 1.7", only: [:dev, :test]}         # Static analysis
   ]
 end
 
-# mix.exs - add project config
+# mix.exs - project config
 def project do
   [
     # ... other config
@@ -4156,6 +4098,25 @@ def project do
     ]
   ]
 end
+```
+
+**Running tests:**
+
+```bash
+# Unit tests only (fast, no GPU)
+mix test
+
+# Include GPU tests
+mix test --include gpu
+
+# Include integration tests (slow, needs GPU)
+mix test --include integration
+
+# All tests
+mix test --include gpu --include integration
+
+# With coverage
+mix coveralls.html
 ```
 
 ```yaml
