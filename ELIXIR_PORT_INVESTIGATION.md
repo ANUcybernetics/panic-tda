@@ -189,7 +189,7 @@ defmodule PanicTda.Invocation do
 
     # Polymorphic output - only one will be set
     attribute :output_text, :string
-    attribute :output_image_data, :binary  # WEBP format
+    attribute :output_image, PanicTda.Types.Image  # AVIF format
 
     attribute :started_at, :utc_datetime_usec, allow_nil?: false
     attribute :completed_at, :utc_datetime_usec, allow_nil?: false
@@ -227,7 +227,7 @@ defmodule PanicTda.Embedding do
     uuid_v7_primary_key :id
 
     attribute :embedding_model, :string, allow_nil?: false
-    attribute :vector, PanicTda.Types.NumpyVector, allow_nil?: false  # Custom type
+    attribute :vector, PanicTda.Types.Vector, allow_nil?: false
 
     attribute :started_at, :utc_datetime_usec, allow_nil?: false
     attribute :completed_at, :utc_datetime_usec, allow_nil?: false
@@ -247,11 +247,47 @@ end
 ### 2.2 Custom Ash Types
 
 ```elixir
-# lib/panic_tda/types/numpy_vector.ex
-defmodule PanicTda.Types.NumpyVector do
+# lib/panic_tda/types/image.ex
+defmodule PanicTda.Types.Image do
   @moduledoc """
-  Custom Ash type for storing float32 vectors as binary.
-  Compatible with the Python NumpyArrayType format.
+  Stores images as AVIF binary (~25% smaller than WEBP).
+  Accepts any image format, converts to AVIF for storage.
+  Requires libvips with AVIF support (libheif).
+  """
+  use Ash.Type
+
+  @quality 80
+
+  @impl true
+  def storage_type(_), do: :binary
+
+  @impl true
+  def cast_input(nil, _), do: {:ok, nil}
+  def cast_input(binary, _) when is_binary(binary) do
+    {:ok, to_avif(binary)}
+  end
+
+  @impl true
+  def cast_stored(nil, _), do: {:ok, nil}
+  def cast_stored(binary, _), do: {:ok, binary}
+
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+  def dump_to_native(binary, _), do: {:ok, binary}
+
+  defp to_avif(binary) do
+    {:ok, img} = Image.from_binary(binary)
+    Image.write!(img, :memory, suffix: ".avif", quality: @quality)
+  end
+end
+```
+
+```elixir
+# lib/panic_tda/types/vector.ex
+defmodule PanicTda.Types.Vector do
+  @moduledoc """
+  Stores float32 vectors as binary. Works with Nx tensors or lists.
+  Compatible with Python's numpy float32 format.
   """
   use Ash.Type
 
@@ -261,36 +297,31 @@ defmodule PanicTda.Types.NumpyVector do
   @impl true
   def cast_input(nil, _), do: {:ok, nil}
   def cast_input(%Nx.Tensor{} = tensor, _) do
-    # Convert Nx tensor to binary (float32, little-endian)
-    {:ok, Nx.to_binary(tensor, type: :f32)}
-  end
-  def cast_input(list, _) when is_list(list) do
-    tensor = Nx.tensor(list, type: :f32)
     {:ok, Nx.to_binary(tensor)}
   end
+  def cast_input(list, _) when is_list(list) do
+    {:ok, list |> Nx.tensor(type: :f32) |> Nx.to_binary()}
+  end
+  def cast_input(binary, _) when is_binary(binary), do: {:ok, binary}
 
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
   def cast_stored(binary, _) when is_binary(binary) do
-    # Convert binary back to Nx tensor
     {:ok, Nx.from_binary(binary, :f32)}
   end
 
   @impl true
   def dump_to_native(nil, _), do: {:ok, nil}
-  def dump_to_native(%Nx.Tensor{} = tensor, _) do
-    {:ok, Nx.to_binary(tensor, type: :f32)}
-  end
+  def dump_to_native(%Nx.Tensor{} = tensor, _), do: {:ok, Nx.to_binary(tensor)}
   def dump_to_native(binary, _) when is_binary(binary), do: {:ok, binary}
 end
 ```
 
 ```elixir
-# lib/panic_tda/types/persistence_diagram_result.ex
-defmodule PanicTda.Types.PersistenceDiagramResult do
+# lib/panic_tda/types/persistence_diagram.ex
+defmodule PanicTda.Types.PersistenceDiagram do
   @moduledoc """
-  Custom type for complex persistence diagram data.
-  Stores as compressed binary, compatible with Python np.savez_compressed format.
+  Stores persistence diagram data as compressed binary.
   """
   use Ash.Type
 
@@ -299,27 +330,19 @@ defmodule PanicTda.Types.PersistenceDiagramResult do
 
   @impl true
   def cast_input(nil, _), do: {:ok, nil}
-  def cast_input(%{dgms: dgms, entropy: entropy} = data, _) do
-    # Serialize to compressed format
-    binary = serialize_pd_result(data)
-    {:ok, binary}
+  def cast_input(%{} = data, _) do
+    {:ok, :erlang.term_to_binary(data, [:compressed])}
   end
 
   @impl true
   def cast_stored(nil, _), do: {:ok, nil}
   def cast_stored(binary, _) when is_binary(binary) do
-    {:ok, deserialize_pd_result(binary)}
+    {:ok, :erlang.binary_to_term(binary)}
   end
 
-  defp serialize_pd_result(data) do
-    # Use :erlang.term_to_binary with compression
-    # Or implement NPZ-compatible format for Python interop
-    :erlang.term_to_binary(data, [:compressed])
-  end
-
-  defp deserialize_pd_result(binary) do
-    :erlang.binary_to_term(binary)
-  end
+  @impl true
+  def dump_to_native(nil, _), do: {:ok, nil}
+  def dump_to_native(binary, _) when is_binary(binary), do: {:ok, binary}
 end
 ```
 
@@ -1133,9 +1156,9 @@ panic_tda_ex/
 │   │   │   └── embedding_cluster.ex
 │   │   │
 │   │   ├── types/                      # Custom Ash Types
-│   │   │   ├── invocation_type.ex
-│   │   │   ├── numpy_vector.ex
-│   │   │   └── persistence_diagram_result.ex
+│   │   │   ├── image.ex                # AVIF storage
+│   │   │   ├── vector.ex               # Nx tensor ↔ binary
+│   │   │   └── persistence_diagram.ex  # Compressed TDA data
 │   │   │
 │   │   ├── reactors/                   # Reactor Orchestration
 │   │   │   ├── perform_experiment.ex
@@ -1218,8 +1241,8 @@ defp deps do
     {:exla, "~> 0.7"},            # XLA backend for Nx
 
     # Image processing
-    {:image, "~> 0.40"},          # Image manipulation
-    {:vix, "~> 0.26"},            # libvips bindings
+    {:image, "~> 0.40"},          # Image manipulation (AVIF via libvips)
+    {:vix, "~> 0.26"},            # libvips bindings (requires libheif for AVIF)
 
     # Database
     {:ecto_sqlite3, "~> 0.15"},
