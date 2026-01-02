@@ -1403,17 +1403,173 @@ end
 
 ### 12.4 Recommended Model Set (Ortex/ONNX)
 
-| Category | Primary Model | Dims | Why |
-|----------|--------------|------|-----|
-| **Text-to-Image** | Z-Image-Turbo | N/A | SOTA quality, 8 steps, sub-second |
-| **Image-to-Text** | Florence-2-base | N/A | SOTA captioning, reasonable size |
-| **Embeddings** | SigLIP | 1152 | **Single model for both text & images** |
-| *Alt: T2I* | Sana | N/A | If Z-Image export is tricky |
-| *Alt: Text Embed* | BGE-M3 | 1024 | If separate embedders preferred |
+| Category | Primary Model | Alt Model | Why Primary |
+|----------|--------------|-----------|-------------|
+| **Text-to-Image** | Z-Image-Turbo | Sana | SOTA quality, 8 steps, sub-second |
+| **Image-to-Text** | Florence-2-base | moondream2 | SOTA captioning, reasonable size |
+| **Embeddings** | SigLIP | BGE-M3 + CLIP | Single model for both modalities |
 
 **Recommendations:**
-- Use **Z-Image-Turbo** for T2I - newest SOTA from Alibaba, very efficient
+- Use **Z-Image-Turbo** for T2I (primary) or **Sana** as fallback - both are SOTA and fast
+- Use **Florence-2** for I2T (primary) or **moondream2** for lightweight/fast captioning
 - Use **SigLIP** for embeddings - single model embeds both text and images into the same space, ideal for TDA analysis comparing trajectories
+
+```elixir
+# lib/panic_tda/models/genai/moondream.ex
+defmodule PanicTda.Models.GenAI.Moondream do
+  @moduledoc """
+  moondream2 for fast, lightweight image captioning via ONNX.
+  ~1.8B params, very efficient. Good alternative to Florence-2.
+  Export: optimum-cli export onnx --model vikhyatk/moondream2
+  """
+  @behaviour PanicTda.Models.GenAIModel
+
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
+
+  def load do
+    vision_encoder = Ortex.load(Path.join(@models_dir, "moondream2/vision_encoder.onnx"))
+    text_decoder = Ortex.load(Path.join(@models_dir, "moondream2/text_model.onnx"))
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("vikhyatk/moondream2")
+
+    {:ok, %{
+      vision_encoder: vision_encoder,
+      text_decoder: text_decoder,
+      tokenizer: tokenizer
+    }}
+  end
+
+  def invoke(models, image_binary, _seed) do
+    %{vision_encoder: enc, text_decoder: dec, tokenizer: tok} = models
+
+    # Preprocess image
+    image_tensor = image_binary
+      |> StbImage.read_binary!()
+      |> StbImage.resize(378, 378)
+      |> StbImage.to_nx()
+      |> Nx.divide(255.0)
+      |> normalize_image()
+      |> Nx.new_axis(0)
+
+    # Encode image
+    {image_features} = Ortex.run(enc, image_tensor)
+
+    # Autoregressive decoding for caption
+    caption = autoregressive_decode(dec, tok, image_features, max_tokens: 50)
+
+    {:ok, {:text, caption}}
+  end
+
+  defp autoregressive_decode(decoder, tokenizer, image_features, opts) do
+    max_tokens = Keyword.get(opts, :max_tokens, 50)
+    eos_token_id = 2  # Typical EOS token
+
+    # Start with BOS token
+    tokens = [1]
+
+    tokens = Enum.reduce_while(1..max_tokens, tokens, fn _step, acc_tokens ->
+      input_ids = Nx.tensor([acc_tokens], type: :s64)
+      {logits} = Ortex.run(decoder, {image_features, input_ids})
+
+      # Get last token prediction
+      next_token = logits
+        |> Nx.slice_along_axis(-1, 1, axis: 1)
+        |> Nx.squeeze()
+        |> Nx.argmax()
+        |> Nx.to_number()
+
+      if next_token == eos_token_id do
+        {:halt, acc_tokens}
+      else
+        {:cont, acc_tokens ++ [next_token]}
+      end
+    end)
+
+    {:ok, text} = Tokenizers.Tokenizer.decode(tokenizer, tokens)
+    String.trim(text)
+  end
+
+  defp normalize_image(tensor) do
+    mean = Nx.tensor([0.5, 0.5, 0.5]) |> Nx.reshape({1, 1, 3})
+    std = Nx.tensor([0.5, 0.5, 0.5]) |> Nx.reshape({1, 1, 3})
+    Nx.subtract(tensor, mean) |> Nx.divide(std)
+  end
+end
+```
+
+```elixir
+# lib/panic_tda/models/genai/z_image.ex
+defmodule PanicTda.Models.GenAI.ZImage do
+  @moduledoc """
+  Z-Image-Turbo (Alibaba/Tongyi-MAI) via ONNX.
+  6B params, 8 NFEs, sub-second on H800, runs on 16GB consumer GPUs.
+  Export: optimum-cli export onnx --model Tongyi-MAI/Z-Image-Turbo
+  """
+  @behaviour PanicTda.Models.GenAIModel
+
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
+
+  def load do
+    # Z-Image uses single-stream DiT with unified token processing
+    text_encoder = Ortex.load(Path.join(@models_dir, "z-image/text_encoder.onnx"))
+    dit = Ortex.load(Path.join(@models_dir, "z-image/transformer.onnx"))
+    vae_decoder = Ortex.load(Path.join(@models_dir, "z-image/vae_decoder.onnx"))
+
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("Tongyi-MAI/Z-Image-Turbo")
+
+    {:ok, %{
+      text_encoder: text_encoder,
+      dit: dit,
+      vae_decoder: vae_decoder,
+      tokenizer: tokenizer
+    }}
+  end
+
+  def invoke(models, prompt, seed) do
+    %{text_encoder: text_enc, dit: dit, vae_decoder: vae, tokenizer: tok} = models
+
+    # Tokenize
+    {:ok, encoding} = Tokenizers.Tokenizer.encode(tok, prompt)
+    input_ids = Tokenizers.Encoding.get_ids(encoding)
+      |> Nx.tensor(type: :s64)
+      |> Nx.reshape({1, :auto})
+
+    # Text encoding
+    {text_embeddings} = Ortex.run(text_enc, input_ids)
+
+    # Initialize latents
+    key = Nx.Random.key(if seed == -1, do: :rand.uniform(1_000_000), else: seed)
+    {latents, _key} = Nx.Random.normal(key, shape: {1, 4, 128, 128}, type: :f32)
+
+    # Z-Image uses 8 NFEs (function evaluations)
+    denoised = flow_matching_sample(dit, latents, text_embeddings, steps: 8)
+
+    # Decode
+    {image} = Ortex.run(vae, denoised)
+
+    image_binary = image
+      |> Nx.multiply(0.5)
+      |> Nx.add(0.5)
+      |> Nx.clip(0, 1)
+      |> Nx.multiply(255)
+      |> Nx.as_type(:u8)
+      |> Nx.squeeze()
+      |> StbImage.from_nx()
+      |> StbImage.to_binary(:png)
+
+    {:ok, {:image, image_binary}}
+  end
+
+  defp flow_matching_sample(dit, latents, text_emb, opts) do
+    steps = Keyword.get(opts, :steps, 8)
+
+    Enum.reduce(0..(steps - 1), latents, fn step, current ->
+      t = Nx.tensor([(step + 0.5) / steps], type: :f32)
+      {velocity} = Ortex.run(dit, {current, t, text_emb})
+      Nx.add(current, Nx.multiply(velocity, 1.0 / steps))
+    end)
+  end
+end
+```
 
 ### 12.5 Model Download Script
 
@@ -1458,17 +1614,17 @@ For models without pre-exported ONNX, use Optimum CLI:
 # Install optimum
 pip install optimum[exporters]
 
-# Export Z-Image-Turbo (primary T2I choice)
+# Text-to-Image models
 optimum-cli export onnx --model Tongyi-MAI/Z-Image-Turbo --task text-to-image z-image-onnx/
-
-# Export Sana (alternative T2I)
 optimum-cli export onnx --model Efficient-Large-Model/Sana_1600M_1024px --task text-to-image sana-onnx/
 
-# Export Florence-2 (I2T)
+# Image-to-Text models
 optimum-cli export onnx --model microsoft/Florence-2-base florence-2-onnx/
+optimum-cli export onnx --model vikhyatk/moondream2 moondream2-onnx/
 
-# Export SigLIP (multimodal embeddings)
+# Embedding models
 optimum-cli export onnx --model google/siglip-base-patch16-384 siglip-onnx/
+optimum-cli export onnx --model BAAI/bge-m3 bge-m3-onnx/
 ```
 
 ---
