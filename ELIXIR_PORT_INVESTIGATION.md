@@ -1067,9 +1067,193 @@ defmodule PanicTda.TDA do
 end
 ```
 
-### 5.3 Pure Elixir Implementation
+### 5.3 Clustering via Rustler NIF (HDBSCAN)
 
-A pure Elixir implementation of Vietoris-Rips persistence is possible but would be significantly slower than optimized C++/Rust implementations.
+```rust
+// native/hdbscan_nif/Cargo.toml
+[package]
+name = "hdbscan_nif"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "hdbscan_nif"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.31"
+hdbscan = "0.6"
+ndarray = "0.15"
+```
+
+```rust
+// native/hdbscan_nif/src/lib.rs
+use hdbscan::{Hdbscan, HdbscanHyperParams};
+use ndarray::Array2;
+use rustler::{Encoder, Env, NifResult, Term};
+
+#[rustler::nif]
+fn cluster(
+    points: Vec<Vec<f64>>,
+    min_cluster_size: usize,
+    min_samples: Option<usize>,
+) -> NifResult<(Vec<i32>, Vec<usize>)> {
+    let n = points.len();
+    let dim = points.first().map(|p| p.len()).unwrap_or(0);
+
+    // Convert to ndarray
+    let flat: Vec<f64> = points.into_iter().flatten().collect();
+    let data = Array2::from_shape_vec((n, dim), flat)
+        .map_err(|e| rustler::Error::Term(Box::new(e.to_string())))?;
+
+    // Configure HDBSCAN
+    let min_samples = min_samples.unwrap_or(min_cluster_size);
+    let params = HdbscanHyperParams::builder()
+        .min_cluster_size(min_cluster_size)
+        .min_samples(min_samples)
+        .build();
+
+    let clusterer = Hdbscan::new(&data, params);
+    let labels = clusterer.cluster();
+
+    // Find medoid indices (point closest to centroid per cluster)
+    let medoids = compute_medoid_indices(&data, &labels);
+
+    Ok((labels, medoids))
+}
+
+fn compute_medoid_indices(data: &Array2<f64>, labels: &[i32]) -> Vec<usize> {
+    let max_label = labels.iter().max().copied().unwrap_or(-1);
+    if max_label < 0 {
+        return vec![];
+    }
+
+    (0..=max_label as usize)
+        .map(|cluster_id| {
+            let cluster_indices: Vec<usize> = labels
+                .iter()
+                .enumerate()
+                .filter(|(_, &l)| l == cluster_id as i32)
+                .map(|(i, _)| i)
+                .collect();
+
+            if cluster_indices.is_empty() {
+                return 0;
+            }
+
+            // Compute centroid
+            let dim = data.ncols();
+            let mut centroid = vec![0.0; dim];
+            for &idx in &cluster_indices {
+                for (j, val) in data.row(idx).iter().enumerate() {
+                    centroid[j] += val;
+                }
+            }
+            for c in &mut centroid {
+                *c /= cluster_indices.len() as f64;
+            }
+
+            // Find closest point to centroid
+            cluster_indices
+                .into_iter()
+                .min_by(|&a, &b| {
+                    let dist_a: f64 = data.row(a).iter().zip(&centroid).map(|(x, c)| (x - c).powi(2)).sum();
+                    let dist_b: f64 = data.row(b).iter().zip(&centroid).map(|(x, c)| (x - c).powi(2)).sum();
+                    dist_a.partial_cmp(&dist_b).unwrap()
+                })
+                .unwrap_or(0)
+        })
+        .collect()
+}
+
+rustler::init!("Elixir.PanicTda.Clustering.Native", [cluster]);
+```
+
+```elixir
+# lib/panic_tda/clustering/native.ex
+defmodule PanicTda.Clustering.Native do
+  use Rustler, otp_app: :panic_tda, crate: "hdbscan_nif"
+
+  @spec cluster(list(list(float())), pos_integer(), pos_integer() | nil) ::
+          {list(integer()), list(non_neg_integer())}
+  def cluster(_points, _min_cluster_size, _min_samples \\ nil),
+    do: :erlang.nif_error(:not_loaded)
+end
+```
+
+```elixir
+# lib/panic_tda/clustering.ex
+defmodule PanicTda.Clustering do
+  alias PanicTda.Clustering.Native
+
+  def cluster_embeddings(embedding_model, opts \\ []) do
+    min_cluster_size = Keyword.get(opts, :min_cluster_size, :auto)
+
+    # Load embeddings for this model
+    embeddings = load_embeddings(embedding_model)
+
+    # Normalize to unit length (cosine similarity via euclidean)
+    normalized = normalize(embeddings)
+
+    # Calculate min_cluster_size if auto
+    min_size = if min_cluster_size == :auto do
+      max(5, div(length(normalized), 1000))  # 0.1% of dataset
+    else
+      min_cluster_size
+    end
+
+    # Run HDBSCAN via NIF
+    points = Nx.to_list(normalized)
+    {labels, medoid_indices} = Native.cluster(points, min_size, min_size)
+
+    # Save clustering result
+    save_clustering_result(embedding_model, labels, medoid_indices, embeddings)
+  end
+
+  defp normalize(embeddings) do
+    norms = Nx.LinAlg.norm(embeddings, axes: [1], keepdims: true)
+    Nx.divide(embeddings, Nx.max(norms, 1.0e-12))
+  end
+
+  defp load_embeddings(embedding_model) do
+    # Query all embeddings for this model, stack into tensor
+    PanicTda.Embedding
+    |> Ash.Query.filter(embedding_model == ^embedding_model)
+    |> Ash.read!()
+    |> Enum.map(& &1.vector)
+    |> Nx.stack()
+  end
+
+  defp save_clustering_result(embedding_model, labels, medoid_indices, embeddings) do
+    {:ok, result} = PanicTda.ClusteringResult
+    |> Ash.Changeset.for_create(:create, %{
+      embedding_model: embedding_model,
+      algorithm: "hdbscan",
+      parameters: %{min_cluster_size: min_size}
+    })
+    |> Ash.create()
+
+    # Create cluster assignments
+    embeddings
+    |> Enum.with_index()
+    |> Enum.each(fn {emb, idx} ->
+      label = Enum.at(labels, idx)
+      medoid_idx = if label >= 0, do: Enum.at(medoid_indices, label)
+      medoid_emb_id = if medoid_idx, do: Enum.at(embeddings, medoid_idx).id
+
+      PanicTda.EmbeddingCluster
+      |> Ash.Changeset.for_create(:create, %{
+        embedding_id: emb.id,
+        clustering_result_id: result.id,
+        medoid_embedding_id: medoid_emb_id
+      })
+      |> Ash.create!()
+    end)
+
+    result
+  end
+end
+```
 
 ---
 
@@ -1202,7 +1386,10 @@ panic_tda_ex/
 │           └── panic_tda.ex
 │
 ├── native/                             # Rustler NIFs
-│   └── ripser_nif/
+│   ├── ripser_nif/                     # TDA persistence diagrams
+│   │   ├── src/lib.rs
+│   │   └── Cargo.toml
+│   └── hdbscan_nif/                    # Clustering
 │       ├── src/lib.rs
 │       └── Cargo.toml
 │
