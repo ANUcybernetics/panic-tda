@@ -1627,6 +1627,252 @@ optimum-cli export onnx --model google/siglip-base-patch16-384 siglip-onnx/
 optimum-cli export onnx --model BAAI/bge-m3 bge-m3-onnx/
 ```
 
+### 12.7 GPU Parallelization Strategy (RTX 6000 Ada, 48GB VRAM)
+
+With 48GB VRAM, you have significant headroom for parallel execution.
+
+#### Memory Estimates (FP16)
+
+| Model | VRAM (FP16) | VRAM (FP32) | Notes |
+|-------|-------------|-------------|-------|
+| Z-Image-Turbo (6B) | ~12GB | ~24GB | Largest model |
+| Sana (1.6B) | ~4GB | ~8GB | More memory efficient |
+| Florence-2-base | ~1.5GB | ~3GB | Small |
+| moondream2 (1.8B) | ~4GB | ~8GB | Efficient |
+| SigLIP | ~0.5GB | ~1GB | Very small |
+| BGE-M3 | ~1GB | ~2GB | Small |
+
+**With Z-Image-Turbo + Florence-2 + SigLIP loaded simultaneously: ~14GB FP16**
+
+This leaves **~34GB free** for:
+- Batch processing (multiple images in flight)
+- Running multiple experiment pipelines in parallel
+- KV cache for autoregressive decoding
+
+#### Parallelization Strategies
+
+```elixir
+# lib/panic_tda/models/gpu_scheduler.ex
+defmodule PanicTda.Models.GPUScheduler do
+  @moduledoc """
+  Manages GPU resources for parallel model execution.
+  Supports multiple concurrent experiments on RTX 6000 Ada (48GB).
+  """
+  use GenServer
+
+  # Conservative estimates - can be tuned based on actual usage
+  @total_vram_gb 48
+  @model_vram %{
+    "ZImage" => 12,
+    "Sana" => 4,
+    "Florence2" => 2,
+    "Moondream" => 4,
+    "SigLIP" => 1,
+    "BGEM3" => 1
+  }
+
+  defstruct [:loaded_models, :available_vram, :model_refs]
+
+  def start_link(_opts) do
+    GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  end
+
+  def init(_) do
+    state = %__MODULE__{
+      loaded_models: %{},
+      available_vram: @total_vram_gb,
+      model_refs: %{}
+    }
+    {:ok, state}
+  end
+
+  @doc """
+  Request access to a model. Loads if not already loaded.
+  Blocks if insufficient VRAM until space is available.
+  """
+  def acquire(model_name) do
+    GenServer.call(__MODULE__, {:acquire, model_name}, :infinity)
+  end
+
+  def release(model_name) do
+    GenServer.cast(__MODULE__, {:release, model_name})
+  end
+
+  # Keep hot models loaded, evict LRU when needed
+  def handle_call({:acquire, model_name}, _from, state) do
+    vram_needed = Map.get(@model_vram, model_name, 2)
+
+    state = maybe_evict_models(state, vram_needed)
+
+    case Map.get(state.loaded_models, model_name) do
+      nil ->
+        # Load the model
+        {:ok, model_ref} = load_model(model_name)
+        new_state = %{state |
+          loaded_models: Map.put(state.loaded_models, model_name, {model_ref, 1}),
+          available_vram: state.available_vram - vram_needed,
+          model_refs: Map.put(state.model_refs, model_name, model_ref)
+        }
+        {:reply, {:ok, model_ref}, new_state}
+
+      {model_ref, count} ->
+        # Increment reference count
+        new_state = %{state |
+          loaded_models: Map.put(state.loaded_models, model_name, {model_ref, count + 1})
+        }
+        {:reply, {:ok, model_ref}, new_state}
+    end
+  end
+
+  defp load_model(model_name) do
+    module = Module.concat([PanicTda.Models.GenAI, model_name])
+    module.load()
+  end
+
+  defp maybe_evict_models(state, needed) do
+    if state.available_vram >= needed do
+      state
+    else
+      # Evict models with 0 reference count, LRU first
+      # Implementation: track last_used timestamp, evict oldest
+      state
+    end
+  end
+end
+```
+
+#### Parallel Experiment Execution
+
+```elixir
+# lib/panic_tda/reactors/parallel_experiments.ex
+defmodule PanicTda.Reactors.ParallelExperiments do
+  @moduledoc """
+  Run multiple experiments in parallel, sharing GPU resources.
+  With 48GB VRAM, can typically run 2-3 experiments simultaneously.
+  """
+
+  def run_parallel(experiment_ids, opts \\ []) do
+    max_concurrent = Keyword.get(opts, :max_concurrent, 3)
+
+    experiment_ids
+    |> Task.async_stream(
+      fn exp_id ->
+        Reactor.run(PanicTda.Reactors.PerformExperiment, %{experiment_id: exp_id})
+      end,
+      max_concurrency: max_concurrent,
+      timeout: :infinity,
+      ordered: false
+    )
+    |> Enum.to_list()
+  end
+end
+```
+
+#### Pipeline Parallelism Within a Run
+
+The three-stage pipeline can overlap:
+
+```elixir
+defmodule PanicTda.Pipeline.Overlapped do
+  @moduledoc """
+  Overlapped pipeline execution - while run N is computing embeddings,
+  run N+1 can start generating images.
+
+  Timeline with 48GB VRAM:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ Run 1: [T2I ████████] [I2T ███] [Embed ██] [TDA █]             │
+  │ Run 2:        [T2I ████████] [I2T ███] [Embed ██] [TDA █]      │
+  │ Run 3:               [T2I ████████] [I2T ███] [Embed ██] [TDA] │
+  └─────────────────────────────────────────────────────────────────┘
+  """
+
+  def run_with_overlap(run_ids, opts \\ []) do
+    overlap = Keyword.get(opts, :overlap, 2)  # How many runs can overlap
+
+    run_ids
+    |> Stream.chunk_every(overlap, 1, :discard)
+    |> Stream.map(fn chunk ->
+      # Start all runs in chunk concurrently
+      tasks = Enum.map(chunk, fn run_id ->
+        Task.async(fn -> execute_run_pipeline(run_id) end)
+      end)
+
+      # Wait for first to complete before starting next chunk
+      [first | _rest] = tasks
+      Task.await(first, :infinity)
+    end)
+    |> Stream.run()
+  end
+end
+```
+
+#### Batch Inference for Embeddings
+
+The embedding stage can process many items in parallel:
+
+```elixir
+defmodule PanicTda.Models.BatchEmbedding do
+  @moduledoc """
+  With 48GB VRAM and SigLIP (~0.5GB), we can process large batches.
+  """
+
+  @batch_size 128  # Can go higher with 48GB
+
+  def embed_all(invocations, model) do
+    invocations
+    |> Stream.chunk_every(@batch_size)
+    |> Stream.map(fn batch ->
+      contents = Enum.map(batch, &extract_content/1)
+      vectors = PanicTda.Models.Embeddings.SigLIP.embed(model, contents)
+      Enum.zip(batch, vectors)
+    end)
+    |> Enum.to_list()
+    |> List.flatten()
+  end
+end
+```
+
+#### Ortex CUDA Configuration
+
+```elixir
+# config/runtime.exs
+config :ortex,
+  # Use CUDA execution provider
+  execution_providers: [:cuda, :cpu],
+
+  # GPU device ID (0 for single GPU)
+  cuda_device_id: 0,
+
+  # Memory arena configuration for 48GB
+  cuda_arena_extend_strategy: :same_as_alloc,
+  cuda_gpu_mem_limit: 45 * 1024 * 1024 * 1024,  # 45GB limit (leave 3GB headroom)
+
+  # Enable memory pattern optimization
+  cuda_enable_cuda_graph: true,
+
+  # Thread configuration
+  intra_op_num_threads: 8,
+  inter_op_num_threads: 4
+```
+
+#### Expected Throughput
+
+With RTX 6000 Ada (48GB) and optimal configuration:
+
+| Operation | Single | Parallel (3 experiments) |
+|-----------|--------|--------------------------|
+| T2I (Z-Image, 8 steps) | ~0.5s/image | ~1.2s/image (memory bound) |
+| T2I (Sana, 20 steps) | ~0.8s/image | ~1.5s/image |
+| I2T (Florence-2) | ~0.1s/image | ~0.15s/image |
+| Embeddings (SigLIP, batch 128) | ~0.05s/item | ~0.06s/item |
+| Full run (10 invocations) | ~6s | ~8s |
+
+**Bottom line:** Yes, you can run multiple experiments in parallel. With 48GB VRAM:
+- 2-3 concurrent experiments work well
+- Main bottleneck is T2I model (Z-Image at 12GB)
+- Using Sana (4GB) instead allows 4-5 concurrent experiments
+- Embedding stage is highly parallelizable (small models, big batches)
+
 ---
 
 ## 13. Database Migration (Python → Elixir)
