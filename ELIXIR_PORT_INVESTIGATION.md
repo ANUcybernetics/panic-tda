@@ -2789,7 +2789,7 @@ end
 A comprehensive test suite ensures correctness and prevents regressions. Key tools:
 
 - **ExUnit** with property-based testing via **StreamData**
-- **Smokestack** for Ash-native test factories
+- **Ash.Generator** + **Ash.Seed** for test data (built into Ash, no extra deps)
 - **Repatch** for function patching/mocking (simpler than Mox, no behaviours required)
 - **Doctests** for documentation-as-tests
 
@@ -2827,34 +2827,109 @@ test/
 └── test_helper.exs
 ```
 
-### 14.2 Smokestack Factories (Ash-native)
+### 14.2 Test Generators with Ash.Generator
+
+Use Ash's built-in generators (backed by StreamData) instead of external factory libraries:
 
 ```elixir
-# lib/panic_tda/factory.ex
-defmodule PanicTda.Factory do
-  use Smokestack
+# test/support/generators.ex
+defmodule PanicTda.Generators do
+  use Ash.Generator
 
-  factory PanicTda.Resources.Experiment do
-    attribute :name, &"experiment_#{&1}"
-    attribute :networks, fn _ -> [["ZImage", "Florence2"]] end
-    attribute :embedding_models, fn _ -> ["SigLIP"] end
-    attribute :seed, fn _ -> Enum.random(1..1_000_000) end
+  alias PanicTda.Resources.{Experiment, Run, Invocation}
+
+  def experiment(opts \\ []) do
+    changeset_generator(
+      Experiment,
+      :create,
+      defaults: [
+        name: sequence(:experiment_name, &"experiment_#{&1}"),
+        networks: StreamData.constant([["ZImage", "Florence2"]]),
+        embedding_models: StreamData.constant(["SigLIP"]),
+        seed: StreamData.repeatedly(fn -> Enum.random(1..1_000_000) end)
+      ],
+      overrides: opts
+    )
   end
 
-  factory PanicTda.Resources.Run do
-    attribute :initial_prompt, &"Test prompt #{&1}"
-    attribute :max_length, fn _ -> 10 end
-    attribute :seed, fn _ -> Enum.random(1..1_000_000) end
+  def run(opts \\ []) do
+    changeset_generator(
+      Run,
+      :create,
+      defaults: [
+        initial_prompt: sequence(:run_prompt, &"Test prompt #{&1}"),
+        max_length: StreamData.constant(10),
+        seed: StreamData.repeatedly(fn -> Enum.random(1..1_000_000) end)
+      ],
+      overrides: opts
+    )
   end
 
-  factory PanicTda.Resources.Invocation do
-    attribute :sequence_number, fn _ -> 0 end
-    attribute :model_name, fn _ -> "ZImage" end
-    attribute :input_type, fn _ -> :text end
-    attribute :output_type, fn _ -> :image end
+  def invocation(opts \\ []) do
+    changeset_generator(
+      Invocation,
+      :create,
+      defaults: [
+        sequence_number: StreamData.constant(0),
+        model_name: StreamData.constant("ZImage"),
+        input_type: StreamData.constant(:text),
+        output_type: StreamData.constant(:image)
+      ],
+      overrides: opts
+    )
+  end
+
+  # Convenience functions for seeding test data
+  def seed_experiment!(attrs \\ %{}) do
+    Ash.Seed.seed!(Experiment, Map.merge(default_experiment_attrs(), attrs))
+  end
+
+  def seed_run!(attrs \\ %{}) do
+    experiment_id = attrs[:experiment_id] || seed_experiment!().id
+    attrs = Map.put(attrs, :experiment_id, experiment_id)
+    Ash.Seed.seed!(Run, Map.merge(default_run_attrs(), attrs))
+  end
+
+  def seed_invocation!(attrs \\ %{}) do
+    run_id = attrs[:run_id] || seed_run!().id
+    attrs = Map.put(attrs, :run_id, run_id)
+    Ash.Seed.seed!(Invocation, Map.merge(default_invocation_attrs(), attrs))
+  end
+
+  defp default_experiment_attrs do
+    %{
+      name: "experiment_#{System.unique_integer([:positive])}",
+      networks: [["ZImage", "Florence2"]],
+      embedding_models: ["SigLIP"],
+      seed: Enum.random(1..1_000_000)
+    }
+  end
+
+  defp default_run_attrs do
+    %{
+      initial_prompt: "Test prompt #{System.unique_integer([:positive])}",
+      max_length: 10,
+      seed: Enum.random(1..1_000_000)
+    }
+  end
+
+  defp default_invocation_attrs do
+    %{
+      sequence_number: 0,
+      model_name: "ZImage",
+      input_type: :text,
+      output_type: :image
+    }
   end
 end
 ```
+
+**Why Ash.Generator over Smokestack:**
+- Built into Ash (no extra dependency)
+- Generators exercise the same actions and validations as production code
+- `sequence/2` provides unique values per test
+- Integrates with StreamData for property-based testing
+- Smokestack author [recommends this approach](https://github.com/jimsynz/smokestack)
 
 ### 14.3 Ash Resource Tests
 
@@ -2862,7 +2937,7 @@ end
 # test/panic_tda/resources/experiment_test.exs
 defmodule PanicTda.Resources.ExperimentTest do
   use PanicTda.DataCase, async: true
-  import PanicTda.Factory
+  import PanicTda.Generators
 
   alias PanicTda.Resources.Experiment
 
@@ -2905,7 +2980,7 @@ defmodule PanicTda.Resources.ExperimentTest do
 
   describe "add_run/2" do
     test "adds run to experiment" do
-      experiment = insert!(Experiment)
+      experiment = seed_experiment!()
 
       assert {:ok, run} =
                Experiment.add_run(experiment, %{
@@ -2925,13 +3000,13 @@ end
 # test/panic_tda/resources/run_test.exs
 defmodule PanicTda.Resources.RunTest do
   use PanicTda.DataCase, async: true
-  import PanicTda.Factory
+  import PanicTda.Generators
 
   alias PanicTda.Resources.Run
 
   describe "create/1" do
     test "creates run with valid attributes" do
-      experiment = insert!(Experiment)
+      experiment = seed_experiment!()
 
       assert {:ok, %Run{} = run} =
                Run
@@ -2948,7 +3023,7 @@ defmodule PanicTda.Resources.RunTest do
     end
 
     test "validates max_length is positive" do
-      experiment = insert!(Experiment)
+      experiment = seed_experiment!()
 
       assert {:error, %Ash.Error.Invalid{errors: errors}} =
                Run
@@ -2967,10 +3042,10 @@ defmodule PanicTda.Resources.RunTest do
 
   describe "invocations relationship" do
     test "loads invocations in sequence order" do
-      run = insert!(Run)
+      run = seed_run!()
 
       for seq <- 0..4 do
-        insert!(Invocation, run_id: run.id, sequence_number: seq)
+        seed_invocation!(%{run_id: run.id, sequence_number: seq})
       end
 
       run = Ash.load!(run, :invocations)
@@ -2986,13 +3061,13 @@ end
 # test/panic_tda/resources/invocation_test.exs
 defmodule PanicTda.Resources.InvocationTest do
   use PanicTda.DataCase, async: true
-  import PanicTda.Factory
+  import PanicTda.Generators
 
   alias PanicTda.Resources.Invocation
 
   describe "create/1" do
     test "creates text invocation" do
-      run = insert!(Run)
+      run = seed_run!()
 
       assert {:ok, %Invocation{} = inv} =
                Invocation
@@ -3011,7 +3086,7 @@ defmodule PanicTda.Resources.InvocationTest do
     end
 
     test "creates image invocation" do
-      run = insert!(Run)
+      run = seed_run!()
 
       assert {:ok, %Invocation{} = inv} =
                Invocation
@@ -3029,7 +3104,7 @@ defmodule PanicTda.Resources.InvocationTest do
     end
 
     test "validates sequence_number is non-negative" do
-      run = insert!(Run)
+      run = seed_run!()
 
       assert {:error, %Ash.Error.Invalid{}} =
                Invocation
@@ -3042,8 +3117,8 @@ defmodule PanicTda.Resources.InvocationTest do
     end
 
     test "enforces unique sequence_number per run" do
-      run = insert!(Run)
-      insert!(Invocation, run_id: run.id, sequence_number: 0)
+      run = seed_run!()
+      seed_invocation!(%{run_id: run.id, sequence_number: 0})
 
       assert {:error, %Ash.Error.Invalid{}} =
                Invocation
@@ -3453,7 +3528,7 @@ defmodule PanicTda.EngineTest do
   use PanicTda.DataCase
   use Repatch
 
-  import PanicTda.Factory
+  import PanicTda.Generators
   alias PanicTda.Engine
   alias PanicTda.Models.{ZImage, Florence2, SigLIP}
 
@@ -3468,7 +3543,7 @@ defmodule PanicTda.EngineTest do
         {:ok, ["Generated caption 1", "Generated caption 2"]}
       end)
 
-      runs = for _ <- 1..2, do: insert!(Run, max_length: 3)
+      runs = for _ <- 1..2, do: seed_run!(%{max_length: 3})
       network = ["ZImage", "Florence2"]
 
       assert :ok = Engine.run_batched(runs, network)
@@ -3489,7 +3564,7 @@ defmodule PanicTda.EngineTest do
         {:ok, Enum.map(images, &"caption_for_#{&1}")}
       end)
 
-      run = insert!(Run, initial_prompt: "Start", max_length: 3)
+      run = seed_run!(%{initial_prompt: "Start", max_length: 3})
 
       :ok = Engine.run_batched([run], ["ZImage", "Florence2"])
 
@@ -3513,9 +3588,9 @@ defmodule PanicTda.EngineTest do
         {:ok, Enum.map(items, fn _ -> fake_embedding end)}
       end)
 
-      experiment = insert!(Experiment)
-      run = insert!(Run, experiment_id: experiment.id)
-      insert!(Invocation, run_id: run.id, output_text: "Some text")
+      experiment = seed_experiment!()
+      run = seed_run!(%{experiment_id: experiment.id})
+      seed_invocation!(%{run_id: run.id, output_text: "Some text"})
 
       assert :ok = Engine.compute_embeddings([run], ["SigLIP"])
     end
@@ -3529,7 +3604,7 @@ GPU integration tests (no mocking):
 # test/integration/engine_integration_test.exs
 defmodule PanicTda.Integration.EngineIntegrationTest do
   use PanicTda.DataCase
-  import PanicTda.Factory
+  import PanicTda.Generators
 
   alias PanicTda.Engine
 
@@ -3539,17 +3614,17 @@ defmodule PanicTda.Integration.EngineIntegrationTest do
 
   describe "perform_experiment/1" do
     test "executes complete pipeline with real models" do
-      experiment = insert!(Experiment,
+      experiment = seed_experiment!(%{
         networks: [["ZImage", "Florence2"]],
         embedding_models: ["SigLIP"]
-      )
+      })
 
       for i <- 1..2 do
-        insert!(Run,
+        seed_run!(%{
           experiment_id: experiment.id,
           initial_prompt: "Test prompt #{i}",
           max_length: 3
-        )
+        })
       end
 
       assert :ok = Engine.perform_experiment(experiment.id)
@@ -3916,11 +3991,8 @@ defmodule PanicTda.DataCase do
     quote do
       alias PanicTda.Repo
 
-      # Import Smokestack factory functions
-      import PanicTda.Factory
-
-      # Import Ash test helpers
-      import Ash.Test
+      # Import generator functions (Ash.Generator + Ash.Seed)
+      import PanicTda.Generators
     end
   end
 
@@ -3932,7 +4004,7 @@ defmodule PanicTda.DataCase do
 end
 ```
 
-**Note:** Factories are defined via Smokestack (see section 14.2), and mocking is done inline with Repatch (see section 14.6). No separate factory.ex or model_mocks.ex files needed.
+**Note:** Generators are defined using Ash.Generator and Ash.Seed (see section 14.2). Mocking is done inline with Repatch (see section 14.6).
 
 ### 14.11 Test Configuration
 
@@ -4071,8 +4143,7 @@ defp deps do
   [
     # ... other deps
 
-    # Testing
-    {:smokestack, "~> 0.9", only: :test},           # Ash-native factories
+    # Testing (no extra factory library needed - use Ash.Generator + Ash.Seed)
     {:repatch, "~> 1.0", only: :test},              # Function patching/mocking
     {:stream_data, "~> 1.1", only: :test},          # Property-based testing
     {:excoveralls, "~> 0.18", only: :test},         # Coverage reporting
