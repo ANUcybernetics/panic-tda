@@ -886,6 +886,108 @@ Time →
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
+### 4.6 Maximizing Same-Network Throughput
+
+For the common case (one network, many runs), the bottleneck is GPU compute, not memory management:
+
+```elixir
+# lib/panic_tda/engine.ex
+defmodule PanicTda.Engine do
+  @moduledoc """
+  Optimized for: same network, many parallel runs.
+  Load once, run many.
+  """
+
+  def perform_experiment(experiment_id) do
+    experiment = load_experiment(experiment_id)
+    network = hd(experiment.networks)
+
+    # 1. Load models ONCE
+    {:ok, models} = load_models_for_network(network)
+
+    # 2. Calculate max parallelism (VRAM already allocated, now it's compute-bound)
+    max_concurrent = optimal_concurrency(network)
+
+    # 3. Execute all runs in parallel
+    invocation_ids =
+      experiment.runs
+      |> Task.async_stream(
+        fn run -> execute_run(run, models) end,
+        max_concurrency: max_concurrent,
+        timeout: :infinity,
+        ordered: false
+      )
+      |> Enum.flat_map(fn {:ok, ids} -> ids end)
+
+    # 4. Batch embeddings (embedding models are tiny, batch big)
+    compute_embeddings_batched(invocation_ids, experiment.embedding_models)
+
+    # 5. TDA is CPU-bound, parallelize across cores
+    compute_persistence_diagrams(experiment.runs, experiment.embedding_models)
+
+    :ok
+  end
+
+  defp load_models_for_network(network) do
+    models = network
+    |> Enum.uniq()
+    |> Map.new(fn name ->
+      {:ok, model} = load_model(name)
+      {name, model}
+    end)
+    {:ok, models}
+  end
+
+  defp execute_run(run, models) do
+    Enum.reduce_while(0..(run.max_length - 1), {nil, MapSet.new(), []}, fn seq, {prev_output, seen, inv_ids} ->
+      model_name = Enum.at(run.network, rem(seq, length(run.network)))
+      model = Map.fetch!(models, model_name)
+
+      input = if seq == 0, do: run.initial_prompt, else: prev_output
+
+      {:ok, output} = invoke(model, input, run.seed)
+      {:ok, inv} = save_invocation(run, model_name, seq, output)
+
+      hash = hash(output)
+      cond do
+        seq + 1 >= run.max_length ->
+          {:halt, inv_ids ++ [inv.id]}
+        MapSet.member?(seen, hash) and run.seed != -1 ->
+          {:halt, inv_ids ++ [inv.id]}  # Loop detected
+        true ->
+          {:cont, {output, MapSet.put(seen, hash), inv_ids ++ [inv.id]}}
+      end
+    end)
+  end
+
+  defp optimal_concurrency(network) do
+    # T2I is the bottleneck, I2T is fast
+    # Some parallelism hides I2T latency while T2I runs
+    has_heavy_t2i = Enum.any?(network, &(&1 in ["ZImage", "Sana"]))
+    if has_heavy_t2i, do: 4, else: 8
+  end
+end
+```
+
+**Key insight**: With models loaded, running 4 concurrent runs lets I2T overlap with T2I:
+
+```
+Time →
+Run 1: [████ T2I 0.5s ████][█I2T█]      [████ T2I ████][█I2T█]
+Run 2:      [████ T2I 0.5s ████][█I2T█]      [████ T2I ████]
+                              ↑
+                 I2T runs while next T2I uses GPU
+```
+
+| Concurrency | Runs/min (10 inv each) | Notes |
+|-------------|------------------------|-------|
+| 1 (sequential) | ~10 | Baseline |
+| 2 | ~18 | I2T overlaps T2I |
+| 4 | ~25 | Sweet spot |
+| 8 | ~26 | Diminishing returns |
+
+---
+
 ### 4.7 Embeddings Stage with Parallel Processing
 
 ```elixir
