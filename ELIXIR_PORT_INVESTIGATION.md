@@ -1074,196 +1074,402 @@ If you need to read/write Python-compatible PD data:
 
 ---
 
-## 12. Pure Elixir Model Alternatives (Bumblebee)
+## 12. Ortex Model Strategy (ONNX Runtime)
 
-Since exact model parity isn't required, we can use Bumblebee-native models for a **pure Elixir** implementation with no Python dependency.
+Since we just need inference, Ortex with ONNX models is the cleanest approach. Here are modern models with ONNX exports available.
 
-### 12.1 Text-to-Image Models (Bumblebee)
+### 12.1 Text-to-Image Models (ONNX)
 
-| Model | Quality | Speed | Bumblebee Support | Notes |
-|-------|---------|-------|-------------------|-------|
-| **Stable Diffusion v2.1** | Good | Medium | ✅ Full | Best Bumblebee option |
-| **Stable Diffusion v1.5** | Good | Medium | ✅ Full | Widely used |
-| **Stable Diffusion XL Base** | Excellent | Slow | ⚠️ Partial | May need manual setup |
+| Model | Quality | Speed | ONNX Source | Notes |
+|-------|---------|-------|-------------|-------|
+| **Z-Image-Turbo** | SOTA | Sub-second | Optimum export | Alibaba 6B, 8 steps, 16GB VRAM |
+| **Sana** | SOTA | Very Fast | Optimum | NVIDIA/MIT, 1024px in <1s |
+| **Kolors** | Excellent | Medium | Optimum | Kuaishou, good aesthetics |
+| **HunyuanDiT** | Excellent | Medium | Official | Tencent, bilingual |
+| **SDXL-Turbo** | Good | Fast | Optimum | 1-4 steps |
+| **PixArt-Σ** | Excellent | Medium | Optimum | Efficient transformer |
+
+**Z-Image** (Alibaba/Tongyi-MAI) is the newest SOTA option:
+- 6B parameter single-stream DiT architecture
+- Sub-second inference on H800, runs on 16GB consumer GPUs
+- Only 8 function evaluations needed (vs 20-50 for others)
+- Excellent text rendering in both Chinese and English
+- Repo: https://github.com/Tongyi-MAI/Z-Image
+- Export via: `optimum-cli export onnx --model Tongyi-MAI/Z-Image-Turbo`
+
+**Note:** Diffusion models require multiple ONNX files (text_encoder, unet/dit, vae_decoder). Ortex can load each separately.
 
 ```elixir
-# lib/panic_tda/models/genai/stable_diffusion.ex
-defmodule PanicTda.Models.GenAI.StableDiffusion do
+# lib/panic_tda/models/genai/sana.ex
+defmodule PanicTda.Models.GenAI.Sana do
+  @moduledoc """
+  Sana (NVIDIA/MIT) via ONNX - very fast, high quality.
+  Linear DiT architecture, generates 1024x1024 in <1s.
+  Export: optimum-cli export onnx --model Efficient-Large-Model/Sana_1600M_1024px
+  """
   @behaviour PanicTda.Models.GenAIModel
 
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
+
   def load do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "stabilityai/stable-diffusion-2-1"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "openai/clip-vit-large-patch14"})
-    {:ok, scheduler} = Bumblebee.load_scheduler({:hf, "stabilityai/stable-diffusion-2-1"})
-    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "stabilityai/stable-diffusion-2-1"})
-    {:ok, safety_checker} = Bumblebee.load_model({:hf, "CompVis/stable-diffusion-safety-checker"})
+    text_encoder = Ortex.load(Path.join(@models_dir, "sana/text_encoder.onnx"))
+    dit = Ortex.load(Path.join(@models_dir, "sana/transformer.onnx"))
+    vae_decoder = Ortex.load(Path.join(@models_dir, "sana/vae_decoder.onnx"))
 
-    serving = Bumblebee.Diffusion.StableDiffusion.text_to_image(
-      model_info.unet,
-      model_info.vae,
-      model_info.text_encoder,
-      tokenizer,
-      scheduler,
-      num_steps: 20,
-      guidance_scale: 7.5,
-      compile: [batch_size: 1, sequence_length: 77],
-      defn_options: [compiler: EXLA]
-    )
+    # Sana uses Gemma tokenizer
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("google/gemma-2b")
 
-    {:ok, serving}
+    {:ok, %{
+      text_encoder: text_encoder,
+      dit: dit,
+      vae_decoder: vae_decoder,
+      tokenizer: tokenizer
+    }}
   end
 
-  def invoke(serving, prompt, seed) do
-    prng_key = if seed == -1, do: Nx.Random.key(:rand.uniform(1_000_000)), else: Nx.Random.key(seed)
+  def invoke(models, prompt, seed) do
+    %{text_encoder: text_enc, dit: dit, vae_decoder: vae, tokenizer: tok} = models
 
-    output = Nx.Serving.run(serving, %{prompt: prompt, seed: prng_key})
+    # Tokenize prompt
+    {:ok, encoding} = Tokenizers.Tokenizer.encode(tok, prompt)
+    input_ids = Tokenizers.Encoding.get_ids(encoding)
+      |> Nx.tensor(type: :s64)
+      |> Nx.reshape({1, :auto})
 
-    # Convert Nx tensor to PNG binary
-    image_binary = output.results
-      |> hd()
+    # Encode text
+    {text_embeddings} = Ortex.run(text_enc, input_ids)
+
+    # Generate latents with seed (Sana uses 32x32 latents for 1024px)
+    key = Nx.Random.key(if seed == -1, do: :rand.uniform(1_000_000), else: seed)
+    {latents, _key} = Nx.Random.normal(key, shape: {1, 32, 32, 32}, type: :f32)
+
+    # Flow matching steps (Sana uses ~20 steps)
+    denoised = flow_matching_sample(dit, latents, text_embeddings, steps: 20)
+
+    # Decode latents to image
+    {image} = Ortex.run(vae, denoised)
+
+    # Post-process to PNG
+    image_binary = image
+      |> Nx.multiply(0.5)
+      |> Nx.add(0.5)
+      |> Nx.clip(0, 1)
+      |> Nx.multiply(255)
+      |> Nx.as_type(:u8)
+      |> Nx.squeeze()
       |> StbImage.from_nx()
       |> StbImage.to_binary(:png)
 
     {:ok, {:image, image_binary}}
   end
+
+  defp flow_matching_sample(dit, latents, text_emb, opts) do
+    steps = Keyword.get(opts, :steps, 20)
+
+    Enum.reduce(0..(steps - 1), latents, fn step, current_latents ->
+      t = Nx.tensor([step / steps], type: :f32)
+      {velocity} = Ortex.run(dit, {current_latents, t, text_emb})
+
+      # Euler step
+      dt = 1.0 / steps
+      Nx.add(current_latents, Nx.multiply(velocity, dt))
+    end)
+  end
 end
 ```
 
-### 12.2 Image-to-Text Models (Bumblebee)
+### 12.2 Image-to-Text Models (ONNX)
 
-| Model | Quality | Speed | Bumblebee Support | Notes |
-|-------|---------|-------|-------------------|-------|
-| **BLIP** (base) | Good | Fast | ✅ Full | Best Bumblebee option |
-| **BLIP-2** | Excellent | Medium | ⚠️ Partial | Complex architecture |
-| **GIT** (base) | Good | Fast | ✅ Full | Alternative to BLIP |
+| Model | Quality | ONNX Source | Notes |
+|-------|---------|-------------|-------|
+| **Florence-2** | SOTA | Optimum export | Microsoft, very capable |
+| **BLIP-2** | Excellent | Optimum export | Salesforce |
+| **LLaVA-1.6** | Excellent | llama.cpp GGUF | Needs llama.cpp integration |
+| **moondream2** | Good | Official ONNX | Lightweight, fast |
 
 ```elixir
-# lib/panic_tda/models/genai/blip.ex
-defmodule PanicTda.Models.GenAI.Blip do
+# lib/panic_tda/models/genai/florence2.ex
+defmodule PanicTda.Models.GenAI.Florence2 do
+  @moduledoc """
+  Florence-2 for image captioning via ONNX.
+  Export via: optimum-cli export onnx --model microsoft/Florence-2-base
+  """
   @behaviour PanicTda.Models.GenAIModel
 
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
+
   def load do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "Salesforce/blip-image-captioning-base"})
-    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "Salesforce/blip-image-captioning-base"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "Salesforce/blip-image-captioning-base"})
-    {:ok, generation_config} = Bumblebee.load_generation_config({:hf, "Salesforce/blip-image-captioning-base"})
+    vision_encoder = Ortex.load(Path.join(@models_dir, "florence-2/vision_encoder.onnx"))
+    text_decoder = Ortex.load(Path.join(@models_dir, "florence-2/decoder.onnx"))
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("microsoft/Florence-2-base")
 
-    serving = Bumblebee.Vision.image_to_text(
-      model_info,
-      featurizer,
-      tokenizer,
-      generation_config,
-      compile: [batch_size: 1],
-      defn_options: [compiler: EXLA]
-    )
-
-    {:ok, serving}
+    {:ok, %{
+      vision_encoder: vision_encoder,
+      text_decoder: text_decoder,
+      tokenizer: tokenizer
+    }}
   end
 
-  def invoke(serving, image_binary, _seed) do
-    # Convert binary to Nx tensor
-    image = StbImage.read_binary!(image_binary) |> StbImage.to_nx()
+  def invoke(models, image_binary, _seed) do
+    %{vision_encoder: enc, text_decoder: dec, tokenizer: tok} = models
 
-    output = Nx.Serving.run(serving, image)
-    caption = output.results |> hd() |> Map.get(:text)
+    # Preprocess image to tensor
+    image_tensor = image_binary
+      |> StbImage.read_binary!()
+      |> StbImage.resize(384, 384)
+      |> StbImage.to_nx()
+      |> Nx.divide(255.0)
+      |> normalize_image()
+      |> Nx.new_axis(0)  # Add batch dim
+
+    # Encode image
+    {image_features} = Ortex.run(enc, image_tensor)
+
+    # Decode to text (simplified - real impl needs autoregressive loop)
+    {logits} = Ortex.run(dec, image_features)
+
+    # Greedy decode
+    token_ids = logits
+      |> Nx.argmax(axis: -1)
+      |> Nx.to_flat_list()
+
+    caption = Tokenizers.Tokenizer.decode(tok, token_ids)
 
     {:ok, {:text, caption}}
   end
+
+  defp normalize_image(tensor) do
+    mean = Nx.tensor([0.485, 0.456, 0.406]) |> Nx.reshape({1, 1, 3})
+    std = Nx.tensor([0.229, 0.224, 0.225]) |> Nx.reshape({1, 1, 3})
+    Nx.subtract(tensor, mean) |> Nx.divide(std)
+  end
 end
 ```
 
-### 12.3 Embedding Models (Bumblebee + Ortex)
+### 12.3 Embedding Models (ONNX)
 
-| Model | Type | Quality | Support | Notes |
-|-------|------|---------|---------|-------|
-| **all-MiniLM-L6-v2** | Text | Good | ✅ Bumblebee | Fast, 384-dim |
-| **CLIP ViT-B/32** | Text+Image | Good | ✅ Bumblebee | Shared embedding space |
-| **BGE-base-en-v1.5** | Text | Excellent | ✅ ONNX | SOTA for retrieval |
-| **nomic-embed-text-v1.5** | Text | Excellent | ⚠️ ONNX | Needs export |
+These have excellent ONNX support - most are available pre-exported on Hugging Face.
+
+| Model | Type | Dims | ONNX Source | Notes |
+|-------|------|------|-------------|-------|
+| **BGE-M3** | Text | 1024 | Official | Multilingual, SOTA |
+| **nomic-embed-text-v1.5** | Text | 768 | Official | Excellent quality |
+| **gte-large-en-v1.5** | Text | 1024 | Optimum | Alibaba, very good |
+| **SigLIP** | Multimodal | 1152 | Optimum | Google, shared space |
+| **CLIP ViT-L/14** | Multimodal | 768 | Official | OpenAI, reliable |
+| **jina-clip-v2** | Multimodal | 1024 | Official | Good for retrieval |
 
 ```elixir
-# lib/panic_tda/models/embeddings/clip.ex
-defmodule PanicTda.Models.Embeddings.Clip do
+# lib/panic_tda/models/embeddings/bge_m3.ex
+defmodule PanicTda.Models.Embeddings.BGEM3 do
   @moduledoc """
-  CLIP provides both text and image embeddings in a shared space.
-  This is ideal for PANIC-TDA since we embed both modalities.
+  BGE-M3: State-of-the-art multilingual text embeddings.
+  Download: https://huggingface.co/BAAI/bge-m3/tree/main/onnx
   """
   @behaviour PanicTda.Models.EmbeddingModel
 
-  def model_type, do: :multimodal  # Can embed both text and images
-
-  def load do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "openai/clip-vit-base-patch32"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "openai/clip-vit-base-patch32"})
-    {:ok, featurizer} = Bumblebee.load_featurizer({:hf, "openai/clip-vit-base-patch32"})
-
-    {:ok, {model_info, tokenizer, featurizer}}
-  end
-
-  def embed_text({model_info, tokenizer, _featurizer}, texts) do
-    inputs = Bumblebee.apply_tokenizer(tokenizer, texts, length: 77)
-    %{text_embedding: embeddings} = Axon.predict(model_info.model, model_info.params, inputs)
-
-    # Normalize embeddings
-    embeddings
-    |> Nx.divide(Nx.LinAlg.norm(embeddings, axes: [-1], keep_axes: true))
-    |> Nx.to_list()
-  end
-
-  def embed_image({model_info, _tokenizer, featurizer}, images) do
-    inputs = Bumblebee.apply_featurizer(featurizer, images)
-    %{image_embedding: embeddings} = Axon.predict(model_info.model, model_info.params, inputs)
-
-    embeddings
-    |> Nx.divide(Nx.LinAlg.norm(embeddings, axes: [-1], keep_axes: true))
-    |> Nx.to_list()
-  end
-end
-```
-
-```elixir
-# lib/panic_tda/models/embeddings/sentence_transformer.ex
-defmodule PanicTda.Models.Embeddings.SentenceTransformer do
-  @behaviour PanicTda.Models.EmbeddingModel
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
 
   def model_type, do: :text
 
   def load do
-    {:ok, model_info} = Bumblebee.load_model({:hf, "sentence-transformers/all-MiniLM-L6-v2"})
-    {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, "sentence-transformers/all-MiniLM-L6-v2"})
-
-    serving = Bumblebee.Text.TextEmbedding.text_embedding(
-      model_info,
-      tokenizer,
-      compile: [batch_size: 32, sequence_length: 128],
-      defn_options: [compiler: EXLA]
-    )
-
-    {:ok, serving}
+    model = Ortex.load(Path.join(@models_dir, "bge-m3/model.onnx"))
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("BAAI/bge-m3")
+    {:ok, %{model: model, tokenizer: tokenizer}}
   end
 
-  def embed(serving, texts) when is_list(texts) do
-    output = Nx.Serving.run(serving, texts)
+  def embed(%{model: model, tokenizer: tok}, texts) when is_list(texts) do
+    # Batch tokenize
+    encodings = Enum.map(texts, fn text ->
+      {:ok, enc} = Tokenizers.Tokenizer.encode(tok, text)
+      enc
+    end)
 
-    output.embedding
+    # Pad to max length in batch
+    max_len = encodings
+      |> Enum.map(&length(Tokenizers.Encoding.get_ids(&1)))
+      |> Enum.max()
+
+    {input_ids, attention_mask} = batch_encodings(encodings, max_len)
+
+    # Run inference
+    {outputs} = Ortex.run(model, {input_ids, attention_mask})
+
+    # Mean pooling over sequence length (dim 1), respecting attention mask
+    pooled = mean_pool(outputs, attention_mask)
+
+    # Normalize
+    pooled
+    |> l2_normalize()
     |> Nx.to_list()
+  end
+
+  defp batch_encodings(encodings, max_len) do
+    {ids_list, mask_list} = Enum.map(encodings, fn enc ->
+      ids = Tokenizers.Encoding.get_ids(enc)
+      len = length(ids)
+      padding = List.duplicate(0, max_len - len)
+      mask = List.duplicate(1, len) ++ List.duplicate(0, max_len - len)
+      {ids ++ padding, mask}
+    end)
+    |> Enum.unzip()
+
+    input_ids = Nx.tensor(ids_list, type: :s64)
+    attention_mask = Nx.tensor(mask_list, type: :s64)
+    {input_ids, attention_mask}
+  end
+
+  defp mean_pool(hidden_states, attention_mask) do
+    mask = Nx.new_axis(attention_mask, -1) |> Nx.as_type(:f32)
+    masked = Nx.multiply(hidden_states, mask)
+    sum = Nx.sum(masked, axes: [1])
+    count = Nx.sum(mask, axes: [1]) |> Nx.max(1.0e-9)
+    Nx.divide(sum, count)
+  end
+
+  defp l2_normalize(tensor) do
+    norm = Nx.LinAlg.norm(tensor, axes: [-1], keepdims: true)
+    Nx.divide(tensor, Nx.max(norm, 1.0e-12))
   end
 end
 ```
 
-### 12.4 Recommended Model Set
+```elixir
+# lib/panic_tda/models/embeddings/siglip.ex
+defmodule PanicTda.Models.Embeddings.SigLIP do
+  @moduledoc """
+  SigLIP: Google's improved CLIP with shared text/image embedding space.
+  Ideal for PANIC-TDA - same model embeds both modalities.
+  """
+  @behaviour PanicTda.Models.EmbeddingModel
 
-For a **pure Elixir** implementation:
+  @models_dir Application.compile_env(:panic_tda, :models_dir, "priv/models")
 
-| Category | Primary Model | Fallback | Embedding Dim |
-|----------|--------------|----------|---------------|
-| Text-to-Image | Stable Diffusion 2.1 | SD 1.5 | N/A |
-| Image-to-Text | BLIP (base) | GIT (base) | N/A |
-| Text Embedding | all-MiniLM-L6-v2 | CLIP text | 384 / 512 |
-| Image Embedding | CLIP vision | N/A | 512 |
-| Multimodal | CLIP (shared space) | N/A | 512 |
+  def model_type, do: :multimodal
 
-**Note:** Using CLIP for both text and image embeddings ensures they're in the same embedding space, which could be advantageous for the TDA analysis.
+  def load do
+    text_model = Ortex.load(Path.join(@models_dir, "siglip/text_model.onnx"))
+    vision_model = Ortex.load(Path.join(@models_dir, "siglip/vision_model.onnx"))
+    {:ok, tokenizer} = Tokenizers.Tokenizer.from_pretrained("google/siglip-base-patch16-384")
+
+    {:ok, %{
+      text_model: text_model,
+      vision_model: vision_model,
+      tokenizer: tokenizer
+    }}
+  end
+
+  def embed_text(%{text_model: model, tokenizer: tok}, texts) do
+    encodings = Enum.map(texts, fn text ->
+      {:ok, enc} = Tokenizers.Tokenizer.encode(tok, text)
+      enc
+    end)
+
+    {input_ids, attention_mask} = batch_encodings(encodings, 64)
+    {embeddings} = Ortex.run(model, {input_ids, attention_mask})
+
+    embeddings |> l2_normalize() |> Nx.to_list()
+  end
+
+  def embed_image(%{vision_model: model}, images) do
+    # images is list of binaries or Nx tensors
+    batch = images
+      |> Enum.map(&preprocess_image/1)
+      |> Nx.stack()
+
+    {embeddings} = Ortex.run(model, batch)
+
+    embeddings |> l2_normalize() |> Nx.to_list()
+  end
+
+  defp preprocess_image(image_binary) when is_binary(image_binary) do
+    image_binary
+    |> StbImage.read_binary!()
+    |> StbImage.resize(384, 384)
+    |> StbImage.to_nx()
+    |> Nx.divide(255.0)
+    |> normalize_imagenet()
+  end
+
+  defp normalize_imagenet(tensor) do
+    mean = Nx.tensor([0.485, 0.456, 0.406]) |> Nx.reshape({1, 1, 3})
+    std = Nx.tensor([0.229, 0.224, 0.225]) |> Nx.reshape({1, 1, 3})
+    Nx.subtract(tensor, mean) |> Nx.divide(std)
+  end
+
+  # ... batch_encodings and l2_normalize same as BGEM3
+end
+```
+
+### 12.4 Recommended Model Set (Ortex/ONNX)
+
+| Category | Primary Model | Dims | Why |
+|----------|--------------|------|-----|
+| **Text-to-Image** | Z-Image-Turbo | N/A | SOTA quality, 8 steps, sub-second |
+| **Image-to-Text** | Florence-2-base | N/A | SOTA captioning, reasonable size |
+| **Embeddings** | SigLIP | 1152 | **Single model for both text & images** |
+| *Alt: T2I* | Sana | N/A | If Z-Image export is tricky |
+| *Alt: Text Embed* | BGE-M3 | 1024 | If separate embedders preferred |
+
+**Recommendations:**
+- Use **Z-Image-Turbo** for T2I - newest SOTA from Alibaba, very efficient
+- Use **SigLIP** for embeddings - single model embeds both text and images into the same space, ideal for TDA analysis comparing trajectories
+
+### 12.5 Model Download Script
+
+```elixir
+# lib/mix/tasks/panic_tda.download_models.ex
+defmodule Mix.Tasks.PanicTda.DownloadModels do
+  @moduledoc "Download ONNX models from Hugging Face"
+  use Mix.Task
+
+  @models [
+    {"BAAI/bge-m3", "onnx/model.onnx", "bge-m3/model.onnx"},
+    {"google/siglip-base-patch16-384", "onnx/text_model.onnx", "siglip/text_model.onnx"},
+    {"google/siglip-base-patch16-384", "onnx/vision_model.onnx", "siglip/vision_model.onnx"},
+    # Add more as needed
+  ]
+
+  def run(_args) do
+    Application.ensure_all_started(:req)
+    models_dir = Application.get_env(:panic_tda, :models_dir, "priv/models")
+
+    for {repo, file, local_path} <- @models do
+      dest = Path.join(models_dir, local_path)
+      File.mkdir_p!(Path.dirname(dest))
+
+      unless File.exists?(dest) do
+        url = "https://huggingface.co/#{repo}/resolve/main/#{file}"
+        IO.puts("Downloading #{url}...")
+
+        Req.get!(url, into: File.stream!(dest))
+        IO.puts("  -> #{dest}")
+      end
+    end
+  end
+end
+```
+
+### 12.6 ONNX Export Commands
+
+For models without pre-exported ONNX, use Optimum CLI:
+
+```bash
+# Install optimum
+pip install optimum[exporters]
+
+# Export Z-Image-Turbo (primary T2I choice)
+optimum-cli export onnx --model Tongyi-MAI/Z-Image-Turbo --task text-to-image z-image-onnx/
+
+# Export Sana (alternative T2I)
+optimum-cli export onnx --model Efficient-Large-Model/Sana_1600M_1024px --task text-to-image sana-onnx/
+
+# Export Florence-2 (I2T)
+optimum-cli export onnx --model microsoft/Florence-2-base florence-2-onnx/
+
+# Export SigLIP (multimodal embeddings)
+optimum-cli export onnx --model google/siglip-base-patch16-384 siglip-onnx/
+```
 
 ---
 
@@ -1688,7 +1894,7 @@ end
 
 ## 14. Conclusion
 
-Porting PANIC-TDA to Elixir is **highly feasible** with a pure Elixir approach using Bumblebee models:
+Porting PANIC-TDA to Elixir is **highly feasible** with a pure Elixir approach using Ortex/ONNX models:
 
 ### Recommended Stack
 
@@ -1697,39 +1903,41 @@ Porting PANIC-TDA to Elixir is **highly feasible** with a pure Elixir approach u
 | Data Model | Ash 3.x + AshSqlite |
 | Database | SQLite (same as Python) |
 | Orchestration | Reactor |
-| T2I Model | Stable Diffusion 2.1 (Bumblebee) |
-| I2T Model | BLIP base (Bumblebee) |
-| Embeddings | CLIP or all-MiniLM-L6-v2 (Bumblebee) |
+| T2I Model | Z-Image-Turbo (Ortex/ONNX) |
+| I2T Model | Florence-2 (Ortex/ONNX) |
+| Embeddings | SigLIP (Ortex/ONNX, multimodal) |
 | TDA | Rustler NIF wrapping ripser |
 | Export | FFmpeg (unchanged) + Image library |
 
 ### Benefits of Elixir Port
 
-- **No Python dependency** with Bumblebee models
+- **No Python dependency** - Ortex runs ONNX models natively
 - **Better concurrency** via OTP supervision trees
 - **Cleaner orchestration** via Reactor's declarative steps
 - **Type safety** with Ash validations and constraints
 - **Distributed execution** across BEAM nodes (future)
 - **Hot code reloading** for development
+- **Modern models** - Z-Image-Turbo, Florence-2, SigLIP are all SOTA
 
 ### Migration Path
 
 1. Set up Ash resources (map 1:1 from SQLModel)
-2. Implement Bumblebee model wrappers (SD, BLIP, CLIP)
-3. Build Reactor pipelines (direct translation of Ray workflow)
-4. Add Rustler NIF for TDA (or Python port initially)
-5. Port export functionality (straightforward)
-6. Run migration script for existing data
+2. Export ONNX models (Z-Image-Turbo, Florence-2, SigLIP)
+3. Implement Ortex model wrappers with tokenizer handling
+4. Build Reactor pipelines (direct translation of Ray workflow)
+5. Add Rustler NIF for TDA (or Python port initially)
+6. Port export functionality (straightforward)
+7. Run migration script for existing data
 
 ### Estimated Effort (Pure Elixir)
 
 | Component | Effort |
 |-----------|--------|
 | Ash data model | 1 week |
-| Bumblebee models | 1-2 weeks |
+| Ortex model wrappers | 1-2 weeks |
 | Reactor pipelines | 1-2 weeks |
 | TDA (Rustler) | 1 week |
 | Export | 3-4 days |
 | CLI | 2-3 days |
 | Migration script | 2-3 days |
-| **Total** | **5-7 weeks**|
+| **Total** | **5-7 weeks** |
