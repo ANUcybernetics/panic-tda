@@ -886,105 +886,62 @@ Time →
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.6 Maximizing Same-Network Throughput
+### 4.6 Lock-Step Batched Execution
 
-For the common case (one network, many runs), the bottleneck is GPU compute, not memory management:
+All runs progress together, batched through the GPU at each sequence position.
 
 ```elixir
 # lib/panic_tda/engine.ex
 defmodule PanicTda.Engine do
-  @moduledoc """
-  Optimized for: same network, many parallel runs.
-  Load once, run many.
-  """
+  # Batch sizes tuned for 48GB VRAM
+  @batch_sizes %{"ZImage" => 5, "Sana" => 16, "Florence2" => 32, "Moondream" => 24}
 
   def perform_experiment(experiment_id) do
-    experiment = load_experiment(experiment_id)
-    network = hd(experiment.networks)
+    %{runs: runs, networks: [network | _], embedding_models: emb_models} =
+      load_experiment(experiment_id)
 
-    # 1. Load models ONCE
-    {:ok, models} = load_models_for_network(network)
+    models = load_models(network)
 
-    # 2. Calculate max parallelism (VRAM already allocated, now it's compute-bound)
-    max_concurrent = optimal_concurrency(network)
-
-    # 3. Execute all runs in parallel
-    invocation_ids =
-      experiment.runs
-      |> Task.async_stream(
-        fn run -> execute_run(run, models) end,
-        max_concurrency: max_concurrent,
-        timeout: :infinity,
-        ordered: false
-      )
-      |> Enum.flat_map(fn {:ok, ids} -> ids end)
-
-    # 4. Batch embeddings (embedding models are tiny, batch big)
-    compute_embeddings_batched(invocation_ids, experiment.embedding_models)
-
-    # 5. TDA is CPU-bound, parallelize across cores
-    compute_persistence_diagrams(experiment.runs, experiment.embedding_models)
-
-    :ok
+    run_batched(runs, network, models)
+    compute_embeddings(runs, emb_models)
+    compute_persistence_diagrams(runs, emb_models)
   end
 
-  defp load_models_for_network(network) do
-    models = network
-    |> Enum.uniq()
-    |> Map.new(fn name ->
-      {:ok, model} = load_model(name)
-      {name, model}
-    end)
-    {:ok, models}
-  end
+  defp run_batched(runs, network, models) do
+    max_len = hd(runs).max_length
+    seeds = Enum.map(runs, & &1.seed)
+    inputs = Enum.map(runs, & &1.initial_prompt)
 
-  defp execute_run(run, models) do
-    Enum.reduce_while(0..(run.max_length - 1), {nil, MapSet.new(), []}, fn seq, {prev_output, seen, inv_ids} ->
-      model_name = Enum.at(run.network, rem(seq, length(run.network)))
-      model = Map.fetch!(models, model_name)
+    Enum.reduce(0..(max_len - 1), inputs, fn seq, current_inputs ->
+      model_name = Enum.at(network, rem(seq, length(network)))
+      batch_size = @batch_sizes[model_name] || 8
 
-      input = if seq == 0, do: run.initial_prompt, else: prev_output
+      outputs =
+        [current_inputs, seeds]
+        |> Enum.zip()
+        |> Enum.chunk_every(batch_size)
+        |> Enum.flat_map(fn batch ->
+          {ins, sds} = Enum.unzip(batch)
+          models[model_name].invoke_batch(ins, sds)
+        end)
 
-      {:ok, output} = invoke(model, input, run.seed)
-      {:ok, inv} = save_invocation(run, model_name, seq, output)
-
-      hash = hash(output)
-      cond do
-        seq + 1 >= run.max_length ->
-          {:halt, inv_ids ++ [inv.id]}
-        MapSet.member?(seen, hash) and run.seed != -1 ->
-          {:halt, inv_ids ++ [inv.id]}  # Loop detected
-        true ->
-          {:cont, {output, MapSet.put(seen, hash), inv_ids ++ [inv.id]}}
-      end
+      save_invocations(runs, model_name, seq, outputs)
+      outputs
     end)
   end
 
-  defp optimal_concurrency(network) do
-    # T2I is the bottleneck, I2T is fast
-    # Some parallelism hides I2T latency while T2I runs
-    has_heavy_t2i = Enum.any?(network, &(&1 in ["ZImage", "Sana"]))
-    if has_heavy_t2i, do: 4, else: 8
+  defp load_models(network) do
+    Map.new(Enum.uniq(network), &{&1, load_model(&1)})
   end
 end
 ```
 
-**Key insight**: With models loaded, running 4 concurrent runs lets I2T overlap with T2I:
-
 ```
-Time →
-Run 1: [████ T2I 0.5s ████][█I2T█]      [████ T2I ████][█I2T█]
-Run 2:      [████ T2I 0.5s ████][█I2T█]      [████ T2I ████]
-                              ↑
-                 I2T runs while next T2I uses GPU
+Seq 0: T2I([p1,p2,p3,p4,p5]) → [i1,i2,i3,i4,i5]   ← 1 GPU call
+Seq 1: I2T([i1,i2,i3,i4,i5]) → [c1,c2,c3,c4,c5]   ← 1 GPU call
+Seq 2: T2I([c1,c2,c3,c4,c5]) → [i1',i2',i3',i4',i5']
+...
 ```
-
-| Concurrency | Runs/min (10 inv each) | Notes |
-|-------------|------------------------|-------|
-| 1 (sequential) | ~10 | Baseline |
-| 2 | ~18 | I2T overlaps T2I |
-| 4 | ~25 | Sweet spot |
-| 8 | ~26 | Diminishing returns |
 
 ---
 
