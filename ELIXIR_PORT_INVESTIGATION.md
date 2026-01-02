@@ -602,70 +602,291 @@ defmodule PanicTda.Reactors.PerformExperiment do
 end
 ```
 
-### 4.2 Run Generator Reactor
+### 4.2 Parallel Run Execution
+
+The key insight: **runs are independent, invocations within a run are sequential**.
+
+```
+Experiment
+├── Run 1: [inv0] → [inv1] → [inv2] → ... (sequential)
+├── Run 2: [inv0] → [inv1] → [inv2] → ... (sequential)  } parallel
+├── Run 3: [inv0] → [inv1] → [inv2] → ... (sequential)
+└── Run N: [inv0] → [inv1] → [inv2] → ... (sequential)
+```
 
 ```elixir
-# lib/panic_tda/reactors/run_generator.ex
-defmodule PanicTda.Reactors.RunGenerator do
+# lib/panic_tda/reactors/runs_stage.ex
+defmodule PanicTda.Reactors.RunsStage do
   @moduledoc """
-  Executes a single run through the model network.
-  Yields invocations one at a time, checking for loops.
+  Executes multiple runs in parallel. Each run has sequential invocations.
+  This mirrors the Ray-based parallel execution in the Python version.
   """
   use Reactor
 
-  input :run
+  input :runs
+  input :max_concurrency, default: 8  # Tune based on GPU memory
 
-  step :execute_run do
-    argument :run, input(:run)
+  step :execute_runs_parallel do
+    argument :runs, input(:runs)
+    argument :max_concurrency, input(:max_concurrency)
 
-    run fn %{run: run}, _ ->
-      execute_run_loop(run, MapSet.new(), [])
-    end
-  end
-
-  return :execute_run
-
-  defp execute_run_loop(run, seen_hashes, invocation_ids) do
-    current_seq = length(invocation_ids)
-
-    if current_seq >= run.max_length do
-      {:ok, invocation_ids}
-    else
-      # Get model for this step
-      network_len = length(run.network)
-      model_name = Enum.at(run.network, rem(current_seq, network_len))
-
-      # Get input (initial prompt or previous output)
-      input = get_input(run, current_seq, invocation_ids)
-
-      # Execute model
-      started_at = DateTime.utc_now()
-      {:ok, output} = PanicTda.Models.Dispatcher.invoke(model_name, input, run.seed)
-      completed_at = DateTime.utc_now()
-
-      # Create invocation record
-      {:ok, invocation} = create_invocation(run, model_name, current_seq, output, started_at, completed_at)
-
-      # Check for loops (duplicate detection)
-      output_hash = hash_output(output)
-
-      if MapSet.member?(seen_hashes, output_hash) and run.seed != -1 do
-        # Loop detected, stop run
-        {:ok, invocation_ids ++ [invocation.id]}
-      else
-        # Continue
-        execute_run_loop(
-          run,
-          MapSet.put(seen_hashes, output_hash),
-          invocation_ids ++ [invocation.id]
+    run fn %{runs: runs, max_concurrency: max_concurrent}, _ ->
+      # Execute runs in parallel with controlled concurrency
+      results =
+        runs
+        |> Task.async_stream(
+          fn run -> execute_single_run(run) end,
+          max_concurrency: max_concurrent,
+          timeout: :infinity,
+          ordered: false  # Don't wait for order - maximize throughput
         )
+        |> Enum.reduce({[], []}, fn
+          {:ok, {:ok, invocation_ids}}, {all_ids, errors} ->
+            {all_ids ++ invocation_ids, errors}
+          {:ok, {:error, reason}}, {all_ids, errors} ->
+            {all_ids, [{reason} | errors]}
+          {:exit, reason}, {all_ids, errors} ->
+            {all_ids, [{:exit, reason} | errors]}
+        end)
+
+      case results do
+        {invocation_ids, []} -> {:ok, invocation_ids}
+        {_ids, errors} -> {:error, {:run_failures, errors}}
       end
     end
   end
+
+  return :execute_runs_parallel
+
+  # Each run executes sequentially through its network
+  defp execute_single_run(run) do
+    execute_run_loop(run, _seen_hashes = MapSet.new(), _invocation_ids = [], _seq = 0)
+  end
+
+  defp execute_run_loop(run, seen_hashes, invocation_ids, seq) when seq >= run.max_length do
+    {:ok, invocation_ids}
+  end
+
+  defp execute_run_loop(run, seen_hashes, invocation_ids, seq) do
+    # Determine which model to use (cycle through network)
+    model_name = Enum.at(run.network, rem(seq, length(run.network)))
+
+    # Get input: initial_prompt for seq=0, otherwise previous output
+    input = if seq == 0 do
+      run.initial_prompt
+    else
+      get_previous_output(List.last(invocation_ids))
+    end
+
+    # Acquire model from GPU scheduler (blocks if memory constrained)
+    {:ok, model} = PanicTda.Models.GPUScheduler.acquire(model_name)
+
+    try do
+      # Execute inference
+      started_at = DateTime.utc_now()
+      {:ok, output} = invoke_model(model_name, model, input, run.seed)
+      completed_at = DateTime.utc_now()
+
+      # Persist invocation to DB via Ash
+      {:ok, invocation} = create_invocation(%{
+        run_id: run.id,
+        model: model_name,
+        type: output_type(output),
+        seed: run.seed,
+        sequence_number: seq,
+        input_invocation_id: if(seq > 0, do: List.last(invocation_ids)),
+        output: output,
+        started_at: started_at,
+        completed_at: completed_at
+      })
+
+      # Check for loops (duplicate output detection)
+      output_hash = hash_output(output)
+
+      if MapSet.member?(seen_hashes, output_hash) and run.seed != -1 do
+        # Loop detected - stop this run early
+        {:ok, invocation_ids ++ [invocation.id]}
+      else
+        # Continue to next invocation
+        execute_run_loop(
+          run,
+          MapSet.put(seen_hashes, output_hash),
+          invocation_ids ++ [invocation.id],
+          seq + 1
+        )
+      end
+    after
+      # Always release the model back to scheduler
+      PanicTda.Models.GPUScheduler.release(model_name)
+    end
+  end
+
+  defp invoke_model(model_name, model, input, seed) do
+    case get_model_type(model_name) do
+      :t2i -> model.invoke(model, input, seed)  # input is text
+      :i2t -> model.invoke(model, input, seed)  # input is image binary
+    end
+  end
+
+  defp create_invocation(attrs) do
+    PanicTda.Invocation
+    |> Ash.Changeset.for_create(:create, attrs)
+    |> Ash.create()
+  end
+
+  defp output_type({:image, _}), do: :image
+  defp output_type({:text, _}), do: :text
+
+  defp hash_output({:image, binary}), do: :crypto.hash(:sha256, binary)
+  defp hash_output({:text, text}), do: :crypto.hash(:sha256, text)
 end
 ```
 
-### 4.3 Embeddings Stage with Parallel Processing
+### 4.3 GPU-Aware Concurrency
+
+The `max_concurrency` should be tuned based on GPU memory and model sizes:
+
+```elixir
+# lib/panic_tda/config.ex
+defmodule PanicTda.Config do
+  @doc """
+  Calculate optimal concurrency based on models and available VRAM.
+  """
+  def max_run_concurrency(network, total_vram_gb \\ 48) do
+    # Estimate VRAM per run based on network models
+    models_in_network = network |> Enum.uniq()
+
+    vram_per_run = models_in_network
+    |> Enum.map(&model_vram/1)
+    |> Enum.sum()
+
+    # Leave 20% headroom for batching/overhead
+    usable_vram = total_vram_gb * 0.8
+
+    max(1, floor(usable_vram / vram_per_run))
+  end
+
+  defp model_vram("ZImage"), do: 12
+  defp model_vram("Sana"), do: 4
+  defp model_vram("Florence2"), do: 2
+  defp model_vram("Moondream"), do: 4
+  defp model_vram("SigLIP"), do: 1
+  defp model_vram(_), do: 2  # Default estimate
+end
+```
+
+### 4.4 Updated Experiment Reactor with Parallel Runs
+
+```elixir
+# lib/panic_tda/reactors/perform_experiment.ex
+defmodule PanicTda.Reactors.PerformExperiment do
+  use Reactor
+
+  input :experiment_id
+
+  step :load_experiment do
+    argument :experiment_id, input(:experiment_id)
+
+    run fn %{experiment_id: id}, _ ->
+      Ash.get(PanicTda.Experiment, id, load: [:runs])
+    end
+  end
+
+  step :mark_started, wait_for: [:load_experiment] do
+    argument :experiment, result(:load_experiment)
+    run fn %{experiment: exp}, _ -> Ash.update(exp, :start) end
+  end
+
+  step :init_runs, wait_for: [:mark_started] do
+    argument :experiment, result(:mark_started)
+
+    run fn %{experiment: exp}, _ ->
+      {:ok, PanicTda.RunInitializer.create_runs(exp)}
+    end
+  end
+
+  # PARALLEL: Execute all runs concurrently (with GPU-aware limits)
+  step :execute_runs, wait_for: [:init_runs] do
+    argument :runs, result(:init_runs)
+    argument :experiment, result(:mark_started)
+
+    run fn %{runs: runs, experiment: exp}, _ ->
+      # Calculate concurrency based on network and GPU
+      # All runs in an experiment share the same network
+      network = hd(exp.networks)  # or runs share network
+      max_concurrent = PanicTda.Config.max_run_concurrency(network)
+
+      Reactor.run(PanicTda.Reactors.RunsStage, %{
+        runs: runs,
+        max_concurrency: max_concurrent
+      })
+    end
+  end
+
+  # PARALLEL: Embeddings can also be parallelized
+  step :compute_embeddings, wait_for: [:execute_runs] do
+    argument :invocation_ids, result(:execute_runs)
+    argument :experiment, result(:mark_started)
+
+    run fn %{invocation_ids: ids, experiment: exp}, _ ->
+      Reactor.run(PanicTda.Reactors.EmbeddingsStage, %{
+        invocation_ids: ids,
+        embedding_models: exp.embedding_models,
+        batch_size: 128  # Large batches with 48GB VRAM
+      })
+    end
+  end
+
+  # PARALLEL: PD computation is CPU-bound, can parallelize heavily
+  step :compute_persistence_diagrams, wait_for: [:compute_embeddings] do
+    argument :experiment, result(:mark_started)
+
+    run fn %{experiment: exp}, _ ->
+      run_ids = Enum.map(exp.runs, & &1.id)
+      Reactor.run(PanicTda.Reactors.PDStage, %{
+        run_ids: run_ids,
+        embedding_models: exp.embedding_models,
+        max_concurrency: System.schedulers_online()  # CPU bound
+      })
+    end
+  end
+
+  step :mark_completed, wait_for: [:compute_persistence_diagrams] do
+    argument :experiment, result(:mark_started)
+    run fn %{experiment: exp}, _ -> Ash.update(exp, :complete) end
+  end
+
+  return :mark_completed
+end
+```
+
+### 4.5 Execution Timeline Visualization
+
+With 48GB VRAM and Z-Image (12GB) + Florence-2 (2GB) network:
+- Max concurrent runs: ~3 (leaves room for embeddings)
+
+```
+Time →
+┌────────────────────────────────────────────────────────────────────────┐
+│ GPU Memory Usage (48GB available)                                      │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│ Run 1: [████ T2I ████][██ I2T ██][████ T2I ████][██ I2T ██]...        │
+│ Run 2:   [████ T2I ████][██ I2T ██][████ T2I ████][██ I2T ██]...      │
+│ Run 3:     [████ T2I ████][██ I2T ██][████ T2I ████][██ I2T ██]...    │
+│                                                                        │
+│ ─────────────────────────── then ───────────────────────────────────  │
+│                                                                        │
+│ Embeddings: [████████████████ batch 128 ████████████████]              │
+│                                                                        │
+│ ─────────────────────────── then ───────────────────────────────────  │
+│                                                                        │
+│ TDA (CPU): [Run1 PD][Run2 PD][Run3 PD]... (parallel on CPU cores)     │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.7 Embeddings Stage with Parallel Processing
 
 ```elixir
 # lib/panic_tda/reactors/embeddings_stage.ex
