@@ -4,10 +4,10 @@ defmodule PanicTda.Engine do
   Orchestrates the three-stage pipeline:
   1. Runs stage - execute model networks
   2. Embeddings stage - compute embeddings for outputs
-  3. Persistence diagrams stage - TDA computation (TODO)
+  3. Persistence diagrams stage - TDA computation
   """
 
-  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage}
+  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage}
 
   def perform_experiment(experiment_id) do
     experiment = Ash.get!(PanicTda.Experiment, experiment_id)
@@ -26,6 +26,7 @@ defmodule PanicTda.Engine do
       Enum.each(runs, fn run ->
         {:ok, _invocation_ids} = RunExecutor.execute(env, run)
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
+        :ok = PdStage.compute(env, run, experiment.embedding_models)
       end)
 
       {:ok, experiment} =

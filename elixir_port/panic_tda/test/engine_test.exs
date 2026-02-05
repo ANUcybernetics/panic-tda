@@ -165,6 +165,34 @@ defmodule PanicTda.EngineTest do
       end)
     end
 
+    test "creates persistence diagrams via giotto-ph" do
+      {:ok, experiment} =
+        PanicTda.Experiment
+        |> Ash.Changeset.for_create(:create, %{
+          networks: [["DummyT2I", "DummyI2T"]],
+          seeds: [42],
+          prompts: ["Test prompt"],
+          embedding_models: ["DummyText"],
+          max_length: 4
+        })
+        |> Ash.create()
+
+      {:ok, _} = Engine.perform_experiment(experiment.id)
+
+      pds = Ash.read!(PanicTda.PersistenceDiagram)
+
+      assert length(pds) == 1
+      pd = hd(pds)
+
+      assert pd.embedding_model == "DummyText"
+      assert pd.diagram_data != nil
+      assert is_map(pd.diagram_data)
+      assert Map.has_key?(pd.diagram_data, :dgms)
+      assert Map.has_key?(pd.diagram_data, :entropy)
+      assert is_list(pd.diagram_data.dgms)
+      assert length(pd.diagram_data.dgms) == 3
+    end
+
     test "handles multiple embedding models" do
       {:ok, experiment} =
         PanicTda.Experiment

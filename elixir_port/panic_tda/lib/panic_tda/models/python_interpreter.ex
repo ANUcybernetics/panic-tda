@@ -8,10 +8,12 @@ defmodule PanicTda.Models.PythonInterpreter do
     [project]
     name = "panic-tda-elixir-bridge"
     version = "0.0.1"
-    requires-python = ">=3.12,<3.15"
+    requires-python = ">=3.12,<3.13"
     dependencies = [
       "pillow>=10.0",
-      "numpy>=1.26"
+      "numpy>=1.26",
+      "giotto-ph>=0.2.4",
+      "persim>=0.3.8"
     ]
     """
 end
