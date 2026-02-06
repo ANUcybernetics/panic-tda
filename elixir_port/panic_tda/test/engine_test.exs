@@ -239,6 +239,46 @@ defmodule PanicTda.EngineTest do
       assert length(completed.runs) == 4
     end
 
+    test "creates clustering results across experiment" do
+      {:ok, experiment} =
+        PanicTda.Experiment
+        |> Ash.Changeset.for_create(:create, %{
+          networks: [["DummyT2I", "DummyI2T"]],
+          seeds: [42, 123, 456],
+          prompts: ["Alpha", "Beta", "Gamma"],
+          embedding_models: ["DummyText"],
+          max_length: 6
+        })
+        |> Ash.create()
+
+      {:ok, _} = Engine.perform_experiment(experiment.id)
+
+      clustering_results = Ash.read!(PanicTda.ClusteringResult)
+      assert length(clustering_results) == 1
+
+      cr = hd(clustering_results)
+      assert cr.embedding_model == "DummyText"
+      assert cr.algorithm == "hdbscan"
+      assert is_map(cr.parameters)
+      assert cr.parameters["epsilon"] == 0.4
+      assert cr.started_at != nil
+      assert cr.completed_at != nil
+
+      embedding_clusters = Ash.read!(PanicTda.EmbeddingCluster)
+      assert length(embedding_clusters) > 0
+
+      all_embeddings =
+        PanicTda.Embedding
+        |> Ash.Query.filter(embedding_model == ^"DummyText")
+        |> Ash.read!()
+
+      assert length(embedding_clusters) == length(all_embeddings)
+
+      Enum.each(embedding_clusters, fn ec ->
+        assert ec.clustering_result_id == cr.id
+      end)
+    end
+
     test "deterministic outputs for same seed" do
       {:ok, exp1} =
         PanicTda.Experiment

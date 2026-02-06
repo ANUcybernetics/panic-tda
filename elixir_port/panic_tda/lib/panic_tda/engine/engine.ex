@@ -7,7 +7,7 @@ defmodule PanicTda.Engine do
   3. Persistence diagrams stage - TDA computation
   """
 
-  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage}
+  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, ClusteringStage}
 
   def perform_experiment(experiment_id) do
     experiment = Ash.get!(PanicTda.Experiment, experiment_id)
@@ -28,6 +28,8 @@ defmodule PanicTda.Engine do
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
       end)
+
+      :ok = ClusteringStage.compute(env, experiment, experiment.embedding_models)
 
       {:ok, experiment} =
         experiment
