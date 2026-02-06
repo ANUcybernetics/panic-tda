@@ -1,9 +1,10 @@
 ---
 id: TASK-53
 title: Wire up real Python model execution in Elixir port via Snex
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-06 02:14'
+updated_date: '2026-02-06 10:20'
 labels:
   - elixir
   - python-interop
