@@ -28,7 +28,8 @@ defmodule PanicTda.MixProject do
       {:nx, "~> 0.9"},
       {:uniq, "~> 0.6"},
       {:jason, "~> 1.4"},
-      {:snex, "~> 0.3"}
+      {:snex, "~> 0.3"},
+      {:usage_rules, "~> 0.1", only: [:dev]}
     ]
   end
 

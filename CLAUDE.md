@@ -36,3 +36,16 @@ The project implements a three-stage computational pipeline (in
    characterize trajectory structure
 
 For detailed design rationale, see @DESIGN.md.
+
+## Elixir port
+
+The Elixir port lives in `elixir_port/panic_tda/`. When working on it:
+
+- use `mise exec --` to prefix all mix/elixir commands (erlang/elixir managed
+  by mise)
+- follow the Ash usage rules in @elixir_port/panic_tda/CLAUDE.md (synced via
+  `usage_rules` hex package)
+- run tests with `mise exec -- mix test`
+- Python interop is via Snex --- the interpreter maintains persistent state
+  across `pyeval` calls
+- the Elixir port has its own separate SQLite database
