@@ -99,8 +99,4 @@ defmodule PanicTda.Invocation do
       expr(fragment("(julianday(?) - julianday(?)) * 86400", completed_at, started_at))
     )
   end
-
-  validations do
-    validate(present([:model, :type, :seed, :started_at]))
-  end
 end

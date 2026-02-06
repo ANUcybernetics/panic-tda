@@ -71,7 +71,4 @@ defmodule PanicTda.Embedding do
     )
   end
 
-  validations do
-    validate(present([:embedding_model, :vector, :started_at]))
-  end
 end

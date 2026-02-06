@@ -12,7 +12,7 @@ defmodule PanicTda.Engine.EmbeddingsStage do
       |> Map.get(:invocations, [])
 
     Enum.each(embedding_models, fn embedding_model ->
-      compute_for_model(env, invocations, embedding_model)
+      :ok = compute_for_model(env, invocations, embedding_model)
     end)
 
     :ok
@@ -41,29 +41,21 @@ defmodule PanicTda.Engine.EmbeddingsStage do
         end)
 
       started_at = DateTime.utc_now()
+      {:ok, vectors} = Embeddings.embed(env, embedding_model, contents)
+      completed_at = DateTime.utc_now()
 
-      case Embeddings.embed(env, embedding_model, contents) do
-        {:ok, vectors} ->
-          completed_at = DateTime.utc_now()
+      Enum.zip(relevant_invocations, vectors)
+      |> Enum.each(fn {inv, vector_binary} ->
+        PanicTda.create_embedding!(%{
+          embedding_model: embedding_model,
+          vector: vector_binary,
+          started_at: started_at,
+          completed_at: completed_at,
+          invocation_id: inv.id
+        })
+      end)
 
-          Enum.zip(relevant_invocations, vectors)
-          |> Enum.each(fn {inv, vector_binary} ->
-            PanicTda.Embedding
-            |> Ash.Changeset.for_create(:create, %{
-              embedding_model: embedding_model,
-              vector: vector_binary,
-              started_at: started_at,
-              completed_at: completed_at,
-              invocation_id: inv.id
-            })
-            |> Ash.create!()
-          end)
-
-          :ok
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      :ok
     end
   end
 end

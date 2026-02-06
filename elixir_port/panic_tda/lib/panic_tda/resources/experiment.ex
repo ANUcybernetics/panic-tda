@@ -62,22 +62,22 @@ defmodule PanicTda.Experiment do
     end
 
     update :update do
-      require_atomic?(false)
       accept([:networks, :seeds, :prompts, :embedding_models, :max_length])
+      require_atomic?(false)
     end
 
     update :start do
+      require_atomic?(false)
       change(set_attribute(:started_at, &DateTime.utc_now/0))
     end
 
     update :complete do
+      require_atomic?(false)
       change(set_attribute(:completed_at, &DateTime.utc_now/0))
     end
   end
 
   validations do
-    validate(present([:networks, :seeds, :prompts, :embedding_models, :max_length]))
-
     validate compare(:max_length, greater_than: 0) do
       message("must be greater than 0")
     end

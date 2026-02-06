@@ -68,8 +68,6 @@ defmodule PanicTda.Run do
   end
 
   validations do
-    validate(present([:network, :seed, :max_length, :initial_prompt]))
-
     validate compare(:max_length, greater_than: 0) do
       message("must be greater than 0")
     end

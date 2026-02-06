@@ -9,7 +9,7 @@ defmodule PanicTda.Engine.ClusteringStage do
 
   def compute(env, experiment, embedding_models) do
     Enum.each(embedding_models, fn embedding_model ->
-      compute_for_model(env, experiment, embedding_model)
+      :ok = compute_for_model(env, experiment, embedding_model)
     end)
 
     :ok
@@ -32,53 +32,45 @@ defmodule PanicTda.Engine.ClusteringStage do
       vectors = Enum.map(embeddings, & &1.vector)
       stacked_binary = vectors |> Nx.stack() |> Nx.to_binary()
 
-      case Clustering.hdbscan(env, stacked_binary, n_embeddings) do
-        {:ok, %{labels: labels, medoid_indices: medoid_indices}} ->
-          completed_at = DateTime.utc_now()
+      {:ok, %{labels: labels, medoid_indices: medoid_indices}} =
+        Clustering.hdbscan(env, stacked_binary, n_embeddings)
 
-          dimension = Nx.size(hd(vectors))
+      completed_at = DateTime.utc_now()
+      dimension = Nx.size(hd(vectors))
 
-          clustering_result =
-            PanicTda.ClusteringResult
-            |> Ash.Changeset.for_create(:create, %{
-              embedding_model: embedding_model,
-              algorithm: "hdbscan",
-              parameters: %{
-                "epsilon" => 0.4,
-                "min_cluster_size_pct" => 0.001,
-                "metric" => "euclidean_on_normalised",
-                "dimension" => dimension
-              },
-              started_at: started_at,
-              completed_at: completed_at
-            })
-            |> Ash.create!()
+      clustering_result =
+        PanicTda.create_clustering_result!(%{
+          embedding_model: embedding_model,
+          algorithm: "hdbscan",
+          parameters: %{
+            "epsilon" => 0.4,
+            "min_cluster_size_pct" => 0.001,
+            "metric" => "euclidean_on_normalised",
+            "dimension" => dimension
+          },
+          started_at: started_at,
+          completed_at: completed_at
+        })
 
-          medoid_embedding_ids =
-            Map.new(medoid_indices, fn {label, idx} ->
-              {label, Enum.at(embeddings, idx).id}
-            end)
+      medoid_embedding_ids =
+        Map.new(medoid_indices, fn {label, idx} ->
+          {label, Enum.at(embeddings, idx).id}
+        end)
 
-          embeddings
-          |> Enum.zip(labels)
-          |> Enum.each(fn {embedding, label} ->
-            medoid_embedding_id =
-              if label == -1, do: nil, else: Map.get(medoid_embedding_ids, label)
+      embeddings
+      |> Enum.zip(labels)
+      |> Enum.each(fn {embedding, label} ->
+        medoid_embedding_id =
+          if label == -1, do: nil, else: Map.get(medoid_embedding_ids, label)
 
-            PanicTda.EmbeddingCluster
-            |> Ash.Changeset.for_create(:create, %{
-              embedding_id: embedding.id,
-              clustering_result_id: clustering_result.id,
-              medoid_embedding_id: medoid_embedding_id
-            })
-            |> Ash.create!()
-          end)
+        PanicTda.create_embedding_cluster!(%{
+          embedding_id: embedding.id,
+          clustering_result_id: clustering_result.id,
+          medoid_embedding_id: medoid_embedding_id
+        })
+      end)
 
-          :ok
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      :ok
     end
   end
 end

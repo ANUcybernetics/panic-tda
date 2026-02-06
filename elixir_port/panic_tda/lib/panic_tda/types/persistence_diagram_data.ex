@@ -23,7 +23,7 @@ defmodule PanicTda.Types.PersistenceDiagramData do
   def cast_stored(nil, _constraints), do: {:ok, nil}
 
   def cast_stored(binary, _constraints) when is_binary(binary) do
-    {:ok, :erlang.binary_to_term(binary)}
+    {:ok, :erlang.binary_to_term(binary, [:safe])}
   end
 
   def cast_stored(_, _constraints), do: :error

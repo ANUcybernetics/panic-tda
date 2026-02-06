@@ -81,7 +81,6 @@ defmodule PanicTda.Models.Embeddings do
 
   defp real_text_embed_code(model_name) when model_name in ~w(STSBMpnet STSBRoberta STSBDistilRoberta) do
     """
-    import base64
     with torch.no_grad():
         _embs = _models["#{model_name}"].encode(
             texts, convert_to_numpy=True, normalize_embeddings=True
@@ -95,7 +94,6 @@ defmodule PanicTda.Models.Embeddings do
 
   defp real_text_embed_code("Nomic") do
     """
-    import base64
     with torch.no_grad():
         _embs = _models["Nomic"].encode(
             texts, convert_to_numpy=True, normalize_embeddings=True, prompt_name="passage"
@@ -109,7 +107,6 @@ defmodule PanicTda.Models.Embeddings do
 
   defp real_text_embed_code("JinaClip") do
     """
-    import base64
     with torch.no_grad():
         _embs = _models["JinaClip"].encode_text(texts, truncate_dim=EMBEDDING_DIM, task="retrieval.query")
         result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
@@ -118,7 +115,6 @@ defmodule PanicTda.Models.Embeddings do
 
   defp real_image_embed_code("NomicVision") do
     """
-    import io, base64
     _nomic_vis = _models["NomicVision"]
     _images = [Image.open(io.BytesIO(base64.b64decode(b))) for b in image_b64_list]
     _embeddings = []
@@ -138,7 +134,6 @@ defmodule PanicTda.Models.Embeddings do
 
   defp real_image_embed_code("JinaClipVision") do
     """
-    import io, base64
     _images = [Image.open(io.BytesIO(base64.b64decode(b))) for b in image_b64_list]
     with torch.no_grad():
         _embs = _models["JinaClipVision"].encode_image(_images, truncate_dim=EMBEDDING_DIM)

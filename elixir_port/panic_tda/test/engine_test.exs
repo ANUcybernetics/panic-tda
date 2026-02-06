@@ -1,8 +1,6 @@
 defmodule PanicTda.EngineTest do
   use ExUnit.Case
 
-  require Ash.Query
-
   alias PanicTda.Engine
   alias PanicTda.Models.{GenAI, Embeddings, PythonInterpreter}
 
@@ -12,24 +10,25 @@ defmodule PanicTda.EngineTest do
   end
 
   describe "Python interop" do
-    test "DummyT2I generates deterministic images" do
+    setup do
       {:ok, interpreter} = PythonInterpreter.start_link()
       {:ok, env} = Snex.make_env(interpreter)
+      on_exit(fn ->
+        if Process.alive?(interpreter), do: GenServer.stop(interpreter)
+      end)
+      %{env: env}
+    end
 
+    test "DummyT2I generates deterministic images", %{env: env} do
       {:ok, image1} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
       {:ok, image2} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
 
       assert is_binary(image1)
       assert is_binary(image2)
       assert image1 == image2
-
-      GenServer.stop(interpreter)
     end
 
-    test "DummyI2T generates deterministic captions" do
-      {:ok, interpreter} = PythonInterpreter.start_link()
-      {:ok, env} = Snex.make_env(interpreter)
-
+    test "DummyI2T generates deterministic captions", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
       {:ok, caption1} = GenAI.invoke(env, "DummyI2T", image, 42)
       {:ok, caption2} = GenAI.invoke(env, "DummyI2T", image, 42)
@@ -38,50 +37,36 @@ defmodule PanicTda.EngineTest do
       assert is_binary(caption2)
       assert caption1 == caption2
       assert String.starts_with?(caption1, "dummy caption:")
-
-      GenServer.stop(interpreter)
     end
 
-    test "DummyText generates embeddings" do
-      {:ok, interpreter} = PythonInterpreter.start_link()
-      {:ok, env} = Snex.make_env(interpreter)
-
+    test "DummyText generates embeddings", %{env: env} do
       {:ok, [emb1, emb2]} = Embeddings.embed(env, "DummyText", ["hello", "world"])
 
       assert is_binary(emb1)
       assert is_binary(emb2)
       assert byte_size(emb1) == 768 * 4
       assert byte_size(emb2) == 768 * 4
-
-      GenServer.stop(interpreter)
     end
 
-    test "DummyVision generates embeddings from images" do
-      {:ok, interpreter} = PythonInterpreter.start_link()
-      {:ok, env} = Snex.make_env(interpreter)
-
+    test "DummyVision generates embeddings from images", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "DummyT2I", "test", 42)
       {:ok, [emb]} = Embeddings.embed(env, "DummyVision", [image])
 
       assert is_binary(emb)
       assert byte_size(emb) == 768 * 4
-
-      GenServer.stop(interpreter)
     end
   end
 
   describe "full pipeline" do
     test "executes a simple T2I -> I2T trajectory" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["A beautiful sunset"],
           embedding_models: ["DummyText"],
           max_length: 4
         })
-        |> Ash.create()
 
       {:ok, completed_experiment} = Engine.perform_experiment(experiment.id)
 
@@ -112,23 +97,18 @@ defmodule PanicTda.EngineTest do
     end
 
     test "creates embeddings for text invocations" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
-      embeddings =
-        PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"DummyText")
-        |> Ash.read!()
+      embeddings = PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText"]])
 
       assert length(embeddings) == 2
 
@@ -139,23 +119,18 @@ defmodule PanicTda.EngineTest do
     end
 
     test "creates embeddings for image invocations with DummyVision" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test prompt"],
           embedding_models: ["DummyVision"],
           max_length: 4
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
-      embeddings =
-        PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"DummyVision")
-        |> Ash.read!()
+      embeddings = PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyVision"]])
 
       assert length(embeddings) == 2
 
@@ -166,20 +141,18 @@ defmodule PanicTda.EngineTest do
     end
 
     test "creates persistence diagrams via giotto-ph" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
-      pds = Ash.read!(PanicTda.PersistenceDiagram)
+      pds = PanicTda.list_persistence_diagrams!()
 
       assert length(pds) == 1
       pd = hd(pds)
@@ -194,44 +167,36 @@ defmodule PanicTda.EngineTest do
     end
 
     test "handles multiple embedding models" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test"],
           embedding_models: ["DummyText", "DummyVision"],
           max_length: 4
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
       text_embeddings =
-        PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"DummyText")
-        |> Ash.read!()
+        PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText"]])
 
       vision_embeddings =
-        PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"DummyVision")
-        |> Ash.read!()
+        PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyVision"]])
 
       assert length(text_embeddings) == 2
       assert length(vision_embeddings) == 2
     end
 
     test "handles multiple seeds and prompts" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42, 123],
           prompts: ["Prompt A", "Prompt B"],
           embedding_models: ["DummyText"],
           max_length: 2
         })
-        |> Ash.create()
 
       {:ok, completed} = Engine.perform_experiment(experiment.id)
       completed = Ash.load!(completed, :runs)
@@ -240,20 +205,18 @@ defmodule PanicTda.EngineTest do
     end
 
     test "creates clustering results across experiment" do
-      {:ok, experiment} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      experiment =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42, 123, 456],
           prompts: ["Alpha", "Beta", "Gamma"],
           embedding_models: ["DummyText"],
           max_length: 6
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
-      clustering_results = Ash.read!(PanicTda.ClusteringResult)
+      clustering_results = PanicTda.list_clustering_results!()
       assert length(clustering_results) == 1
 
       cr = hd(clustering_results)
@@ -264,13 +227,11 @@ defmodule PanicTda.EngineTest do
       assert cr.started_at != nil
       assert cr.completed_at != nil
 
-      embedding_clusters = Ash.read!(PanicTda.EmbeddingCluster)
+      embedding_clusters = PanicTda.list_embedding_clusters!()
       assert length(embedding_clusters) > 0
 
       all_embeddings =
-        PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"DummyText")
-        |> Ash.read!()
+        PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText"]])
 
       assert length(embedding_clusters) == length(all_embeddings)
 
@@ -280,27 +241,23 @@ defmodule PanicTda.EngineTest do
     end
 
     test "deterministic outputs for same seed" do
-      {:ok, exp1} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      exp1 =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test"],
           embedding_models: ["DummyText"],
           max_length: 2
         })
-        |> Ash.create()
 
-      {:ok, exp2} =
-        PanicTda.Experiment
-        |> Ash.Changeset.for_create(:create, %{
+      exp2 =
+        PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           seeds: [42],
           prompts: ["Test"],
           embedding_models: ["DummyText"],
           max_length: 2
         })
-        |> Ash.create()
 
       {:ok, _} = Engine.perform_experiment(exp1.id)
       {:ok, _} = Engine.perform_experiment(exp2.id)

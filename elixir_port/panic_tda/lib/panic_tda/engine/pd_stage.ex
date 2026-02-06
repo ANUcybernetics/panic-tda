@@ -8,7 +8,7 @@ defmodule PanicTda.Engine.PdStage do
 
   def compute(env, run, embedding_models) do
     Enum.each(embedding_models, fn embedding_model ->
-      compute_for_model(env, run, embedding_model)
+      :ok = compute_for_model(env, run, embedding_model)
     end)
 
     :ok
@@ -31,25 +31,18 @@ defmodule PanicTda.Engine.PdStage do
       dimension = Nx.size(hd(vectors))
       point_cloud_binary = vectors |> Nx.stack() |> Nx.to_binary()
 
-      case Tda.compute_persistence_diagram(env, point_cloud_binary, dimension) do
-        {:ok, diagram_data} ->
-          completed_at = DateTime.utc_now()
+      {:ok, diagram_data} = Tda.compute_persistence_diagram(env, point_cloud_binary, dimension)
+      completed_at = DateTime.utc_now()
 
-          PanicTda.PersistenceDiagram
-          |> Ash.Changeset.for_create(:create, %{
-            embedding_model: embedding_model,
-            diagram_data: diagram_data,
-            started_at: started_at,
-            completed_at: completed_at,
-            run_id: run.id
-          })
-          |> Ash.create!()
+      PanicTda.create_persistence_diagram!(%{
+        embedding_model: embedding_model,
+        diagram_data: diagram_data,
+        started_at: started_at,
+        completed_at: completed_at,
+        run_id: run.id
+      })
 
-          :ok
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      :ok
     end
   end
 end

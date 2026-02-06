@@ -26,7 +26,6 @@ defmodule PanicTda.MixProject do
       {:ash_sqlite, "~> 0.2"},
       {:ecto_sqlite3, "~> 0.18"},
       {:nx, "~> 0.9"},
-      {:uniq, "~> 0.6"},
       {:jason, "~> 1.4"},
       {:snex, "~> 0.3"},
       {:usage_rules, "~> 0.1", only: [:dev]}

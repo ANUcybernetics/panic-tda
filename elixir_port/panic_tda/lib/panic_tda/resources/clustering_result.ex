@@ -71,7 +71,4 @@ defmodule PanicTda.ClusteringResult do
     )
   end
 
-  validations do
-    validate(present([:embedding_model, :algorithm, :started_at]))
-  end
 end

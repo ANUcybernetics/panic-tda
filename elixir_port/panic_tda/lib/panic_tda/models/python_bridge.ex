@@ -12,6 +12,11 @@ defmodule PanicTda.Models.PythonBridge do
   os.environ["TOKENIZERS_PARALLELISM"] = "false"
   os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 
+  import io
+  import base64
+  import hashlib
+  import random
+
   try:
       import transformers
       transformers.logging.set_verbosity_error()
@@ -94,6 +99,17 @@ defmodule PanicTda.Models.PythonBridge do
 
           return all_embeddings
 
+  def _load_sentence_transformer(name, model_path, **kwargs):
+      try:
+          _m = NoSortingSentenceTransformer(model_path, **kwargs)
+      except FileNotFoundError:
+          _ = SentenceTransformer(model_path, **kwargs)
+          _m = NoSortingSentenceTransformer(model_path, **kwargs)
+      if torch.cuda.is_available():
+          _m = _m.to("cuda")
+      _m.eval()
+      _models[name] = _m
+
   _models = {}
   _panic_setup_done = True
   """
@@ -144,48 +160,16 @@ defmodule PanicTda.Models.PythonBridge do
     _models["BLIP2"] = {"processor": _blip2_processor, "model": _blip2_model}
     """,
     "STSBMpnet" => """
-    try:
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
-    except FileNotFoundError:
-        _ = SentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-mpnet-base-v2")
-    if torch.cuda.is_available():
-        _m = _m.to("cuda")
-    _m.eval()
-    _models["STSBMpnet"] = _m
+    _load_sentence_transformer("STSBMpnet", "sentence-transformers/stsb-mpnet-base-v2")
     """,
     "STSBRoberta" => """
-    try:
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
-    except FileNotFoundError:
-        _ = SentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-roberta-base-v2")
-    if torch.cuda.is_available():
-        _m = _m.to("cuda")
-    _m.eval()
-    _models["STSBRoberta"] = _m
+    _load_sentence_transformer("STSBRoberta", "sentence-transformers/stsb-roberta-base-v2")
     """,
     "STSBDistilRoberta" => """
-    try:
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-distilroberta-base-v2")
-    except FileNotFoundError:
-        _ = SentenceTransformer("sentence-transformers/stsb-distilroberta-base-v2")
-        _m = NoSortingSentenceTransformer("sentence-transformers/stsb-distilroberta-base-v2")
-    if torch.cuda.is_available():
-        _m = _m.to("cuda")
-    _m.eval()
-    _models["STSBDistilRoberta"] = _m
+    _load_sentence_transformer("STSBDistilRoberta", "sentence-transformers/stsb-distilroberta-base-v2")
     """,
     "Nomic" => """
-    try:
-        _m = NoSortingSentenceTransformer("nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True)
-    except FileNotFoundError:
-        _ = SentenceTransformer("nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True)
-        _m = NoSortingSentenceTransformer("nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True)
-    if torch.cuda.is_available():
-        _m = _m.to("cuda")
-    _m.eval()
-    _models["Nomic"] = _m
+    _load_sentence_transformer("Nomic", "nomic-ai/nomic-embed-text-v2-moe", trust_remote_code=True)
     """,
     "JinaClip" => """
     from transformers import AutoModel

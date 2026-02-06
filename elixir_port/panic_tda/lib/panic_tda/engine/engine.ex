@@ -10,12 +10,8 @@ defmodule PanicTda.Engine do
   alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, ClusteringStage}
 
   def perform_experiment(experiment_id) do
-    experiment = Ash.get!(PanicTda.Experiment, experiment_id)
-
-    {:ok, experiment} =
-      experiment
-      |> Ash.Changeset.for_update(:start)
-      |> Ash.update()
+    experiment = PanicTda.get_experiment!(experiment_id)
+    experiment = PanicTda.start_experiment!(experiment)
 
     {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
     {:ok, env} = Snex.make_env(interpreter)
@@ -24,18 +20,14 @@ defmodule PanicTda.Engine do
       runs = init_runs(experiment)
 
       Enum.each(runs, fn run ->
-        {:ok, _invocation_ids} = RunExecutor.execute(env, run)
+        :ok = RunExecutor.execute(env, run)
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
       end)
 
       :ok = ClusteringStage.compute(env, experiment, experiment.embedding_models)
 
-      {:ok, experiment} =
-        experiment
-        |> Ash.Changeset.for_update(:complete)
-        |> Ash.update()
-
+      experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
     after
       GenServer.stop(interpreter)
@@ -46,18 +38,13 @@ defmodule PanicTda.Engine do
     for network <- experiment.networks,
         seed <- experiment.seeds,
         prompt <- experiment.prompts do
-      {:ok, run} =
-        PanicTda.Run
-        |> Ash.Changeset.for_create(:create, %{
-          network: network,
-          seed: seed,
-          max_length: experiment.max_length,
-          initial_prompt: prompt,
-          experiment_id: experiment.id
-        })
-        |> Ash.create()
-
-      run
+      PanicTda.create_run!(%{
+        network: network,
+        seed: seed,
+        max_length: experiment.max_length,
+        initial_prompt: prompt,
+        experiment_id: experiment.id
+      })
     end
   end
 end

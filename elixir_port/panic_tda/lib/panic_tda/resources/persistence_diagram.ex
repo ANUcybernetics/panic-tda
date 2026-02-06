@@ -64,7 +64,4 @@ defmodule PanicTda.PersistenceDiagram do
     )
   end
 
-  validations do
-    validate(present([:embedding_model, :started_at]))
-  end
 end

@@ -79,7 +79,6 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_t2i_code("SDXLTurbo") do
     """
-    import io, base64
     _gen = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
     _img = _models["SDXLTurbo"](
         prompt=prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
@@ -93,7 +92,6 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_t2i_code("FluxDev") do
     """
-    import io, base64
     _gen = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
     _img = _models["FluxDev"](
         prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
@@ -107,7 +105,6 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_t2i_code("FluxSchnell") do
     """
-    import io, base64
     _gen = None if seed == -1 else torch.Generator("cuda").manual_seed(seed)
     _img = _models["FluxSchnell"](
         prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
@@ -121,7 +118,6 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_i2t_code("Moondream") do
     """
-    import io, base64, random
     _img_bytes = base64.b64decode(image_b64)
     _img = Image.open(io.BytesIO(_img_bytes))
     if seed != -1:
@@ -135,7 +131,6 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_i2t_code("BLIP2") do
     """
-    import io, base64, random
     _img_bytes = base64.b64decode(image_b64)
     _img = Image.open(io.BytesIO(_img_bytes))
     if seed != -1:
