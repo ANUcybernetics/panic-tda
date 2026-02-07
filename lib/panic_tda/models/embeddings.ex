@@ -10,7 +10,7 @@ defmodule PanicTda.Models.Embeddings do
 
   @dummy_text_models ~w(DummyText DummyText2)
   @dummy_image_models ~w(DummyVision DummyVision2)
-  @real_text_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip)
+  @real_text_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed)
   @real_image_models ~w(NomicVision JinaClipVision)
   @text_models @dummy_text_models ++ @real_text_models
   @image_models @dummy_image_models ++ @real_image_models
@@ -110,6 +110,17 @@ defmodule PanicTda.Models.Embeddings do
     with torch.no_grad():
         _embs = _models["JinaClip"].encode_text(texts, truncate_dim=EMBEDDING_DIM, task="retrieval.query")
         result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
+    """
+  end
+
+  defp real_text_embed_code("Qwen3Embed") do
+    """
+    with torch.no_grad():
+        _embs = _models["Qwen3Embed"].encode(
+            texts, convert_to_numpy=True, normalize_embeddings=True
+        )
+        _embs = [e[:EMBEDDING_DIM] for e in _embs]
+        result = [base64.b64encode(e.astype(np.float32).tobytes()).decode("ascii") for e in _embs]
     """
   end
 
