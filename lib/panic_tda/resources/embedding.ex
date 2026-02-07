@@ -61,6 +61,12 @@ defmodule PanicTda.Embedding do
     end
   end
 
+  validations do
+    validate {PanicTda.Validations.TimestampOrder, []} do
+      on([:create])
+    end
+  end
+
   calculations do
     calculate(:dimension, :integer, expr(fragment("length(?) / 4", vector)))
 

@@ -14,21 +14,25 @@ defmodule PanicTda.Experiment do
     attribute :networks, {:array, {:array, :string}} do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     attribute :seeds, {:array, :integer} do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     attribute :prompts, {:array, :string} do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     attribute :embedding_models, {:array, :string} do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     attribute :max_length, :integer do
@@ -50,6 +54,10 @@ defmodule PanicTda.Experiment do
 
   relationships do
     has_many :runs, PanicTda.Run do
+      destination_attribute(:experiment_id)
+    end
+
+    has_many :clustering_results, PanicTda.ClusteringResult do
       destination_attribute(:experiment_id)
     end
   end
@@ -80,6 +88,31 @@ defmodule PanicTda.Experiment do
   validations do
     validate compare(:max_length, greater_than: 0) do
       message("must be greater than 0")
+      on([:create, :update])
+    end
+
+    validate {PanicTda.Validations.NonEmptyList, attribute: :networks} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.NonEmptyList, attribute: :seeds} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.NonEmptyList, attribute: :prompts} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.NonEmptyList, attribute: :embedding_models} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.NonEmptySubArrays, attribute: :networks} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.TimestampOrder, []} do
+      on([:create])
     end
   end
 end

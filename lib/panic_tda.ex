@@ -12,11 +12,13 @@ defmodule PanicTda do
 
     resource PanicTda.Run do
       define :create_run, action: :create
+      define :get_run, action: :read, get_by: [:id]
       define :list_runs, action: :read
     end
 
     resource PanicTda.Invocation do
       define :create_invocation, action: :create
+      define :list_invocations, action: :read
     end
 
     resource PanicTda.Embedding do
@@ -32,11 +34,13 @@ defmodule PanicTda do
 
     resource PanicTda.ClusteringResult do
       define :create_clustering_result, action: :create
+      define :destroy_clustering_result, action: :destroy
       define :list_clustering_results, action: :read
     end
 
     resource PanicTda.EmbeddingCluster do
       define :create_embedding_cluster, action: :create
+      define :destroy_embedding_cluster, action: :destroy
       define :list_embedding_clusters, action: :read
     end
   end

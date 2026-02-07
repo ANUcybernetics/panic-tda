@@ -69,6 +69,10 @@ defmodule PanicTda.Invocation do
     end
   end
 
+  identities do
+    identity(:unique_run_sequence, [:run_id, :sequence_number])
+  end
+
   actions do
     defaults([:read, :destroy])
 
@@ -89,6 +93,20 @@ defmodule PanicTda.Invocation do
 
     update :update do
       accept([:output_text, :output_image, :completed_at])
+    end
+  end
+
+  validations do
+    validate compare(:sequence_number, greater_than_or_equal_to: 0) do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.OutputMatchesType, []} do
+      on([:create])
+    end
+
+    validate {PanicTda.Validations.TimestampOrder, []} do
+      on([:create])
     end
   end
 

@@ -14,6 +14,7 @@ defmodule PanicTda.Run do
     attribute :network, {:array, :string} do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     attribute :seed, :integer do
@@ -29,6 +30,7 @@ defmodule PanicTda.Run do
     attribute :initial_prompt, :string do
       allow_nil?(false)
       public?(true)
+      constraints(min_length: 1)
     end
 
     create_timestamp(:inserted_at)
@@ -51,6 +53,10 @@ defmodule PanicTda.Run do
     end
   end
 
+  identities do
+    identity(:unique_experiment_run, [:experiment_id, :seed, :initial_prompt])
+  end
+
   actions do
     defaults([:read, :destroy])
 
@@ -71,5 +77,7 @@ defmodule PanicTda.Run do
     validate compare(:max_length, greater_than: 0) do
       message("must be greater than 0")
     end
+
+    validate compare(:seed, greater_than_or_equal_to: -1)
   end
 end

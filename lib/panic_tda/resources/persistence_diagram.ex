@@ -56,6 +56,12 @@ defmodule PanicTda.PersistenceDiagram do
     end
   end
 
+  validations do
+    validate {PanicTda.Validations.TimestampOrder, []} do
+      on([:create])
+    end
+  end
+
   calculations do
     calculate(
       :duration,

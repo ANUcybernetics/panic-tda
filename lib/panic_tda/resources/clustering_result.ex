@@ -40,6 +40,11 @@ defmodule PanicTda.ClusteringResult do
   end
 
   relationships do
+    belongs_to :experiment, PanicTda.Experiment do
+      allow_nil?(false)
+      attribute_type(:uuid_v7)
+    end
+
     has_many :embedding_clusters, PanicTda.EmbeddingCluster do
       destination_attribute(:clustering_result_id)
     end
@@ -49,11 +54,24 @@ defmodule PanicTda.ClusteringResult do
     defaults([:read, :destroy])
 
     create :create do
-      accept([:embedding_model, :algorithm, :parameters, :started_at, :completed_at])
+      accept([
+        :embedding_model,
+        :algorithm,
+        :parameters,
+        :started_at,
+        :completed_at,
+        :experiment_id
+      ])
     end
 
     update :update do
       accept([:parameters, :completed_at])
+    end
+  end
+
+  validations do
+    validate {PanicTda.Validations.TimestampOrder, []} do
+      on([:create])
     end
   end
 
@@ -70,5 +88,4 @@ defmodule PanicTda.ClusteringResult do
       expr(fragment("(julianday(?) - julianday(?)) * 86400", completed_at, started_at))
     )
   end
-
 end
