@@ -1,21 +1,29 @@
-# python generated files
+# Python (still needed for Snex interop)
 __pycache__/
 *.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
 .venv
 
+# Elixir
+/_build/
+/cover/
+/deps/
+/doc/
+/tmp/
+erl_crash.dump
+*.ez
+panic_tda-*.tar
+
+# Data
+*.db
+*.db-*
 output/
 logs/
-
-# databases are important - obviously - but don't belong in the repo
 db/
 
+# Tools
 mise.local.toml
-
 .benchmarks/
-
+.ruff_cache/
+.pytest_cache/
 docs/*.pdf
+nohup.out

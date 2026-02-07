@@ -1,17 +1,8 @@
 [tools]
+erlang = "28.3.1"
+elixir = "1.19.5-otp-28"
+python = "3.12"
 sqlite = "latest"
-uv = "latest"
-node = "latest"
-bun = "latest"
-
-[tasks.script]
-run = "uv run panic-tda script"
-
-[tasks.charts]
-run = "uv run panic-tda export charts"
 
 [tasks.test]
-run = "uv run pytest -n 8"
-
-[tasks.tda]
-run = "uv run panic-tda"
+run = "mix test"
