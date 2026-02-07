@@ -26,6 +26,7 @@ defmodule PanicTda.Engine do
       runs
       |> Enum.group_by(& &1.network)
       |> Enum.each(fn {_network, group} ->
+        :ok = PythonBridge.unload_all_models(env)
         :ok = RunExecutor.execute_batch(env, group)
       end)
 
@@ -71,6 +72,7 @@ defmodule PanicTda.Engine do
       runs
       |> Enum.group_by(& &1.network)
       |> Enum.each(fn {_network, group} ->
+        :ok = PythonBridge.unload_all_models(env)
         :ok = RunExecutor.resume_batch(env, group)
       end)
 

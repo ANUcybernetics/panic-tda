@@ -6,7 +6,7 @@ defmodule PanicTda.Engine.RunExecutor do
 
   require Ash.Query
 
-  alias PanicTda.Models.GenAI
+  alias PanicTda.Models.{GenAI, PythonBridge}
 
   def execute(env, run) do
     execute_loop(env, run, run.initial_prompt, 0, nil)
@@ -109,6 +109,13 @@ defmodule PanicTda.Engine.RunExecutor do
     {:ok, outputs} = GenAI.invoke_batch(env, model_name, inputs)
     completed_at = DateTime.utc_now()
 
+    next_seq = seq + 1
+    next_model = Enum.at(network, rem(next_seq, length(network)))
+
+    if next_seq < max_length and next_model != model_name do
+      :ok = PythonBridge.unload_model(env, model_name)
+    end
+
     new_states =
       Enum.zip([states, outputs])
       |> Enum.map(fn {state, output} ->
@@ -133,7 +140,7 @@ defmodule PanicTda.Engine.RunExecutor do
         %{state | input: output, prev_invocation_id: invocation.id}
       end)
 
-    execute_batch_loop(env, network, max_length, new_states, seq + 1)
+    execute_batch_loop(env, network, max_length, new_states, next_seq)
   end
 
   defp execute_loop(_env, run, _input, seq, _prev_id) when seq >= run.max_length do
@@ -147,6 +154,13 @@ defmodule PanicTda.Engine.RunExecutor do
     started_at = DateTime.utc_now()
     {:ok, output} = GenAI.invoke(env, model_name, input)
     completed_at = DateTime.utc_now()
+
+    next_seq = seq + 1
+    next_model = Enum.at(run.network, rem(next_seq, length(run.network)))
+
+    if next_seq < run.max_length and next_model != model_name do
+      :ok = PythonBridge.unload_model(env, model_name)
+    end
 
     attrs = %{
       model: model_name,
@@ -166,6 +180,6 @@ defmodule PanicTda.Engine.RunExecutor do
 
     invocation = PanicTda.create_invocation!(attrs)
 
-    execute_loop(env, run, output, seq + 1, invocation.id)
+    execute_loop(env, run, output, next_seq, invocation.id)
   end
 end

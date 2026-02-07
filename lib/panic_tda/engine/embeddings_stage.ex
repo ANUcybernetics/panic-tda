@@ -51,8 +51,8 @@ defmodule PanicTda.Engine.EmbeddingsStage do
     relevant_invocations =
       Enum.filter(invocations, fn inv ->
         case model_type do
-          :text -> inv.type == :text
-          :image -> inv.type == :image
+          :text -> inv.type == :text and not is_nil(inv.output_text)
+          :image -> inv.type == :image and not is_nil(inv.output_image)
         end
       end)
 

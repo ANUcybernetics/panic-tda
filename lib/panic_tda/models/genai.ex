@@ -170,7 +170,7 @@ defmodule PanicTda.Models.GenAI do
     _inputs = _iblip["processor"](
         images=_img, text="Describe this image.", return_tensors="pt"
     ).to("cuda", torch.float16)
-    with torch.amp.autocast("cuda", dtype=torch.float16):
+    with torch.no_grad(), torch.amp.autocast("cuda", dtype=torch.float16):
         _gen_ids = _iblip["model"].generate(
             **_inputs, max_length=256, num_beams=5,
         )
@@ -310,75 +310,85 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_t2i_batch_code("SD35Medium") do
     """
-    _imgs = _models["SD35Medium"](
-        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        num_inference_steps=28, guidance_scale=5.0, generator=None,
-    ).images
     _results = []
-    for _img in _imgs:
+    for _prompt in prompts:
+        _img = _models["SD35Medium"](
+            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+            num_inference_steps=28, guidance_scale=5.0, generator=None,
+        ).images[0]
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+        del _img, _buf
+        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("FluxDev") do
     """
-    _imgs = _models["FluxDev"](
-        prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        guidance_scale=3.5, num_inference_steps=20, generator=None,
-    ).images
     _results = []
-    for _img in _imgs:
+    for _prompt in prompts:
+        _img = _models["FluxDev"](
+            _prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+            guidance_scale=3.5, num_inference_steps=20, generator=None,
+        ).images[0]
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+        del _img, _buf
+        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("FluxSchnell") do
     """
-    _imgs = _models["FluxSchnell"](
-        prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        guidance_scale=3.5, num_inference_steps=6, generator=None,
-    ).images
     _results = []
-    for _img in _imgs:
+    for _prompt in prompts:
+        _img = _models["FluxSchnell"](
+            _prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+            guidance_scale=3.5, num_inference_steps=6, generator=None,
+        ).images[0]
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+        del _img, _buf
+        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("ZImageTurbo") do
     """
-    _imgs = _models["ZImageTurbo"](
-        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        num_inference_steps=8, generator=None,
-    ).images
     _results = []
-    for _img in _imgs:
+    for _prompt in prompts:
+        _img = _models["ZImageTurbo"](
+            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+            num_inference_steps=8, generator=None,
+        ).images[0]
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+        del _img, _buf
+        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("Flux2Klein") do
     """
-    _imgs = _models["Flux2Klein"](
-        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        num_inference_steps=4, guidance_scale=1.0, generator=None,
-    ).images
     _results = []
-    for _img in _imgs:
+    for _prompt in prompts:
+        _img = _models["Flux2Klein"](
+            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+            num_inference_steps=4, guidance_scale=1.0, generator=None,
+        ).images[0]
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+        del _img, _buf
+        torch.cuda.empty_cache()
     result = _results
     """
   end
@@ -403,7 +413,7 @@ defmodule PanicTda.Models.GenAI do
         _inputs = _iblip["processor"](
             images=_img, text="Describe this image.", return_tensors="pt"
         ).to("cuda", torch.float16)
-        with torch.amp.autocast("cuda", dtype=torch.float16):
+        with torch.no_grad(), torch.amp.autocast("cuda", dtype=torch.float16):
             _gen_ids = _iblip["model"].generate(
                 **_inputs, max_length=256, num_beams=5,
             )

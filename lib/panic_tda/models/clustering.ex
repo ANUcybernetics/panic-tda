@@ -56,7 +56,8 @@ defmodule PanicTda.Models.Clustering do
              "n_embeddings" => n_embeddings,
              "epsilon" => epsilon
            },
-           returning: "result"
+           returning: "result",
+           timeout: 600_000
          ) do
       {:ok, result} ->
         {:ok,

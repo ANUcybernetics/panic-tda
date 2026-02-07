@@ -11,6 +11,7 @@ defmodule PanicTda.Models.PythonBridge do
   import os
   os.environ["TOKENIZERS_PARALLELISM"] = "false"
   os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+  os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
   import io
   import base64
@@ -72,24 +73,21 @@ defmodule PanicTda.Models.PythonBridge do
 
           all_embeddings = []
 
-          for sentence in sentences:
-              with torch.no_grad():
-                  features = self.tokenize([sentence])
+          with torch.no_grad():
+              for i in range(0, len(sentences), batch_size):
+                  batch = sentences[i:i+batch_size]
+                  features = self.tokenize(batch)
                   features = batch_to_device(features, device)
                   out_features = self.forward(features)
-                  embedding = out_features["sentence_embedding"]
+                  embeddings = out_features["sentence_embedding"]
 
                   if normalize_embeddings:
-                      embedding = F.normalize(embedding, p=2, dim=1)
+                      embeddings = F.normalize(embeddings, p=2, dim=1)
 
                   if convert_to_numpy:
-                      embedding = embedding.cpu().numpy()[0]
-                  elif convert_to_tensor:
-                      embedding = embedding[0]
+                      all_embeddings.extend(embeddings.cpu().numpy())
                   else:
-                      embedding = embedding[0]
-
-                  all_embeddings.append(embedding)
+                      all_embeddings.extend(embeddings)
 
           if convert_to_tensor and not convert_to_numpy and len(all_embeddings) > 0:
               all_embeddings = torch.stack(all_embeddings)
@@ -117,29 +115,37 @@ defmodule PanicTda.Models.PythonBridge do
   @model_loaders %{
     "SD35Medium" => """
     from diffusers import StableDiffusion3Pipeline
-    _models["SD35Medium"] = StableDiffusion3Pipeline.from_pretrained(
+    _pipe = StableDiffusion3Pipeline.from_pretrained(
         "stabilityai/stable-diffusion-3.5-medium",
         text_encoder_3=None, tokenizer_3=None,
         torch_dtype=torch.bfloat16, use_fast=True,
-    ).to("cuda")
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["SD35Medium"] = _pipe
     """,
     "FluxDev" => """
     from diffusers import FluxPipeline
-    _models["FluxDev"] = FluxPipeline.from_pretrained(
+    _pipe = FluxPipeline.from_pretrained(
         "black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16, use_fast=True
-    ).to("cuda")
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["FluxDev"] = _pipe
     """,
     "FluxSchnell" => """
     from diffusers import FluxPipeline
-    _models["FluxSchnell"] = FluxPipeline.from_pretrained(
+    _pipe = FluxPipeline.from_pretrained(
         "black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16, use_fast=True
-    ).to("cuda")
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["FluxSchnell"] = _pipe
     """,
     "ZImageTurbo" => """
     from diffusers import ZImagePipeline
-    _models["ZImageTurbo"] = ZImagePipeline.from_pretrained(
+    _pipe = ZImagePipeline.from_pretrained(
         "Tongyi-MAI/Z-Image-Turbo", torch_dtype=torch.bfloat16
-    ).to("cuda")
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["ZImageTurbo"] = _pipe
     """,
     "Flux2Klein" => """
     from diffusers import Flux2KleinPipeline
@@ -256,11 +262,47 @@ defmodule PanicTda.Models.PythonBridge do
 
   @unload_timeout 30_000
 
+  def unload_model(env, model_name) do
+    code = """
+    if model_name in _models:
+        _obj = _models.pop(model_name)
+        if hasattr(_obj, 'remove_all_hooks'):
+            _obj.remove_all_hooks()
+        if isinstance(_obj, dict):
+            for _v in _obj.values():
+                if hasattr(_v, 'cpu'):
+                    _v.cpu()
+                del _v
+        elif hasattr(_obj, 'cpu'):
+            _obj.cpu()
+        del _obj
+        import gc
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    """
+
+    case Snex.pyeval(env, code, %{"model_name" => model_name}, returning: "True",
+           timeout: @unload_timeout) do
+      {:ok, _} -> :ok
+      error -> error
+    end
+  end
+
   def unload_all_models(env) do
     code = """
     if "_models" in dir() and _models:
         for _name in list(_models.keys()):
             _obj = _models.pop(_name)
+            if hasattr(_obj, 'remove_all_hooks'):
+                _obj.remove_all_hooks()
+            if isinstance(_obj, dict):
+                for _v in _obj.values():
+                    if hasattr(_v, 'cpu'):
+                        _v.cpu()
+                    del _v
+            elif hasattr(_obj, 'cpu'):
+                _obj.cpu()
             del _obj
         import gc
         gc.collect()
