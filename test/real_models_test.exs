@@ -16,15 +16,19 @@ defmodule PanicTda.RealModelsTest do
     {:ok, env} = Snex.make_env(interpreter)
 
     on_exit(fn ->
-      if Process.alive?(interpreter), do: GenServer.stop(interpreter)
+      try do
+        if Process.alive?(interpreter), do: GenServer.stop(interpreter)
+      catch
+        :exit, _ -> :ok
+      end
     end)
 
     %{env: env}
   end
 
   describe "real GenAI models" do
-    test "SDXLTurbo generates valid AVIF image", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A cat sitting on a mat")
+    test "SD35Medium generates valid AVIF image", %{env: env} do
+      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A cat sitting on a mat")
 
       assert is_binary(image)
       assert byte_size(image) > 100
@@ -32,7 +36,7 @@ defmodule PanicTda.RealModelsTest do
     end
 
     test "Moondream generates text caption from image", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A red apple on a table")
+      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A red apple on a table")
       {:ok, caption} = GenAI.invoke(env, "Moondream", image)
 
       assert is_binary(caption)
@@ -51,7 +55,7 @@ defmodule PanicTda.RealModelsTest do
     end
 
     test "NomicVision generates 768-dim float32 image embeddings", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A blue sky")
+      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A blue sky")
       {:ok, [emb]} = Embeddings.embed(env, "NomicVision", [image])
 
       assert is_binary(emb)
@@ -60,11 +64,11 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "end-to-end pipeline with real models" do
-    test "full experiment with SDXLTurbo + Moondream + STSBMpnet" do
+    test "full experiment with SD35Medium + Moondream + STSBMpnet" do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
-          networks: [["SDXLTurbo", "Moondream"]],
+          networks: [["SD35Medium", "Moondream"]],
           prompts: ["A peaceful garden"],
           embedding_models: ["STSBMpnet"],
           max_length: 4
@@ -82,7 +86,7 @@ defmodule PanicTda.RealModelsTest do
 
       [inv0, inv1, inv2, inv3] = run.invocations
       assert inv0.type == :image
-      assert inv0.model == "SDXLTurbo"
+      assert inv0.model == "SD35Medium"
       assert inv0.output_image != nil
 
       assert inv1.type == :text
@@ -90,7 +94,7 @@ defmodule PanicTda.RealModelsTest do
       assert inv1.output_text != nil
 
       assert inv2.type == :image
-      assert inv2.model == "SDXLTurbo"
+      assert inv2.model == "SD35Medium"
 
       assert inv3.type == :text
       assert inv3.model == "Moondream"
@@ -119,8 +123,8 @@ defmodule PanicTda.RealModelsTest do
     @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip)
     @real_image_embedding_models ~w(NomicVision JinaClipVision)
 
-    for t2i <- ~w(SDXLTurbo FluxDev FluxSchnell),
-        i2t <- ~w(Moondream BLIP2) do
+    for t2i <- ~w(SD35Medium FluxDev FluxSchnell ZImageTurbo Flux2Klein),
+        i2t <- ~w(Moondream InstructBLIP Qwen25VL Gemma3n) do
       @tag timeout: 600_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models" do
         t2i = unquote(t2i)
@@ -157,8 +161,8 @@ defmodule PanicTda.RealModelsTest do
       end
     end
 
-    for t2i <- ~w(SDXLTurbo FluxDev FluxSchnell),
-        i2t <- ~w(Moondream BLIP2) do
+    for t2i <- ~w(SD35Medium FluxDev FluxSchnell ZImageTurbo Flux2Klein),
+        i2t <- ~w(Moondream InstructBLIP Qwen25VL Gemma3n) do
       @tag timeout: 600_000
       test "pipeline: #{t2i} + #{i2t} with all image embedding models" do
         t2i = unquote(t2i)
