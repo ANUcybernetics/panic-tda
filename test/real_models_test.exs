@@ -64,7 +64,7 @@ defmodule PanicTda.RealModelsTest do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
-          network: ["SDXLTurbo", "Moondream"],
+          networks: [["SDXLTurbo", "Moondream"]],
           prompts: ["A peaceful garden"],
           embedding_models: ["STSBMpnet"],
           max_length: 4
@@ -128,7 +128,7 @@ defmodule PanicTda.RealModelsTest do
 
         experiment =
           PanicTda.create_experiment!(%{
-            network: [t2i, i2t],
+            networks: [[t2i, i2t]],
             prompts: ["a red apple"],
             embedding_models: @real_text_embedding_models,
             max_length: 4
@@ -166,7 +166,7 @@ defmodule PanicTda.RealModelsTest do
 
         experiment =
           PanicTda.create_experiment!(%{
-            network: [t2i, i2t],
+            networks: [[t2i, i2t]],
             prompts: ["a red apple"],
             embedding_models: @real_image_embedding_models,
             max_length: 4

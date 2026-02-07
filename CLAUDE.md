@@ -43,7 +43,7 @@ The task handles database setup and runs the full four-stage pipeline
 
 ```json
 {
-  "network": ["SDXLTurbo", "Moondream"],
+  "networks": [["SDXLTurbo", "Moondream"], ["FluxDev", "BLIP2"]],
   "prompts": ["a red apple"],
   "embedding_models": ["Nomic"],
   "max_length": 100,
@@ -51,12 +51,14 @@ The task handles database setup and runs the full four-stage pipeline
 }
 ```
 
-- **network**: list of models that cycle (T2I → I2T → T2I → ...)
-- **prompts**: initial text inputs; each prompt creates `num_runs` runs
+- **networks**: list of networks, where each network is a list of models that
+  cycle (T2I → I2T → T2I → ...); runs sharing the same network are batched in
+  lockstep, different network groups run sequentially
+- **prompts**: initial text inputs; each prompt creates `num_runs` runs per
+  network
 - **embedding_models**: models used in the embeddings stage
 - **max_length**: number of model invocations per run
-- **num_runs**: number of runs per prompt (optional, default 1); all runs in an
-  experiment share the same network and are executed in lockstep batches
+- **num_runs**: number of runs per prompt per network (optional, default 1)
 
 ### Available models
 

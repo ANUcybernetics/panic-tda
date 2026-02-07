@@ -1,5 +1,5 @@
 {
-  "network": ["DummyT2I", "DummyI2T"],
+  "networks": [["DummyT2I", "DummyI2T"]],
   "num_runs": 2,
   "prompts": ["A beautiful sunset", "A mountain landscape"],
   "embedding_models": ["DummyText"],

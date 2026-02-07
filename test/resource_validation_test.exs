@@ -8,7 +8,7 @@ defmodule ResourceValidationTest do
 
   defp create_experiment(overrides \\ %{}) do
     defaults = %{
-      network: ["DummyT2I", "DummyI2T"],
+      networks: [["DummyT2I", "DummyI2T"]],
       prompts: ["test prompt"],
       embedding_models: ["DummyText"],
       max_length: 4
@@ -30,9 +30,9 @@ defmodule ResourceValidationTest do
   end
 
   describe "experiment validations" do
-    test "rejects empty network array" do
+    test "rejects empty networks array" do
       assert_raise Ash.Error.Invalid, fn ->
-        create_experiment(%{network: []})
+        create_experiment(%{networks: []})
       end
     end
 

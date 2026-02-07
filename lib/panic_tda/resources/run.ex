@@ -54,7 +54,7 @@ defmodule PanicTda.Run do
   end
 
   identities do
-    identity(:unique_experiment_run, [:experiment_id, :initial_prompt, :run_number])
+    identity(:unique_experiment_run, [:experiment_id, :network, :initial_prompt, :run_number])
   end
 
   actions do

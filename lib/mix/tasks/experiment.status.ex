@@ -26,7 +26,7 @@ defmodule Mix.Tasks.Experiment.Status do
     Status:     #{status(experiment)}
 
     Config:
-      Network:          #{inspect(experiment.network)}
+      Networks:         #{inspect(experiment.networks)}
       Num runs:         #{experiment.num_runs}
       Prompts:          #{inspect(experiment.prompts)}
       Embedding models: #{inspect(experiment.embedding_models)}

@@ -11,7 +11,7 @@ defmodule PanicTda.Experiment do
   attributes do
     uuid_v7_primary_key(:id)
 
-    attribute :network, {:array, :string} do
+    attribute :networks, {:array, {:array, :string}} do
       allow_nil?(false)
       public?(true)
       constraints(min_length: 1)
@@ -66,11 +66,11 @@ defmodule PanicTda.Experiment do
     defaults([:read, :destroy])
 
     create :create do
-      accept([:network, :num_runs, :prompts, :embedding_models, :max_length])
+      accept([:networks, :num_runs, :prompts, :embedding_models, :max_length])
     end
 
     update :update do
-      accept([:network, :num_runs, :prompts, :embedding_models, :max_length])
+      accept([:networks, :num_runs, :prompts, :embedding_models, :max_length])
       require_atomic?(false)
     end
 
@@ -96,7 +96,7 @@ defmodule PanicTda.Experiment do
       on([:create, :update])
     end
 
-    validate {PanicTda.Validations.NonEmptyList, attribute: :network} do
+    validate {PanicTda.Validations.NonEmptyNestedLists, attribute: :networks} do
       on([:create])
     end
 

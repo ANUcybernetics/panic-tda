@@ -14,7 +14,7 @@ defmodule PanicTda.ResumeTest do
 
   defp create_started_experiment(overrides \\ %{}) do
     defaults = %{
-      network: ["DummyT2I", "DummyI2T"],
+      networks: [["DummyT2I", "DummyI2T"]],
       prompts: ["test prompt"],
       embedding_models: ["DummyText"],
       max_length: 4
@@ -39,7 +39,7 @@ defmodule PanicTda.ResumeTest do
     test "rejects experiment that has not been started" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["test"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -51,7 +51,7 @@ defmodule PanicTda.ResumeTest do
     test "rejects completed experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["test"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -176,7 +176,7 @@ defmodule PanicTda.ResumeTest do
     test "resumes a partially completed experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4

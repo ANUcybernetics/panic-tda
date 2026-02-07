@@ -23,7 +23,11 @@ defmodule PanicTda.Engine do
     try do
       runs = init_runs(experiment)
 
-      :ok = RunExecutor.execute_batch(env, runs)
+      runs
+      |> Enum.group_by(& &1.network)
+      |> Enum.each(fn {_network, group} ->
+        :ok = RunExecutor.execute_batch(env, group)
+      end)
 
       Enum.each(runs, fn run ->
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
@@ -62,7 +66,11 @@ defmodule PanicTda.Engine do
     try do
       runs = find_or_create_runs(experiment)
 
-      :ok = RunExecutor.resume_batch(env, runs)
+      runs
+      |> Enum.group_by(& &1.network)
+      |> Enum.each(fn {_network, group} ->
+        :ok = RunExecutor.resume_batch(env, group)
+      end)
 
       Enum.each(runs, fn run ->
         :ok = EmbeddingsStage.resume(env, run, experiment.embedding_models)
@@ -80,10 +88,11 @@ defmodule PanicTda.Engine do
   end
 
   def init_runs(experiment) do
-    for prompt <- experiment.prompts,
+    for network <- experiment.networks,
+        prompt <- experiment.prompts,
         run_number <- 0..(experiment.num_runs - 1) do
       PanicTda.create_run!(%{
-        network: experiment.network,
+        network: network,
         run_number: run_number,
         max_length: experiment.max_length,
         initial_prompt: prompt,
@@ -100,15 +109,16 @@ defmodule PanicTda.Engine do
 
     existing_keys =
       MapSet.new(existing_runs, fn run ->
-        {run.initial_prompt, run.run_number}
+        {run.network, run.initial_prompt, run.run_number}
       end)
 
     new_runs =
-      for prompt <- experiment.prompts,
+      for network <- experiment.networks,
+          prompt <- experiment.prompts,
           run_number <- 0..(experiment.num_runs - 1),
-          not MapSet.member?(existing_keys, {prompt, run_number}) do
+          not MapSet.member?(existing_keys, {network, prompt, run_number}) do
         PanicTda.create_run!(%{
-          network: experiment.network,
+          network: network,
           run_number: run_number,
           max_length: experiment.max_length,
           initial_prompt: prompt,

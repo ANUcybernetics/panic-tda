@@ -56,7 +56,7 @@ defmodule PanicTda.EngineTest do
     test "executes a simple T2I -> I2T trajectory" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["A beautiful sunset"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -93,7 +93,7 @@ defmodule PanicTda.EngineTest do
     test "creates embeddings for text invocations" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -114,7 +114,7 @@ defmodule PanicTda.EngineTest do
     test "creates embeddings for image invocations with DummyVision" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["Test prompt"],
           embedding_models: ["DummyVision"],
           max_length: 4
@@ -135,7 +135,7 @@ defmodule PanicTda.EngineTest do
     test "creates persistence diagrams via giotto-ph" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -160,7 +160,7 @@ defmodule PanicTda.EngineTest do
     test "handles multiple embedding models" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["Test"],
           embedding_models: ["DummyText", "DummyVision"],
           max_length: 4
@@ -181,7 +181,7 @@ defmodule PanicTda.EngineTest do
     test "handles multiple runs and prompts" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           num_runs: 2,
           prompts: ["Prompt A", "Prompt B"],
           embedding_models: ["DummyText"],
@@ -197,7 +197,7 @@ defmodule PanicTda.EngineTest do
     test "creates clustering results across experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          network: ["DummyT2I", "DummyI2T"],
+          networks: [["DummyT2I", "DummyI2T"]],
           num_runs: 3,
           prompts: ["Alpha", "Beta", "Gamma"],
           embedding_models: ["DummyText"],

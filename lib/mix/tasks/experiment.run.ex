@@ -8,7 +8,8 @@ defmodule Mix.Tasks.Experiment.Run do
 
   The JSON config must contain the following keys:
 
-    - `network` - list of model names forming the cycle (e.g. `["DummyT2I", "DummyI2T"]`)
+    - `networks` - list of networks, where each network is a list of model names
+      forming the cycle (e.g. `[["SDXLTurbo", "Moondream"], ["FluxDev", "BLIP2"]]`)
     - `prompts` - list of initial prompt strings
     - `embedding_models` - list of embedding model names
     - `max_length` - integer trajectory length (must be > 0)
@@ -49,7 +50,7 @@ defmodule Mix.Tasks.Experiment.Run do
   end
 
   @required_keys %{
-    "network" => :network,
+    "networks" => :networks,
     "prompts" => :prompts,
     "embedding_models" => :embedding_models,
     "max_length" => :max_length
