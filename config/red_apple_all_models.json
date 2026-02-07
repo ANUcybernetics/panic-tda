@@ -1,0 +1,14 @@
+{
+  "networks": [
+    ["SDXLTurbo", "Moondream"],
+    ["SDXLTurbo", "BLIP2"],
+    ["FluxDev", "Moondream"],
+    ["FluxDev", "BLIP2"],
+    ["FluxSchnell", "Moondream"],
+    ["FluxSchnell", "BLIP2"]
+  ],
+  "seeds": [42],
+  "prompts": ["a red apple"],
+  "embedding_models": ["Nomic"],
+  "max_length": 100
+}

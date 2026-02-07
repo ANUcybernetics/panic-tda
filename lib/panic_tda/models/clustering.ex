@@ -4,7 +4,7 @@ defmodule PanicTda.Models.Clustering do
   Clusters embeddings using scikit-learn's HDBSCAN on normalised vectors.
   """
 
-  def hdbscan(env, embeddings_binary, n_embeddings, epsilon \\ 0.4) do
+  def hdbscan(env, embeddings_binary, n_embeddings, epsilon \\ 0.0) do
     embeddings_b64 = Base.encode64(embeddings_binary)
 
     case Snex.pyeval(
@@ -27,12 +27,12 @@ defmodule PanicTda.Models.Clustering do
            hdb = _HDBSCAN(
                min_cluster_size=min_cluster_size,
                min_samples=min_samples,
-               cluster_selection_epsilon=epsilon,
+               cluster_selection_epsilon=float(epsilon),
                allow_single_cluster=True,
                metric="euclidean",
                store_centers="medoid",
                n_jobs=-1,
-           ).fit(embeddings_norm)
+           ).fit(embeddings_norm.astype(np.float64))
 
            labels = hdb.labels_.tolist()
 

@@ -23,7 +23,8 @@ defmodule PanicTda.Models.PythonInterpreter do
       "sentencepiece>=0.2",
       "einops>=0.8",
       "timm>=1.0",
-      "scikit-learn>=1.6"
+      "scikit-learn>=1.6",
+      "protobuf>=5.0"
     ]
     """
 end

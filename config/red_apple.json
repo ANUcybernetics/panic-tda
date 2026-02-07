@@ -1,0 +1,7 @@
+{
+  "networks": [["SDXLTurbo", "Moondream"]],
+  "seeds": [42],
+  "prompts": ["a red apple"],
+  "embedding_models": ["Nomic"],
+  "max_length": 100
+}

@@ -149,6 +149,7 @@ defmodule PanicTda.Models.PythonBridge do
     _blip2_model = Blip2ForConditionalGeneration.from_pretrained(
         "Salesforce/blip2-opt-2.7b", torch_dtype=torch.float16, device_map="auto"
     )
+    torch.set_default_dtype(torch.float32)
     def _ensure_half(module):
         for param in module.parameters():
             param.data = param.data.to(torch.float16)
@@ -223,6 +224,27 @@ defmodule PanicTda.Models.PythonBridge do
 
       error ->
         error
+    end
+  end
+
+  @unload_timeout 30_000
+
+  def unload_all_models(env) do
+    code = """
+    if "_models" in dir() and _models:
+        for _name in list(_models.keys()):
+            _obj = _models.pop(_name)
+            del _obj
+        import gc
+        gc.collect()
+        torch.set_default_dtype(torch.float32)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    """
+
+    case Snex.pyeval(env, code, %{}, returning: "True", timeout: @unload_timeout) do
+      {:ok, _} -> :ok
+      error -> error
     end
   end
 end

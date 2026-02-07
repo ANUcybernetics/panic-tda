@@ -8,6 +8,7 @@ defmodule PanicTda.Engine do
   """
 
   alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, ClusteringStage}
+  alias PanicTda.Models.PythonBridge
 
   def perform_experiment(experiment_id) do
     experiment = PanicTda.get_experiment!(experiment_id)
@@ -23,6 +24,7 @@ defmodule PanicTda.Engine do
         :ok = RunExecutor.execute(env, run)
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
+        :ok = PythonBridge.unload_all_models(env)
       end)
 
       :ok = ClusteringStage.compute(env, experiment, experiment.embedding_models)

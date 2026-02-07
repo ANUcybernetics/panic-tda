@@ -26,6 +26,50 @@ For detailed design rationale, see @DESIGN.md.
   across `pyeval` calls; Python code is inline in the Elixir source files
 - the project uses a separate SQLite database
 
+## Running experiments
+
+Experiments are configured via JSON files in `config/` and run with:
+
+```
+mise exec -- mix experiment.run config/my_experiment.json
+```
+
+The task handles database setup and runs the full four-stage pipeline
+(runs → embeddings → TDA → clustering).
+
+### Configuration format
+
+```json
+{
+  "networks": [["SDXLTurbo", "Moondream"]],
+  "seeds": [42],
+  "prompts": ["a red apple"],
+  "embedding_models": ["Nomic"],
+  "max_length": 100
+}
+```
+
+- **networks**: each entry is a list of models that cycle (T2I → I2T → T2I → ...)
+- **seeds**: random seeds for reproducibility; each seed creates one run per network/prompt
+- **prompts**: initial text inputs; each prompt creates one run per network/seed
+- **embedding_models**: models used in the embeddings stage
+- **max_length**: number of model invocations per run
+
+### Available models
+
+| Type | Models |
+|---|---|
+| text-to-image | `SDXLTurbo`, `FluxDev`, `FluxSchnell` |
+| image-to-text | `Moondream`, `BLIP2` |
+| text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip` |
+| image embedding | `NomicVision`, `JinaClipVision` |
+| dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
+
+### Other experiment tasks
+
+- `mise exec -- mix experiment.list` --- list all experiments
+- `mise exec -- mix experiment.status <id-prefix>` --- show experiment details and progress
+
 <!-- usage-rules-start -->
 <!-- usage-rules-header -->
 # Usage rules
