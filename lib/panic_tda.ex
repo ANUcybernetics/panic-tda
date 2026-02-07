@@ -5,6 +5,7 @@ defmodule PanicTda do
     resource PanicTda.Experiment do
       define :create_experiment, action: :create
       define :get_experiment, action: :read, get_by: [:id]
+      define :list_experiments, action: :read
       define :start_experiment, action: :start
       define :complete_experiment, action: :complete
     end
