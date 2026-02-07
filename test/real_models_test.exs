@@ -115,4 +115,85 @@ defmodule PanicTda.RealModelsTest do
       assert pd.diagram_data != nil
     end
   end
+
+  describe "all model combinations smoke test" do
+    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip)
+    @real_image_embedding_models ~w(NomicVision JinaClipVision)
+
+    for t2i <- ~w(SDXLTurbo FluxDev FluxSchnell),
+        i2t <- ~w(Moondream BLIP2) do
+      @tag timeout: 600_000
+      test "pipeline: #{t2i} + #{i2t} with all text embedding models" do
+        t2i = unquote(t2i)
+        i2t = unquote(i2t)
+
+        experiment =
+          PanicTda.create_experiment!(%{
+            networks: [[t2i, i2t]],
+            seeds: [42],
+            prompts: ["a red apple"],
+            embedding_models: @real_text_embedding_models,
+            max_length: 4
+          })
+
+        {:ok, completed} = Engine.perform_experiment(experiment.id)
+
+        assert completed.completed_at != nil
+
+        completed = Ash.load!(completed, runs: [:invocations])
+        run = hd(completed.runs)
+        assert length(run.invocations) == 4
+        assert Enum.at(run.invocations, 0).model == t2i
+        assert Enum.at(run.invocations, 1).model == i2t
+
+        for model <- @real_text_embedding_models do
+          embeddings =
+            PanicTda.list_embeddings!(query: [filter: [embedding_model: model]])
+
+          assert length(embeddings) == 2,
+                 "expected 2 embeddings for #{model}, got #{length(embeddings)}"
+        end
+
+        pds = PanicTda.list_persistence_diagrams!()
+        assert length(pds) == length(@real_text_embedding_models)
+      end
+    end
+
+    for t2i <- ~w(SDXLTurbo FluxDev FluxSchnell),
+        i2t <- ~w(Moondream BLIP2) do
+      @tag timeout: 600_000
+      test "pipeline: #{t2i} + #{i2t} with all image embedding models" do
+        t2i = unquote(t2i)
+        i2t = unquote(i2t)
+
+        experiment =
+          PanicTda.create_experiment!(%{
+            networks: [[t2i, i2t]],
+            seeds: [42],
+            prompts: ["a red apple"],
+            embedding_models: @real_image_embedding_models,
+            max_length: 4
+          })
+
+        {:ok, completed} = Engine.perform_experiment(experiment.id)
+
+        assert completed.completed_at != nil
+
+        completed = Ash.load!(completed, runs: [:invocations])
+        run = hd(completed.runs)
+        assert length(run.invocations) == 4
+
+        for model <- @real_image_embedding_models do
+          embeddings =
+            PanicTda.list_embeddings!(query: [filter: [embedding_model: model]])
+
+          assert length(embeddings) == 2,
+                 "expected 2 embeddings for #{model}, got #{length(embeddings)}"
+        end
+
+        pds = PanicTda.list_persistence_diagrams!()
+        assert length(pds) == length(@real_image_embedding_models)
+      end
+    end
+  end
 end

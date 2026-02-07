@@ -22,6 +22,8 @@ For detailed design rationale, see @DESIGN.md.
   by mise)
 - follow the Ash usage rules below (synced via `usage_rules` hex package)
 - run tests with `mise exec -- mix test`
+- run GPU smoke tests (all real model combinations) with
+  `mise exec -- mix test --include gpu`
 - Python interop is via Snex --- the interpreter maintains persistent state
   across `pyeval` calls; Python code is inline in the Elixir source files
 - the project uses a separate SQLite database
