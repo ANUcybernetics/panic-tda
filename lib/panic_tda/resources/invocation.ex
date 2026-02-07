@@ -21,11 +21,6 @@ defmodule PanicTda.Invocation do
       public?(true)
     end
 
-    attribute :seed, :integer do
-      allow_nil?(false)
-      public?(true)
-    end
-
     attribute :sequence_number, :integer do
       allow_nil?(false)
       default(0)
@@ -80,7 +75,6 @@ defmodule PanicTda.Invocation do
       accept([
         :model,
         :type,
-        :seed,
         :sequence_number,
         :output_text,
         :output_image,

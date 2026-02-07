@@ -50,13 +50,12 @@ defmodule PanicTda.Engine.RunExecutor do
     output_type = GenAI.output_type(model_name)
 
     started_at = DateTime.utc_now()
-    {:ok, output} = GenAI.invoke(env, model_name, input, run.seed)
+    {:ok, output} = GenAI.invoke(env, model_name, input)
     completed_at = DateTime.utc_now()
 
     attrs = %{
       model: model_name,
       type: output_type,
-      seed: run.seed,
       sequence_number: seq,
       started_at: started_at,
       completed_at: completed_at,

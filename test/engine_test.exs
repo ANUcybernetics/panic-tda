@@ -19,24 +19,19 @@ defmodule PanicTda.EngineTest do
       %{env: env}
     end
 
-    test "DummyT2I generates deterministic images", %{env: env} do
-      {:ok, image1} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
-      {:ok, image2} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
+    test "DummyT2I generates images", %{env: env} do
+      {:ok, image} = GenAI.invoke(env, "DummyT2I", "A test prompt")
 
-      assert is_binary(image1)
-      assert is_binary(image2)
-      assert image1 == image2
+      assert is_binary(image)
+      assert byte_size(image) > 0
     end
 
-    test "DummyI2T generates deterministic captions", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "DummyT2I", "A test prompt", 42)
-      {:ok, caption1} = GenAI.invoke(env, "DummyI2T", image, 42)
-      {:ok, caption2} = GenAI.invoke(env, "DummyI2T", image, 42)
+    test "DummyI2T generates captions", %{env: env} do
+      {:ok, image} = GenAI.invoke(env, "DummyT2I", "A test prompt")
+      {:ok, caption} = GenAI.invoke(env, "DummyI2T", image)
 
-      assert is_binary(caption1)
-      assert is_binary(caption2)
-      assert caption1 == caption2
-      assert String.starts_with?(caption1, "dummy caption:")
+      assert is_binary(caption)
+      assert String.starts_with?(caption, "dummy caption:")
     end
 
     test "DummyText generates embeddings", %{env: env} do
@@ -49,7 +44,7 @@ defmodule PanicTda.EngineTest do
     end
 
     test "DummyVision generates embeddings from images", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "DummyT2I", "test", 42)
+      {:ok, image} = GenAI.invoke(env, "DummyT2I", "test")
       {:ok, [emb]} = Embeddings.embed(env, "DummyVision", [image])
 
       assert is_binary(emb)
@@ -61,8 +56,7 @@ defmodule PanicTda.EngineTest do
     test "executes a simple T2I -> I2T trajectory" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["A beautiful sunset"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -99,8 +93,7 @@ defmodule PanicTda.EngineTest do
     test "creates embeddings for text invocations" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -121,8 +114,7 @@ defmodule PanicTda.EngineTest do
     test "creates embeddings for image invocations with DummyVision" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["Test prompt"],
           embedding_models: ["DummyVision"],
           max_length: 4
@@ -143,8 +135,7 @@ defmodule PanicTda.EngineTest do
     test "creates persistence diagrams via giotto-ph" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["Test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -169,8 +160,7 @@ defmodule PanicTda.EngineTest do
     test "handles multiple embedding models" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["Test"],
           embedding_models: ["DummyText", "DummyVision"],
           max_length: 4
@@ -188,11 +178,11 @@ defmodule PanicTda.EngineTest do
       assert length(vision_embeddings) == 2
     end
 
-    test "handles multiple seeds and prompts" do
+    test "handles multiple runs and prompts" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42, 123],
+          network: ["DummyT2I", "DummyI2T"],
+          num_runs: 2,
           prompts: ["Prompt A", "Prompt B"],
           embedding_models: ["DummyText"],
           max_length: 2
@@ -207,8 +197,8 @@ defmodule PanicTda.EngineTest do
     test "creates clustering results across experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42, 123, 456],
+          network: ["DummyT2I", "DummyI2T"],
+          num_runs: 3,
           prompts: ["Alpha", "Beta", "Gamma"],
           embedding_models: ["DummyText"],
           max_length: 6
@@ -238,41 +228,6 @@ defmodule PanicTda.EngineTest do
       Enum.each(embedding_clusters, fn ec ->
         assert ec.clustering_result_id == cr.id
       end)
-    end
-
-    test "deterministic outputs for same seed" do
-      exp1 =
-        PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
-          prompts: ["Test"],
-          embedding_models: ["DummyText"],
-          max_length: 2
-        })
-
-      exp2 =
-        PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
-          prompts: ["Test"],
-          embedding_models: ["DummyText"],
-          max_length: 2
-        })
-
-      {:ok, _} = Engine.perform_experiment(exp1.id)
-      {:ok, _} = Engine.perform_experiment(exp2.id)
-
-      runs1 = Ash.load!(exp1, runs: [:invocations]).runs
-      runs2 = Ash.load!(exp2, runs: [:invocations]).runs
-
-      run1 = hd(runs1)
-      run2 = hd(runs2)
-
-      assert hd(run1.invocations).output_image == hd(run2.invocations).output_image
-
-      text_inv1 = Enum.at(run1.invocations, 1)
-      text_inv2 = Enum.at(run2.invocations, 1)
-      assert text_inv1.output_text == text_inv2.output_text
     end
   end
 end

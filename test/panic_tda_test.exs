@@ -9,22 +9,22 @@ defmodule PanicTdaTest do
   test "creates an experiment with runs" do
     experiment =
       PanicTda.create_experiment!(%{
-        networks: [["DummyT2I", "DummyI2T"]],
-        seeds: [42, 123],
+        network: ["DummyT2I", "DummyI2T"],
+        num_runs: 2,
         prompts: ["A beautiful sunset"],
         embedding_models: ["Nomic"],
         max_length: 10
       })
 
     assert experiment.id != nil
-    assert experiment.networks == [["DummyT2I", "DummyI2T"]]
-    assert experiment.seeds == [42, 123]
+    assert experiment.network == ["DummyT2I", "DummyI2T"]
+    assert experiment.num_runs == 2
     assert experiment.max_length == 10
 
     run =
       PanicTda.create_run!(%{
         network: ["DummyT2I", "DummyI2T"],
-        seed: 42,
+        run_number: 0,
         max_length: 10,
         initial_prompt: "A beautiful sunset",
         experiment_id: experiment.id
@@ -32,14 +32,13 @@ defmodule PanicTdaTest do
 
     assert run.id != nil
     assert run.network == ["DummyT2I", "DummyI2T"]
-    assert run.seed == 42
+    assert run.run_number == 0
   end
 
   test "creates an invocation with embedding" do
     experiment =
       PanicTda.create_experiment!(%{
-        networks: [["DummyT2I"]],
-        seeds: [42],
+        network: ["DummyT2I"],
         prompts: ["Test"],
         embedding_models: ["Nomic"],
         max_length: 5
@@ -48,7 +47,7 @@ defmodule PanicTdaTest do
     run =
       PanicTda.create_run!(%{
         network: ["DummyT2I"],
-        seed: 42,
+        run_number: 0,
         max_length: 5,
         initial_prompt: "Test",
         experiment_id: experiment.id
@@ -60,7 +59,6 @@ defmodule PanicTdaTest do
       PanicTda.create_invocation!(%{
         model: "DummyT2I",
         type: :image,
-        seed: 42,
         sequence_number: 0,
         output_image: <<0, 1, 2, 3>>,
         started_at: now,
@@ -91,8 +89,7 @@ defmodule PanicTdaTest do
   test "creates clustering result with embedding clusters" do
     experiment =
       PanicTda.create_experiment!(%{
-        networks: [["DummyT2I"]],
-        seeds: [42],
+        network: ["DummyT2I"],
         prompts: ["Test"],
         embedding_models: ["Nomic"],
         max_length: 5
@@ -101,7 +98,7 @@ defmodule PanicTdaTest do
     run =
       PanicTda.create_run!(%{
         network: ["DummyT2I"],
-        seed: 42,
+        run_number: 0,
         max_length: 5,
         initial_prompt: "Test",
         experiment_id: experiment.id
@@ -113,7 +110,6 @@ defmodule PanicTdaTest do
       PanicTda.create_invocation!(%{
         model: "DummyT2I",
         type: :text,
-        seed: 42,
         sequence_number: 0,
         output_text: "Result",
         started_at: now,
@@ -156,8 +152,7 @@ defmodule PanicTdaTest do
   test "creates persistence diagram" do
     experiment =
       PanicTda.create_experiment!(%{
-        networks: [["DummyT2I"]],
-        seeds: [42],
+        network: ["DummyT2I"],
         prompts: ["Test"],
         embedding_models: ["Nomic"],
         max_length: 5
@@ -166,7 +161,7 @@ defmodule PanicTdaTest do
     run =
       PanicTda.create_run!(%{
         network: ["DummyT2I"],
-        seed: 42,
+        run_number: 0,
         max_length: 5,
         initial_prompt: "Test",
         experiment_id: experiment.id

@@ -8,8 +8,7 @@ defmodule ResourceValidationTest do
 
   defp create_experiment(overrides \\ %{}) do
     defaults = %{
-      networks: [["DummyT2I", "DummyI2T"]],
-      seeds: [42],
+      network: ["DummyT2I", "DummyI2T"],
       prompts: ["test prompt"],
       embedding_models: ["DummyText"],
       max_length: 4
@@ -21,7 +20,7 @@ defmodule ResourceValidationTest do
   defp create_run(experiment, overrides \\ %{}) do
     defaults = %{
       network: ["DummyT2I", "DummyI2T"],
-      seed: 42,
+      run_number: 0,
       max_length: 4,
       initial_prompt: "test prompt",
       experiment_id: experiment.id
@@ -31,21 +30,9 @@ defmodule ResourceValidationTest do
   end
 
   describe "experiment validations" do
-    test "rejects empty networks array" do
+    test "rejects empty network array" do
       assert_raise Ash.Error.Invalid, fn ->
-        create_experiment(%{networks: []})
-      end
-    end
-
-    test "rejects empty sub-arrays in networks" do
-      assert_raise Ash.Error.Invalid, fn ->
-        create_experiment(%{networks: [[]]})
-      end
-    end
-
-    test "rejects empty seeds array" do
-      assert_raise Ash.Error.Invalid, fn ->
-        create_experiment(%{seeds: []})
+        create_experiment(%{network: []})
       end
     end
 
@@ -77,6 +64,28 @@ defmodule ResourceValidationTest do
       experiment = create_experiment(%{max_length: 1})
       assert experiment.max_length == 1
     end
+
+    test "rejects num_runs of 0" do
+      assert_raise Ash.Error.Invalid, fn ->
+        create_experiment(%{num_runs: 0})
+      end
+    end
+
+    test "rejects negative num_runs" do
+      assert_raise Ash.Error.Invalid, fn ->
+        create_experiment(%{num_runs: -1})
+      end
+    end
+
+    test "accepts num_runs of 1" do
+      experiment = create_experiment(%{num_runs: 1})
+      assert experiment.num_runs == 1
+    end
+
+    test "defaults num_runs to 1" do
+      experiment = create_experiment()
+      assert experiment.num_runs == 1
+    end
   end
 
   describe "run validations" do
@@ -96,24 +105,18 @@ defmodule ResourceValidationTest do
       end
     end
 
-    test "rejects seed less than -1" do
+    test "rejects negative run_number" do
       experiment = create_experiment()
 
       assert_raise Ash.Error.Invalid, fn ->
-        create_run(experiment, %{seed: -2})
+        create_run(experiment, %{run_number: -1})
       end
     end
 
-    test "accepts seed of -1" do
-      experiment = create_experiment(%{seeds: [-1]})
-      run = create_run(experiment, %{seed: -1})
-      assert run.seed == -1
-    end
-
-    test "accepts seed of 0" do
-      experiment = create_experiment(%{seeds: [0]})
-      run = create_run(experiment, %{seed: 0})
-      assert run.seed == 0
+    test "accepts run_number of 0" do
+      experiment = create_experiment()
+      run = create_run(experiment, %{run_number: 0})
+      assert run.run_number == 0
     end
 
     test "rejects duplicate run within experiment" do
@@ -136,7 +139,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: -1,
           output_image: <<0, 1, 2, 3>>,
           started_at: now,
@@ -154,7 +156,6 @@ defmodule ResourceValidationTest do
       PanicTda.create_invocation!(%{
         model: "DummyT2I",
         type: :image,
-        seed: 42,
         sequence_number: 0,
         output_image: <<0, 1, 2, 3>>,
         started_at: now,
@@ -166,7 +167,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: 0,
           output_image: <<4, 5, 6, 7>>,
           started_at: now,
@@ -185,7 +185,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyI2T",
           type: :text,
-          seed: 42,
           sequence_number: 0,
           output_text: "hello",
           output_image: <<0, 1, 2, 3>>,
@@ -205,7 +204,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: 0,
           output_text: "hello",
           output_image: <<0, 1, 2, 3>>,
@@ -228,7 +226,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: 0,
           output_image: <<0, 1, 2, 3>>,
           started_at: started,
@@ -247,7 +244,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: 0,
           output_image: <<0, 1, 2, 3>>,
           started_at: now,
@@ -268,7 +264,6 @@ defmodule ResourceValidationTest do
         PanicTda.create_invocation!(%{
           model: "DummyT2I",
           type: :image,
-          seed: 42,
           sequence_number: 0,
           output_image: <<0, 1, 2, 3>>,
           started_at: now,

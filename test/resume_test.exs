@@ -14,8 +14,7 @@ defmodule PanicTda.ResumeTest do
 
   defp create_started_experiment(overrides \\ %{}) do
     defaults = %{
-      networks: [["DummyT2I", "DummyI2T"]],
-      seeds: [42],
+      network: ["DummyT2I", "DummyI2T"],
       prompts: ["test prompt"],
       embedding_models: ["DummyText"],
       max_length: 4
@@ -40,8 +39,7 @@ defmodule PanicTda.ResumeTest do
     test "rejects experiment that has not been started" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["test"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -53,8 +51,7 @@ defmodule PanicTda.ResumeTest do
     test "rejects completed experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["test"],
           embedding_models: ["DummyText"],
           max_length: 4
@@ -127,8 +124,8 @@ defmodule PanicTda.ResumeTest do
     end
 
     test "creates missing runs" do
-      experiment = create_started_experiment(%{seeds: [42, 123]})
-      [_run1] = Engine.init_runs(%{experiment | seeds: [42]})
+      experiment = create_started_experiment(%{num_runs: 2})
+      [_run1] = Engine.init_runs(%{experiment | num_runs: 1})
 
       found_runs = Engine.find_or_create_runs(experiment)
       assert length(found_runs) == 2
@@ -179,8 +176,7 @@ defmodule PanicTda.ResumeTest do
     test "resumes a partially completed experiment" do
       experiment =
         PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          seeds: [42],
+          network: ["DummyT2I", "DummyI2T"],
           prompts: ["test prompt"],
           embedding_models: ["DummyText"],
           max_length: 4

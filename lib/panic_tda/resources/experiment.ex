@@ -11,16 +11,16 @@ defmodule PanicTda.Experiment do
   attributes do
     uuid_v7_primary_key(:id)
 
-    attribute :networks, {:array, {:array, :string}} do
+    attribute :network, {:array, :string} do
       allow_nil?(false)
       public?(true)
       constraints(min_length: 1)
     end
 
-    attribute :seeds, {:array, :integer} do
+    attribute :num_runs, :integer do
       allow_nil?(false)
       public?(true)
-      constraints(min_length: 1)
+      default(1)
     end
 
     attribute :prompts, {:array, :string} do
@@ -66,11 +66,11 @@ defmodule PanicTda.Experiment do
     defaults([:read, :destroy])
 
     create :create do
-      accept([:networks, :seeds, :prompts, :embedding_models, :max_length])
+      accept([:network, :num_runs, :prompts, :embedding_models, :max_length])
     end
 
     update :update do
-      accept([:networks, :seeds, :prompts, :embedding_models, :max_length])
+      accept([:network, :num_runs, :prompts, :embedding_models, :max_length])
       require_atomic?(false)
     end
 
@@ -91,11 +91,12 @@ defmodule PanicTda.Experiment do
       on([:create, :update])
     end
 
-    validate {PanicTda.Validations.NonEmptyList, attribute: :networks} do
-      on([:create])
+    validate compare(:num_runs, greater_than: 0) do
+      message("must be greater than 0")
+      on([:create, :update])
     end
 
-    validate {PanicTda.Validations.NonEmptyList, attribute: :seeds} do
+    validate {PanicTda.Validations.NonEmptyList, attribute: :network} do
       on([:create])
     end
 
@@ -104,10 +105,6 @@ defmodule PanicTda.Experiment do
     end
 
     validate {PanicTda.Validations.NonEmptyList, attribute: :embedding_models} do
-      on([:create])
-    end
-
-    validate {PanicTda.Validations.NonEmptySubArrays, attribute: :networks} do
       on([:create])
     end
 

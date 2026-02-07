@@ -26,8 +26,8 @@ defmodule Mix.Tasks.Experiment.Status do
     Status:     #{status(experiment)}
 
     Config:
-      Networks:         #{inspect(experiment.networks)}
-      Seeds:            #{inspect(experiment.seeds, charlists: :as_lists)}
+      Network:          #{inspect(experiment.network)}
+      Num runs:         #{experiment.num_runs}
       Prompts:          #{inspect(experiment.prompts)}
       Embedding models: #{inspect(experiment.embedding_models)}
       Max length:       #{experiment.max_length}

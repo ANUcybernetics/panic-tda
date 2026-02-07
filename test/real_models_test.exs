@@ -24,7 +24,7 @@ defmodule PanicTda.RealModelsTest do
 
   describe "real GenAI models" do
     test "SDXLTurbo generates valid WEBP image", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A cat sitting on a mat", 42)
+      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A cat sitting on a mat")
 
       assert is_binary(image)
       assert byte_size(image) > 100
@@ -32,8 +32,8 @@ defmodule PanicTda.RealModelsTest do
     end
 
     test "Moondream generates text caption from image", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A red apple on a table", 42)
-      {:ok, caption} = GenAI.invoke(env, "Moondream", image, 42)
+      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A red apple on a table")
+      {:ok, caption} = GenAI.invoke(env, "Moondream", image)
 
       assert is_binary(caption)
       assert String.length(caption) > 0
@@ -51,7 +51,7 @@ defmodule PanicTda.RealModelsTest do
     end
 
     test "NomicVision generates 768-dim float32 image embeddings", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A blue sky", 42)
+      {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A blue sky")
       {:ok, [emb]} = Embeddings.embed(env, "NomicVision", [image])
 
       assert is_binary(emb)
@@ -64,8 +64,7 @@ defmodule PanicTda.RealModelsTest do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
-          networks: [["SDXLTurbo", "Moondream"]],
-          seeds: [42],
+          network: ["SDXLTurbo", "Moondream"],
           prompts: ["A peaceful garden"],
           embedding_models: ["STSBMpnet"],
           max_length: 4
@@ -129,8 +128,7 @@ defmodule PanicTda.RealModelsTest do
 
         experiment =
           PanicTda.create_experiment!(%{
-            networks: [[t2i, i2t]],
-            seeds: [42],
+            network: [t2i, i2t],
             prompts: ["a red apple"],
             embedding_models: @real_text_embedding_models,
             max_length: 4
@@ -168,8 +166,7 @@ defmodule PanicTda.RealModelsTest do
 
         experiment =
           PanicTda.create_experiment!(%{
-            networks: [[t2i, i2t]],
-            seeds: [42],
+            network: [t2i, i2t],
             prompts: ["a red apple"],
             embedding_models: @real_image_embedding_models,
             max_length: 4

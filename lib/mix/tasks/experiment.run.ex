@@ -8,11 +8,14 @@ defmodule Mix.Tasks.Experiment.Run do
 
   The JSON config must contain the following keys:
 
-    - `networks` - list of model network lists (e.g. `[["DummyT2I", "DummyI2T"]]`)
-    - `seeds` - list of integer seeds
+    - `network` - list of model names forming the cycle (e.g. `["DummyT2I", "DummyI2T"]`)
     - `prompts` - list of initial prompt strings
     - `embedding_models` - list of embedding model names
     - `max_length` - integer trajectory length (must be > 0)
+
+  Optional keys:
+
+    - `num_runs` - number of runs per prompt (default: 1)
 
   The task ensures the database is created and migrated before running.
   """
@@ -45,20 +48,31 @@ defmodule Mix.Tasks.Experiment.Run do
     Mix.Task.run("ecto.migrate", ["--quiet"])
   end
 
-  @key_mapping %{
-    "networks" => :networks,
-    "seeds" => :seeds,
+  @required_keys %{
+    "network" => :network,
     "prompts" => :prompts,
     "embedding_models" => :embedding_models,
     "max_length" => :max_length
   }
 
+  @optional_keys %{
+    "num_runs" => {:num_runs, 1}
+  }
+
   defp read_config(path) do
     json = path |> File.read!() |> Jason.decode!()
 
-    Map.new(@key_mapping, fn {str_key, atom_key} ->
-      {atom_key, Map.fetch!(json, str_key)}
-    end)
+    required =
+      Map.new(@required_keys, fn {str_key, atom_key} ->
+        {atom_key, Map.fetch!(json, str_key)}
+      end)
+
+    optional =
+      Map.new(@optional_keys, fn {str_key, {atom_key, default}} ->
+        {atom_key, Map.get(json, str_key, default)}
+      end)
+
+    Map.merge(required, optional)
   end
 
   defp print_summary(experiment) do

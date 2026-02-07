@@ -17,7 +17,7 @@ defmodule PanicTda.Run do
       constraints(min_length: 1)
     end
 
-    attribute :seed, :integer do
+    attribute :run_number, :integer do
       allow_nil?(false)
       public?(true)
     end
@@ -54,18 +54,18 @@ defmodule PanicTda.Run do
   end
 
   identities do
-    identity(:unique_experiment_run, [:experiment_id, :seed, :initial_prompt])
+    identity(:unique_experiment_run, [:experiment_id, :initial_prompt, :run_number])
   end
 
   actions do
     defaults([:read, :destroy])
 
     create :create do
-      accept([:network, :seed, :max_length, :initial_prompt, :experiment_id])
+      accept([:network, :run_number, :max_length, :initial_prompt, :experiment_id])
     end
 
     update :update do
-      accept([:network, :seed, :max_length, :initial_prompt])
+      accept([:network, :run_number, :max_length, :initial_prompt])
     end
   end
 
@@ -78,6 +78,6 @@ defmodule PanicTda.Run do
       message("must be greater than 0")
     end
 
-    validate compare(:seed, greater_than_or_equal_to: -1)
+    validate compare(:run_number, greater_than_or_equal_to: 0)
   end
 end

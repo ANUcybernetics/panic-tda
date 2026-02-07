@@ -78,12 +78,11 @@ defmodule PanicTda.Engine do
   end
 
   def init_runs(experiment) do
-    for network <- experiment.networks,
-        seed <- experiment.seeds,
-        prompt <- experiment.prompts do
+    for prompt <- experiment.prompts,
+        run_number <- 0..(experiment.num_runs - 1) do
       PanicTda.create_run!(%{
-        network: network,
-        seed: seed,
+        network: experiment.network,
+        run_number: run_number,
         max_length: experiment.max_length,
         initial_prompt: prompt,
         experiment_id: experiment.id
@@ -99,17 +98,16 @@ defmodule PanicTda.Engine do
 
     existing_keys =
       MapSet.new(existing_runs, fn run ->
-        {run.seed, run.initial_prompt}
+        {run.initial_prompt, run.run_number}
       end)
 
     new_runs =
-      for network <- experiment.networks,
-          seed <- experiment.seeds,
-          prompt <- experiment.prompts,
-          not MapSet.member?(existing_keys, {seed, prompt}) do
+      for prompt <- experiment.prompts,
+          run_number <- 0..(experiment.num_runs - 1),
+          not MapSet.member?(existing_keys, {prompt, run_number}) do
         PanicTda.create_run!(%{
-          network: network,
-          seed: seed,
+          network: experiment.network,
+          run_number: run_number,
           max_length: experiment.max_length,
           initial_prompt: prompt,
           experiment_id: experiment.id
