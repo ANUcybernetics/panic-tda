@@ -138,7 +138,8 @@ defmodule PanicTdaTest do
         algorithm: "hdbscan",
         parameters: %{min_cluster_size: 5},
         started_at: now,
-        completed_at: now
+        completed_at: now,
+        experiment_id: experiment.id
       })
 
     cluster_assignment =
