@@ -115,13 +115,12 @@ defmodule PanicTda.Models.PythonBridge do
   """
 
   @model_loaders %{
-    "SDXLTurbo" => """
-    from diffusers import AutoPipelineForText2Image
-    _models["SDXLTurbo"] = AutoPipelineForText2Image.from_pretrained(
-        "stabilityai/sdxl-turbo",
-        torch_dtype=torch.float16,
-        variant="fp16",
-        use_fast=True,
+    "SD35Medium" => """
+    from diffusers import StableDiffusion3Pipeline
+    _models["SD35Medium"] = StableDiffusion3Pipeline.from_pretrained(
+        "stabilityai/stable-diffusion-3.5-medium",
+        text_encoder_3=None, tokenizer_3=None,
+        torch_dtype=torch.bfloat16, use_fast=True,
     ).to("cuda")
     """,
     "FluxDev" => """
@@ -136,29 +135,50 @@ defmodule PanicTda.Models.PythonBridge do
         "black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16, use_fast=True
     ).to("cuda")
     """,
+    "ZImageTurbo" => """
+    from diffusers import ZImagePipeline
+    _models["ZImageTurbo"] = ZImagePipeline.from_pretrained(
+        "Tongyi-MAI/Z-Image-Turbo", torch_dtype=torch.bfloat16
+    ).to("cuda")
+    """,
+    "Flux2Klein" => """
+    from diffusers import Flux2KleinPipeline
+    _pipe = Flux2KleinPipeline.from_pretrained(
+        "black-forest-labs/FLUX.2-klein-4B", torch_dtype=torch.bfloat16,
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["Flux2Klein"] = _pipe
+    """,
     "Moondream" => """
     from transformers import AutoModelForCausalLM
     _models["Moondream"] = AutoModelForCausalLM.from_pretrained(
-        "vikhyatk/moondream2", revision="2025-01-09", trust_remote_code=True
+        "vikhyatk/moondream2", revision="2025-06-21", trust_remote_code=True
     ).to("cuda")
     """,
-    "BLIP2" => """
-    from transformers import Blip2Processor, Blip2ForConditionalGeneration
-    torch.set_default_dtype(torch.float16)
-    _blip2_processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
-    _blip2_model = Blip2ForConditionalGeneration.from_pretrained(
-        "Salesforce/blip2-opt-2.7b", torch_dtype=torch.float16, device_map="auto"
+    "InstructBLIP" => """
+    from transformers import InstructBlipProcessor, InstructBlipForConditionalGeneration
+    _iblip_processor = InstructBlipProcessor.from_pretrained("Salesforce/instructblip-flan-t5-xl")
+    _iblip_model = InstructBlipForConditionalGeneration.from_pretrained(
+        "Salesforce/instructblip-flan-t5-xl", torch_dtype=torch.float16
+    ).to("cuda")
+    _models["InstructBLIP"] = {"processor": _iblip_processor, "model": _iblip_model}
+    """,
+    "Qwen25VL" => """
+    from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+    _qwen_vl_model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+        "Qwen/Qwen2.5-VL-7B-Instruct", torch_dtype=torch.bfloat16,
+        attn_implementation="sdpa", device_map="auto",
     )
-    torch.set_default_dtype(torch.float32)
-    def _ensure_half(module):
-        for param in module.parameters():
-            param.data = param.data.to(torch.float16)
-        for buf in module.buffers():
-            buf.data = buf.data.to(torch.float16)
-    _blip2_model.apply(_ensure_half)
-    if not hasattr(_blip2_processor, "num_query_tokens"):
-        _blip2_processor.num_query_tokens = _blip2_model.config.num_query_tokens
-    _models["BLIP2"] = {"processor": _blip2_processor, "model": _blip2_model}
+    _qwen_vl_processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
+    _models["Qwen25VL"] = {"processor": _qwen_vl_processor, "model": _qwen_vl_model}
+    """,
+    "Gemma3n" => """
+    from transformers import Gemma3nForConditionalGeneration, AutoProcessor
+    _gemma3n_model = Gemma3nForConditionalGeneration.from_pretrained(
+        "google/gemma-3n-E2B-it", torch_dtype=torch.bfloat16,
+    ).to("cuda").eval()
+    _gemma3n_processor = AutoProcessor.from_pretrained("google/gemma-3n-E2B-it")
+    _models["Gemma3n"] = {"processor": _gemma3n_processor, "model": _gemma3n_model}
     """,
     "STSBMpnet" => """
     _load_sentence_transformer("STSBMpnet", "sentence-transformers/stsb-mpnet-base-v2")
@@ -176,6 +196,13 @@ defmodule PanicTda.Models.PythonBridge do
     from transformers import AutoModel
     _m = AutoModel.from_pretrained("jinaai/jina-clip-v2", trust_remote_code=True).to("cuda").eval()
     _models["JinaClip"] = _m
+    """,
+    "Qwen3Embed" => """
+    _load_sentence_transformer(
+        "Qwen3Embed", "Qwen/Qwen3-Embedding-4B",
+        model_kwargs={"attn_implementation": "sdpa"},
+        tokenizer_kwargs={"padding_side": "left"},
+    )
     """,
     "NomicVision" => """
     from transformers import AutoImageProcessor, AutoModel
