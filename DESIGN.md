@@ -1,5 +1,5 @@
 ---
-title: PANICxTDA SoftwareDesign Document
+title: PANICxTDA Software Design Document
 author: Ben Swift
 ---
 
@@ -33,7 +33,7 @@ by these genAI models.
 
 ## This panic-tda repository
 
-Motivated by this (and our own curiosity) we set out in this `panic-tda`repo to
+Motivated by this (and our own curiosity) we set out in this `panic-tda` repo to
 create a tool for exploring the patterns in these information trajectories in a
 more systematic way.
 
@@ -45,118 +45,113 @@ this tool are:
 - self-hosted: the PANIC! installation's use of cloud-hosted models is a
   trade-off; it makes it trivial to continue to keep the installation up-to-date
   with the latest text/image/audio genAI models, but with a cost-per-request
-  ovehead that becomes provibitive when trying to run batch-mode simulation
+  overhead that becomes prohibitive when trying to run batch-mode simulation
   experiments at scale
 
 - open models: while the adjective "open" is
   [contentious](https://www.nature.com/articles/s41586-024-08141-1), because of
-  the need to self-host `panic-tda` is set up to use open-weight models, (e.g.
+  the need to self-host `panic-tda` is set up to use open-weight models (e.g.
   those from [HuggingFace](https://huggingface.co/models))
 
 - runs on commodity(ish) hardware: as academic researchers we have limited
   resources, and so the tool is designed to work well with genAI models that
   will run on a single high-end gaming GPU (at least, this has influenced the
-  initial selection of models implemented in the `genai_models` module; there's
-  nothing stoppoing more resource-intensive models being added in future)
+  initial selection of models in the `GenAI` module; there's nothing stopping
+  more resource-intensive models being added in future)
 
 - reproducible research: if you're interested in the same questions about the
   way that information flows through these nonlinear, multi-billion parameter
-  information processing systems, then do [get in touch](ben.swift@anu.edu.au) -
-  but this tool has been designed such that anyone with access to a decent
-  gaming rig can reproduce our results (including the analysis and datavis
-  parts---also in this repo)
+  information processing systems, then do [get in touch](ben.swift@anu.edu.au)
+  --- but this tool has been designed such that anyone with access to a decent
+  gaming rig can reproduce our results
 
 ## Domain data model
 
 First, some nomenclature (since many of these terms are overloaded). In the
 `panic-tda` tool we use these terms:
 
-- **genai model**: a particular AI model (e.g. _Stable Diffusion_, _GPT4o_)
-  which takes text/image/audio input and produces text/image/audio output
-  (implementations are in `src/panic_tda/genai_models.py`)
-- **network**: a specific network (i.e. cyclic graph) of genai models, designed
-  so that the output of one is fed as input to the next
+- **genAI model**: a particular AI model (e.g. _Stable Diffusion_, _Moondream_)
+  which takes text or image input and produces text or image output
+  (implementations are in `lib/panic_tda/models/genai.ex`)
+- **network**: a list of genAI models that cycle --- the output of one is fed as
+  input to the next, wrapping around when the list is exhausted (e.g.
+  `["SDXLTurbo", "Moondream"]` alternates between text-to-image and
+  image-to-text)
 - **invocation**: a specific "inference" event for a single model; includes both
-  the input (prompt) an the output (prediction) along with some other metadata
-- **run**: a specific sequence of predictions starting from an initial prompt
-  and following the models in a network
+  the input and the output along with timestamps and sequence metadata
+- **run**: a specific sequence of invocations starting from an initial prompt
+  and following the models in a network for `max_length` steps
 - **embedding model**: an
   [embedding model](https://huggingface.co/blog/getting-started-with-embeddings)
-  (e.g. _RoBERTa_, _Nomic_) which takes text input and returns a vector in a
-  high (e.g. 768)-dimensional space such that text inputs that are "semantically
-  similar" are close together in this space (implementations are in
-  `src/panic_tda/embeddings.py`)
-- **experiment**: a specification for a sequence of runs, with different
-  prompts, networks, embedding models and random seeds (this abstraction is
-  primarily used for organizing and managing experiments, e.g. batch job
-  submission)
+  (e.g. _RoBERTa_, _Nomic_) which takes text or image input and returns a
+  vector in a high (e.g. 768)-dimensional space such that inputs that are
+  "semantically similar" are close together in this space (implementations are
+  in `lib/panic_tda/models/embeddings.ex`)
+- **experiment**: a specification for a batch of runs with a given network,
+  set of prompts, embedding models and number of runs per prompt
 
-This repo uses [Pydantic](https://pydantic.dev) for data modelling and
-validation and the related [sqlmodel](https://sqlmodel.tiangolo.com) for
-persisting data to a sqlite database. Have a look at the `schema` module for the
-details.
-
-For info on how to specify and perform an experiment, see the **Use** section of
-the [README](./README.md#use).
+The data model is implemented using
+[Ash](https://hexdocs.pm/ash/get-started.html) resources backed by SQLite (via
+[AshSqlite](https://hexdocs.pm/ash_sqlite/)). The resources live in
+`lib/panic_tda/resources/` and include custom types for vectors, images and
+persistence diagram data. See the **Use** section of the
+[README](./README.md#use) for how to specify and perform an experiment.
 
 ## Compute workflow
 
-The code for performing the experiments is done by the `src/panic_tda/engine.py`
-module. The `perform_experiment` function is the main workhorse.
+The code for performing experiments is in the `lib/panic_tda/engine/` modules.
+The `Engine.perform_experiment/1` function is the main workhorse.
 
-For a given experiment config, the tool will first enumerate (cartesian product)
-all the combinations of networks, prompts and random seeds. Each element of this
-enumeration represents a run, which will be performed until the experiment
-config's `max_length` is reached, and a `Run` object is created with the
-appropriate attributes.
+For a given experiment config, the engine first creates all runs --- one for each
+combination of prompt and run number (from `0` to `num_runs - 1`). Each run
+shares the experiment's network and `max_length`.
 
-After this, the computation has three distinct stages:
+The computation then proceeds through four stages:
 
-- in the **runs** stage (`perform_runs_stage`) each run is iterated upon for the
-  specified network from the initial prompt, producing (eventually) a sequence
-  of invocations. The compute graph here is linear (because each invocation
-  depends on the previous one for it's input), but each run is independent of
-  the others, so multiple runs can happen in parallel.
+- In the **runs stage** (`RunExecutor.execute_batch/2`) all runs advance through
+  the network in lockstep. At each sequence step, the current model is invoked
+  with a batch of inputs (one per run) in a single GPU call, and the outputs are
+  recorded as `Invocation` records. This is significantly more efficient than
+  running each run independently, since the model only needs to be loaded once
+  per step rather than once per run.
 
-- In the **embeddings** stage (`perform_embeddings_stage`) each invocation is
-  embedded using the specified embedding model, producing a sequence of
-  embeddings. The compute graph here is linear (because each embedding depends
-  on the previous one for it's input), but each embedding is independent of the
-  others, so multiple embeddings can happen in parallel.
+- In the **embeddings stage** (`EmbeddingsStage.compute/3`) each run's text
+  invocations are embedded using all of the text embedding models specified in
+  the experiment config, and image invocations are embedded using image embedding
+  models. Each embedding is stored as a float32 binary vector.
 
-- In the **embeddings** stage (`perform_embeddings_stage`) each invocation is
-  embedded using all of the embedding models specified in the experiment config.
-  These computations are completely independent---this stage is embarrasingly
-  parallel.
+- In the **persistence diagram stage** (`PdStage.compute/3`) each run's sequence
+  of embeddings (under a particular embedding model) is processed by the
+  [giotto-ph](https://giotto-ai.github.io/giotto-ph/) library to compute a
+  [persistence diagram](https://en.wikipedia.org/wiki/Persistent_homology).
+  There is one persistence diagram per run per embedding model.
 
-- In the **persistence diagram** stage (`perform_pd_stage`) each "run of
-  embeddings" is processed by the
-  [giotto](https://giotto-ai.github.io/giotto-ph/) library to create a
-  [persistent homology](https://en.wikipedia.org/wiki/Persistent_homology) for
-  that whole run (well, for the whole run under a particular embedding
-  model---each run can be embedded with multiple embedding models and will have
-  one persistence diagram for each one). This stage is also embarrassingly
-  parallel, although at a smaller scale than the embeddings stage (because
-  there's one computation per run, not one per invocation).
+- In the **clustering stage** (`ClusteringStage.compute/3`) all persistence
+  diagrams for a given embedding model are clustered using
+  [HDBSCAN](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.HDBSCAN.html)
+  to identify groups of runs with similar topological structure. Medoid
+  indices are computed for each cluster.
 
-For parallelizing the experiments, `panic-tda` uses
-[ray](https://docs.ray.io/en/latest/). As discused above, the first stage has
-some linear dependencies (the implementation handles this using ray's
-[dynamic generators](https://docs.ray.io/en/latest/ray-core/tasks/generators.html),
-one per run).
+All stages support resuming --- if an experiment is interrupted, each stage can
+detect which work has already been completed and pick up where it left off via
+`Engine.resume_experiment/1`.
 
-The embedding stage uses an
-[actor pool](https://docs.ray.io/en/latest/ray-core/api/doc/ray.util.ActorPool.html)
-to better use the available compute resources. The persistence diagram stage
-does not use a GPU, and just uses ray tasks for parallel execution (with careful
-management of the ray decorator's `num_gpus` parameter and the giotto library's
-`n_threads` parameter to balance time/memory usage).
+### Python interop
 
-One other note: each stage (and each ray actor) does need access to the sqlite
-database (on the local filesystem) because of the way that ray serialises the
-task arguments and return values. While in practice this has not proved to be a
-bottleneck (and we use sqlite in WAL-mode for efficiency) this is worth keeping
-in mind.
+GPU model invocation, embedding computation, TDA and clustering all happen in
+Python. The Elixir side manages orchestration, data persistence and the
+experiment lifecycle, while Python handles the numerical heavy lifting.
+
+Python interop is via [Snex](https://hexdocs.pm/snex/), which maintains a
+persistent Python interpreter with shared state across calls. This means models
+are loaded once into GPU memory and reused across invocations, and the Python
+environment (imports, variables, loaded models) persists for the lifetime of an
+experiment. The Python code is written inline in the Elixir source files ---
+there are no separate `.py` files to maintain.
+
+Model loading is lazy: the `PythonBridge` module ensures each model is loaded at
+most once per experiment, and `PythonBridge.unload_all_models/1` frees GPU
+memory between stages.
 
 ### Current hardware setup
 
@@ -166,25 +161,6 @@ specs:
 - AMD Threadripper 24C/48T
 - 128 GB RAM
 - RTX 6000 ADA 48GB GPU
-
-The ray resource parameters (grep through the codebase for `num_gpus` and
-`num_cpus`) are tuned for these specs; if you're running it on your own hardware
-you should investigate what works best for you.
-
-In the future we plan to investigate how to scale this up to larger distributed
-computing contexts. The ideal configuration for the runs and embeddigs stages
-would be relatively "thin" nodes with multiple GPUs attached and actor pools to
-manage the genAI and embedding model actors to maximise hardware utilisation.
-The persistence diagram stage is slightly different, and could benefit from
-"fat" nodes with beefier CPU and RAM resources (especially as the `max_length`
-parameter gets up past 10k)
-
-Since this project is fundamentally about looking at statistical patterns in the
-genAI & embedding outputs, this tool does not need the high-bandwidth
-interconnets typically associated with HPC. The easiest way to take advantage of
-a distributed computing context is to run many experiments in parallel, and
-combine the data from the multiple generated sqlite databases offline
-afterwards.
 
 ## How does the TDA fit in?
 
