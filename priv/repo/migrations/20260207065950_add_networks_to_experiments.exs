@@ -1,4 +1,4 @@
-defmodule PanicTda.Repo.Migrations.InitialSetup do
+defmodule PanicTda.Repo.Migrations.AddNetworksToExperiments do
   @moduledoc """
   Updates resources based on their most recent snapshots.
 
