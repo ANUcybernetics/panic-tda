@@ -3,22 +3,49 @@ defmodule PanicTda.Engine.EmbeddingsStage do
   Computes embeddings for all invocations in a run.
   """
 
+  require Ash.Query
+
   alias PanicTda.Models.Embeddings
 
   def compute(env, run, embedding_models) do
-    invocations =
-      run
-      |> Ash.load!(:invocations)
-      |> Map.get(:invocations, [])
+    invocations = load_invocations(run)
 
     Enum.each(embedding_models, fn embedding_model ->
-      :ok = compute_for_model(env, invocations, embedding_model)
+      :ok = compute_for_invocations(env, invocations, embedding_model)
     end)
 
     :ok
   end
 
-  defp compute_for_model(env, invocations, embedding_model) do
+  def resume(env, run, embedding_models) do
+    invocations = load_invocations(run)
+
+    Enum.each(embedding_models, fn embedding_model ->
+      embedded_invocation_ids =
+        PanicTda.Embedding
+        |> Ash.Query.filter(
+          invocation.run_id == ^run.id and embedding_model == ^embedding_model
+        )
+        |> Ash.Query.load(:invocation)
+        |> Ash.read!()
+        |> MapSet.new(& &1.invocation.id)
+
+      missing = Enum.reject(invocations, &MapSet.member?(embedded_invocation_ids, &1.id))
+      :ok = compute_for_invocations(env, missing, embedding_model)
+    end)
+
+    :ok
+  end
+
+  defp load_invocations(run) do
+    run
+    |> Ash.load!(:invocations)
+    |> Map.get(:invocations, [])
+  end
+
+  def compute_for_invocations(_env, [], _embedding_model), do: :ok
+
+  def compute_for_invocations(env, invocations, embedding_model) do
     model_type = Embeddings.model_type(embedding_model)
 
     relevant_invocations =

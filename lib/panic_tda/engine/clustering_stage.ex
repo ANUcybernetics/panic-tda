@@ -15,6 +15,30 @@ defmodule PanicTda.Engine.ClusteringStage do
     :ok
   end
 
+  def resume(env, experiment, embedding_models) do
+    Enum.each(embedding_models, fn embedding_model ->
+      delete_existing_clustering(experiment, embedding_model)
+      :ok = compute_for_model(env, experiment, embedding_model)
+    end)
+
+    :ok
+  end
+
+  defp delete_existing_clustering(experiment, embedding_model) do
+    existing =
+      PanicTda.ClusteringResult
+      |> Ash.Query.filter(
+        experiment_id == ^experiment.id and embedding_model == ^embedding_model
+      )
+      |> Ash.Query.load(:embedding_clusters)
+      |> Ash.read!()
+
+    Enum.each(existing, fn cr ->
+      Enum.each(cr.embedding_clusters, &PanicTda.destroy_embedding_cluster!(&1))
+      PanicTda.destroy_clustering_result!(cr)
+    end)
+  end
+
   defp compute_for_model(env, experiment, embedding_model) do
     embeddings =
       PanicTda.Embedding
@@ -49,7 +73,8 @@ defmodule PanicTda.Engine.ClusteringStage do
             "dimension" => dimension
           },
           started_at: started_at,
-          completed_at: completed_at
+          completed_at: completed_at,
+          experiment_id: experiment.id
         })
 
       medoid_embedding_ids =

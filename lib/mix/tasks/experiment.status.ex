@@ -72,9 +72,7 @@ defmodule Mix.Tasks.Experiment.Status do
         |> Ash.count!(),
       clustering_results:
         PanicTda.ClusteringResult
-        |> Ash.Query.filter(
-          embedding_clusters.embedding.invocation.run.experiment_id == ^experiment.id
-        )
+        |> Ash.Query.filter(experiment_id == ^experiment.id)
         |> Ash.count!()
     }
   end

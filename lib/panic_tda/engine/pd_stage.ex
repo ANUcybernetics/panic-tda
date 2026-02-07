@@ -14,6 +14,22 @@ defmodule PanicTda.Engine.PdStage do
     :ok
   end
 
+  def resume(env, run, embedding_models) do
+    Enum.each(embedding_models, fn embedding_model ->
+      has_pd =
+        PanicTda.PersistenceDiagram
+        |> Ash.Query.filter(run_id == ^run.id and embedding_model == ^embedding_model)
+        |> Ash.count!()
+        |> Kernel.>(0)
+
+      unless has_pd do
+        :ok = compute_for_model(env, run, embedding_model)
+      end
+    end)
+
+    :ok
+  end
+
   defp compute_for_model(env, run, embedding_model) do
     embeddings =
       PanicTda.Embedding
