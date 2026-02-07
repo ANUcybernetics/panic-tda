@@ -2,7 +2,7 @@ defmodule PanicTda.Engine do
   @moduledoc """
   Main engine for running PANIC-TDA experiments.
   Orchestrates the four-stage pipeline:
-  1. Runs stage - execute model networks
+  1. Runs stage - batch execute model networks
   2. Embeddings stage - compute embeddings for outputs
   3. Persistence diagrams stage - TDA computation
   4. Clustering stage - cluster persistence diagrams
@@ -23,13 +23,14 @@ defmodule PanicTda.Engine do
     try do
       runs = init_runs(experiment)
 
+      :ok = RunExecutor.execute_batch(env, runs)
+
       Enum.each(runs, fn run ->
-        :ok = RunExecutor.execute(env, run)
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
-        :ok = PythonBridge.unload_all_models(env)
       end)
 
+      :ok = PythonBridge.unload_all_models(env)
       :ok = ClusteringStage.compute(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
@@ -61,13 +62,14 @@ defmodule PanicTda.Engine do
     try do
       runs = find_or_create_runs(experiment)
 
+      :ok = RunExecutor.resume_batch(env, runs)
+
       Enum.each(runs, fn run ->
-        :ok = RunExecutor.resume(env, run)
         :ok = EmbeddingsStage.resume(env, run, experiment.embedding_models)
         :ok = PdStage.resume(env, run, experiment.embedding_models)
-        :ok = PythonBridge.unload_all_models(env)
       end)
 
+      :ok = PythonBridge.unload_all_models(env)
       :ok = ClusteringStage.resume(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
