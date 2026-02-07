@@ -1,6 +1,6 @@
 defmodule PanicTda.Types.Image do
   @moduledoc """
-  Stores images as WebP binary for SQLite compatibility.
+  Stores images as AVIF binary for SQLite compatibility.
   """
   use Ash.Type
 

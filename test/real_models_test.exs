@@ -23,12 +23,12 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "real GenAI models" do
-    test "SDXLTurbo generates valid WEBP image", %{env: env} do
+    test "SDXLTurbo generates valid AVIF image", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "SDXLTurbo", "A cat sitting on a mat")
 
       assert is_binary(image)
       assert byte_size(image) > 100
-      assert <<0x52, 0x49, 0x46, 0x46, _::binary>> = image
+      assert <<_::binary-size(4), "ftyp", _::binary>> = image
     end
 
     test "Moondream generates text caption from image", %{env: env} do

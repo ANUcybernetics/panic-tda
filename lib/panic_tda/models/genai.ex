@@ -6,7 +6,7 @@ defmodule PanicTda.Models.GenAI do
   and real HuggingFace models via PythonBridge.
   """
 
-  alias PanicTda.Models.PythonBridge
+  alias PanicTda.Models.{ImageConverter, PythonBridge}
 
   @dummy_t2i_models ~w(DummyT2I DummyT2I2)
   @dummy_i2t_models ~w(DummyI2T DummyI2T2)
@@ -70,7 +70,7 @@ defmodule PanicTda.Models.GenAI do
              returning: "result",
              timeout: @t2i_timeout
            ) do
-        {:ok, base64_data} -> {:ok, Base.decode64!(base64_data)}
+        {:ok, base64_data} -> {:ok, base64_data |> Base.decode64!() |> ImageConverter.to_avif!()}
         error -> error
       end
     end
@@ -180,7 +180,7 @@ defmodule PanicTda.Models.GenAI do
            %{"color_offset" => color_offset},
            returning: "result"
          ) do
-      {:ok, base64_data} -> {:ok, Base.decode64!(base64_data)}
+      {:ok, base64_data} -> {:ok, base64_data |> Base.decode64!() |> ImageConverter.to_avif!()}
       error -> error
     end
   end
@@ -216,7 +216,7 @@ defmodule PanicTda.Models.GenAI do
              timeout: @t2i_timeout * length(prompts)
            ) do
         {:ok, base64_list} ->
-          {:ok, Enum.map(base64_list, &Base.decode64!/1)}
+          {:ok, Enum.map(base64_list, fn b64 -> b64 |> Base.decode64!() |> ImageConverter.to_avif!() end)}
 
         error ->
           error
@@ -341,7 +341,7 @@ defmodule PanicTda.Models.GenAI do
            %{"prompts" => prompts, "color_offset" => color_offset},
            returning: "result"
          ) do
-      {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
+      {:ok, base64_list} -> {:ok, Enum.map(base64_list, fn b64 -> b64 |> Base.decode64!() |> ImageConverter.to_avif!() end)}
       error -> error
     end
   end
