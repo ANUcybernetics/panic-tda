@@ -29,6 +29,8 @@ defmodule PanicTda.Engine do
         :ok = RunExecutor.execute_batch(env, group)
       end)
 
+      :ok = PythonBridge.unload_all_models(env)
+
       Enum.each(runs, fn run ->
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
@@ -71,6 +73,8 @@ defmodule PanicTda.Engine do
       |> Enum.each(fn {_network, group} ->
         :ok = RunExecutor.resume_batch(env, group)
       end)
+
+      :ok = PythonBridge.unload_all_models(env)
 
       Enum.each(runs, fn run ->
         :ok = EmbeddingsStage.resume(env, run, experiment.embedding_models)
