@@ -51,7 +51,7 @@ example configuration:
 
 ```json
 {
-  "network": ["SDXLTurbo", "Moondream"],
+  "network": ["SD35Medium", "Moondream"],
   "prompts": ["a red apple"],
   "embedding_models": ["Nomic"],
   "max_length": 100,
@@ -87,9 +87,9 @@ mise exec -- mix experiment.resume abc123
 
 | Type | Models |
 |---|---|
-| text-to-image | `SDXLTurbo`, `FluxDev`, `FluxSchnell` |
-| image-to-text | `Moondream`, `BLIP2` |
-| text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip` |
+| text-to-image | `SD35Medium`, `FluxDev`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein` |
+| image-to-text | `Moondream`, `InstructBLIP`, `Qwen25VL`, `Gemma3n` |
+| text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
 | image embedding | `NomicVision`, `JinaClipVision` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
 
