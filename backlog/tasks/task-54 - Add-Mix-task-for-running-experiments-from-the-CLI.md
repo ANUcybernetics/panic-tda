@@ -1,10 +1,10 @@
 ---
 id: TASK-54
 title: Add Mix task for running experiments from the CLI
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-06 10:20'
-updated_date: '2026-02-07 00:43'
+updated_date: '2026-02-09 06:35'
 labels:
   - elixir
   - cli
@@ -85,3 +85,9 @@ Optional follow-up tasks:
 - [ ] #4 A final summary is printed showing what was created (run count, embedding count, PD count, cluster count)
 - [ ] #5 Non-zero exit status on failure
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Already implemented: mix experiment.run, experiment.list, experiment.status all exist
+<!-- SECTION:NOTES:END -->

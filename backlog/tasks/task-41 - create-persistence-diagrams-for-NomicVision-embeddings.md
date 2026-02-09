@@ -1,18 +1,27 @@
 ---
-id: task-41
+id: TASK-41
 title: create persistence diagrams for NomicVision embeddings
-status: To Do
+status: Done
 assignee: []
-created_date: "2025-08-05 23:21"
+created_date: '2025-08-05 23:21'
+updated_date: '2026-02-09 06:35'
 labels: []
 dependencies: []
 ---
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
 There are currently no persistence diagrams for NomicVision embeddings. This
 task aims to create persistence diagrams for NomicVision embeddings using the
 @src/panic_tda/engine.py module.
 
 In the main.py script function, load the embeddings (in batches, grouped by run)
 and pass them to the engine module to create persistence diagrams.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed: irrelevant since switching to text-only embeddings
+<!-- SECTION:NOTES:END -->
