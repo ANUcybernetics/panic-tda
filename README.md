@@ -85,13 +85,19 @@ mise exec -- mix experiment.resume abc123
 
 ### Available models
 
-| Type | Models |
-|---|---|
-| text-to-image | `SD35Medium`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein`, `QwenImage` |
-| image-to-text | `Moondream`, `InstructBLIP`, `Qwen25VL`, `Gemma3n` |
-| text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
-| image embedding | `NomicVision`, `JinaClipVision` |
+| Type            | Models                                                                                                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------- |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `QwenImage`, `HunyuanImage`, `GLMImage` |
+| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`, `Phi4Vision`                               |
+| text embedding  | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed`                         |
+| image embedding | `NomicVision`, `JinaClipVision`                                                                            |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
+
+The design space of different models is vast; with both fundamentally different
+architectures and many different finetunes of the same base models. This
+project's goals involve asking questions about both: are different architectures
+more likely to diverge (long-term trajectory-wise) than finetunes of the same
+model? Or is there no particular pattern there?
 
 ## Testing
 
@@ -109,17 +115,17 @@ For further info, see the [design doc](./DESIGN.md).
 ## Why?
 
 At the [School of Cybernetics](https://cybernetics.anu.edu.au) we love thinking
-about the way that feedback loops (and the connections between things) define the
-behaviour of the systems in which we live, work and create. That interest sits
-behind the design of PANIC! as a tool for making (and breaking!) networks of
-hosted generative AI models.
+about the way that feedback loops (and the connections between things) define
+the behaviour of the systems in which we live, work and create. That interest
+sits behind the design of PANIC! as a tool for making (and breaking!) networks
+of hosted generative AI models.
 
 Anyone who's played with (or watched others play with) PANIC! has probably had
 one of these questions cross their mind at some point.
 
 One goal in building PANIC is to provide answers to these questions which are
-both quantifiable and satisfying (i.e. it feels like they represent deeper truths
-about the process).
+both quantifiable and satisfying (i.e. it feels like they represent deeper
+truths about the process).
 
 ### how did it get _here_ from _that_ initial prompt?
 

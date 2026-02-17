@@ -16,7 +16,7 @@ defmodule PanicTda.Models.PythonInterpreter do
       "persim>=0.3.8",
       "torch>=2.7",
       "diffusers @ git+https://github.com/huggingface/diffusers.git",
-      "transformers>=4.54,<5.0",
+      "transformers>=5.0,<6.0",
       "sentence-transformers>=5.0,<6.0",
       "accelerate>=1.9",
       "pyvips>=2.2",
@@ -25,7 +25,10 @@ defmodule PanicTda.Models.PythonInterpreter do
       "timm>=1.0",
       "scikit-learn>=1.6",
       "protobuf>=5.0",
-      "qwen-vl-utils>=0.0.8"
+      "qwen-vl-utils>=0.0.8",
+      "peft>=0.15",
+      "bitsandbytes>=0.45",
+      "backoff>=2.2"
     ]
     """
 end

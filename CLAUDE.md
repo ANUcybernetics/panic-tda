@@ -64,8 +64,8 @@ The task handles database setup and runs the full four-stage pipeline
 
 | Type | Models |
 |---|---|
-| text-to-image | `SD35Medium`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein`, `QwenImage` |
-| image-to-text | `Moondream`, `InstructBLIP`, `Qwen25VL`, `Gemma3n` |
+| text-to-image | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `QwenImage`, `HunyuanImage`, `GLMImage` |
+| image-to-text | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`, `Phi4Vision` |
 | text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
 | image embedding | `NomicVision`, `JinaClipVision` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |

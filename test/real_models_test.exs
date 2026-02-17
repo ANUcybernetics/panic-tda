@@ -120,7 +120,7 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model T2I tests" do
-    for t2i <- ~w(SD35Medium FluxSchnell ZImageTurbo Flux2Klein QwenImage) do
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage) do
       @tag timeout: 600_000
       test "#{t2i} single invoke", %{env: env} do
         t2i = unquote(t2i)
@@ -159,14 +159,14 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model I2T tests" do
-    for i2t <- ~w(Moondream InstructBLIP Qwen25VL Gemma3n) do
+    for i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4Vision) do
       @tag timeout: 600_000
       test "#{i2t} single invoke", %{env: env} do
         i2t = unquote(i2t)
         PythonBridge.unload_all_models(env)
 
-        {:ok, image} = GenAI.invoke(env, "FluxSchnell", "a red apple")
-        PythonBridge.swap_model_to_cpu(env, "FluxSchnell")
+        {:ok, image} = GenAI.invoke(env, "SD35Medium", "a red apple")
+        PythonBridge.swap_model_to_cpu(env, "SD35Medium")
 
         t0 = System.monotonic_time(:millisecond)
         {:ok, caption} = GenAI.invoke(env, i2t, image)
@@ -183,8 +183,8 @@ defmodule PanicTda.RealModelsTest do
         PythonBridge.unload_all_models(env)
 
         prompts = ["a red apple", "a blue car", "a green tree"]
-        {:ok, images} = GenAI.invoke_batch(env, "FluxSchnell", prompts)
-        PythonBridge.swap_model_to_cpu(env, "FluxSchnell")
+        {:ok, images} = GenAI.invoke_batch(env, "SD35Medium", prompts)
+        PythonBridge.swap_model_to_cpu(env, "SD35Medium")
 
         t0 = System.monotonic_time(:millisecond)
         {:ok, captions} = GenAI.invoke_batch(env, i2t, images)
@@ -206,15 +206,15 @@ defmodule PanicTda.RealModelsTest do
     test "swap models between GPU and CPU", %{env: env} do
       PythonBridge.unload_all_models(env)
 
-      {:ok, img1} = GenAI.invoke(env, "FluxSchnell", "a red apple")
+      {:ok, img1} = GenAI.invoke(env, "SD35Medium", "a red apple")
       assert is_binary(img1)
-      :ok = PythonBridge.swap_model_to_cpu(env, "FluxSchnell")
+      :ok = PythonBridge.swap_model_to_cpu(env, "SD35Medium")
 
       {:ok, caption} = GenAI.invoke(env, "Moondream", img1)
       assert String.length(caption) > 0
       :ok = PythonBridge.swap_model_to_cpu(env, "Moondream")
 
-      {:ok, img2} = GenAI.invoke(env, "FluxSchnell", caption)
+      {:ok, img2} = GenAI.invoke(env, "SD35Medium", caption)
       assert is_binary(img2)
       assert byte_size(img2) > 100
       assert <<_::binary-size(4), "ftyp", _::binary>> = img2
@@ -222,12 +222,12 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "all model combinations smoke test" do
-    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip)
+    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed)
     @real_image_embedding_models ~w(NomicVision JinaClipVision)
 
-    for t2i <- ~w(SD35Medium FluxSchnell ZImageTurbo Flux2Klein QwenImage),
-        i2t <- ~w(Moondream InstructBLIP Qwen25VL Gemma3n) do
-      @tag timeout: 600_000
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage),
+        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4Vision) do
+      @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models" do
         t2i = unquote(t2i)
         i2t = unquote(i2t)
@@ -263,9 +263,9 @@ defmodule PanicTda.RealModelsTest do
       end
     end
 
-    for t2i <- ~w(SD35Medium FluxSchnell ZImageTurbo Flux2Klein QwenImage),
-        i2t <- ~w(Moondream InstructBLIP Qwen25VL Gemma3n) do
-      @tag timeout: 600_000
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage),
+        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4Vision) do
+      @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all image embedding models" do
         t2i = unquote(t2i)
         i2t = unquote(i2t)

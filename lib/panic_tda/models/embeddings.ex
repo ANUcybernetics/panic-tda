@@ -44,12 +44,10 @@ defmodule PanicTda.Models.Embeddings do
   defp embed_real_text(env, model_name, texts) when is_list(texts) do
     with :ok <- PythonBridge.ensure_setup(env),
          :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
-      embed_code = real_text_embed_code(model_name)
-
       case Snex.pyeval(
              env,
-             embed_code,
-             %{"texts" => texts},
+             "result = panic_models.embed_text(model_name, texts)",
+             %{"model_name" => model_name, "texts" => texts},
              returning: "result",
              timeout: @embed_timeout
            ) do
@@ -64,12 +62,10 @@ defmodule PanicTda.Models.Embeddings do
 
     with :ok <- PythonBridge.ensure_setup(env),
          :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
-      embed_code = real_image_embed_code(model_name)
-
       case Snex.pyeval(
              env,
-             embed_code,
-             %{"image_b64_list" => image_b64_list},
+             "result = panic_models.embed_images(model_name, image_b64_list)",
+             %{"model_name" => model_name, "image_b64_list" => image_b64_list},
              returning: "result",
              timeout: @embed_timeout
            ) do
@@ -77,79 +73,6 @@ defmodule PanicTda.Models.Embeddings do
         error -> error
       end
     end
-  end
-
-  defp real_text_embed_code(model_name) when model_name in ~w(STSBMpnet STSBRoberta STSBDistilRoberta) do
-    """
-    with torch.no_grad():
-        _embs = _models["#{model_name}"].encode(
-            texts, convert_to_numpy=True, normalize_embeddings=True
-        )
-        if isinstance(_embs, np.ndarray) and _embs.ndim > 1:
-            result = [base64.b64encode(e.astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-        else:
-            result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-    """
-  end
-
-  defp real_text_embed_code("Nomic") do
-    """
-    with torch.no_grad():
-        _embs = _models["Nomic"].encode(
-            texts, convert_to_numpy=True, normalize_embeddings=True, prompt_name="passage"
-        )
-        if isinstance(_embs, np.ndarray) and _embs.ndim > 1:
-            result = [base64.b64encode(e.astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-        else:
-            result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-    """
-  end
-
-  defp real_text_embed_code("JinaClip") do
-    """
-    with torch.no_grad():
-        _embs = _models["JinaClip"].encode_text(texts, truncate_dim=EMBEDDING_DIM, task="retrieval.query")
-        result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-    """
-  end
-
-  defp real_text_embed_code("Qwen3Embed") do
-    """
-    with torch.no_grad():
-        _embs = _models["Qwen3Embed"].encode(
-            texts, convert_to_numpy=True, normalize_embeddings=True
-        )
-        _embs = [e[:EMBEDDING_DIM] for e in _embs]
-        result = [base64.b64encode(e.astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-    """
-  end
-
-  defp real_image_embed_code("NomicVision") do
-    """
-    _nomic_vis = _models["NomicVision"]
-    _images = [Image.open(io.BytesIO(base64.b64decode(b))) for b in image_b64_list]
-    _embeddings = []
-    with torch.no_grad():
-        for i in range(0, len(_images), 32):
-            _batch = _images[i:i+32]
-            _inputs = _nomic_vis["processor"](_batch, return_tensors="pt")
-            _inputs = {k: v.to("cuda") for k, v in _inputs.items()}
-            _outputs = _nomic_vis["model"](**_inputs)
-            _batch_embs = _outputs.last_hidden_state[:, 0]
-            _batch_embs = F.normalize(_batch_embs, p=2, dim=1)
-            _batch_embs = _batch_embs.cpu().numpy()
-            _embeddings.extend([e for e in _batch_embs])
-    result = [base64.b64encode(e.astype(np.float32).tobytes()).decode("ascii") for e in _embeddings]
-    """
-  end
-
-  defp real_image_embed_code("JinaClipVision") do
-    """
-    _images = [Image.open(io.BytesIO(base64.b64decode(b))) for b in image_b64_list]
-    with torch.no_grad():
-        _embs = _models["JinaClipVision"].encode_image(_images, truncate_dim=EMBEDDING_DIM)
-        result = [base64.b64encode(np.array(e).astype(np.float32).tobytes()).decode("ascii") for e in _embs]
-    """
   end
 
   defp embed_dummy_text(env, model_name, texts) when is_list(texts) do
