@@ -59,8 +59,7 @@ defmodule PanicTda.Models.GenAI do
   end
 
   defp invoke_real_t2i(env, model_name, prompt) when is_binary(prompt) do
-    with :ok <- PythonBridge.ensure_setup(env),
-         :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
+    with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       invoke_code = real_t2i_code(model_name)
 
       case Snex.pyeval(
@@ -79,8 +78,7 @@ defmodule PanicTda.Models.GenAI do
   defp invoke_real_i2t(env, model_name, image_binary) when is_binary(image_binary) do
     image_b64 = Base.encode64(image_binary)
 
-    with :ok <- PythonBridge.ensure_setup(env),
-         :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
+    with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       invoke_code = real_i2t_code(model_name)
 
       Snex.pyeval(
@@ -271,8 +269,7 @@ defmodule PanicTda.Models.GenAI do
   end
 
   defp invoke_batch_real_t2i(env, model_name, prompts) do
-    with :ok <- PythonBridge.ensure_setup(env),
-         :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
+    with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       batch_code = real_t2i_batch_code(model_name)
 
       case Snex.pyeval(
@@ -294,8 +291,7 @@ defmodule PanicTda.Models.GenAI do
   defp invoke_batch_real_i2t(env, model_name, images) do
     image_b64_list = Enum.map(images, &Base.encode64/1)
 
-    with :ok <- PythonBridge.ensure_setup(env),
-         :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
+    with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       batch_code = real_i2t_batch_code(model_name)
 
       Snex.pyeval(
@@ -310,85 +306,75 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_t2i_batch_code("SD35Medium") do
     """
+    _imgs = _models["SD35Medium"](
+        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        num_inference_steps=28, guidance_scale=5.0, generator=None,
+    ).images
     _results = []
-    for _prompt in prompts:
-        _img = _models["SD35Medium"](
-            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-            num_inference_steps=28, guidance_scale=5.0, generator=None,
-        ).images[0]
+    for _img in _imgs:
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-        del _img, _buf
-        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("FluxDev") do
     """
+    _imgs = _models["FluxDev"](
+        prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        guidance_scale=3.5, num_inference_steps=20, generator=None,
+    ).images
     _results = []
-    for _prompt in prompts:
-        _img = _models["FluxDev"](
-            _prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-            guidance_scale=3.5, num_inference_steps=20, generator=None,
-        ).images[0]
+    for _img in _imgs:
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-        del _img, _buf
-        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("FluxSchnell") do
     """
+    _imgs = _models["FluxSchnell"](
+        prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        guidance_scale=3.5, num_inference_steps=6, generator=None,
+    ).images
     _results = []
-    for _prompt in prompts:
-        _img = _models["FluxSchnell"](
-            _prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-            guidance_scale=3.5, num_inference_steps=6, generator=None,
-        ).images[0]
+    for _img in _imgs:
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-        del _img, _buf
-        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("ZImageTurbo") do
     """
+    _imgs = _models["ZImageTurbo"](
+        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        num_inference_steps=8, generator=None,
+    ).images
     _results = []
-    for _prompt in prompts:
-        _img = _models["ZImageTurbo"](
-            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-            num_inference_steps=8, generator=None,
-        ).images[0]
+    for _img in _imgs:
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-        del _img, _buf
-        torch.cuda.empty_cache()
     result = _results
     """
   end
 
   defp real_t2i_batch_code("Flux2Klein") do
     """
+    _imgs = _models["Flux2Klein"](
+        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        num_inference_steps=4, guidance_scale=1.0, generator=None,
+    ).images
     _results = []
-    for _prompt in prompts:
-        _img = _models["Flux2Klein"](
-            prompt=_prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-            num_inference_steps=4, guidance_scale=1.0, generator=None,
-        ).images[0]
+    for _img in _imgs:
         _buf = io.BytesIO()
         _img.save(_buf, format="WEBP", lossless=True)
         _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-        del _img, _buf
-        torch.cuda.empty_cache()
     result = _results
     """
   end
@@ -406,65 +392,70 @@ defmodule PanicTda.Models.GenAI do
 
   defp real_i2t_batch_code("InstructBLIP") do
     """
-    _results = []
     _iblip = _models["InstructBLIP"]
-    for _img_b64 in image_b64_list:
-        _img = Image.open(io.BytesIO(base64.b64decode(_img_b64)))
-        _inputs = _iblip["processor"](
-            images=_img, text="Describe this image.", return_tensors="pt"
-        ).to("cuda", torch.float16)
-        with torch.no_grad(), torch.amp.autocast("cuda", dtype=torch.float16):
-            _gen_ids = _iblip["model"].generate(
-                **_inputs, max_length=256, num_beams=5,
-            )
-        _results.append(_iblip["processor"].batch_decode(_gen_ids, skip_special_tokens=True)[0].strip())
-    result = _results
+    _images = [Image.open(io.BytesIO(base64.b64decode(b))) for b in image_b64_list]
+    _inputs = _iblip["processor"](
+        images=_images, text=["Describe this image."] * len(_images),
+        return_tensors="pt", padding=True
+    ).to("cuda", torch.float16)
+    with torch.no_grad(), torch.amp.autocast("cuda", dtype=torch.float16):
+        _gen_ids = _iblip["model"].generate(**_inputs, max_length=256, num_beams=5)
+    result = [s.strip() for s in _iblip["processor"].batch_decode(
+        _gen_ids, skip_special_tokens=True
+    )]
     """
   end
 
   defp real_i2t_batch_code("Qwen25VL") do
     """
     from qwen_vl_utils import process_vision_info
-    _results = []
     _qwen_vl = _models["Qwen25VL"]
+    _all_texts = []
+    _all_images = []
     for _img_b64 in image_b64_list:
         _img = Image.open(io.BytesIO(base64.b64decode(_img_b64)))
         _messages = [{"role": "user", "content": [
             {"type": "image", "image": _img},
             {"type": "text", "text": "Describe this image."},
         ]}]
-        _text = _qwen_vl["processor"].apply_chat_template(_messages, tokenize=False, add_generation_prompt=True)
-        _image_inputs, _video_inputs = process_vision_info(_messages)
-        _inputs = _qwen_vl["processor"](
-            text=[_text], images=_image_inputs, videos=_video_inputs,
-            padding=True, return_tensors="pt",
-        ).to(_qwen_vl["model"].device)
-        with torch.no_grad():
-            _gen_ids = _qwen_vl["model"].generate(**_inputs, max_new_tokens=128)
-            _gen_ids = _gen_ids[:, _inputs["input_ids"].shape[1]:]
-        _results.append(_qwen_vl["processor"].batch_decode(_gen_ids, skip_special_tokens=True)[0].strip())
-    result = _results
+        _all_texts.append(_qwen_vl["processor"].apply_chat_template(
+            _messages, tokenize=False, add_generation_prompt=True
+        ))
+        _image_inputs, _ = process_vision_info(_messages)
+        _all_images.extend(_image_inputs)
+    _inputs = _qwen_vl["processor"](
+        text=_all_texts, images=_all_images,
+        padding=True, return_tensors="pt",
+    ).to(_qwen_vl["model"].device)
+    with torch.no_grad():
+        _gen_ids = _qwen_vl["model"].generate(**_inputs, max_new_tokens=128)
+        _gen_ids = _gen_ids[:, _inputs["input_ids"].shape[1]:]
+    result = [s.strip() for s in _qwen_vl["processor"].batch_decode(
+        _gen_ids, skip_special_tokens=True
+    )]
     """
   end
 
   defp real_i2t_batch_code("Gemma3n") do
     """
-    _results = []
     _gemma3n = _models["Gemma3n"]
+    _all_messages = []
     for _img_b64 in image_b64_list:
         _img = Image.open(io.BytesIO(base64.b64decode(_img_b64)))
-        _messages = [{"role": "user", "content": [
+        _all_messages.append([{"role": "user", "content": [
             {"type": "image", "image": _img},
             {"type": "text", "text": "Describe this image."},
-        ]}]
-        _inputs = _gemma3n["processor"].apply_chat_template(
-            _messages, tokenize=True, return_dict=True, return_tensors="pt", add_generation_prompt=True,
-        ).to(_gemma3n["model"].device, dtype=torch.bfloat16)
-        _input_len = _inputs["input_ids"].shape[1]
-        with torch.no_grad():
-            _gen_ids = _gemma3n["model"].generate(**_inputs, max_new_tokens=100, do_sample=False)
-        _results.append(_gemma3n["processor"].decode(_gen_ids[0][_input_len:], skip_special_tokens=True).strip())
-    result = _results
+        ]}])
+    _inputs = _gemma3n["processor"].apply_chat_template(
+        _all_messages, tokenize=True, return_dict=True, return_tensors="pt",
+        add_generation_prompt=True, padding=True,
+    ).to(_gemma3n["model"].device, dtype=torch.bfloat16)
+    _input_len = _inputs["input_ids"].shape[1]
+    with torch.no_grad():
+        _gen_ids = _gemma3n["model"].generate(**_inputs, max_new_tokens=100, do_sample=False)
+    result = [s.strip() for s in _gemma3n["processor"].batch_decode(
+        _gen_ids[:, _input_len:], skip_special_tokens=True
+    )]
     """
   end
 

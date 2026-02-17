@@ -113,7 +113,7 @@ defmodule PanicTda.Engine.RunExecutor do
     next_model = Enum.at(network, rem(next_seq, length(network)))
 
     if next_seq < max_length and next_model != model_name do
-      :ok = PythonBridge.unload_model(env, model_name)
+      :ok = PythonBridge.swap_model_to_cpu(env, model_name)
     end
 
     new_states =
@@ -159,7 +159,7 @@ defmodule PanicTda.Engine.RunExecutor do
     next_model = Enum.at(run.network, rem(next_seq, length(run.network)))
 
     if next_seq < run.max_length and next_model != model_name do
-      :ok = PythonBridge.unload_model(env, model_name)
+      :ok = PythonBridge.swap_model_to_cpu(env, model_name)
     end
 
     attrs = %{

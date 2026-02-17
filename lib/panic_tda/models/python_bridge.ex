@@ -260,11 +260,54 @@ defmodule PanicTda.Models.PythonBridge do
     end
   end
 
+  @swap_timeout 120_000
+
+  def swap_model_to_gpu(env, model_name) do
+    with :ok <- ensure_setup(env),
+         :ok <- ensure_model_loaded(env, model_name) do
+      code = """
+      _obj = _models[model_name]
+      if hasattr(_obj, 'remove_all_hooks'):
+          _obj.remove_all_hooks()
+      if isinstance(_obj, dict):
+          _obj["model"].to("cuda")
+      else:
+          _obj.to("cuda")
+      """
+
+      case Snex.pyeval(env, code, %{"model_name" => model_name}, returning: "True",
+             timeout: @swap_timeout) do
+        {:ok, _} -> :ok
+        error -> error
+      end
+    end
+  end
+
+  def swap_model_to_cpu(env, model_name) do
+    code = """
+    if "_models" in dir() and model_name in _models:
+        _obj = _models[model_name]
+        if hasattr(_obj, 'remove_all_hooks'):
+            _obj.remove_all_hooks()
+        if isinstance(_obj, dict):
+            _obj["model"].to("cpu")
+        else:
+            _obj.to("cpu")
+        torch.cuda.empty_cache()
+    """
+
+    case Snex.pyeval(env, code, %{"model_name" => model_name}, returning: "True",
+           timeout: @swap_timeout) do
+      {:ok, _} -> :ok
+      error -> error
+    end
+  end
+
   @unload_timeout 30_000
 
   def unload_model(env, model_name) do
     code = """
-    if model_name in _models:
+    if "_models" in dir() and model_name in _models:
         _obj = _models.pop(model_name)
         if hasattr(_obj, 'remove_all_hooks'):
             _obj.remove_all_hooks()
