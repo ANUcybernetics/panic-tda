@@ -19,6 +19,7 @@ panic_tda-*.tar
 output/
 logs/
 db/
+*.mp4
 
 # Tools
 mise.local.toml

@@ -21,6 +21,72 @@ defmodule PanicTda.ExportTest do
     experiment
   end
 
+  describe "compute_layout/5" do
+    test "canvas always equals target resolution" do
+      for {n_net, n_prom, n_run} <- [{20, 4, 4}, {2, 2, 1}, {1, 1, 1}, {20, 1, 1}, {1, 1, 16}],
+          {target_w, target_h} <- [{1920, 1080}, {3840, 2160}] do
+        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, target_w, target_h)
+        assert layout.canvas_w == target_w, "canvas_w for #{n_net}×#{n_prom}×#{n_run} @ #{target_w}×#{target_h}"
+        assert layout.canvas_h == target_h, "canvas_h for #{n_net}×#{n_prom}×#{n_run} @ #{target_w}×#{target_h}"
+      end
+    end
+
+    test "thumb_size is within bounds" do
+      for {n_net, n_prom, n_run} <- [{20, 4, 4}, {2, 2, 1}, {1, 1, 1}, {20, 1, 1}, {1, 1, 16}],
+          {target_w, target_h} <- [{1920, 1080}, {3840, 2160}] do
+        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, target_w, target_h)
+        assert layout.thumb_size >= 16, "thumb_size too small for #{n_net}×#{n_prom}×#{n_run}"
+        assert layout.thumb_size <= 512, "thumb_size too large for #{n_net}×#{n_prom}×#{n_run}"
+      end
+    end
+
+    test "20×4×4 wraps into multiple bands" do
+      layout = PanicTda.Export.compute_layout(20, 4, 4, 1920, 1080)
+      assert layout.wrap > 1
+      assert layout.eff_cols == ceil(20 / layout.wrap)
+      assert layout.sub_cols == 2
+      assert layout.sub_rows == 2
+    end
+
+    test "small configs don't wrap" do
+      for {n_net, n_prom, n_run} <- [{2, 2, 1}, {1, 1, 1}] do
+        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, 1920, 1080)
+        assert layout.wrap == 1, "unexpected wrap for #{n_net}×#{n_prom}×#{n_run}"
+      end
+    end
+
+    test "content fits within canvas" do
+      for {n_net, n_prom, n_run} <- [{20, 4, 4}, {2, 2, 1}, {1, 1, 1}, {20, 1, 1}, {1, 1, 16}],
+          {target_w, target_h} <- [{1920, 1080}, {3840, 2160}] do
+        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, target_w, target_h)
+
+        grid_w = layout.eff_cols * layout.cell_w + max(layout.eff_cols - 1, 0) * layout.gap_px
+        band_h = n_prom * layout.cell_h + max(n_prom - 1, 0) * layout.gap_px
+        total_h =
+          layout.n_bands * (layout.label_h + band_h) +
+            max(layout.n_bands - 1, 0) * layout.band_gap_px
+
+        content_w = layout.label_w + grid_w + 2 * layout.offset_x
+        content_h = total_h + 2 * layout.offset_y
+
+        assert content_w <= target_w + 1, "content too wide for #{n_net}×#{n_prom}×#{n_run} @ #{target_w}×#{target_h}"
+        assert content_h <= target_h + 1, "content too tall for #{n_net}×#{n_prom}×#{n_run} @ #{target_w}×#{target_h}"
+      end
+    end
+
+    test "4 runs produce 2×2 sub-grid" do
+      layout = PanicTda.Export.compute_layout(1, 1, 4, 1920, 1080)
+      assert layout.sub_cols == 2
+      assert layout.sub_rows == 2
+    end
+
+    test "16 runs produce 4×4 sub-grid" do
+      layout = PanicTda.Export.compute_layout(1, 1, 16, 1920, 1080)
+      assert layout.sub_cols == 4
+      assert layout.sub_rows == 4
+    end
+  end
+
   describe "video/3" do
     test "creates a valid MP4 video file" do
       experiment = run_experiment()
