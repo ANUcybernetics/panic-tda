@@ -109,6 +109,7 @@ defmodule PanicTda.Models.PythonBridge do
       _models[name] = _m
 
   _models = {}
+  _models_offload_only = set()
   _panic_setup_done = True
   """
 
@@ -122,14 +123,6 @@ defmodule PanicTda.Models.PythonBridge do
     )
     _pipe.enable_model_cpu_offload()
     _models["SD35Medium"] = _pipe
-    """,
-    "FluxDev" => """
-    from diffusers import FluxPipeline
-    _pipe = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-dev", torch_dtype=torch.bfloat16, use_fast=True
-    )
-    _pipe.enable_model_cpu_offload()
-    _models["FluxDev"] = _pipe
     """,
     "FluxSchnell" => """
     from diffusers import FluxPipeline
@@ -150,10 +143,19 @@ defmodule PanicTda.Models.PythonBridge do
     "Flux2Klein" => """
     from diffusers import Flux2KleinPipeline
     _pipe = Flux2KleinPipeline.from_pretrained(
-        "black-forest-labs/FLUX.2-klein-4B", torch_dtype=torch.bfloat16,
+        "black-forest-labs/FLUX.2-klein-9B", torch_dtype=torch.bfloat16,
     )
     _pipe.enable_model_cpu_offload()
     _models["Flux2Klein"] = _pipe
+    """,
+    "QwenImage" => """
+    from diffusers import QwenImagePipeline
+    _pipe = QwenImagePipeline.from_pretrained(
+        "Qwen/Qwen-Image-2512", torch_dtype=torch.bfloat16,
+    )
+    _pipe.enable_model_cpu_offload()
+    _models["QwenImage"] = _pipe
+    _models_offload_only.add("QwenImage")
     """,
     "Moondream" => """
     from transformers import AutoModelForCausalLM
@@ -266,13 +268,14 @@ defmodule PanicTda.Models.PythonBridge do
     with :ok <- ensure_setup(env),
          :ok <- ensure_model_loaded(env, model_name) do
       code = """
-      _obj = _models[model_name]
-      if hasattr(_obj, 'remove_all_hooks'):
-          _obj.remove_all_hooks()
-      if isinstance(_obj, dict):
-          _obj["model"].to("cuda")
-      else:
-          _obj.to("cuda")
+      if model_name not in _models_offload_only:
+          _obj = _models[model_name]
+          if hasattr(_obj, 'remove_all_hooks'):
+              _obj.remove_all_hooks()
+          if isinstance(_obj, dict):
+              _obj["model"].to("cuda")
+          else:
+              _obj.to("cuda")
       """
 
       case Snex.pyeval(env, code, %{"model_name" => model_name}, returning: "True",
@@ -286,14 +289,17 @@ defmodule PanicTda.Models.PythonBridge do
   def swap_model_to_cpu(env, model_name) do
     code = """
     if "_models" in dir() and model_name in _models:
-        _obj = _models[model_name]
-        if hasattr(_obj, 'remove_all_hooks'):
-            _obj.remove_all_hooks()
-        if isinstance(_obj, dict):
-            _obj["model"].to("cpu")
+        if model_name in _models_offload_only:
+            torch.cuda.empty_cache()
         else:
-            _obj.to("cpu")
-        torch.cuda.empty_cache()
+            _obj = _models[model_name]
+            if hasattr(_obj, 'remove_all_hooks'):
+                _obj.remove_all_hooks()
+            if isinstance(_obj, dict):
+                _obj["model"].to("cpu")
+            else:
+                _obj.to("cpu")
+            torch.cuda.empty_cache()
     """
 
     case Snex.pyeval(env, code, %{"model_name" => model_name}, returning: "True",

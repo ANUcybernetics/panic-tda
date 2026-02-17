@@ -87,7 +87,7 @@ mise exec -- mix experiment.resume abc123
 
 | Type | Models |
 |---|---|
-| text-to-image | `SD35Medium`, `FluxDev`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein` |
+| text-to-image | `SD35Medium`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein`, `QwenImage` |
 | image-to-text | `Moondream`, `InstructBLIP`, `Qwen25VL`, `Gemma3n` |
 | text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
 | image embedding | `NomicVision`, `JinaClipVision` |

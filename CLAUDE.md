@@ -43,7 +43,7 @@ The task handles database setup and runs the full four-stage pipeline
 
 ```json
 {
-  "networks": [["SD35Medium", "Moondream"], ["FluxDev", "InstructBLIP"]],
+  "networks": [["SD35Medium", "Moondream"], ["FluxSchnell", "InstructBLIP"]],
   "prompts": ["a red apple"],
   "embedding_models": ["Nomic"],
   "max_length": 100,
@@ -64,7 +64,7 @@ The task handles database setup and runs the full four-stage pipeline
 
 | Type | Models |
 |---|---|
-| text-to-image | `SD35Medium`, `FluxDev`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein` |
+| text-to-image | `SD35Medium`, `FluxSchnell`, `ZImageTurbo`, `Flux2Klein`, `QwenImage` |
 | image-to-text | `Moondream`, `InstructBLIP`, `Qwen25VL`, `Gemma3n` |
 | text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
 | image embedding | `NomicVision`, `JinaClipVision` |

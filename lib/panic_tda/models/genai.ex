@@ -10,12 +10,12 @@ defmodule PanicTda.Models.GenAI do
 
   @dummy_t2i_models ~w(DummyT2I DummyT2I2)
   @dummy_i2t_models ~w(DummyI2T DummyI2T2)
-  @real_t2i_models ~w(SD35Medium FluxDev FluxSchnell ZImageTurbo Flux2Klein)
+  @real_t2i_models ~w(SD35Medium FluxSchnell ZImageTurbo Flux2Klein QwenImage)
   @real_i2t_models ~w(Moondream InstructBLIP Qwen25VL Gemma3n)
   @t2i_models @dummy_t2i_models ++ @real_t2i_models
   @i2t_models @dummy_i2t_models ++ @real_i2t_models
 
-  @t2i_timeout 120_000
+  @t2i_timeout 300_000
   @i2t_timeout 60_000
 
   def list_models do
@@ -103,18 +103,6 @@ defmodule PanicTda.Models.GenAI do
     """
   end
 
-  defp real_t2i_code("FluxDev") do
-    """
-    _img = _models["FluxDev"](
-        prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        guidance_scale=3.5, num_inference_steps=20, generator=None,
-    ).images[0]
-    _buf = io.BytesIO()
-    _img.save(_buf, format="WEBP", lossless=True)
-    result = base64.b64encode(_buf.getvalue()).decode("ascii")
-    """
-  end
-
   defp real_t2i_code("FluxSchnell") do
     """
     _img = _models["FluxSchnell"](
@@ -144,6 +132,18 @@ defmodule PanicTda.Models.GenAI do
     _img = _models["Flux2Klein"](
         prompt=prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
         num_inference_steps=4, guidance_scale=1.0, generator=None,
+    ).images[0]
+    _buf = io.BytesIO()
+    _img.save(_buf, format="WEBP", lossless=True)
+    result = base64.b64encode(_buf.getvalue()).decode("ascii")
+    """
+  end
+
+  defp real_t2i_code("QwenImage") do
+    """
+    _img = _models["QwenImage"](
+        prompt=prompt, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        num_inference_steps=50, true_cfg_scale=4.0, generator=None,
     ).images[0]
     _buf = io.BytesIO()
     _img.save(_buf, format="WEBP", lossless=True)
@@ -319,21 +319,6 @@ defmodule PanicTda.Models.GenAI do
     """
   end
 
-  defp real_t2i_batch_code("FluxDev") do
-    """
-    _imgs = _models["FluxDev"](
-        prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
-        guidance_scale=3.5, num_inference_steps=20, generator=None,
-    ).images
-    _results = []
-    for _img in _imgs:
-        _buf = io.BytesIO()
-        _img.save(_buf, format="WEBP", lossless=True)
-        _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
-    result = _results
-    """
-  end
-
   defp real_t2i_batch_code("FluxSchnell") do
     """
     _imgs = _models["FluxSchnell"](
@@ -369,6 +354,21 @@ defmodule PanicTda.Models.GenAI do
     _imgs = _models["Flux2Klein"](
         prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
         num_inference_steps=4, guidance_scale=1.0, generator=None,
+    ).images
+    _results = []
+    for _img in _imgs:
+        _buf = io.BytesIO()
+        _img.save(_buf, format="WEBP", lossless=True)
+        _results.append(base64.b64encode(_buf.getvalue()).decode("ascii"))
+    result = _results
+    """
+  end
+
+  defp real_t2i_batch_code("QwenImage") do
+    """
+    _imgs = _models["QwenImage"](
+        prompt=prompts, height=IMAGE_SIZE, width=IMAGE_SIZE,
+        num_inference_steps=50, true_cfg_scale=4.0, generator=None,
     ).images
     _results = []
     for _img in _imgs:
