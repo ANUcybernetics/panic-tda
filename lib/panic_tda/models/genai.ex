@@ -81,13 +81,16 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       invoke_code = real_i2t_code(model_name)
 
-      Snex.pyeval(
-        env,
-        invoke_code,
-        %{"image_b64" => image_b64},
-        returning: "result",
-        timeout: @i2t_timeout
-      )
+      case Snex.pyeval(
+             env,
+             invoke_code,
+             %{"image_b64" => image_b64},
+             returning: "result",
+             timeout: @i2t_timeout
+           ) do
+        {:ok, text} -> {:ok, ensure_nonempty_text(text)}
+        error -> error
+      end
     end
   end
 
@@ -294,13 +297,16 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       batch_code = real_i2t_batch_code(model_name)
 
-      Snex.pyeval(
-        env,
-        batch_code,
-        %{"image_b64_list" => image_b64_list},
-        returning: "result",
-        timeout: @i2t_timeout * length(images)
-      )
+      case Snex.pyeval(
+             env,
+             batch_code,
+             %{"image_b64_list" => image_b64_list},
+             returning: "result",
+             timeout: @i2t_timeout * length(images)
+           ) do
+        {:ok, texts} -> {:ok, Enum.map(texts, &ensure_nonempty_text/1)}
+        error -> error
+      end
     end
   end
 
@@ -490,6 +496,12 @@ defmodule PanicTda.Models.GenAI do
       error -> error
     end
   end
+
+  defp ensure_nonempty_text(text) when is_binary(text) do
+    if String.trim(text) == "", do: "[empty]", else: text
+  end
+
+  defp ensure_nonempty_text(_), do: "[empty]"
 
   defp invoke_batch_dummy_i2t(env, model_name, images) do
     prefix = if model_name == "DummyI2T2", do: "dummy v2:", else: "dummy caption:"

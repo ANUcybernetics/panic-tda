@@ -1,9 +1,10 @@
 ---
 id: TASK-61
 title: Investigate InstructBLIP nil outputs on degenerate images
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-09 11:00'
+updated_date: '2026-02-17 04:10'
 labels: []
 dependencies: []
 priority: medium
@@ -44,8 +45,14 @@ The 0 KB images are suspicious --- these are likely corrupt or fully uniform ima
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Root cause identified: determine exactly what InstructBLIP returns for degenerate images and how it becomes nil in the DB
-- [ ] #2 Fix applied so InstructBLIP (and other I2T models) never produce nil output_text
-- [ ] #3 OutputMatchesType validation updated if appropriate
-- [ ] #4 Existing tests pass
+- [x] #1 Root cause identified: determine exactly what InstructBLIP returns for degenerate images and how it becomes nil in the DB
+- [x] #2 Fix applied so InstructBLIP (and other I2T models) never produce nil output_text
+- [x] #3 OutputMatchesType validation updated if appropriate
+- [x] #4 Existing tests pass
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Root cause identified and fixed. InstructBLIP's batch_decode returns empty string "" for degenerate images (only special tokens generated), which Ash's :string type casts to nil (allow_empty? defaults to false). Fixed by: (1) adding ensure_nonempty_text/1 in GenAI that replaces empty strings with "[empty]" for all I2T model outputs, (2) tightening OutputMatchesType validation to reject nil output_text for text invocations and nil output_image for image invocations, (3) added tests for both nil-output rejection cases. The embeddings stage nil filter was retained as defence-in-depth for historical data.
+<!-- SECTION:NOTES:END -->

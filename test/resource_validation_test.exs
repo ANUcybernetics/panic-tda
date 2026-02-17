@@ -213,6 +213,40 @@ defmodule ResourceValidationTest do
         })
       end
     end
+
+    test "rejects text invocation with nil output_text" do
+      experiment = create_experiment()
+      run = create_run(experiment)
+      now = DateTime.utc_now()
+
+      assert_raise Ash.Error.Invalid, fn ->
+        PanicTda.create_invocation!(%{
+          model: "DummyI2T",
+          type: :text,
+          sequence_number: 0,
+          started_at: now,
+          completed_at: now,
+          run_id: run.id
+        })
+      end
+    end
+
+    test "rejects image invocation with nil output_image" do
+      experiment = create_experiment()
+      run = create_run(experiment)
+      now = DateTime.utc_now()
+
+      assert_raise Ash.Error.Invalid, fn ->
+        PanicTda.create_invocation!(%{
+          model: "DummyT2I",
+          type: :image,
+          sequence_number: 0,
+          started_at: now,
+          completed_at: now,
+          run_id: run.id
+        })
+      end
+    end
   end
 
   describe "timestamp ordering" do

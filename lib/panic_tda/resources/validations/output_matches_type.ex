@@ -13,7 +13,7 @@ defmodule PanicTda.Validations.OutputMatchesType do
     case type do
       :text ->
         cond do
-          is_nil(output_text) and not is_nil(output_image) ->
+          is_nil(output_text) ->
             {:error, field: :output_text, message: "must be set for text invocations"}
 
           not is_nil(output_image) ->
@@ -25,7 +25,7 @@ defmodule PanicTda.Validations.OutputMatchesType do
 
       :image ->
         cond do
-          is_nil(output_image) and not is_nil(output_text) ->
+          is_nil(output_image) ->
             {:error, field: :output_image, message: "must be set for image invocations"}
 
           not is_nil(output_text) ->
