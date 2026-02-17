@@ -9,7 +9,8 @@ defmodule PanicTda.MixProject do
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
       aliases: aliases(),
-      deps: deps()
+      deps: deps(),
+      usage_rules: usage_rules()
     ]
   end
 
@@ -29,7 +30,14 @@ defmodule PanicTda.MixProject do
       {:jason, "~> 1.4"},
       {:snex, "~> 0.3"},
       {:vix, "~> 0.35"},
-      {:usage_rules, "~> 0.1", only: [:dev]}
+      {:usage_rules, "~> 1.1", only: [:dev]}
+    ]
+  end
+
+  defp usage_rules do
+    [
+      file: "CLAUDE.md",
+      usage_rules: [:ash, ~r/^ash_/]
     ]
   end
 
