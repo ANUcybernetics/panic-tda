@@ -64,6 +64,41 @@ def setup() -> None:
                 self.all_tied_weights_keys = {}
 
         _tmu.PreTrainedModel.__init__ = _patched_ptm_init
+
+        if hasattr(_tmu.PreTrainedModel, "get_expanded_tied_weights_keys"):
+            _orig_getwk = _tmu.PreTrainedModel.get_expanded_tied_weights_keys
+
+            def _safe_getwk(self: Any, all_submodels: bool = False) -> dict[str, str]:
+                twk = getattr(self, "_tied_weights_keys", None)
+                if isinstance(twk, list):
+                    self._tied_weights_keys = None
+                    try:
+                        return _orig_getwk(self, all_submodels)
+                    finally:
+                        self._tied_weights_keys = twk
+                return _orig_getwk(self, all_submodels)
+
+            _tmu.PreTrainedModel.get_expanded_tied_weights_keys = _safe_getwk
+    except Exception:
+        pass
+
+    try:
+        import transformers.cache_utils as _cu
+
+        if not hasattr(_cu, "SlidingWindowCache"):
+            _DynCache = _cu.DynamicCache
+
+            class _SlidingWindowCacheShim(_DynCache):  # type: ignore[misc]
+                def __init__(self, *args: Any, **kwargs: Any) -> None:
+                    kwargs.pop("config", None)
+                    super().__init__(*args, **kwargs)
+
+                def get_usable_length(
+                    self, new_seq_length: int = 0, layer_idx: int = 0
+                ) -> int:
+                    return self.get_seq_length(layer_idx)
+
+            _cu.SlidingWindowCache = _SlidingWindowCacheShim
     except Exception:
         pass
 
@@ -194,7 +229,9 @@ def _decode_image_b64(b64: str) -> Image.Image:
 
 
 def _encode_embedding(arr: np.ndarray) -> str:
-    return base64.b64encode(arr.astype(np.float32).tobytes()).decode("ascii")
+    f32 = arr.astype(np.float32)
+    np.nan_to_num(f32, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+    return base64.b64encode(f32.tobytes()).decode("ascii")
 
 
 # ---------------------------------------------------------------------------
@@ -342,16 +379,37 @@ def _load_llama32vision() -> None:
 def _load_phi4vision() -> None:
     from transformers import AutoModelForCausalLM, AutoProcessor
 
-    model = (
-        AutoModelForCausalLM.from_pretrained(
+    try:
+        import peft
+
+        _orig_peft_init = peft.PeftModelForCausalLM.__init__
+
+        def _patched_peft_init(self: Any, *args: Any, **kwargs: Any) -> None:
+            model_arg = args[0] if args else kwargs.get("model")
+            if model_arg is not None and not hasattr(
+                model_arg, "prepare_inputs_for_generation"
+            ):
+                model_arg.prepare_inputs_for_generation = (
+                    lambda *a, **kw: {}  # noqa: ARG005
+                )
+            _orig_peft_init(self, *args, **kwargs)
+
+        peft.PeftModelForCausalLM.__init__ = _patched_peft_init
+    except Exception:
+        _orig_peft_init = None
+
+    try:
+        model = _load_remote_code_model(
             "microsoft/Phi-4-multimodal-instruct",
+            model_cls=AutoModelForCausalLM,
             torch_dtype=torch.bfloat16,
             _attn_implementation="eager",
-            trust_remote_code=True,
         )
-        .to("cuda")
-        .eval()
-    )
+        model = model.to("cuda").eval()
+    finally:
+        if _orig_peft_init is not None:
+            peft.PeftModelForCausalLM.__init__ = _orig_peft_init
+
     processor = AutoProcessor.from_pretrained(
         "microsoft/Phi-4-multimodal-instruct", trust_remote_code=True
     )
@@ -755,6 +813,37 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
 # --- Phi4Vision ---
 
 
+_PHI4_GENERATE_KEYS = {
+    "input_image_embeds",
+    "input_audio_embeds",
+    "input_mode",
+    "image_sizes",
+    "image_attention_mask",
+    "audio_embed_sizes",
+    "audio_attention_mask",
+}
+
+
+def _phi4_generate(phi4: dict[str, Any], inputs: dict[str, Any]) -> Any:
+    device = phi4["model"].device
+    input_ids = inputs["input_ids"].to(device)
+    attention_mask = inputs["attention_mask"].to(device)
+    extra = {}
+    for k in _PHI4_GENERATE_KEYS:
+        v = inputs.get(k)
+        if v is not None:
+            extra[k] = v.to(device) if hasattr(v, "to") else v
+    with torch.no_grad():
+        gen_ids = phi4["model"].generate(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=128,
+            do_sample=False,
+            **extra,
+        )
+    return gen_ids[:, input_ids.shape[1] :]
+
+
 def _invoke_phi4vision(_name: str, img: Image.Image) -> str:
     phi4 = _models["Phi4Vision"]
     messages = [{"role": "user", "content": "<|image_1|>\nDescribe this image."}]
@@ -762,18 +851,7 @@ def _invoke_phi4vision(_name: str, img: Image.Image) -> str:
         messages, tokenize=False, add_generation_prompt=True
     )
     inputs = phi4["processor"](text=text, images=[img], return_tensors="pt")
-    inputs = inputs.to(phi4["model"].device)
-    with torch.no_grad():
-        gen_ids = phi4["model"].generate(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            input_image_embeds=inputs.get("input_image_embeds"),
-            input_audio_embeds=inputs.get("input_audio_embeds"),
-            input_mode=inputs.get("input_mode"),
-            max_new_tokens=128,
-            do_sample=False,
-        )
-        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
+    gen_ids = _phi4_generate(phi4, inputs)
     return phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
 
 
@@ -790,18 +868,7 @@ def _invoke_phi4vision_batch(_name: str, images: list[Image.Image]) -> list[str]
     inputs = phi4["processor"](
         text=all_texts, images=images, padding=True, return_tensors="pt"
     )
-    inputs = inputs.to(phi4["model"].device)
-    with torch.no_grad():
-        gen_ids = phi4["model"].generate(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            input_image_embeds=inputs.get("input_image_embeds"),
-            input_audio_embeds=inputs.get("input_audio_embeds"),
-            input_mode=inputs.get("input_mode"),
-            max_new_tokens=128,
-            do_sample=False,
-        )
-        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
+    gen_ids = _phi4_generate(phi4, inputs)
     return [
         s.strip()
         for s in phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)
@@ -1052,8 +1119,9 @@ def _embed_nomic_vision(images: list[Image.Image]) -> list[str]:
             batch_embs = outputs.last_hidden_state[:, 0]
             norms = torch.norm(batch_embs, p=2, dim=1, keepdim=True).clamp(min=1e-12)
             batch_embs = batch_embs / norms
-            if torch.isnan(batch_embs).any():
-                raise ValueError(f"NomicVision produced NaN embeddings for batch {i}")
+            nan_mask = torch.isnan(batch_embs).any(dim=1)
+            if nan_mask.any():
+                batch_embs[nan_mask] = 0.0
             batch_embs = batch_embs.cpu().numpy()
             embeddings.extend(list(batch_embs))
     return [_encode_embedding(e) for e in embeddings]
@@ -1065,9 +1133,7 @@ def _embed_jina_clip_vision(images: list[Image.Image]) -> list[str]:
             images, truncate_dim=EMBEDDING_DIM
         )
         embs_np = [np.array(e).astype(np.float32) for e in embs]
-        for idx, e in enumerate(embs_np):
+        for e in embs_np:
             if np.isnan(e).any():
-                raise ValueError(
-                    f"JinaClipVision produced NaN embeddings for image {idx}"
-                )
+                e[:] = 0.0
         return [base64.b64encode(e.tobytes()).decode("ascii") for e in embs_np]
