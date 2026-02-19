@@ -836,6 +836,7 @@ def _phi4_generate(phi4: dict[str, Any], inputs: dict[str, Any]) -> Any:
             attention_mask=attention_mask,
             max_new_tokens=128,
             do_sample=False,
+            num_logits_to_keep=0,
             **extra,
         )
     return gen_ids[:, input_ids.shape[1] :]
