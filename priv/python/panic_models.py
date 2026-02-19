@@ -340,14 +340,13 @@ def _load_llama32vision() -> None:
 
 
 def _load_phi4vision() -> None:
-    from transformers import AutoProcessor, Phi4MultimodalForCausalLM
+    from transformers import AutoModelForCausalLM, AutoProcessor
 
     model = (
-        Phi4MultimodalForCausalLM.from_pretrained(
+        AutoModelForCausalLM.from_pretrained(
             "microsoft/Phi-4-multimodal-instruct",
             torch_dtype=torch.bfloat16,
             _attn_implementation="eager",
-            ignore_mismatched_sizes=True,
             trust_remote_code=True,
         )
         .to("cuda")
@@ -1037,12 +1036,18 @@ def embed_images(name: str, b64_list: list[str]) -> list[str]:
 
 def _embed_nomic_vision(images: list[Image.Image]) -> list[str]:
     nomic_vis = _models["NomicVision"]
+    nomic_vis["model"].float().eval()
     embeddings: list[Any] = []
-    with torch.no_grad():
+    with torch.no_grad(), torch.amp.autocast("cuda", enabled=False):
         for i in range(0, len(images), 32):
             batch = images[i : i + 32]
             inputs = nomic_vis["processor"](batch, return_tensors="pt")
-            inputs = {k: v.to("cuda") for k, v in inputs.items()}
+            inputs = {
+                k: v.to("cuda", dtype=torch.float32)
+                if v.is_floating_point()
+                else v.to("cuda")
+                for k, v in inputs.items()
+            }
             outputs = nomic_vis["model"](**inputs)
             batch_embs = outputs.last_hidden_state[:, 0]
             norms = torch.norm(batch_embs, p=2, dim=1, keepdim=True).clamp(min=1e-12)
