@@ -342,13 +342,16 @@ def _load_llama32vision() -> None:
 def _load_phi4vision() -> None:
     from transformers import AutoProcessor, Phi4MultimodalForCausalLM
 
-    model = Phi4MultimodalForCausalLM.from_pretrained(
-        "microsoft/Phi-4-multimodal-instruct",
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        _attn_implementation="eager",
-        ignore_mismatched_sizes=True,
-        trust_remote_code=True,
+    model = (
+        Phi4MultimodalForCausalLM.from_pretrained(
+            "microsoft/Phi-4-multimodal-instruct",
+            torch_dtype=torch.bfloat16,
+            _attn_implementation="eager",
+            ignore_mismatched_sizes=True,
+            trust_remote_code=True,
+        )
+        .to("cuda")
+        .eval()
     )
     processor = AutoProcessor.from_pretrained(
         "microsoft/Phi-4-multimodal-instruct", trust_remote_code=True
@@ -394,7 +397,9 @@ def _load_nomic_vision() -> None:
     from transformers import AutoImageProcessor
 
     processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
-    model = _load_remote_code_model("nomic-ai/nomic-embed-vision-v1.5")
+    model = _load_remote_code_model(
+        "nomic-ai/nomic-embed-vision-v1.5", torch_dtype=torch.float32
+    )
     model = model.to("cuda").eval()
     _models["NomicVision"] = {"processor": processor, "model": model}
 
@@ -471,7 +476,9 @@ def swap_to_gpu(name: str) -> None:
         if hasattr(obj, "remove_all_hooks"):
             obj.remove_all_hooks()
         if isinstance(obj, dict):
-            obj["model"].to("cuda")
+            obj["model"].to("cuda").eval()
+        elif isinstance(obj, torch.nn.Module):
+            obj.to("cuda").eval()
         else:
             obj.to("cuda")
 
@@ -620,20 +627,29 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
 # --- Moondream ---
 
 
+_MOONDREAM_SETTINGS: dict[str, Any] = {"temperature": 0.0, "max_tokens": 256}
+
+
 def _invoke_moondream(_name: str, img: Image.Image) -> str:
-    cap = _models["Moondream"].caption(img, length="short")
+    with torch.inference_mode():
+        cap = _models["Moondream"].caption(
+            img, length="short", settings=_MOONDREAM_SETTINGS
+        )
     return cap["caption"].strip()
 
 
 def _invoke_moondream_batch(_name: str, images: list[Image.Image]) -> list[str]:
     results = []
-    for img in images:
-        cap = _models["Moondream"].caption(img, length="short")
-        results.append(cap["caption"].strip())
+    with torch.inference_mode():
+        for img in images:
+            cap = _models["Moondream"].caption(
+                img, length="short", settings=_MOONDREAM_SETTINGS
+            )
+            results.append(cap["caption"].strip())
     return results
 
 
-# --- Chat-template models (Pixtral, LLaMA32Vision, Phi4Vision) ---
+# --- Chat-template models (Pixtral, LLaMA32Vision) ---
 
 _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
     "Pixtral": {
@@ -672,20 +688,6 @@ _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
         ),
         "dtype_cast": None,
         "extra_generate_kwargs": {},
-        "batch_images_fn": lambda img: img,
-    },
-    "Phi4Vision": {
-        "message_fn": lambda _img: [
-            {"role": "user", "content": "<|image_1|>\nDescribe this image."}
-        ],
-        "processor_call": lambda proc, text, img: proc(
-            text=text, images=[img], return_tensors="pt"
-        ),
-        "batch_processor_call": lambda proc, texts, images: proc(
-            text=texts, images=images, padding=True, return_tensors="pt"
-        ),
-        "dtype_cast": None,
-        "extra_generate_kwargs": {"do_sample": False},
         "batch_images_fn": lambda img: img,
     },
 }
@@ -743,6 +745,62 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     return [
         s.strip()
         for s in model_dict["processor"].batch_decode(gen_ids, skip_special_tokens=True)
+    ]
+
+
+# --- Phi4Vision ---
+
+
+def _invoke_phi4vision(_name: str, img: Image.Image) -> str:
+    phi4 = _models["Phi4Vision"]
+    messages = [{"role": "user", "content": "<|image_1|>\nDescribe this image."}]
+    text = phi4["processor"].apply_chat_template(
+        messages, tokenize=False, add_generation_prompt=True
+    )
+    inputs = phi4["processor"](text=text, images=[img], return_tensors="pt")
+    inputs = inputs.to(phi4["model"].device)
+    with torch.no_grad():
+        gen_ids = phi4["model"].generate(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            input_image_embeds=inputs.get("input_image_embeds"),
+            input_audio_embeds=inputs.get("input_audio_embeds"),
+            input_mode=inputs.get("input_mode"),
+            max_new_tokens=128,
+            do_sample=False,
+        )
+        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
+    return phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
+
+
+def _invoke_phi4vision_batch(_name: str, images: list[Image.Image]) -> list[str]:
+    phi4 = _models["Phi4Vision"]
+    all_texts = []
+    for img in images:
+        messages = [{"role": "user", "content": "<|image_1|>\nDescribe this image."}]
+        all_texts.append(
+            phi4["processor"].apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        )
+    inputs = phi4["processor"](
+        text=all_texts, images=images, padding=True, return_tensors="pt"
+    )
+    inputs = inputs.to(phi4["model"].device)
+    with torch.no_grad():
+        gen_ids = phi4["model"].generate(
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            input_image_embeds=inputs.get("input_image_embeds"),
+            input_audio_embeds=inputs.get("input_audio_embeds"),
+            input_mode=inputs.get("input_mode"),
+            max_new_tokens=128,
+            do_sample=False,
+        )
+        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
+    return [
+        s.strip()
+        for s in phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)
     ]
 
 
@@ -902,7 +960,7 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
-    "Phi4Vision": _invoke_chat_template,
+    "Phi4Vision": _invoke_phi4vision,
     "Qwen25VL": _invoke_qwen25vl,
     "Gemma3n": _invoke_gemma3n,
 }
@@ -911,7 +969,7 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
-    "Phi4Vision": _invoke_chat_template_batch,
+    "Phi4Vision": _invoke_phi4vision_batch,
     "Qwen25VL": _invoke_qwen25vl_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }
