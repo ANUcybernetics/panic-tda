@@ -70,6 +70,29 @@ The task handles database setup and runs the full four-stage pipeline
 | image embedding | `NomicVision`, `JinaClipVision` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
 
+### Approximate model run times
+
+Measured on a single NVIDIA GPU (RTX 4090) with NF4 quantisation where
+applicable. Times include model loading/swapping overhead.
+
+| Model | Single invocation | Batch of 3 | Per-image (batch) |
+|---|---|---|---|
+| **Text-to-image** | | | |
+| SD35Medium | ~9s | ~9s | ~3s |
+| ZImageTurbo | ~8s | ~18s | ~6s |
+| Flux2Klein | ~20s | ~20s | ~7s |
+| Flux2Dev | ~100s | ~226s | ~75s |
+| QwenImage | ~46s | ~69s | ~23s |
+| HunyuanImage | ~124s | ~326s | ~109s |
+| GLMImage | ~44s | ~85s | ~28s |
+| **Image-to-text** | | | |
+| Moondream | ~4s | ~10s | ~3s |
+| Qwen25VL | ~12s | ~14s | ~5s |
+| Gemma3n | ~16s | ~18s | ~6s |
+| Pixtral | ~19s | ~24s | ~8s |
+| LLaMA32Vision | ~17s | ~23s | ~8s |
+| Phi4Vision | ~50s | ~57s | ~19s |
+
 ### Other experiment tasks
 
 - `mise exec -- mix experiment.list` --- list all experiments
