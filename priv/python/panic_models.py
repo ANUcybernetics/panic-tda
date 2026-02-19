@@ -747,7 +747,7 @@ _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
         ),
         "dtype_cast": None,
         "extra_generate_kwargs": {},
-        "batch_images_fn": lambda img: img,
+        "batch_images_fn": lambda img: [img],
     },
 }
 
