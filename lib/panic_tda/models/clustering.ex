@@ -22,6 +22,7 @@ defmodule PanicTda.Models.Clustering do
            min_samples = max(2, int(n_samples * 0.001))
 
            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+           norms = np.clip(norms, 1e-12, None)
            embeddings_norm = embeddings / norms
 
            hdb = _HDBSCAN(
