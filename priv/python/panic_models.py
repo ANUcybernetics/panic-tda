@@ -27,6 +27,16 @@ _models: dict[str, Any] = {}
 _models_offload_only: set[str] = set()
 
 
+def _bnb_4bit_config() -> Any:
+    from transformers import BitsAndBytesConfig
+
+    return BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
@@ -231,6 +241,7 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "repo": "zai-org/GLM-Image",
         "offload": "model_cpu_offload",
         "offload_only": True,
+        "quantize": True,
         "extra_kwargs": {"torch_dtype": "bfloat16"},
     },
     "ZImageTurbo": {
@@ -250,6 +261,7 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "repo": "Qwen/Qwen-Image-2512",
         "offload": "model_cpu_offload",
         "offload_only": True,
+        "quantize": True,
         "extra_kwargs": {"torch_dtype": "bfloat16"},
     },
 }
@@ -266,6 +278,14 @@ def _load_t2i_pipeline(name: str) -> None:
             kwargs[k] = torch.bfloat16
         else:
             kwargs[k] = v
+    if cfg.get("quantize"):
+        from diffusers import PipelineQuantizationConfig
+
+        kwargs["quantization_config"] = PipelineQuantizationConfig(
+            quant_mapping={
+                "transformer": _bnb_4bit_config(),
+            }
+        )
     pipe = pipeline_cls.from_pretrained(cfg["repo"], **kwargs)
     getattr(pipe, f"enable_{cfg['offload']}")()
     _models[name] = pipe
@@ -293,11 +313,13 @@ def _load_pixtral() -> None:
         "mistral-community/pixtral-12b",
         torch_dtype=torch.bfloat16,
         device_map="auto",
+        quantization_config=_bnb_4bit_config(),
     )
     processor = AutoProcessor.from_pretrained("mistral-community/pixtral-12b")
     if processor.tokenizer.pad_token is None:
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
     _models["Pixtral"] = {"processor": processor, "model": model}
+    _models_offload_only.add("Pixtral")
 
 
 def _load_llama32vision() -> None:
@@ -308,11 +330,13 @@ def _load_llama32vision() -> None:
         torch_dtype=torch.bfloat16,
         device_map="auto",
         token=True,
+        quantization_config=_bnb_4bit_config(),
     )
     processor = AutoProcessor.from_pretrained(
         "meta-llama/Llama-3.2-11B-Vision-Instruct", token=True
     )
     _models["LLaMA32Vision"] = {"processor": processor, "model": model}
+    _models_offload_only.add("LLaMA32Vision")
 
 
 def _load_phi4vision() -> None:
@@ -340,9 +364,11 @@ def _load_qwen25vl() -> None:
         torch_dtype=torch.bfloat16,
         attn_implementation="sdpa",
         device_map="auto",
+        quantization_config=_bnb_4bit_config(),
     )
     processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
     _models["Qwen25VL"] = {"processor": processor, "model": model}
+    _models_offload_only.add("Qwen25VL")
 
 
 def _load_gemma3n() -> None:
@@ -476,10 +502,16 @@ def unload_model(name: str) -> None:
     if isinstance(obj, dict):
         for v in obj.values():
             if hasattr(v, "cpu"):
-                v.cpu()
+                try:
+                    v.cpu()
+                except ValueError:
+                    pass
             del v
     elif hasattr(obj, "cpu"):
-        obj.cpu()
+        try:
+            obj.cpu()
+        except ValueError:
+            pass
     del obj
     gc.collect()
     if torch.cuda.is_available():
@@ -494,10 +526,16 @@ def unload_all_models() -> None:
         if isinstance(obj, dict):
             for v in obj.values():
                 if hasattr(v, "cpu"):
-                    v.cpu()
+                    try:
+                        v.cpu()
+                    except ValueError:
+                        pass
                 del v
         elif hasattr(obj, "cpu"):
-            obj.cpu()
+            try:
+                obj.cpu()
+            except ValueError:
+                pass
         del obj
     _models_offload_only.clear()
     gc.collect()
