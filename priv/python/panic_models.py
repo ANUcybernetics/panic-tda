@@ -627,7 +627,12 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
 # --- Moondream ---
 
 
-_MOONDREAM_SETTINGS: dict[str, Any] = {"temperature": 0.0, "max_tokens": 256}
+_MOONDREAM_SETTINGS: dict[str, Any] = {
+    "temperature": 0.0,
+    "max_tokens": 256,
+    "top_p": 1.0,
+    "variant": None,
+}
 
 
 def _invoke_moondream(_name: str, img: Image.Image) -> str:
