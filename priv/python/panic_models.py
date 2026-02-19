@@ -85,20 +85,17 @@ def setup() -> None:
     try:
         import transformers.cache_utils as _cu
 
+        if not hasattr(_cu.DynamicCache, "get_usable_length"):
+
+            def _get_usable_length(
+                self: Any, new_seq_length: int = 0, layer_idx: int = 0
+            ) -> int:
+                return self.get_seq_length(layer_idx)
+
+            _cu.DynamicCache.get_usable_length = _get_usable_length
+
         if not hasattr(_cu, "SlidingWindowCache"):
-            _DynCache = _cu.DynamicCache
-
-            class _SlidingWindowCacheShim(_DynCache):  # type: ignore[misc]
-                def __init__(self, *args: Any, **kwargs: Any) -> None:
-                    kwargs.pop("config", None)
-                    super().__init__(*args, **kwargs)
-
-                def get_usable_length(
-                    self, new_seq_length: int = 0, layer_idx: int = 0
-                ) -> int:
-                    return self.get_seq_length(layer_idx)
-
-            _cu.SlidingWindowCache = _SlidingWindowCacheShim
+            _cu.SlidingWindowCache = _cu.DynamicCache
     except Exception:
         pass
 
