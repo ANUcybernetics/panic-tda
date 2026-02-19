@@ -620,6 +620,7 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
 }
 
 _T2I_BATCH_CAPABLE: set[str] = {"SD35Medium", "ZImageTurbo", "Flux2Klein"}
+_I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
 
 
 def invoke_t2i(name: str, prompt: str) -> str:
@@ -1135,3 +1136,43 @@ def _embed_jina_clip_vision(images: list[Image.Image]) -> list[str]:
             if np.isnan(e).any():
                 e[:] = 0.0
         return [base64.b64encode(e.tobytes()).decode("ascii") for e in embs_np]
+
+
+# ---------------------------------------------------------------------------
+# Batch size probing
+# ---------------------------------------------------------------------------
+
+
+def probe_max_batch(
+    name: str, test_inputs: list[str], sizes: list[int]
+) -> dict[int, str]:
+    """Try increasing batch sizes for a model, return {size: "ok"/"oom"/error}.
+
+    For T2I models, test_inputs should be a list of prompt strings.
+    For I2T models, test_inputs should be a list of base64-encoded images.
+    """
+    results: dict[int, str] = {}
+    for n in sizes:
+        batch = test_inputs[:n]
+        torch.cuda.empty_cache()
+        gc.collect()
+        try:
+            if name in _T2I_BATCH_CAPABLE:
+                invoke_t2i_batch(name, batch)
+            elif name in _I2T_BATCH_CAPABLE:
+                invoke_i2t_batch(name, batch)
+            else:
+                results[n] = f"model {name} is not truly batched"
+                break
+            results[n] = "ok"
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            gc.collect()
+            results[n] = "oom"
+            break
+        except Exception as e:
+            torch.cuda.empty_cache()
+            gc.collect()
+            results[n] = str(e)
+            break
+    return results
