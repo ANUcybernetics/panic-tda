@@ -647,7 +647,7 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "Flux2Dev": {"num_inference_steps": 15, "guidance_scale": 3.5},
     "HunyuanImage": {"num_inference_steps": 25},
     "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
-    "ZImageTurbo": {"num_inference_steps": 8},
+    "ZImageTurbo": {"num_inference_steps": 8, "guidance_scale": 0.0},
     "Flux2Klein": {"num_inference_steps": 4, "guidance_scale": 1.0},
     "QwenImage": {"num_inference_steps": 25, "true_cfg_scale": 4.0},
 }

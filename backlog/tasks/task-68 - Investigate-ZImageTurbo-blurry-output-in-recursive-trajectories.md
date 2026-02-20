@@ -1,9 +1,10 @@
 ---
 id: TASK-68
 title: Investigate ZImageTurbo blurry output in recursive trajectories
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-20 06:35'
+updated_date: '2026-02-20 06:50'
 labels:
   - gpu
   - models
@@ -19,8 +20,14 @@ ZImageTurbo images become very blurry almost from the start of recursive T2I→I
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Confirm current default guidance_scale when not explicitly set
-- [ ] #2 Test ZImageTurbo output with guidance_scale=0.0 vs current default
-- [ ] #3 Compare image quality across several trajectory steps with the fix applied
-- [ ] #4 Update _T2I_INVOKE_CONFIGS if a fix is found
+- [x] #1 Confirm current default guidance_scale when not explicitly set
+- [x] #2 Test ZImageTurbo output with guidance_scale=0.0 vs current default
+- [x] #3 Compare image quality across several trajectory steps with the fix applied
+- [x] #4 Update _T2I_INVOKE_CONFIGS if a fix is found
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+GPU verification complete. With guidance_scale=5.0 (old default): images are soft/blurry with shallow depth-of-field artefacts. With guidance_scale=0.0 (fix): images are sharp with visible detail (water droplets, wood grain). Recursive trajectory over 5 steps (ZImageTurbo+LLaMA32Vision) maintains sharp output at every T2I step --- no progressive blurring. Fix confirmed.
+<!-- SECTION:NOTES:END -->
