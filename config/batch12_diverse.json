@@ -1,0 +1,16 @@
+{
+  "networks": [
+    ["SD35Medium", "Moondream"],
+    ["Flux2Klein", "Pixtral"],
+    ["ZImageTurbo", "LLaMA32Vision"]
+  ],
+  "prompts": [
+    "a red apple on a wooden table",
+    "a lone astronaut floating above Earth",
+    "a bustling Tokyo street at night",
+    "an old stone bridge over a misty river"
+  ],
+  "embedding_models": ["Nomic"],
+  "max_length": 100,
+  "num_runs": 3
+}
