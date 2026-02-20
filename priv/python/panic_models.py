@@ -434,8 +434,9 @@ def _load_phi4vision() -> None:
             model_cls=AutoModelForCausalLM,
             torch_dtype=torch.bfloat16,
             _attn_implementation="eager",
+            device_map="auto",
         )
-        model = model.to("cuda").eval()
+        model.eval()
     finally:
         if _orig_peft_init is not None:
             peft.PeftModelForCausalLM.__init__ = _orig_peft_init
@@ -881,23 +882,7 @@ def _invoke_phi4vision(_name: str, img: Image.Image) -> str:
 
 
 def _invoke_phi4vision_batch(_name: str, images: list[Image.Image]) -> list[str]:
-    phi4 = _models["Phi4Vision"]
-    all_texts = []
-    for img in images:
-        messages = [{"role": "user", "content": "<|image_1|>\nDescribe this image."}]
-        all_texts.append(
-            phi4["processor"].apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
-        )
-    inputs = phi4["processor"](
-        text=all_texts, images=images, padding=True, return_tensors="pt"
-    )
-    gen_ids = _phi4_generate(phi4, inputs)
-    return [
-        s.strip()
-        for s in phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)
-    ]
+    return [_invoke_phi4vision(_name, img) for img in images]
 
 
 # --- Qwen25VL ---
