@@ -1,0 +1,22 @@
+{
+  "networks": [
+    ["SD35Medium", "Moondream"],
+    ["SD35Medium", "Qwen25VL"],
+    ["SD35Medium", "LLaMA32Vision"],
+    ["ZImageTurbo", "Moondream"],
+    ["ZImageTurbo", "Qwen25VL"],
+    ["ZImageTurbo", "LLaMA32Vision"],
+    ["QwenImage", "Moondream"],
+    ["QwenImage", "Qwen25VL"],
+    ["QwenImage", "LLaMA32Vision"]
+  ],
+  "prompts": [
+    "this is me on a typical summer's day",
+    "this is me on a typical autumn's day",
+    "this is me on a typical winter's day",
+    "this is me on a typical spring's day"
+  ],
+  "embedding_models": ["Nomic"],
+  "max_length": 200,
+  "num_runs": 8
+}
