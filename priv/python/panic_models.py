@@ -332,12 +332,45 @@ def _load_t2i_pipeline(name: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _load_moondream() -> None:
-    from transformers import AutoModelForCausalLM
+_MOONDREAM_REPO = "vikhyatk/moondream2"
+_MOONDREAM_REV = "2025-06-21"
 
-    _models["Moondream"] = AutoModelForCausalLM.from_pretrained(
-        "vikhyatk/moondream2", revision="2025-06-21", trust_remote_code=True
-    ).to("cuda")
+
+def _load_moondream() -> None:
+    import sys
+
+    from huggingface_hub import snapshot_download
+    from safetensors.torch import load_file
+    from transformers import AutoConfig
+
+    snap_dir = snapshot_download(_MOONDREAM_REPO, revision=_MOONDREAM_REV)
+
+    AutoConfig.from_pretrained(
+        _MOONDREAM_REPO, revision=_MOONDREAM_REV, trust_remote_code=True
+    )
+
+    md_mod = next(
+        mod
+        for name, mod in sys.modules.items()
+        if "transformers_modules" in name
+        and "moondream" in name
+        and "MoondreamModel" in getattr(mod, "__dict__", {})
+        and "MoondreamConfig" in getattr(mod, "__dict__", {})
+    )
+
+    import json
+
+    with open(f"{snap_dir}/config.json") as f:
+        raw_config = json.load(f)
+
+    config = md_mod.MoondreamConfig.from_dict(raw_config["config"])
+    model = md_mod.MoondreamModel(config, setup_caches=True)
+
+    state_dict = load_file(f"{snap_dir}/model.safetensors")
+    stripped = {k.removeprefix("model."): v for k, v in state_dict.items()}
+    model.load_state_dict(stripped, strict=False)
+
+    _models["Moondream"] = model.to("cuda").eval()
 
 
 def _load_pixtral() -> None:
@@ -689,20 +722,20 @@ _MOONDREAM_SETTINGS: dict[str, Any] = {
 
 
 def _invoke_moondream(_name: str, img: Image.Image) -> str:
+    model = _models["Moondream"]
     with torch.inference_mode():
-        cap = _models["Moondream"].caption(
-            img, length="short", settings=_MOONDREAM_SETTINGS
-        )
+        encoded = model.encode_image(img)
+        cap = model.caption(encoded, length="short", settings=_MOONDREAM_SETTINGS)
     return cap["caption"].strip()
 
 
 def _invoke_moondream_batch(_name: str, images: list[Image.Image]) -> list[str]:
+    model = _models["Moondream"]
     results = []
     with torch.inference_mode():
         for img in images:
-            cap = _models["Moondream"].caption(
-                img, length="short", settings=_MOONDREAM_SETTINGS
-            )
+            encoded = model.encode_image(img)
+            cap = model.caption(encoded, length="short", settings=_MOONDREAM_SETTINGS)
             results.append(cap["caption"].strip())
     return results
 

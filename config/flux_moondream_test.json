@@ -1,0 +1,7 @@
+{
+  "networks": [["Flux2Klein", "Moondream"]],
+  "prompts": ["a red apple on a wooden table"],
+  "embedding_models": ["Nomic"],
+  "max_length": 100,
+  "num_runs": 16
+}
