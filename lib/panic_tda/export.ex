@@ -14,7 +14,8 @@ defmodule PanicTda.Export do
     6 => [{2, 3}, {3, 2}],
     8 => [{2, 4}, {4, 2}],
     9 => [{3, 3}],
-    12 => [{3, 4}, {4, 3}]
+    12 => [{3, 4}, {4, 3}],
+    16 => [{4, 4}]
   }
 
   @valid_counts Map.keys(@grid_shapes) |> Enum.sort()
