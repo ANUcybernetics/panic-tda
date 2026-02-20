@@ -171,10 +171,11 @@ defmodule PanicTda.RealModelsTest do
         t0 = System.monotonic_time(:millisecond)
         {:ok, caption} = GenAI.invoke(env, i2t, image)
         elapsed = System.monotonic_time(:millisecond) - t0
-        IO.puts("#{i2t} single: #{elapsed}ms")
+        IO.puts("#{i2t} single: #{elapsed}ms\n  caption: #{caption}")
 
         assert is_binary(caption)
         assert String.length(caption) > 0
+        refute caption == "[empty]", "#{i2t} returned empty caption"
       end
 
       @tag timeout: 600_000
@@ -193,9 +194,11 @@ defmodule PanicTda.RealModelsTest do
 
         assert length(captions) == 3
 
-        Enum.each(captions, fn caption ->
+        Enum.each(Enum.zip(prompts, captions), fn {prompt, caption} ->
+          IO.puts("  [#{prompt}]: #{caption}")
           assert is_binary(caption)
           assert String.length(caption) > 0
+          refute caption == "[empty]", "#{i2t} returned empty caption for '#{prompt}'"
         end)
       end
     end
