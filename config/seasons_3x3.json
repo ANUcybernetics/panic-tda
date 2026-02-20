@@ -17,6 +17,6 @@
     "this is me on a typical spring's day"
   ],
   "embedding_models": ["Nomic"],
-  "max_length": 200,
+  "max_length": 50,
   "num_runs": 8
 }

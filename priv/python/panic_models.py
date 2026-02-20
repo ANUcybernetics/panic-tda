@@ -586,16 +586,17 @@ def swap_to_cpu(name: str) -> None:
         torch.cuda.empty_cache()
 
 
-def unload_model(name: str) -> None:
-    if name not in _models:
-        return
-    obj = _models.pop(name)
-    _models_offload_only.discard(name)
+def _force_free_model(obj: Any) -> None:
     if hasattr(obj, "remove_all_hooks"):
         obj.remove_all_hooks()
     if isinstance(obj, dict):
         for v in obj.values():
-            if hasattr(v, "cpu"):
+            if hasattr(v, "parameters"):
+                for p in v.parameters():
+                    p.data = torch.empty(0)
+                for b in v.buffers():
+                    b.data = torch.empty(0)
+            elif hasattr(v, "cpu"):
                 try:
                     v.cpu()
                 except ValueError:
@@ -603,38 +604,32 @@ def unload_model(name: str) -> None:
             del v
     elif hasattr(obj, "cpu"):
         try:
-            obj.cpu()
+            obj.to("cpu")
         except ValueError:
             pass
     del obj
+
+
+def unload_model(name: str) -> None:
+    if name not in _models:
+        return
+    obj = _models.pop(name)
+    _models_offload_only.discard(name)
+    _force_free_model(obj)
     gc.collect()
     if torch.cuda.is_available():
+        torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
 
 def unload_all_models() -> None:
     for name in list(_models.keys()):
-        obj = _models.pop(name)
-        if hasattr(obj, "remove_all_hooks"):
-            obj.remove_all_hooks()
-        if isinstance(obj, dict):
-            for v in obj.values():
-                if hasattr(v, "cpu"):
-                    try:
-                        v.cpu()
-                    except ValueError:
-                        pass
-                del v
-        elif hasattr(obj, "cpu"):
-            try:
-                obj.cpu()
-            except ValueError:
-                pass
-        del obj
+        _force_free_model(_models.pop(name))
     _models_offload_only.clear()
     gc.collect()
     torch.set_default_dtype(torch.float32)
     if torch.cuda.is_available():
+        torch.cuda.synchronize()
         torch.cuda.empty_cache()
 
 
