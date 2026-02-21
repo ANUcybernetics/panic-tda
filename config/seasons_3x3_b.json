@@ -1,0 +1,17 @@
+{
+  "networks": [
+    ["HunyuanImage", "Gemma3n"],
+    ["HunyuanImage", "Pixtral"],
+    ["GLMImage", "Gemma3n"],
+    ["GLMImage", "Pixtral"]
+  ],
+  "prompts": [
+    "this is me on a typical summer's day",
+    "this is me on a typical autumn's day",
+    "this is me on a typical winter's day",
+    "this is me on a typical spring's day"
+  ],
+  "embedding_models": ["Nomic"],
+  "max_length": 50,
+  "num_runs": 8
+}
