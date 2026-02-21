@@ -652,17 +652,31 @@ _T2I_BATCH_CAPABLE: set[str] = {"SD35Medium", "ZImageTurbo", "Flux2Klein"}
 _I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
 
 
+_T2I_MAX_RETRIES = 3
+
+
+def _invoke_t2i_single(name: str, prompt: str) -> str:
+    cfg = _T2I_INVOKE_CONFIGS[name]
+    for attempt in range(_T2I_MAX_RETRIES):
+        try:
+            img = _models[name](
+                prompt=prompt,
+                height=IMAGE_SIZE,
+                width=IMAGE_SIZE,
+                generator=None,
+                **cfg,
+            ).images[0]
+            return _encode_image_b64(img)
+        except RuntimeError as e:
+            if attempt == _T2I_MAX_RETRIES - 1:
+                raise
+            print(f"[panic_models] {name} attempt {attempt + 1} failed: {e}, retrying")
+    raise RuntimeError("unreachable")
+
+
 def invoke_t2i(name: str, prompt: str) -> str:
     """Run a single T2I inference. Returns base64-encoded WEBP."""
-    cfg = _T2I_INVOKE_CONFIGS[name]
-    img = _models[name](
-        prompt=prompt,
-        height=IMAGE_SIZE,
-        width=IMAGE_SIZE,
-        generator=None,
-        **cfg,
-    ).images[0]
-    return _encode_image_b64(img)
+    return _invoke_t2i_single(name, prompt)
 
 
 def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
@@ -678,17 +692,7 @@ def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
         ).images
         return [_encode_image_b64(img) for img in imgs]
     else:
-        results = []
-        for p in prompts:
-            img = _models[name](
-                prompt=p,
-                height=IMAGE_SIZE,
-                width=IMAGE_SIZE,
-                generator=None,
-                **cfg,
-            ).images[0]
-            results.append(_encode_image_b64(img))
-        return results
+        return [_invoke_t2i_single(name, p) for p in prompts]
 
 
 # ---------------------------------------------------------------------------
