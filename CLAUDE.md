@@ -27,6 +27,8 @@ For detailed design rationale, see @DESIGN.md.
 - Python interop is via Snex --- the interpreter maintains persistent state
   across `pyeval` calls; Python code is inline in the Elixir source files
 - the project uses a separate SQLite database
+- tidewave MCP server is available for dev-time BEAM introspection; start it
+  with `mise exec -- mix tidewave` (runs on port 4000)
 
 ## Running experiments
 
