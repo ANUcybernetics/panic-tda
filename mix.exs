@@ -30,7 +30,9 @@ defmodule PanicTda.MixProject do
       {:jason, "~> 1.4"},
       {:snex, "~> 0.3"},
       {:vix, "~> 0.35"},
-      {:usage_rules, "~> 1.1", only: [:dev]}
+      {:usage_rules, "~> 1.1", only: [:dev]},
+      {:tidewave, "~> 0.5", only: :dev},
+      {:bandit, "~> 1.0", only: :dev}
     ]
   end
 
@@ -46,7 +48,9 @@ defmodule PanicTda.MixProject do
       setup: ["deps.get", "ash.setup"],
       "ash.setup": ["ash.codegen", "ecto.create", "ecto.migrate"],
       "ash.codegen": ["ash.codegen --name initial_setup"],
-      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"]
+      test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
+      tidewave:
+        "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4000) end)'"
     ]
   end
 end
