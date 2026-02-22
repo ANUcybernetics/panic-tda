@@ -48,19 +48,15 @@ defmodule PanicTda.ExportTest do
       end
     end
 
-    test "unsupported num_runs raises ArgumentError" do
-      for bad_n_run <- [5, 7, 10] do
-        assert_raise ArgumentError, ~r/unsupported num_runs/, fn ->
-          PanicTda.Export.compute_layout(1, 1, bad_n_run, 1920, 1080, :hd)
-        end
+    test "arbitrary grid counts produce valid layouts" do
+      for n_run <- [5, 7, 10] do
+        layout = PanicTda.Export.compute_layout(1, 1, n_run, 1920, 1080, :hd)
+        assert layout.img_size > 0
       end
-    end
 
-    test "unsupported outer count raises ArgumentError" do
       for {n_net, n_prom} <- [{5, 1}, {1, 5}, {7, 1}] do
-        assert_raise ArgumentError, ~r/num_networks × num_prompts/, fn ->
-          PanicTda.Export.compute_layout(n_net, n_prom, 1, 1920, 1080, :hd)
-        end
+        layout = PanicTda.Export.compute_layout(n_net, n_prom, 1, 1920, 1080, :hd)
+        assert layout.img_size > 0
       end
     end
 

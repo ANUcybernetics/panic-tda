@@ -6,19 +6,6 @@ defmodule PanicTda.Export do
   @default_fps 10
   @default_crf 30
 
-  @grid_shapes %{
-    1 => [{1, 1}],
-    2 => [{1, 2}, {2, 1}],
-    3 => [{1, 3}, {3, 1}],
-    4 => [{2, 2}],
-    6 => [{2, 3}, {3, 2}],
-    8 => [{2, 4}, {4, 2}],
-    9 => [{3, 3}],
-    12 => [{3, 4}, {4, 3}],
-    16 => [{4, 4}]
-  }
-
-  @valid_counts Map.keys(@grid_shapes) |> Enum.sort()
 
   def video(experiment_id, output_path, opts \\ []) do
     experiment =
@@ -128,8 +115,8 @@ defmodule PanicTda.Export do
   def compute_layout(n_net, n_prom, n_run, frame_w, frame_h, resolution \\ :hd) do
     outer_count = n_net * n_prom
 
-    sub_shapes = lookup_shapes!(n_run, "num_runs")
-    outer_shapes = lookup_shapes!(outer_count, "num_networks × num_prompts")
+    sub_shapes = grid_shapes(n_run)
+    outer_shapes = grid_shapes(outer_count)
 
     {gutter, label_h, label_pad, font_size} =
       case resolution do
@@ -193,15 +180,8 @@ defmodule PanicTda.Export do
     }
   end
 
-  defp lookup_shapes!(count, label) do
-    case Map.fetch(@grid_shapes, count) do
-      {:ok, shapes} ->
-        shapes
-
-      :error ->
-        raise ArgumentError,
-              "unsupported #{label} count #{count}; valid counts are #{inspect(@valid_counts)}"
-    end
+  defp grid_shapes(count) do
+    for r <- 1..count, c = div(count, r), r * c == count, do: {r, c}
   end
 
   defp valid_orientation?(o_r, o_c, n_net, n_prom, :row),
