@@ -23,6 +23,16 @@ from sentence_transformers.util import batch_to_device
 IMAGE_SIZE = 256
 EMBEDDING_DIM = 768
 
+_T2I_IMAGE_SIZES: dict[str, int] = {
+    "SD35Medium": 1024,
+    "Flux2Dev": 1024,
+    "HunyuanImage": 1024,
+    "GLMImage": 1024,
+    "ZImageTurbo": 1024,
+    "Flux2Klein": 1024,
+    "QwenImage": 1024,
+}
+
 _models: dict[str, Any] = {}
 _models_offload_only: set[str] = set()
 
@@ -657,12 +667,13 @@ _T2I_MAX_RETRIES = 3
 
 def _invoke_t2i_single(name: str, prompt: str) -> str:
     cfg = _T2I_INVOKE_CONFIGS[name]
+    size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
     for attempt in range(_T2I_MAX_RETRIES):
         try:
             img = _models[name](
                 prompt=prompt,
-                height=IMAGE_SIZE,
-                width=IMAGE_SIZE,
+                height=size,
+                width=size,
                 generator=None,
                 **cfg,
             ).images[0]
@@ -682,11 +693,12 @@ def invoke_t2i(name: str, prompt: str) -> str:
 def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
     """Run batch T2I inference. Returns list of base64-encoded WEBP."""
     cfg = _T2I_INVOKE_CONFIGS[name]
+    size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
     if name in _T2I_BATCH_CAPABLE:
         imgs = _models[name](
             prompt=prompts,
-            height=IMAGE_SIZE,
-            width=IMAGE_SIZE,
+            height=size,
+            width=size,
             generator=None,
             **cfg,
         ).images
