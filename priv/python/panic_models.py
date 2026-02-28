@@ -718,10 +718,20 @@ def invoke_i2t(name: str, image_b64: str) -> str:
     return _I2T_STRATEGIES[name](name, img)
 
 
+_I2T_MAX_BATCH = 8
+
+
 def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
     """Run batch I2T inference. Returns list of caption texts."""
-    images = [_decode_image_b64(b) for b in b64_list]
-    return _I2T_BATCH_STRATEGIES[name](name, images)
+    if len(b64_list) <= _I2T_MAX_BATCH:
+        images = [_decode_image_b64(b) for b in b64_list]
+        return _I2T_BATCH_STRATEGIES[name](name, images)
+    results: list[str] = []
+    for i in range(0, len(b64_list), _I2T_MAX_BATCH):
+        chunk = b64_list[i : i + _I2T_MAX_BATCH]
+        images = [_decode_image_b64(b) for b in chunk]
+        results.extend(_I2T_BATCH_STRATEGIES[name](name, images))
+    return results
 
 
 # --- Moondream ---
