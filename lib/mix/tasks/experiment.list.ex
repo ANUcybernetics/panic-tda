@@ -9,6 +9,8 @@ defmodule Mix.Tasks.Experiment.List do
 
   use Mix.Task
 
+  require Ash.Query
+
   @impl Mix.Task
   def run(_args) do
     Mix.Task.run("ecto.create", ["--quiet"])
@@ -37,8 +39,30 @@ defmodule Mix.Tasks.Experiment.List do
   end
 
   defp status(%{completed_at: %DateTime{}}), do: "completed"
-  defp status(%{started_at: %DateTime{}}), do: "running"
+
+  defp status(%{started_at: %DateTime{}} = experiment) do
+    activity = last_activity(experiment)
+    if stalled?(activity), do: "stalled", else: "running"
+  end
+
   defp status(_), do: "pending"
+
+  defp last_activity(experiment) do
+    case PanicTda.Invocation
+         |> Ash.Query.filter(run.experiment_id == ^experiment.id)
+         |> Ash.Query.sort(completed_at: :desc)
+         |> Ash.Query.limit(1)
+         |> Ash.read_one!() do
+      nil -> experiment.started_at
+      inv -> inv.completed_at || inv.started_at
+    end
+  end
+
+  defp stalled?(nil), do: false
+
+  defp stalled?(last_activity) do
+    DateTime.diff(DateTime.utc_now(), last_activity, :second) > 3600
+  end
 
   defp format_time(dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S")
 

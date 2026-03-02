@@ -20,10 +20,11 @@ defmodule Mix.Tasks.Experiment.Status do
 
     experiment = find_experiment(id_prefix)
     counts = experiment_counts(experiment)
+    activity = last_activity(experiment)
 
     Mix.shell().info("""
     Experiment: #{experiment.id}
-    Status:     #{status(experiment)}
+    Status:     #{status(experiment, activity)}
 
     Config:
       Networks:         #{inspect(experiment.networks)}
@@ -33,9 +34,10 @@ defmodule Mix.Tasks.Experiment.Status do
       Max length:       #{experiment.max_length}
 
     Timestamps:
-      Created:   #{format_time(experiment.inserted_at)}
-      Started:   #{format_time(experiment.started_at)}
-      Completed: #{format_time(experiment.completed_at)}
+      Created:       #{format_time(experiment.inserted_at)}
+      Started:       #{format_time(experiment.started_at)}
+      Completed:     #{format_time(experiment.completed_at)}
+      Last activity: #{format_time(activity)}
 
     Progress:
       Runs:                 #{counts.runs}
@@ -77,9 +79,30 @@ defmodule Mix.Tasks.Experiment.Status do
     }
   end
 
-  defp status(%{completed_at: %DateTime{}}), do: "completed"
-  defp status(%{started_at: %DateTime{}}), do: "running"
-  defp status(_), do: "pending"
+  defp last_activity(experiment) do
+    case PanicTda.Invocation
+         |> Ash.Query.filter(run.experiment_id == ^experiment.id)
+         |> Ash.Query.sort(completed_at: :desc)
+         |> Ash.Query.limit(1)
+         |> Ash.read_one!() do
+      nil -> experiment.started_at
+      inv -> inv.completed_at || inv.started_at
+    end
+  end
+
+  defp status(%{completed_at: %DateTime{}}, _last_activity), do: "completed"
+
+  defp status(%{started_at: %DateTime{}}, last_activity) do
+    if stalled?(last_activity), do: "stalled", else: "running"
+  end
+
+  defp status(_, _last_activity), do: "pending"
+
+  defp stalled?(nil), do: false
+
+  defp stalled?(last_activity) do
+    DateTime.diff(DateTime.utc_now(), last_activity, :second) > 3600
+  end
 
   defp format_time(nil), do: "-"
   defp format_time(dt), do: Calendar.strftime(dt, "%Y-%m-%d %H:%M:%S")
