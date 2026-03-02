@@ -21,6 +21,27 @@ defmodule PanicTda.ExportTest do
     experiment
   end
 
+  defp content_dimensions(layout) do
+    net_tile_w = layout.run_cols * layout.img_size
+
+    prompt_tile_w =
+      layout.net_cols * net_tile_w + (layout.net_cols - 1) * layout.net_gutter
+
+    content_w =
+      layout.prompt_cols * prompt_tile_w + (layout.prompt_cols - 1) * layout.prompt_gutter
+
+    net_tile_h = layout.net_label_h + layout.run_rows * layout.img_size
+
+    prompt_tile_h =
+      layout.prompt_label_h + layout.net_rows * net_tile_h +
+        (layout.net_rows - 1) * layout.net_gutter
+
+    content_h =
+      layout.prompt_rows * prompt_tile_h + (layout.prompt_rows - 1) * layout.prompt_gutter
+
+    {content_w, content_h}
+  end
+
   describe "compute_layout/6" do
     test "supported counts produce valid layouts at HD and 4K" do
       combos = [
@@ -30,21 +51,24 @@ defmodule PanicTda.ExportTest do
         {3, 4, 12},
         {1, 1, 9},
         {2, 1, 6},
-        {1, 3, 2}
+        {1, 3, 2},
+        {7, 1, 1},
+        {1, 5, 3}
       ]
 
-      for {n_net, n_prom, n_run} <- combos,
+      for {n_prom, n_net, n_run} <- combos,
           resolution <- [:hd, :"4k"] do
         {frame_w, frame_h} = if resolution == :hd, do: {1920, 1080}, else: {3840, 2160}
 
         layout =
-          PanicTda.Export.compute_layout(n_net, n_prom, n_run, frame_w, frame_h, resolution)
+          PanicTda.Export.compute_layout(n_prom, n_net, n_run, frame_w, frame_h, resolution)
 
         assert layout.img_size > 0,
-               "img_size for #{n_net}×#{n_prom}×#{n_run} @ #{resolution}"
+               "img_size for #{n_prom}p×#{n_net}n×#{n_run}r @ #{resolution}"
 
-        assert layout.outer_rows * layout.outer_cols == n_net * n_prom
-        assert layout.sub_rows * layout.sub_cols >= n_run
+        assert layout.prompt_rows * layout.prompt_cols >= n_prom
+        assert layout.net_rows * layout.net_cols >= n_net
+        assert layout.run_rows * layout.run_cols >= n_run
       end
     end
 
@@ -52,11 +76,14 @@ defmodule PanicTda.ExportTest do
       for n_run <- [5, 7, 10] do
         layout = PanicTda.Export.compute_layout(1, 1, n_run, 1920, 1080, :hd)
         assert layout.img_size > 0
+        assert layout.run_rows * layout.run_cols >= n_run
       end
 
-      for {n_net, n_prom} <- [{5, 1}, {1, 5}, {7, 1}] do
-        layout = PanicTda.Export.compute_layout(n_net, n_prom, 1, 1920, 1080, :hd)
+      for {n_prom, n_net} <- [{1, 5}, {5, 1}, {1, 7}, {7, 1}] do
+        layout = PanicTda.Export.compute_layout(n_prom, n_net, 1, 1920, 1080, :hd)
         assert layout.img_size > 0
+        assert layout.prompt_rows * layout.prompt_cols >= n_prom
+        assert layout.net_rows * layout.net_cols >= n_net
       end
     end
 
@@ -71,61 +98,47 @@ defmodule PanicTda.ExportTest do
     end
 
     test "content fits within canvas" do
-      combos = [{1, 1, 1}, {2, 2, 4}, {3, 4, 3}, {3, 4, 12}]
+      combos = [{1, 1, 1}, {2, 2, 4}, {3, 4, 3}, {3, 4, 12}, {7, 1, 1}, {1, 5, 3}]
 
-      for {n_net, n_prom, n_run} <- combos,
+      for {n_prom, n_net, n_run} <- combos,
           resolution <- [:hd, :"4k"] do
         {frame_w, frame_h} = if resolution == :hd, do: {1920, 1080}, else: {3840, 2160}
-        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, frame_w, frame_h, resolution)
 
-        content_w =
-          layout.outer_cols * layout.sub_cols * layout.img_size +
-            (layout.outer_cols - 1) * layout.outer_gutter +
-            layout.outer_cols * (layout.sub_cols - 1) * layout.gutter
+        layout =
+          PanicTda.Export.compute_layout(n_prom, n_net, n_run, frame_w, frame_h, resolution)
 
-        content_h =
-          layout.outer_rows * layout.sub_rows * layout.img_size +
-            (layout.outer_rows - 1) * layout.outer_gutter +
-            layout.outer_rows * (layout.label_h + layout.label_pad) +
-            layout.outer_rows * (layout.sub_rows - 1) * layout.gutter
+        {content_w, content_h} = content_dimensions(layout)
 
         assert content_w <= frame_w,
-               "content too wide for #{n_net}×#{n_prom}×#{n_run} @ #{resolution}: #{content_w} > #{frame_w}"
+               "content too wide for #{n_prom}p×#{n_net}n×#{n_run}r @ #{resolution}: #{content_w} > #{frame_w}"
 
         assert content_h <= frame_h,
-               "content too tall for #{n_net}×#{n_prom}×#{n_run} @ #{resolution}: #{content_h} > #{frame_h}"
+               "content too tall for #{n_prom}p×#{n_net}n×#{n_run}r @ #{resolution}: #{content_h} > #{frame_h}"
       end
     end
 
     test "minimal dead margin: at least one dimension has <= 5% dead space" do
       combos = [{1, 1, 1}, {2, 2, 4}, {3, 4, 3}, {3, 4, 12}, {1, 1, 9}]
 
-      for {n_net, n_prom, n_run} <- combos,
+      for {n_prom, n_net, n_run} <- combos,
           resolution <- [:hd, :"4k"] do
         {frame_w, frame_h} = if resolution == :hd, do: {1920, 1080}, else: {3840, 2160}
-        layout = PanicTda.Export.compute_layout(n_net, n_prom, n_run, frame_w, frame_h, resolution)
 
-        content_w =
-          layout.outer_cols * layout.sub_cols * layout.img_size +
-            (layout.outer_cols - 1) * layout.outer_gutter +
-            layout.outer_cols * (layout.sub_cols - 1) * layout.gutter
+        layout =
+          PanicTda.Export.compute_layout(n_prom, n_net, n_run, frame_w, frame_h, resolution)
 
-        content_h =
-          layout.outer_rows * layout.sub_rows * layout.img_size +
-            (layout.outer_rows - 1) * layout.outer_gutter +
-            layout.outer_rows * (layout.label_h + layout.label_pad) +
-            layout.outer_rows * (layout.sub_rows - 1) * layout.gutter
+        {content_w, content_h} = content_dimensions(layout)
 
         margin_w_pct = (frame_w - content_w) / frame_w
         margin_h_pct = (frame_h - content_h) / frame_h
 
         assert margin_w_pct <= 0.05 or margin_h_pct <= 0.05,
-               "too much dead space for #{n_net}×#{n_prom}×#{n_run} @ #{resolution}: " <>
+               "too much dead space for #{n_prom}p×#{n_net}n×#{n_run}r @ #{resolution}: " <>
                  "w=#{Float.round(margin_w_pct * 100, 1)}%, h=#{Float.round(margin_h_pct * 100, 1)}%"
       end
     end
 
-    test "both orientations are tried for asymmetric cases" do
+    test "asymmetric counts produce valid layouts" do
       layout_34 = PanicTda.Export.compute_layout(3, 4, 3, 1920, 1080, :hd)
       layout_43 = PanicTda.Export.compute_layout(4, 3, 3, 1920, 1080, :hd)
 
@@ -133,38 +146,28 @@ defmodule PanicTda.ExportTest do
       assert layout_43.img_size > 0
     end
 
-    test "net_axis is consistent with outer_rows/outer_cols" do
-      layout = PanicTda.Export.compute_layout(3, 4, 1, 1920, 1080, :hd)
-
-      case layout.net_axis do
-        :row ->
-          assert layout.outer_rows == 3
-          assert layout.outer_cols == 4
-
-        :col ->
-          assert layout.outer_rows == 4
-          assert layout.outer_cols == 3
-      end
-    end
-
     test "specific combo (1,1,1)" do
       layout = PanicTda.Export.compute_layout(1, 1, 1, 1920, 1080, :hd)
-      assert layout.outer_rows == 1
-      assert layout.outer_cols == 1
-      assert layout.sub_rows == 1
-      assert layout.sub_cols == 1
+      assert layout.prompt_rows == 1
+      assert layout.prompt_cols == 1
+      assert layout.net_rows == 1
+      assert layout.net_cols == 1
+      assert layout.run_rows == 1
+      assert layout.run_cols == 1
     end
 
     test "specific combo (2,2,4)" do
       layout = PanicTda.Export.compute_layout(2, 2, 4, 1920, 1080, :hd)
-      assert layout.outer_rows * layout.outer_cols == 4
-      assert layout.sub_rows * layout.sub_cols == 4
+      assert layout.prompt_rows * layout.prompt_cols >= 2
+      assert layout.net_rows * layout.net_cols >= 2
+      assert layout.run_rows * layout.run_cols >= 4
     end
 
     test "specific combo (3,4,12)" do
       layout = PanicTda.Export.compute_layout(3, 4, 12, 1920, 1080, :hd)
-      assert layout.outer_rows * layout.outer_cols == 12
-      assert layout.sub_rows * layout.sub_cols == 12
+      assert layout.prompt_rows * layout.prompt_cols >= 3
+      assert layout.net_rows * layout.net_cols >= 4
+      assert layout.run_rows * layout.run_cols >= 12
     end
   end
 

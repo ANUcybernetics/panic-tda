@@ -28,7 +28,7 @@ defmodule PanicTda.Export do
     max_length = experiment.max_length
 
     layout =
-      compute_layout(length(networks), length(prompts), num_runs, target_w, target_h, resolution)
+      compute_layout(length(prompts), length(networks), num_runs, target_w, target_h, resolution)
 
     run_id_map =
       Map.new(experiment.runs, fn run ->
@@ -112,152 +112,157 @@ defmodule PanicTda.Export do
     end
   end
 
-  def compute_layout(n_net, n_prom, n_run, frame_w, frame_h, resolution \\ :hd) do
-    outer_count = n_net * n_prom
+  def compute_layout(n_prompts, n_networks, n_runs, frame_w, frame_h, resolution \\ :hd) do
+    prompt_shapes = grid_shapes(n_prompts)
+    net_shapes = grid_shapes(n_networks)
+    run_shapes = grid_shapes(n_runs)
 
-    sub_shapes = grid_shapes(n_run)
-    outer_shapes = grid_shapes(outer_count)
-
-    {gutter, label_h, label_pad, font_size} =
+    {prompt_gutter, net_gutter, prompt_label_h, net_label_h, prompt_font_size, net_font_size} =
       case resolution do
-        :hd -> {8, 48, 4, 20}
-        :"4k" -> {16, 96, 8, 40}
+        :hd -> {16, 6, 40, 24, 20, 14}
+        :"4k" -> {32, 12, 80, 48, 40, 28}
       end
 
-    outer_gutter = gutter * 2
-
     candidates =
-      for {o_r, o_c} <- outer_shapes,
-          net_axis <- [:row, :col],
-          valid_orientation?(o_r, o_c, n_net, n_prom, net_axis),
-          {s_r, s_c} <- sub_shapes do
-        img_w = (frame_w - (o_c - 1) * outer_gutter - o_c * (s_c - 1) * gutter) / (o_c * s_c)
-        img_h = (frame_h - (o_r - 1) * outer_gutter - o_r * (label_h + label_pad) - o_r * (s_r - 1) * gutter) / (o_r * s_r)
+      for {pr, pc} <- prompt_shapes,
+          {nr, nc} <- net_shapes,
+          {rr, rc} <- run_shapes do
+        img_w =
+          (frame_w - (pc - 1) * prompt_gutter - pc * (nc - 1) * net_gutter) / (pc * nc * rc)
+
+        img_h =
+          (frame_h - (pr - 1) * prompt_gutter - pr * prompt_label_h - pr * nr * net_label_h -
+             pr * (nr - 1) * net_gutter) / (pr * nr * rr)
+
         img_size = floor(min(img_w, img_h)) |> trunc()
 
         %{
           img_size: img_size,
-          outer_rows: o_r,
-          outer_cols: o_c,
-          sub_rows: s_r,
-          sub_cols: s_c,
-          net_axis: net_axis
+          prompt_rows: pr,
+          prompt_cols: pc,
+          net_rows: nr,
+          net_cols: nc,
+          run_rows: rr,
+          run_cols: rc
         }
       end
 
     best = Enum.max_by(candidates, & &1.img_size)
 
-    content_w =
-      best.outer_cols * best.sub_cols * best.img_size +
-        (best.outer_cols - 1) * outer_gutter +
-        best.outer_cols * (best.sub_cols - 1) * gutter
+    net_tile_w = best.run_cols * best.img_size
+    prompt_tile_w = best.net_cols * net_tile_w + (best.net_cols - 1) * net_gutter
+    content_w = best.prompt_cols * prompt_tile_w + (best.prompt_cols - 1) * prompt_gutter
 
-    content_h =
-      best.outer_rows * best.sub_rows * best.img_size +
-        (best.outer_rows - 1) * outer_gutter +
-        best.outer_rows * (label_h + label_pad) +
-        best.outer_rows * (best.sub_rows - 1) * gutter
+    net_tile_h = net_label_h + best.run_rows * best.img_size
+    prompt_tile_h = prompt_label_h + best.net_rows * net_tile_h + (best.net_rows - 1) * net_gutter
+    content_h = best.prompt_rows * prompt_tile_h + (best.prompt_rows - 1) * prompt_gutter
 
     offset_x = max(div(frame_w - content_w, 2), 0)
     offset_y = max(div(frame_h - content_h, 2), 0)
 
     %{
       img_size: best.img_size,
-      outer_rows: best.outer_rows,
-      outer_cols: best.outer_cols,
-      sub_rows: best.sub_rows,
-      sub_cols: best.sub_cols,
-      gutter: gutter,
-      outer_gutter: outer_gutter,
-      label_h: label_h,
-      label_pad: label_pad,
-      font_size: font_size,
+      prompt_rows: best.prompt_rows,
+      prompt_cols: best.prompt_cols,
+      net_rows: best.net_rows,
+      net_cols: best.net_cols,
+      run_rows: best.run_rows,
+      run_cols: best.run_cols,
+      prompt_gutter: prompt_gutter,
+      net_gutter: net_gutter,
+      prompt_label_h: prompt_label_h,
+      net_label_h: net_label_h,
+      prompt_font_size: prompt_font_size,
+      net_font_size: net_font_size,
       canvas_w: frame_w,
       canvas_h: frame_h,
       offset_x: offset_x,
-      offset_y: offset_y,
-      net_axis: best.net_axis
+      offset_y: offset_y
     }
   end
 
-  defp grid_shapes(count) do
-    for r <- 1..count, c = div(count, r), r * c == count, do: {r, c}
+  defp grid_shapes(n) do
+    1..n
+    |> Enum.map(fn r -> {r, div(n + r - 1, r)} end)
+    |> Enum.uniq()
   end
-
-  defp valid_orientation?(o_r, o_c, n_net, n_prom, :row),
-    do: o_r == n_net and o_c == n_prom
-
-  defp valid_orientation?(o_r, o_c, n_net, n_prom, :col),
-    do: o_r == n_prom and o_c == n_net
 
   defp build_border(layout, prompts, networks) do
     canvas = Operation.black!(layout.canvas_w, layout.canvas_h, bands: 3)
-    font_size = layout.font_size
 
-    subgrid_w =
-      layout.sub_cols * layout.img_size + (layout.sub_cols - 1) * layout.gutter
+    net_tile_w = layout.run_cols * layout.img_size
+    prompt_tile_w = layout.net_cols * net_tile_w + (layout.net_cols - 1) * layout.net_gutter
+    net_tile_h = layout.net_label_h + layout.run_rows * layout.img_size
 
-    net_font_size = round(font_size * 0.8)
-    prompt_opts = [font: "Public Sans #{font_size}", rgba: true, width: max(subgrid_w, 50), align: :VIPS_ALIGN_CENTRE]
-    net_opts = [font: "Public Sans #{net_font_size}", rgba: true, width: max(subgrid_w, 50), align: :VIPS_ALIGN_CENTRE]
-    {combined, _} = Operation.text!("X\nX", prompt_opts)
-    {single, _} = Operation.text!("X", prompt_opts)
-    line_gap = Image.height(combined) - 2 * Image.height(single)
+    prompt_tile_h =
+      layout.prompt_label_h + layout.net_rows * net_tile_h +
+        (layout.net_rows - 1) * layout.net_gutter
 
-    for {network, net_idx} <- Enum.with_index(networks),
-        {prompt, prom_idx} <- Enum.with_index(prompts),
-        reduce: canvas do
+    prompt_opts = [
+      font: "Public Sans #{layout.prompt_font_size}",
+      rgba: true,
+      width: max(prompt_tile_w, 50),
+      align: :VIPS_ALIGN_CENTRE
+    ]
+
+    net_opts = [
+      font: "Public Sans #{layout.net_font_size}",
+      rgba: true,
+      width: max(net_tile_w, 50),
+      align: :VIPS_ALIGN_CENTRE
+    ]
+
+    for {prompt, prompt_idx} <- Enum.with_index(prompts), reduce: canvas do
       acc ->
-        {o_r, o_c} = outer_position(layout, net_idx, prom_idx)
+        p_row = div(prompt_idx, layout.prompt_cols)
+        p_col = rem(prompt_idx, layout.prompt_cols)
+        ptx = layout.offset_x + p_col * (prompt_tile_w + layout.prompt_gutter)
+        pty = layout.offset_y + p_row * (prompt_tile_h + layout.prompt_gutter)
 
-        cell_x =
-          layout.offset_x +
-            o_c * (subgrid_w + layout.outer_gutter)
+        max_chars = max(div(prompt_tile_w, max(div(layout.prompt_font_size, 2), 1)), 10)
 
-        cell_y =
-          layout.offset_y +
-            o_r * (layout.sub_rows * layout.img_size + (layout.sub_rows - 1) * layout.gutter + layout.label_h + layout.label_pad + layout.outer_gutter)
-
-        net_text = Enum.join(network, " ⇄ ")
-
-        max_chars = max(div(subgrid_w, max(div(font_size, 2), 1)), 10)
-
-        truncated_prompt =
+        truncated =
           if String.length(prompt) > max_chars,
             do: String.slice(prompt, 0, max_chars - 3) <> "...",
             else: prompt
 
-        {net_img, _} = Operation.text!(net_text, net_opts)
-        net_img = text_to_colour(net_img, 180)
-
-        {prompt_img, _} = Operation.text!(truncated_prompt, prompt_opts)
+        {prompt_img, _} = Operation.text!(truncated, prompt_opts)
         prompt_img = text_to_colour(prompt_img, 255)
 
-        total_h = Image.height(net_img) + line_gap + Image.height(prompt_img)
-        start_y = cell_y + div(max(layout.label_h - total_h, 0), 2)
+        label_y = pty + div(max(layout.prompt_label_h - Image.height(prompt_img), 0), 2)
+        label_x = ptx + div(max(prompt_tile_w - Image.width(prompt_img), 0), 2)
+        acc = Operation.insert!(acc, prompt_img, max(label_x, ptx), max(label_y, pty))
 
-        net_lx = cell_x + div(max(subgrid_w - Image.width(net_img), 0), 2)
-        prompt_lx = cell_x + div(max(subgrid_w - Image.width(prompt_img), 0), 2)
+        for {network, net_idx} <- Enum.with_index(networks), reduce: acc do
+          acc2 ->
+            n_row = div(net_idx, layout.net_cols)
+            n_col = rem(net_idx, layout.net_cols)
+            ntx = ptx + n_col * (net_tile_w + layout.net_gutter)
+            nty = pty + layout.prompt_label_h + n_row * (net_tile_h + layout.net_gutter)
 
-        acc = Operation.insert!(acc, net_img, max(net_lx, cell_x), max(start_y, cell_y))
-        Operation.insert!(acc, prompt_img, max(prompt_lx, cell_x), max(start_y + Image.height(net_img) + line_gap, cell_y))
-    end
-  end
+            net_text = Enum.join(network, " ⇄ ")
+            {net_img, _} = Operation.text!(net_text, net_opts)
+            net_img = text_to_colour(net_img, 180)
 
-  defp outer_position(layout, net_idx, prom_idx) do
-    case layout.net_axis do
-      :row -> {net_idx, prom_idx}
-      :col -> {prom_idx, net_idx}
+            ly = nty + div(max(layout.net_label_h - Image.height(net_img), 0), 2)
+            lx = ntx + div(max(net_tile_w - Image.width(net_img), 0), 2)
+            Operation.insert!(acc2, net_img, max(lx, ntx), max(ly, nty))
+        end
     end
   end
 
   defp render_frame(border, layout, run_id_map, frame_images, prompts, networks, num_runs) do
-    subgrid_w =
-      layout.sub_cols * layout.img_size + (layout.sub_cols - 1) * layout.gutter
+    net_tile_w = layout.run_cols * layout.img_size
+    prompt_tile_w = layout.net_cols * net_tile_w + (layout.net_cols - 1) * layout.net_gutter
+    net_tile_h = layout.net_label_h + layout.run_rows * layout.img_size
+
+    prompt_tile_h =
+      layout.prompt_label_h + layout.net_rows * net_tile_h +
+        (layout.net_rows - 1) * layout.net_gutter
 
     {:ok, frame} =
       Image.mutate(border, fn mut ->
-        for {prompt, prom_idx} <- Enum.with_index(prompts),
+        for {prompt, prompt_idx} <- Enum.with_index(prompts),
             {network, net_idx} <- Enum.with_index(networks),
             run_number <- 0..(num_runs - 1) do
           run_id = Map.get(run_id_map, {network, prompt, run_number})
@@ -272,21 +277,21 @@ defmodule PanicTda.Export do
 
               thumb = ensure_3band(thumb) |> materialize()
 
-              {o_r, o_c} = outer_position(layout, net_idx, prom_idx)
+              p_row = div(prompt_idx, layout.prompt_cols)
+              p_col = rem(prompt_idx, layout.prompt_cols)
+              ptx = layout.offset_x + p_col * (prompt_tile_w + layout.prompt_gutter)
+              pty = layout.offset_y + p_row * (prompt_tile_h + layout.prompt_gutter)
 
-              cell_x =
-                layout.offset_x +
-                  o_c * (subgrid_w + layout.outer_gutter)
+              n_row = div(net_idx, layout.net_cols)
+              n_col = rem(net_idx, layout.net_cols)
+              ntx = ptx + n_col * (net_tile_w + layout.net_gutter)
+              nty = pty + layout.prompt_label_h + n_row * (net_tile_h + layout.net_gutter)
 
-              cell_y =
-                layout.offset_y +
-                  o_r * (layout.sub_rows * layout.img_size + (layout.sub_rows - 1) * layout.gutter + layout.label_h + layout.label_pad + layout.outer_gutter) +
-                  layout.label_h + layout.label_pad
+              r_row = div(run_number, layout.run_cols)
+              r_col = rem(run_number, layout.run_cols)
+              x = ntx + r_col * layout.img_size
+              y = nty + layout.net_label_h + r_row * layout.img_size
 
-              sub_col = rem(run_number, layout.sub_cols)
-              sub_row = div(run_number, layout.sub_cols)
-              x = cell_x + sub_col * (layout.img_size + layout.gutter)
-              y = cell_y + sub_row * (layout.img_size + layout.gutter)
               :ok = MutableOperation.draw_image(mut, thumb, x, y)
 
             _ ->
