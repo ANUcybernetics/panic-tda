@@ -663,6 +663,7 @@ _I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
 
 
 _T2I_MAX_RETRIES = 3
+_T2I_MAX_BATCH = 4
 
 
 def _invoke_t2i_single(name: str, prompt: str) -> str:
@@ -694,7 +695,9 @@ def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
     """Run batch T2I inference. Returns list of base64-encoded WEBP."""
     cfg = _T2I_INVOKE_CONFIGS[name]
     size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
-    if name in _T2I_BATCH_CAPABLE:
+    if name not in _T2I_BATCH_CAPABLE:
+        return [_invoke_t2i_single(name, p) for p in prompts]
+    if len(prompts) <= _T2I_MAX_BATCH:
         imgs = _models[name](
             prompt=prompts,
             height=size,
@@ -703,8 +706,18 @@ def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
             **cfg,
         ).images
         return [_encode_image_b64(img) for img in imgs]
-    else:
-        return [_invoke_t2i_single(name, p) for p in prompts]
+    results: list[str] = []
+    for i in range(0, len(prompts), _T2I_MAX_BATCH):
+        chunk = prompts[i : i + _T2I_MAX_BATCH]
+        imgs = _models[name](
+            prompt=chunk,
+            height=size,
+            width=size,
+            generator=None,
+            **cfg,
+        ).images
+        results.extend(_encode_image_b64(img) for img in imgs)
+    return results
 
 
 # ---------------------------------------------------------------------------
