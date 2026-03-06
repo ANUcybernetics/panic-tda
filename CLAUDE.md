@@ -66,7 +66,7 @@ The task handles database setup and runs the full four-stage pipeline
 
 | Type | Models |
 |---|---|
-| text-to-image | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `QwenImage`, `HunyuanImage`, `GLMImage` |
+| text-to-image | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `HunyuanImage`, `GLMImage` |
 | image-to-text | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`, `Phi4Vision` |
 | text embedding | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed` |
 | image embedding | `NomicVision`, `JinaClipVision` |
@@ -84,7 +84,6 @@ applicable. Times include model loading/swapping overhead.
 | ZImageTurbo | ~8s | ~18s | ~6s |
 | Flux2Klein | ~20s | ~20s | ~7s |
 | Flux2Dev | ~100s | ~226s | ~75s |
-| QwenImage | ~46s | ~69s | ~23s |
 | HunyuanImage | ~124s | ~326s | ~109s |
 | GLMImage | ~44s | ~85s | ~28s |
 | **Image-to-text** | | | |

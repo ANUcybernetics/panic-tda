@@ -1,0 +1,22 @@
+{
+  "networks": [
+    ["SD35Medium", "Moondream"],
+    ["Flux2Klein", "Qwen25VL"],
+    ["ZImageTurbo", "Gemma3n"],
+    ["HunyuanImage", "Pixtral"],
+    ["GLMImage", "LLaMA32Vision"],
+    ["SD35Medium", "Pixtral"],
+    ["Flux2Klein", "Moondream"],
+    ["ZImageTurbo", "LLaMA32Vision"],
+    ["HunyuanImage", "Qwen25VL"],
+    ["GLMImage", "Gemma3n"]
+  ],
+  "prompts": [
+    "A penguin enjoying a wood fire",
+    "A big mouse hunting for a small cat",
+    "A crocodile having a salad"
+  ],
+  "embedding_models": ["Nomic"],
+  "max_length": 100,
+  "num_runs": 4
+}

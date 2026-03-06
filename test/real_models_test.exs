@@ -120,7 +120,7 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model T2I tests" do
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage) do
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage) do
       @tag timeout: 600_000
       test "#{t2i} single invoke", %{env: env} do
         t2i = unquote(t2i)
@@ -228,7 +228,7 @@ defmodule PanicTda.RealModelsTest do
     @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed)
     @real_image_embedding_models ~w(NomicVision JinaClipVision)
 
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage),
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
         i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4Vision) do
       @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models" do
@@ -266,7 +266,7 @@ defmodule PanicTda.RealModelsTest do
       end
     end
 
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev QwenImage HunyuanImage GLMImage),
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
         i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4Vision) do
       @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all image embedding models" do

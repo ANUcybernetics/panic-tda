@@ -30,7 +30,6 @@ _T2I_IMAGE_SIZES: dict[str, int] = {
     "GLMImage": 1024,
     "ZImageTurbo": 1024,
     "Flux2Klein": 1024,
-    "QwenImage": 1024,
 }
 
 _models: dict[str, Any] = {}
@@ -298,14 +297,6 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "pipeline_cls": "Flux2KleinPipeline",
         "repo": "black-forest-labs/FLUX.2-klein-9B",
         "offload": "model_cpu_offload",
-        "extra_kwargs": {"torch_dtype": "bfloat16"},
-    },
-    "QwenImage": {
-        "pipeline_cls": "QwenImagePipeline",
-        "repo": "Qwen/Qwen-Image-2512",
-        "offload": "model_cpu_offload",
-        "offload_only": True,
-        "quantize": True,
         "extra_kwargs": {"torch_dtype": "bfloat16"},
     },
 }
@@ -655,7 +646,6 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
     "ZImageTurbo": {"num_inference_steps": 8, "guidance_scale": 0.0},
     "Flux2Klein": {"num_inference_steps": 4, "guidance_scale": 1.0},
-    "QwenImage": {"num_inference_steps": 25, "true_cfg_scale": 4.0},
 }
 
 _T2I_BATCH_CAPABLE: set[str] = {"SD35Medium", "ZImageTurbo", "Flux2Klein"}

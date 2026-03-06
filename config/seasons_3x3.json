@@ -6,9 +6,9 @@
     ["ZImageTurbo", "Moondream"],
     ["ZImageTurbo", "Qwen25VL"],
     ["ZImageTurbo", "LLaMA32Vision"],
-    ["QwenImage", "Moondream"],
-    ["QwenImage", "Qwen25VL"],
-    ["QwenImage", "LLaMA32Vision"]
+    ["GLMImage", "Moondream"],
+    ["GLMImage", "Qwen25VL"],
+    ["GLMImage", "LLaMA32Vision"]
   ],
   "prompts": [
     "this is me on a typical summer's day",
