@@ -6,6 +6,21 @@ defmodule PanicTda.Export do
   @default_fps 10
   @default_crf 30
 
+  @model_abbrev %{
+    "SD35Medium" => "SD35",
+    "Flux2Klein" => "F2Klein",
+    "Flux2Dev" => "F2Dev",
+    "ZImageTurbo" => "ZImg",
+    "HunyuanImage" => "Hunyuan",
+    "GLMImage" => "GLM",
+    "Moondream" => "Moon",
+    "Qwen25VL" => "Qwen",
+    "Gemma3n" => "Gemma",
+    "Pixtral" => "Pix",
+    "LLaMA32Vision" => "LLaMA",
+    "Phi4Vision" => "Phi4"
+  }
+
 
   def video(experiment_id, output_path, opts \\ []) do
     experiment =
@@ -29,6 +44,24 @@ defmodule PanicTda.Export do
 
     layout =
       compute_layout(length(prompts), length(networks), num_runs, target_w, target_h, resolution)
+
+    net_tile_w = layout.run_cols * layout.img_size
+    measured_h = measure_net_label_height(networks, net_tile_w, layout.net_font_size)
+
+    layout =
+      if measured_h > layout.net_label_h do
+        compute_layout(
+          length(prompts),
+          length(networks),
+          num_runs,
+          target_w,
+          target_h,
+          resolution,
+          net_label_h: measured_h
+        )
+      else
+        layout
+      end
 
     run_id_map =
       Map.new(experiment.runs, fn run ->
@@ -112,16 +145,18 @@ defmodule PanicTda.Export do
     end
   end
 
-  def compute_layout(n_prompts, n_networks, n_runs, frame_w, frame_h, resolution \\ :hd) do
+  def compute_layout(n_prompts, n_networks, n_runs, frame_w, frame_h, resolution \\ :hd, opts \\ []) do
     prompt_shapes = grid_shapes(n_prompts)
     net_shapes = grid_shapes(n_networks)
     run_shapes = grid_shapes(n_runs)
 
-    {prompt_gutter, net_gutter, prompt_label_h, net_label_h, prompt_font_size, net_font_size} =
+    {prompt_gutter, net_gutter, prompt_label_h, default_net_label_h, prompt_font_size, net_font_size} =
       case resolution do
         :hd -> {16, 6, 40, 24, 20, 14}
         :"4k" -> {32, 12, 80, 48, 40, 28}
       end
+
+    net_label_h = Keyword.get(opts, :net_label_h, default_net_label_h)
 
     candidates =
       for {pr, pc} <- prompt_shapes,
@@ -240,7 +275,7 @@ defmodule PanicTda.Export do
             ntx = ptx + n_col * (net_tile_w + layout.net_gutter)
             nty = pty + layout.prompt_label_h + n_row * (net_tile_h + layout.net_gutter)
 
-            net_text = Enum.join(network, " ⇄ ")
+            net_text = net_label_text(network)
             {net_img, _} = Operation.text!(net_text, net_opts)
             net_img = text_to_colour(net_img, 180)
 
@@ -310,6 +345,21 @@ defmodule PanicTda.Export do
     |> Ash.Query.filter(run_id in ^run_ids and sequence_number == ^seq and not is_nil(output_image))
     |> Ash.read!()
     |> Map.new(fn inv -> {inv.run_id, inv.output_image} end)
+  end
+
+  defp abbreviate(model_name), do: Map.get(@model_abbrev, model_name, model_name)
+
+  defp net_label_text(network), do: network |> Enum.map(&abbreviate/1) |> Enum.join(" ⇄ ")
+
+  defp measure_net_label_height(networks, width, font_size) do
+    opts = [font: "Public Sans #{font_size}", rgba: true, width: max(width, 50)]
+
+    networks
+    |> Enum.map(fn network ->
+      {img, _} = Operation.text!(net_label_text(network), opts)
+      Image.height(img)
+    end)
+    |> Enum.max()
   end
 
   defp text_to_colour(img, level) do
