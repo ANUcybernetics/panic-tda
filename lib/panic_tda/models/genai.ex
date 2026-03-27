@@ -11,7 +11,7 @@ defmodule PanicTda.Models.GenAI do
   @dummy_t2i_models ~w(DummyT2I DummyT2I2)
   @dummy_i2t_models ~w(DummyI2T DummyI2T2)
   @real_t2i_models ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage)
-  @real_i2t_models ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Phi4ReasoningVision)
+  @real_i2t_models ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2)
   @t2i_models @dummy_t2i_models ++ @real_t2i_models
   @i2t_models @dummy_i2t_models ++ @real_i2t_models
 

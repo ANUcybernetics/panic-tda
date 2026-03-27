@@ -405,22 +405,16 @@ def _load_llama32vision() -> None:
     _models_offload_only.add("LLaMA32Vision")
 
 
-def _load_phi4reasoningvision() -> None:
-    from transformers import AutoModelForCausalLM, AutoProcessor
+def _load_florence2() -> None:
+    from transformers import AutoProcessor, Florence2ForConditionalGeneration
 
-    model = AutoModelForCausalLM.from_pretrained(
-        "microsoft/Phi-4-reasoning-vision-15B",
-        trust_remote_code=True,
+    model = Florence2ForConditionalGeneration.from_pretrained(
+        "florence-community/Florence-2-large-ft",
         torch_dtype=torch.bfloat16,
         device_map="auto",
-        quantization_config=_bnb_4bit_config(),
-    )
-    model.eval()
-    processor = AutoProcessor.from_pretrained(
-        "microsoft/Phi-4-reasoning-vision-15B", trust_remote_code=True
-    )
-    _models["Phi4ReasoningVision"] = {"processor": processor, "model": model}
-    _models_offload_only.add("Phi4ReasoningVision")
+    ).eval()
+    processor = AutoProcessor.from_pretrained("florence-community/Florence-2-large-ft")
+    _models["Florence2"] = {"processor": processor, "model": model}
 
 
 def _load_qwen25vl() -> None:
@@ -488,7 +482,7 @@ _I2T_LOADERS: dict[str, Any] = {
     "Moondream": _load_moondream,
     "Pixtral": _load_pixtral,
     "LLaMA32Vision": _load_llama32vision,
-    "Phi4ReasoningVision": _load_phi4reasoningvision,
+    "Florence2": _load_florence2,
     "Qwen25VL": _load_qwen25vl,
     "Gemma3n": _load_gemma3n,
 }
@@ -840,37 +834,26 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     ]
 
 
-# --- Phi4ReasoningVision ---
+# --- Florence2 ---
 
 
-def _strip_thinking(text: str) -> str:
-    import re
-
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
-
-
-def _invoke_phi4reasoningvision(_name: str, img: Image.Image) -> str:
-    phi4 = _models["Phi4ReasoningVision"]
-    messages = [{"role": "user", "content": "<image>\nDescribe this image."}]
-    prompt = phi4["processor"].tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
-    inputs = phi4["processor"](text=prompt, images=[img], return_tensors="pt").to(
-        phi4["model"].device
-    )
+def _invoke_florence2(_name: str, img: Image.Image) -> str:
+    florence = _models["Florence2"]
+    task_prompt = "<MORE_DETAILED_CAPTION>"
+    inputs = florence["processor"](
+        text=task_prompt, images=img, return_tensors="pt"
+    ).to(florence["model"].device, torch.bfloat16)
     with torch.no_grad():
-        gen_ids = phi4["model"].generate(
-            **inputs, max_new_tokens=128, do_sample=False
-        )
-        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
-    text = phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0]
-    return _strip_thinking(text)
+        gen_ids = florence["model"].generate(**inputs, max_new_tokens=1024, num_beams=3)
+    text = florence["processor"].batch_decode(gen_ids, skip_special_tokens=False)[0]
+    parsed = florence["processor"].post_process_generation(
+        text, task=task_prompt, image_size=img.size
+    )
+    return parsed[task_prompt]
 
 
-def _invoke_phi4reasoningvision_batch(
-    _name: str, images: list[Image.Image]
-) -> list[str]:
-    return [_invoke_phi4reasoningvision(_name, img) for img in images]
+def _invoke_florence2_batch(_name: str, images: list[Image.Image]) -> list[str]:
+    return [_invoke_florence2(_name, img) for img in images]
 
 
 # --- Qwen25VL ---
@@ -1029,7 +1012,7 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
-    "Phi4ReasoningVision": _invoke_phi4reasoningvision,
+    "Florence2": _invoke_florence2,
     "Qwen25VL": _invoke_qwen25vl,
     "Gemma3n": _invoke_gemma3n,
 }
@@ -1038,7 +1021,7 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
-    "Phi4ReasoningVision": _invoke_phi4reasoningvision_batch,
+    "Florence2": _invoke_florence2_batch,
     "Qwen25VL": _invoke_qwen25vl_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }
