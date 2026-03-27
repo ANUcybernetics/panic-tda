@@ -103,8 +103,6 @@ def setup() -> None:
 
             _cu.DynamicCache.get_usable_length = _get_usable_length
 
-        if not hasattr(_cu, "SlidingWindowCache"):
-            _cu.SlidingWindowCache = _cu.DynamicCache
     except Exception:
         pass
 
@@ -407,45 +405,22 @@ def _load_llama32vision() -> None:
     _models_offload_only.add("LLaMA32Vision")
 
 
-def _load_phi4vision() -> None:
+def _load_phi4reasoningvision() -> None:
     from transformers import AutoModelForCausalLM, AutoProcessor
 
-    try:
-        import peft
-
-        _orig_peft_init = peft.PeftModelForCausalLM.__init__
-
-        def _patched_peft_init(self: Any, *args: Any, **kwargs: Any) -> None:
-            model_arg = args[0] if args else kwargs.get("model")
-            if model_arg is not None and not hasattr(
-                model_arg, "prepare_inputs_for_generation"
-            ):
-                model_arg.prepare_inputs_for_generation = (
-                    lambda *a, **kw: {}  # noqa: ARG005
-                )
-            _orig_peft_init(self, *args, **kwargs)
-
-        peft.PeftModelForCausalLM.__init__ = _patched_peft_init
-    except Exception:
-        _orig_peft_init = None
-
-    try:
-        model = _load_remote_code_model(
-            "microsoft/Phi-4-multimodal-instruct",
-            model_cls=AutoModelForCausalLM,
-            torch_dtype=torch.bfloat16,
-            _attn_implementation="eager",
-            device_map="auto",
-        )
-        model.eval()
-    finally:
-        if _orig_peft_init is not None:
-            peft.PeftModelForCausalLM.__init__ = _orig_peft_init
-
-    processor = AutoProcessor.from_pretrained(
-        "microsoft/Phi-4-multimodal-instruct", trust_remote_code=True
+    model = AutoModelForCausalLM.from_pretrained(
+        "microsoft/Phi-4-reasoning-vision-15B",
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        quantization_config=_bnb_4bit_config(),
     )
-    _models["Phi4Vision"] = {"processor": processor, "model": model}
+    model.eval()
+    processor = AutoProcessor.from_pretrained(
+        "microsoft/Phi-4-reasoning-vision-15B", trust_remote_code=True
+    )
+    _models["Phi4ReasoningVision"] = {"processor": processor, "model": model}
+    _models_offload_only.add("Phi4ReasoningVision")
 
 
 def _load_qwen25vl() -> None:
@@ -513,7 +488,7 @@ _I2T_LOADERS: dict[str, Any] = {
     "Moondream": _load_moondream,
     "Pixtral": _load_pixtral,
     "LLaMA32Vision": _load_llama32vision,
-    "Phi4Vision": _load_phi4vision,
+    "Phi4ReasoningVision": _load_phi4reasoningvision,
     "Qwen25VL": _load_qwen25vl,
     "Gemma3n": _load_gemma3n,
 }
@@ -865,54 +840,37 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     ]
 
 
-# --- Phi4Vision ---
+# --- Phi4ReasoningVision ---
 
 
-_PHI4_GENERATE_KEYS = {
-    "input_image_embeds",
-    "input_audio_embeds",
-    "input_mode",
-    "image_sizes",
-    "image_attention_mask",
-    "audio_embed_sizes",
-    "audio_attention_mask",
-}
+def _strip_thinking(text: str) -> str:
+    import re
+
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
-def _phi4_generate(phi4: dict[str, Any], inputs: dict[str, Any]) -> Any:
-    device = phi4["model"].device
-    input_ids = inputs["input_ids"].to(device)
-    attention_mask = inputs["attention_mask"].to(device)
-    extra = {}
-    for k in _PHI4_GENERATE_KEYS:
-        v = inputs.get(k)
-        if v is not None:
-            extra[k] = v.to(device) if hasattr(v, "to") else v
-    with torch.no_grad():
-        gen_ids = phi4["model"].generate(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            max_new_tokens=128,
-            do_sample=False,
-            num_logits_to_keep=0,
-            **extra,
-        )
-    return gen_ids[:, input_ids.shape[1] :]
-
-
-def _invoke_phi4vision(_name: str, img: Image.Image) -> str:
-    phi4 = _models["Phi4Vision"]
-    messages = [{"role": "user", "content": "<|image_1|>\nDescribe this image."}]
-    text = phi4["processor"].apply_chat_template(
+def _invoke_phi4reasoningvision(_name: str, img: Image.Image) -> str:
+    phi4 = _models["Phi4ReasoningVision"]
+    messages = [{"role": "user", "content": "<image>\nDescribe this image."}]
+    prompt = phi4["processor"].tokenizer.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
-    inputs = phi4["processor"](text=text, images=[img], return_tensors="pt")
-    gen_ids = _phi4_generate(phi4, inputs)
-    return phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
+    inputs = phi4["processor"](text=prompt, images=[img], return_tensors="pt").to(
+        phi4["model"].device
+    )
+    with torch.no_grad():
+        gen_ids = phi4["model"].generate(
+            **inputs, max_new_tokens=128, do_sample=False
+        )
+        gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
+    text = phi4["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0]
+    return _strip_thinking(text)
 
 
-def _invoke_phi4vision_batch(_name: str, images: list[Image.Image]) -> list[str]:
-    return [_invoke_phi4vision(_name, img) for img in images]
+def _invoke_phi4reasoningvision_batch(
+    _name: str, images: list[Image.Image]
+) -> list[str]:
+    return [_invoke_phi4reasoningvision(_name, img) for img in images]
 
 
 # --- Qwen25VL ---
@@ -1071,7 +1029,7 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
-    "Phi4Vision": _invoke_phi4vision,
+    "Phi4ReasoningVision": _invoke_phi4reasoningvision,
     "Qwen25VL": _invoke_qwen25vl,
     "Gemma3n": _invoke_gemma3n,
 }
@@ -1080,7 +1038,7 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
-    "Phi4Vision": _invoke_phi4vision_batch,
+    "Phi4ReasoningVision": _invoke_phi4reasoningvision_batch,
     "Qwen25VL": _invoke_qwen25vl_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }

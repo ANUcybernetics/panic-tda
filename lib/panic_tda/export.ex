@@ -18,7 +18,7 @@ defmodule PanicTda.Export do
     "Gemma3n" => "Gemma",
     "Pixtral" => "Pix",
     "LLaMA32Vision" => "LLaMA",
-    "Phi4Vision" => "Phi4"
+    "Phi4ReasoningVision" => "Phi4"
   }
 
 

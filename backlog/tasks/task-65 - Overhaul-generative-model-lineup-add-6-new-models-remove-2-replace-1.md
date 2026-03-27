@@ -52,9 +52,9 @@ Overhaul the T2I and I2T model lineup to broaden architectural diversity and lab
 **Add 3 models:**
 - **Pixtral** — Pixtral 12B, Mistral, 12B. Variable-resolution tokenisation, Apache 2.0. HF: mistralai/Pixtral-12B-2409.
 - **LLaMA32Vision** — LLaMA 3.2 Vision, Meta, 11B. Strong on document understanding/VQA. HF: meta-llama/Llama-3.2-11B-Vision-Instruct.
-- **Phi4Vision** — Phi-4 Multimodal, Microsoft, 3.8B (3.4B LLM + 0.4B vision encoder). Ultra-lightweight. HF: microsoft/Phi-4-multimodal-instruct.
+- **Phi4ReasoningVision** — Phi-4 Multimodal, Microsoft, 3.8B (3.4B LLM + 0.4B vision encoder). Ultra-lightweight. HF: microsoft/Phi-4-multimodal-instruct.
 
-**Resulting I2T lineup:** Moondream, Qwen25VL, Gemma3n, Pixtral, LLaMA32Vision, Phi4Vision
+**Resulting I2T lineup:** Moondream, Qwen25VL, Gemma3n, Pixtral, LLaMA32Vision, Phi4ReasoningVision
 
 ## Per-model implementation pattern (4 files each)
 
@@ -71,12 +71,12 @@ Overhaul the T2I and I2T model lineup to broaden architectural diversity and lab
 4. GLMImage (may need research on loading pattern)
 5. Pixtral (standard transformers VLM)
 6. LLaMA32Vision (standard transformers VLM)
-7. Phi4Vision (smallest, likely simplest)
+7. Phi4ReasoningVision (smallest, likely simplest)
 
 ## Research needed
 
 - Exact HF repo path for GLMImage and whether it needs a custom pipeline (RESOLVED: `ZhipuAI/GLM-Image`)
-- Exact HF repo for Phi4Vision (RESOLVED: `microsoft/Phi-4-multimodal-instruct`)
+- Exact HF repo for Phi4ReasoningVision (RESOLVED: `microsoft/Phi-4-multimodal-instruct`)
 - Whether any new models require gated repo access (HF tokens) (RESOLVED: Flux2Dev, Pixtral, LLaMA32Vision need token)
 - FLUX.2 dev licensing terms / HF terms acceptance
 - Note TASK-63 tracks existing Flux2Klein gated repo issues — same pattern may apply
@@ -97,7 +97,7 @@ Overhaul the T2I and I2T model lineup to broaden architectural diversity and lab
 - [ ] #5 GLMImage added with loader, invoke code, batch code, and GPU test passing
 - [ ] #6 Pixtral added with loader, invoke code, batch code, and GPU test passing
 - [ ] #7 LLaMA32Vision added with loader, invoke code, batch code, and GPU test passing
-- [ ] #8 Phi4Vision added with loader, invoke code, batch code, and GPU test passing
+- [ ] #8 Phi4ReasoningVision added with loader, invoke code, batch code, and GPU test passing
 - [x] #9 README.md and CLAUDE.md model tables updated to reflect new lineup
 - [x] #10 mise exec -- mix test passes (no GPU)
 - [ ] #11 mise exec -- mix test --include gpu passes for all new models
