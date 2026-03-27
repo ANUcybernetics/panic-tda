@@ -43,5 +43,11 @@ defmodule PanicTda do
       define :destroy_embedding_cluster, action: :destroy
       define :list_embedding_clusters, action: :read
     end
+
+    resource PanicTda.LyapunovResult do
+      define :create_lyapunov_result, action: :create
+      define :destroy_lyapunov_result, action: :destroy
+      define :list_lyapunov_results, action: :read
+    end
   end
 end
