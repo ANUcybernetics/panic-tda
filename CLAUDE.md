@@ -74,11 +74,11 @@ The task handles database setup and runs the full four-stage pipeline
 
 ### Approximate model run times
 
-Measured on a single NVIDIA GPU (RTX 4090) with NF4 quantisation where
+Measured on a single NVIDIA RTX 6000 Ada with NF4 quantisation where
 applicable. Times include model loading/swapping overhead. Values marked with †
 are medians from the `penguin_campfire` experiment (300 batches of 40 per
-model); values marked with ‡ are warm-cache timings measured on an RTX 6000
-Ada after cold load; other values are rough one-off estimates.
+model); embedding rows are warm-cache timings after cold load; other values
+are rough one-off estimates.
 
 | Model | Single invocation | Batch of 3 | Per-item (batch) |
 |---|---|---|---|
@@ -97,8 +97,8 @@ Ada after cold load; other values are rough one-off estimates.
 | LLaMA32Vision | ~17s | ~23s | ~8s |
 | Florence2 | TBD | TBD | TBD |
 | **Embedding** | | | |
-| ColNomic (text) | ~32ms ‡ | ~56ms ‡ | ~19ms ‡ |
-| ColNomicVision (image) | ~200ms ‡ | ~650ms ‡ | ~220ms ‡ |
+| ColNomic (text) | ~32ms | ~56ms | ~19ms |
+| ColNomicVision (image) | ~200ms | ~650ms | ~220ms |
 
 ColNomic cold load is ~14s (text) / ~8s (image) on first use; the embedding
 rows above exclude that one-off cost.
