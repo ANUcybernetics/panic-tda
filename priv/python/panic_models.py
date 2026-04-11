@@ -110,6 +110,28 @@ def setup() -> None:
         import diffusers
 
         diffusers.logging.set_verbosity_error()
+
+        from diffusers.pipelines.glm_image.pipeline_glm_image import GlmImagePipeline
+
+        _orig_generate_prior = GlmImagePipeline.generate_prior_tokens
+
+        _GLM_PRIOR_MAX_RETRIES = 5
+
+        def _retrying_generate_prior_tokens(self, *args, **kwargs):
+            for attempt in range(_GLM_PRIOR_MAX_RETRIES):
+                try:
+                    return _orig_generate_prior(self, *args, **kwargs)
+                except RuntimeError as e:
+                    if "invalid for input of size" not in str(e):
+                        raise
+                    if attempt == _GLM_PRIOR_MAX_RETRIES - 1:
+                        raise
+                    print(
+                        f"[panic_models] GLM prior token count mismatch "
+                        f"(attempt {attempt + 1}), regenerating"
+                    )
+
+        GlmImagePipeline.generate_prior_tokens = _retrying_generate_prior_tokens
     except Exception:
         pass
 

@@ -1,0 +1,23 @@
+{
+  "networks": [
+    ["SD35Medium", "Moondream"],
+    ["SD35Medium", "Qwen25VL"],
+    ["SD35Medium", "Pixtral"],
+    ["Flux2Klein", "Moondream"],
+    ["Flux2Klein", "Qwen25VL"],
+    ["Flux2Klein", "Pixtral"],
+    ["GLMImage", "Moondream"],
+    ["GLMImage", "Qwen25VL"],
+    ["GLMImage", "Pixtral"]
+  ],
+  "prompts": [
+    "a penguin sitting by a campfire",
+    "a penguin sitting alongside a campfire",
+    "a penguin sitting by a fire",
+    "a penguin sitting beside a campfire",
+    "a penguin sitting next to a campfire"
+  ],
+  "embedding_models": ["Nomic"],
+  "max_length": 200,
+  "num_runs": 8
+}

@@ -75,22 +75,24 @@ The task handles database setup and runs the full four-stage pipeline
 ### Approximate model run times
 
 Measured on a single NVIDIA GPU (RTX 4090) with NF4 quantisation where
-applicable. Times include model loading/swapping overhead.
+applicable. Times include model loading/swapping overhead. Values marked with †
+are medians from the `penguin_campfire` experiment (300 batches of 40 per
+model); other values are rough one-off estimates.
 
 | Model | Single invocation | Batch of 3 | Per-image (batch) |
 |---|---|---|---|
 | **Text-to-image** | | | |
-| SD35Medium | ~9s | ~9s | ~3s |
+| SD35Medium | ~9s | ~9s | ~6.5s † |
 | ZImageTurbo | ~8s | ~18s | ~6s |
-| Flux2Klein | ~20s | ~20s | ~7s |
+| Flux2Klein | ~20s | ~20s | ~4.1s † |
 | Flux2Dev | ~100s | ~226s | ~75s |
 | HunyuanImage | ~124s | ~326s | ~109s |
-| GLMImage | ~44s | ~85s | ~28s |
+| GLMImage | ~44s | ~85s | ~76s † |
 | **Image-to-text** | | | |
-| Moondream | ~4s | ~10s | ~3s |
-| Qwen25VL | ~12s | ~14s | ~5s |
+| Moondream | ~4s | ~10s | ~0.3s † |
+| Qwen25VL | ~12s | ~14s | ~0.9s † |
 | Gemma3n | ~16s | ~18s | ~6s |
-| Pixtral | ~19s | ~24s | ~8s |
+| Pixtral | ~19s | ~24s | ~2.6s † |
 | LLaMA32Vision | ~17s | ~23s | ~8s |
 | Florence2 | TBD | TBD | TBD |
 
