@@ -496,6 +496,30 @@ def _load_jina_clip() -> None:
     _models["JinaClip"] = m
 
 
+_COLNOMIC_REPO = "nomic-ai/colnomic-embed-multimodal-3b"
+
+
+def _load_colnomic_instance(key: str, mask_non_image_embeddings: bool) -> None:
+    from colpali_engine.models import ColQwen2_5, ColQwen2_5_Processor
+
+    model = ColQwen2_5.from_pretrained(
+        _COLNOMIC_REPO,
+        torch_dtype=torch.bfloat16,
+        device_map="cuda:0",
+        mask_non_image_embeddings=mask_non_image_embeddings,
+    ).eval()
+    processor = ColQwen2_5_Processor.from_pretrained(_COLNOMIC_REPO)
+    _models[key] = {"processor": processor, "model": model}
+
+
+def _load_colnomic() -> None:
+    _load_colnomic_instance("ColNomic", mask_non_image_embeddings=False)
+
+
+def _load_colnomic_vision() -> None:
+    _load_colnomic_instance("ColNomicVision", mask_non_image_embeddings=True)
+
+
 # ---------------------------------------------------------------------------
 # Unified model loader dispatch
 # ---------------------------------------------------------------------------
@@ -527,6 +551,8 @@ _VISION_EMBED_LOADERS: dict[str, Any] = {
     "NomicVision": _load_nomic_vision,
     "JinaClipVision": _load_jina_clip_vision,
     "JinaClip": _load_jina_clip,
+    "ColNomic": _load_colnomic,
+    "ColNomicVision": _load_colnomic_vision,
 }
 
 
@@ -1078,6 +1104,8 @@ def embed_text(name: str, texts: list[str]) -> list[str]:
                 texts, convert_to_numpy=True, normalize_embeddings=True
             )
             return [_encode_embedding(e[:EMBEDDING_DIM]) for e in embs]
+        elif name == "ColNomic":
+            return _embed_colnomic_text(texts)
         else:
             raise ValueError(f"Unknown text embedding model: {name}")
 
@@ -1100,6 +1128,8 @@ def embed_images(name: str, b64_list: list[str]) -> list[str]:
         return _embed_nomic_vision(images)
     elif name == "JinaClipVision":
         return _embed_jina_clip_vision(images)
+    elif name == "ColNomicVision":
+        return _embed_colnomic_images(images)
     else:
         raise ValueError(f"Unknown image embedding model: {name}")
 
@@ -1140,6 +1170,58 @@ def _embed_jina_clip_vision(images: list[Image.Image]) -> list[str]:
             if np.isnan(e).any():
                 e[:] = 0.0
         return [base64.b64encode(e.tobytes()).decode("ascii") for e in embs_np]
+
+
+# --- ColNomic (multi-vector, mean-pooled to single dense vector) ---
+#
+# ColNomic produces per-token 128-d vectors that are already L2-normalised and
+# multiplied by the attention mask inside the forward pass (so padded positions
+# are exact zero vectors). For image inputs, the ColNomicVision instance is
+# loaded with mask_non_image_embeddings=True, which additionally zeros out the
+# "Describe the image." prompt tokens so only image-patch vectors contribute.
+# We mean-pool by treating any row with non-zero norm as a valid token.
+
+
+_COLNOMIC_BATCH_SIZE = 4
+
+
+def _colnomic_mean_pool(token_embs: torch.Tensor) -> np.ndarray:
+    valid = (token_embs.norm(dim=-1) > 0).to(token_embs.dtype).unsqueeze(-1)
+    summed = token_embs.sum(dim=1)
+    counts = valid.sum(dim=1).clamp(min=1.0)
+    pooled = summed / counts
+    nan_mask = torch.isnan(pooled).any(dim=1)
+    if nan_mask.any():
+        pooled[nan_mask] = 0.0
+    return pooled.float().cpu().numpy()
+
+
+def _embed_colnomic_text(texts: list[str]) -> list[str]:
+    bundle = _models["ColNomic"]
+    model = bundle["model"]
+    processor = bundle["processor"]
+    embeddings: list[np.ndarray] = []
+    with torch.no_grad():
+        for i in range(0, len(texts), _COLNOMIC_BATCH_SIZE):
+            batch_texts = texts[i : i + _COLNOMIC_BATCH_SIZE]
+            batch = processor.process_texts(batch_texts).to(model.device)
+            token_embs = model(**batch)
+            embeddings.extend(list(_colnomic_mean_pool(token_embs)))
+    return [_encode_embedding(e) for e in embeddings]
+
+
+def _embed_colnomic_images(images: list[Image.Image]) -> list[str]:
+    bundle = _models["ColNomicVision"]
+    model = bundle["model"]
+    processor = bundle["processor"]
+    embeddings: list[np.ndarray] = []
+    with torch.no_grad():
+        for i in range(0, len(images), _COLNOMIC_BATCH_SIZE):
+            batch_images = images[i : i + _COLNOMIC_BATCH_SIZE]
+            batch = processor.process_images(batch_images).to(model.device)
+            token_embs = model(**batch)
+            embeddings.extend(list(_colnomic_mean_pool(token_embs)))
+    return [_encode_embedding(e) for e in embeddings]
 
 
 # ---------------------------------------------------------------------------

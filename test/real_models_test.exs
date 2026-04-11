@@ -61,6 +61,25 @@ defmodule PanicTda.RealModelsTest do
       assert is_binary(emb)
       assert byte_size(emb) == 768 * 4
     end
+
+    test "ColNomic generates float32 text embeddings", %{env: env} do
+      {:ok, [emb1, emb2]} = Embeddings.embed(env, "ColNomic", ["hello world", "test sentence"])
+
+      assert is_binary(emb1)
+      assert is_binary(emb2)
+      assert byte_size(emb1) == byte_size(emb2)
+      assert rem(byte_size(emb1), 4) == 0
+      assert byte_size(emb1) > 0
+    end
+
+    test "ColNomicVision generates float32 image embeddings", %{env: env} do
+      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A blue sky")
+      {:ok, [emb]} = Embeddings.embed(env, "ColNomicVision", [image])
+
+      assert is_binary(emb)
+      assert rem(byte_size(emb), 4) == 0
+      assert byte_size(emb) > 0
+    end
   end
 
   describe "end-to-end pipeline with real models" do
@@ -225,8 +244,8 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "all model combinations smoke test" do
-    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed)
-    @real_image_embedding_models ~w(NomicVision JinaClipVision)
+    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed ColNomic)
+    @real_image_embedding_models ~w(NomicVision JinaClipVision ColNomicVision)
 
     for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
         i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do

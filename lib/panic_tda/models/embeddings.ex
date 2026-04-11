@@ -10,8 +10,8 @@ defmodule PanicTda.Models.Embeddings do
 
   @dummy_text_models ~w(DummyText DummyText2)
   @dummy_image_models ~w(DummyVision DummyVision2)
-  @real_text_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed)
-  @real_image_models ~w(NomicVision JinaClipVision)
+  @real_text_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed ColNomic)
+  @real_image_models ~w(NomicVision JinaClipVision ColNomicVision)
   @text_models @dummy_text_models ++ @real_text_models
   @image_models @dummy_image_models ++ @real_image_models
 

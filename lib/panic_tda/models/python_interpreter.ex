@@ -28,7 +28,8 @@ defmodule PanicTda.Models.PythonInterpreter do
       "qwen-vl-utils>=0.0.8",
       "peft>=0.15",
       "bitsandbytes>=0.45",
-      "backoff>=2.2"
+      "backoff>=2.2",
+      "colpali-engine>=0.3.10"
     ]
     """
 end
