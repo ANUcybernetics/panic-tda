@@ -136,6 +136,31 @@ def setup() -> None:
         pass
 
     try:
+        # transformers 5.5.x has a bug in _convert_peft_config_moe: it runs
+        # for any model that has a checkpoint-conversion mapping, then does a
+        # bracket lookup in _MOE_TARGET_MODULE_MAPPING which only contains
+        # real MoE architectures. Loading ColNomic (qwen2_5_vl → qwen2_vl)
+        # crashes with KeyError: 'qwen2_vl'. Patch it to no-op when the
+        # mapped base type isn't a known MoE.
+        import transformers.integrations.peft as _tip
+
+        if hasattr(_tip, "_convert_peft_config_moe") and not getattr(
+            _tip._convert_peft_config_moe, "_panic_patched", False
+        ):
+            _orig_moe = _tip._convert_peft_config_moe
+
+            def _safe_convert_peft_config_moe(peft_config, model_type):
+                try:
+                    return _orig_moe(peft_config, model_type)
+                except KeyError:
+                    return peft_config
+
+            _safe_convert_peft_config_moe._panic_patched = True
+            _tip._convert_peft_config_moe = _safe_convert_peft_config_moe
+    except Exception:
+        pass
+
+    try:
         from functools import partialmethod
 
         from tqdm import tqdm

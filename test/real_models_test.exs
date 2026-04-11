@@ -80,6 +80,50 @@ defmodule PanicTda.RealModelsTest do
       assert rem(byte_size(emb), 4) == 0
       assert byte_size(emb) > 0
     end
+
+    test "ColNomic batches 9 texts correctly (spans internal chunk size)", %{env: env} do
+      texts =
+        for i <- 1..9, do: "sample sentence number #{i} describing an object or scene"
+
+      {:ok, embs} = Embeddings.embed(env, "ColNomic", texts)
+
+      assert length(embs) == 9
+      sizes = Enum.map(embs, &byte_size/1)
+      assert Enum.uniq(sizes) == [Enum.at(sizes, 0)]
+      assert Enum.at(sizes, 0) > 0
+      assert rem(Enum.at(sizes, 0), 4) == 0
+
+      # distinct inputs should produce distinct vectors
+      assert length(Enum.uniq(embs)) == 9
+    end
+
+    test "ColNomicVision batches 6 images correctly (spans internal chunk size)", %{env: env} do
+      prompts = [
+        "a red apple",
+        "a blue ocean",
+        "a green forest",
+        "a yellow sunflower",
+        "a white cloud",
+        "a black cat"
+      ]
+
+      images =
+        Enum.map(prompts, fn p ->
+          {:ok, img} = GenAI.invoke(env, "SD35Medium", p)
+          img
+        end)
+
+      {:ok, embs} = Embeddings.embed(env, "ColNomicVision", images)
+
+      assert length(embs) == 6
+      sizes = Enum.map(embs, &byte_size/1)
+      assert Enum.uniq(sizes) == [Enum.at(sizes, 0)]
+      assert Enum.at(sizes, 0) > 0
+      assert rem(Enum.at(sizes, 0), 4) == 0
+
+      # distinct images should produce distinct vectors
+      assert length(Enum.uniq(embs)) == 6
+    end
   end
 
   describe "end-to-end pipeline with real models" do
