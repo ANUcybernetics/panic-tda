@@ -63,6 +63,39 @@ def setup() -> None:
         import transformers
 
         transformers.logging.set_verbosity_error()
+
+        # huggingface_hub strict dataclass validation rejects float↔int
+        # mismatches in model configs. Some upstream config.json files store
+        # integer-valued fields as floats (e.g. nomic-bert "n_inner": 2048.0).
+        # Patch _validate_simple_type to accept float-for-int and int-for-float
+        # when the value is losslessly convertible.
+        import huggingface_hub.dataclasses as _hhd
+
+        _orig_validate_simple = _hhd._validate_simple_type
+
+        def _lenient_validate_simple(
+            name: str, value: Any, expected_type: type
+        ) -> None:
+            try:
+                _orig_validate_simple(name, value, expected_type)
+            except TypeError:
+                if (
+                    expected_type is int
+                    and isinstance(value, float)
+                    and not isinstance(value, bool)
+                    and value == int(value)
+                ):
+                    return
+                if (
+                    expected_type is float
+                    and isinstance(value, int)
+                    and not isinstance(value, bool)
+                ):
+                    return
+                raise
+
+        _hhd._validate_simple_type = _lenient_validate_simple
+
         import transformers.modeling_utils as _tmu
 
         _orig_ptm_init = _tmu.PreTrainedModel.__init__
