@@ -14,12 +14,11 @@ defmodule PanicTda.Engine do
   alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, LyapunovStage, ClusteringStage}
   alias PanicTda.Models.PythonBridge
 
-  def perform_experiment(experiment_id) do
+  def perform_experiment(experiment_id, opts \\ []) do
     experiment = PanicTda.get_experiment!(experiment_id)
     experiment = PanicTda.start_experiment!(experiment)
 
-    {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
-    {:ok, env} = Snex.make_env(interpreter)
+    {env, interpreter} = env_from_opts(opts)
 
     try do
       runs = init_runs(experiment)
@@ -47,11 +46,11 @@ defmodule PanicTda.Engine do
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
     after
-      GenServer.stop(interpreter)
+      if interpreter, do: GenServer.stop(interpreter)
     end
   end
 
-  def resume_experiment(experiment_id) do
+  def resume_experiment(experiment_id, opts \\ []) do
     experiment = PanicTda.get_experiment!(experiment_id)
 
     cond do
@@ -62,13 +61,12 @@ defmodule PanicTda.Engine do
         {:error, :already_completed}
 
       true ->
-        do_resume(experiment)
+        do_resume(experiment, opts)
     end
   end
 
-  defp do_resume(experiment) do
-    {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
-    {:ok, env} = Snex.make_env(interpreter)
+  defp do_resume(experiment, opts) do
+    {env, interpreter} = env_from_opts(opts)
 
     try do
       runs = find_or_create_runs(experiment)
@@ -96,7 +94,7 @@ defmodule PanicTda.Engine do
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
     after
-      GenServer.stop(interpreter)
+      if interpreter, do: GenServer.stop(interpreter)
     end
   end
 
@@ -111,6 +109,18 @@ defmodule PanicTda.Engine do
         initial_prompt: prompt,
         experiment_id: experiment.id
       })
+    end
+  end
+
+  defp env_from_opts(opts) do
+    case Keyword.get(opts, :env) do
+      nil ->
+        {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
+        {:ok, env} = Snex.make_env(interpreter)
+        {env, interpreter}
+
+      env ->
+        {env, nil}
     end
   end
 

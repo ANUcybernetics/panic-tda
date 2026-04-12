@@ -9,9 +9,7 @@ defmodule PanicTda.RealModelsTest do
   alias PanicTda.Engine
   alias PanicTda.Models.{GenAI, Embeddings, PythonBridge, PythonInterpreter}
 
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
-
+  setup_all do
     {:ok, interpreter} = PythonInterpreter.start_link()
     {:ok, env} = Snex.make_env(interpreter)
 
@@ -24,6 +22,12 @@ defmodule PanicTda.RealModelsTest do
     end)
 
     %{env: env}
+  end
+
+  setup %{env: env} do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
+    PythonBridge.unload_all_models(env)
+    :ok
   end
 
   describe "real GenAI models" do
@@ -127,7 +131,7 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "end-to-end pipeline with real models" do
-    test "full experiment with SD35Medium + Moondream + STSBMpnet" do
+    test "full experiment with SD35Medium + Moondream + STSBMpnet", %{env: env} do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
@@ -138,7 +142,7 @@ defmodule PanicTda.RealModelsTest do
         })
         |> Ash.create()
 
-      {:ok, completed} = Engine.perform_experiment(experiment.id)
+      {:ok, completed} = Engine.perform_experiment(experiment.id, env: env)
 
       assert completed.started_at != nil
       assert completed.completed_at != nil
@@ -294,7 +298,7 @@ defmodule PanicTda.RealModelsTest do
     for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
         i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do
       @tag timeout: 900_000
-      test "pipeline: #{t2i} + #{i2t} with all text embedding models" do
+      test "pipeline: #{t2i} + #{i2t} with all text embedding models", %{env: env} do
         t2i = unquote(t2i)
         i2t = unquote(i2t)
 
@@ -306,7 +310,7 @@ defmodule PanicTda.RealModelsTest do
             max_length: 4
           })
 
-        {:ok, completed} = Engine.perform_experiment(experiment.id)
+        {:ok, completed} = Engine.perform_experiment(experiment.id, env: env)
 
         assert completed.completed_at != nil
 
@@ -332,7 +336,7 @@ defmodule PanicTda.RealModelsTest do
     for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
         i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do
       @tag timeout: 900_000
-      test "pipeline: #{t2i} + #{i2t} with all image embedding models" do
+      test "pipeline: #{t2i} + #{i2t} with all image embedding models", %{env: env} do
         t2i = unquote(t2i)
         i2t = unquote(i2t)
 
@@ -344,7 +348,7 @@ defmodule PanicTda.RealModelsTest do
             max_length: 4
           })
 
-        {:ok, completed} = Engine.perform_experiment(experiment.id)
+        {:ok, completed} = Engine.perform_experiment(experiment.id, env: env)
 
         assert completed.completed_at != nil
 
