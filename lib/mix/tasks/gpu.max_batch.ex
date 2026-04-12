@@ -76,9 +76,8 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
       {:ok, images} =
         Snex.pyeval(
           env,
-          "result = panic_models.invoke_t2i_batch(name, prompts)",
+          "return panic_models.invoke_t2i_batch(name, prompts)",
           %{"name" => "SD35Medium", "prompts" => batch},
-          returning: "result",
           timeout: @probe_timeout
         )
 
@@ -96,9 +95,8 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
     {:ok, results} =
       Snex.pyeval(
         env,
-        "result = panic_models.probe_max_batch(name, test_inputs, sizes)",
+        "return panic_models.probe_max_batch(name, test_inputs, sizes)",
         %{"name" => model, "test_inputs" => inputs, "sizes" => @probe_sizes},
-        returning: "result",
         timeout: @probe_timeout
       )
 
@@ -124,9 +122,11 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
     {:ok, _} =
       Snex.pyeval(
         env,
-        "panic_models.swap_to_gpu(name)",
+        """
+        panic_models.swap_to_gpu(name)
+        return True
+        """,
         %{"name" => model},
-        returning: "True",
         timeout: @load_timeout
       )
 

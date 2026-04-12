@@ -46,9 +46,8 @@ defmodule PanicTda.Models.Embeddings do
          :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.embed_text(model_name, texts)",
+             "return panic_models.embed_text(model_name, texts)",
              %{"model_name" => model_name, "texts" => texts},
-             returning: "result",
              timeout: @embed_timeout
            ) do
         {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
@@ -64,9 +63,8 @@ defmodule PanicTda.Models.Embeddings do
          :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.embed_images(model_name, image_b64_list)",
+             "return panic_models.embed_images(model_name, image_b64_list)",
              %{"model_name" => model_name, "image_b64_list" => image_b64_list},
-             returning: "result",
              timeout: @embed_timeout
            ) do
         {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
@@ -99,10 +97,9 @@ defmodule PanicTda.Models.Embeddings do
                embeddings.append(base64.b64encode(vector.tobytes()).decode('ascii'))
 
            np.random.seed(None)
-           result = embeddings
+           return embeddings
            """,
-           %{"texts" => texts, "version" => version},
-           returning: "result"
+           %{"texts" => texts, "version" => version}
          ) do
       {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
       error -> error
@@ -152,10 +149,9 @@ defmodule PanicTda.Models.Embeddings do
                embeddings.append(base64.b64encode(vector.tobytes()).decode('ascii'))
 
            np.random.seed(None)
-           result = embeddings
+           return embeddings
            """,
-           %{"image_b64_list" => image_b64_list, "version" => version},
-           returning: "result"
+           %{"image_b64_list" => image_b64_list, "version" => version}
          ) do
       {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
       error -> error

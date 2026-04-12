@@ -7,7 +7,7 @@ defmodule PanicTda.Models.PythonBridge do
   @load_timeout 600_000
 
   def ensure_setup(env) do
-    case Snex.pyeval(env, "_panic_setup_done", %{}, returning: "_panic_setup_done") do
+    case Snex.pyeval(env, "return _panic_setup_done", %{}) do
       {:ok, true} ->
         :ok
 
@@ -23,9 +23,9 @@ defmodule PanicTda.Models.PythonBridge do
                import panic_models
                panic_models.setup()
                _panic_setup_done = True
+               return _panic_setup_done
                """,
                %{"_priv_python_dir" => python_dir},
-               returning: "_panic_setup_done",
                timeout: @load_timeout
              ) do
           {:ok, true} -> :ok
@@ -37,9 +37,8 @@ defmodule PanicTda.Models.PythonBridge do
   def ensure_model_loaded(env, model_name) do
     case Snex.pyeval(
            env,
-           "result = panic_models.is_model_loaded(model_name)",
-           %{"model_name" => model_name},
-           returning: "result"
+           "return panic_models.is_model_loaded(model_name)",
+           %{"model_name" => model_name}
          ) do
       {:ok, true} ->
         :ok
@@ -47,9 +46,11 @@ defmodule PanicTda.Models.PythonBridge do
       {:ok, false} ->
         case Snex.pyeval(
                env,
-               "panic_models.load_model(model_name)",
+               """
+               panic_models.load_model(model_name)
+               return True
+               """,
                %{"model_name" => model_name},
-               returning: "True",
                timeout: @load_timeout
              ) do
           {:ok, _} -> :ok
@@ -68,9 +69,11 @@ defmodule PanicTda.Models.PythonBridge do
          :ok <- ensure_model_loaded(env, model_name) do
       case Snex.pyeval(
              env,
-             "panic_models.swap_to_gpu(model_name)",
+             """
+             panic_models.swap_to_gpu(model_name)
+             return True
+             """,
              %{"model_name" => model_name},
-             returning: "True",
              timeout: @swap_timeout
            ) do
         {:ok, _} -> :ok
@@ -85,9 +88,9 @@ defmodule PanicTda.Models.PythonBridge do
            """
            if "panic_models" in dir():
                panic_models.swap_to_cpu(model_name)
+           return True
            """,
            %{"model_name" => model_name},
-           returning: "True",
            timeout: @swap_timeout
          ) do
       {:ok, _} -> :ok
@@ -103,9 +106,9 @@ defmodule PanicTda.Models.PythonBridge do
            """
            if "panic_models" in dir():
                panic_models.unload_model(model_name)
+           return True
            """,
            %{"model_name" => model_name},
-           returning: "True",
            timeout: @unload_timeout
          ) do
       {:ok, _} -> :ok
@@ -119,9 +122,9 @@ defmodule PanicTda.Models.PythonBridge do
            """
            if "panic_models" in dir():
                panic_models.unload_all_models()
+           return True
            """,
            %{},
-           returning: "True",
            timeout: @unload_timeout
          ) do
       {:ok, _} -> :ok

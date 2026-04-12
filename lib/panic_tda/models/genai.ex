@@ -62,9 +62,8 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.invoke_t2i(model_name, prompt)",
+             "return panic_models.invoke_t2i(model_name, prompt)",
              %{"model_name" => model_name, "prompt" => prompt},
-             returning: "result",
              timeout: @t2i_timeout
            ) do
         {:ok, base64_data} -> {:ok, base64_data |> Base.decode64!() |> ImageConverter.to_avif!()}
@@ -79,9 +78,8 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.invoke_i2t(model_name, image_b64)",
+             "return panic_models.invoke_i2t(model_name, image_b64)",
              %{"model_name" => model_name, "image_b64" => image_b64},
-             returning: "result",
              timeout: @i2t_timeout
            ) do
         {:ok, text} -> {:ok, ensure_nonempty_text(text)}
@@ -94,9 +92,8 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.invoke_t2i_batch(model_name, prompts)",
+             "return panic_models.invoke_t2i_batch(model_name, prompts)",
              %{"model_name" => model_name, "prompts" => prompts},
-             returning: "result",
              timeout: @t2i_timeout * length(prompts)
            ) do
         {:ok, base64_list} ->
@@ -117,9 +114,8 @@ defmodule PanicTda.Models.GenAI do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "result = panic_models.invoke_i2t_batch(model_name, image_b64_list)",
+             "return panic_models.invoke_i2t_batch(model_name, image_b64_list)",
              %{"model_name" => model_name, "image_b64_list" => image_b64_list},
-             returning: "result",
              timeout: @i2t_timeout * length(images)
            ) do
         {:ok, texts} -> {:ok, Enum.map(texts, &ensure_nonempty_text/1)}
@@ -150,10 +146,9 @@ defmodule PanicTda.Models.GenAI do
            image = Image.new("RGB", (IMAGE_SIZE, IMAGE_SIZE), color=(r, g, b))
            buffer = io.BytesIO()
            image.save(buffer, format="WEBP", lossless=True)
-           result = base64.b64encode(buffer.getvalue()).decode('ascii')
+           return base64.b64encode(buffer.getvalue()).decode('ascii')
            """,
-           %{"color_offset" => color_offset},
-           returning: "result"
+           %{"color_offset" => color_offset}
          ) do
       {:ok, base64_data} -> {:ok, base64_data |> Base.decode64!() |> ImageConverter.to_avif!()}
       error -> error
@@ -171,10 +166,9 @@ defmodule PanicTda.Models.GenAI do
       import base64
 
       unique_id = str(uuid.uuid4())[:8]
-      result = f"{prefix} {unique_id}"
+      return f"{prefix} {unique_id}"
       """,
-      %{"image_b64" => image_b64, "prefix" => prefix},
-      returning: "result"
+      %{"image_b64" => image_b64, "prefix" => prefix}
     )
   end
 
@@ -200,10 +194,9 @@ defmodule PanicTda.Models.GenAI do
                _buffer = io.BytesIO()
                _image.save(_buffer, format="WEBP", lossless=True)
                _results.append(base64.b64encode(_buffer.getvalue()).decode('ascii'))
-           result = _results
+           return _results
            """,
-           %{"prompts" => prompts, "color_offset" => color_offset},
-           returning: "result"
+           %{"prompts" => prompts, "color_offset" => color_offset}
          ) do
       {:ok, base64_list} ->
         {:ok,
@@ -233,10 +226,9 @@ defmodule PanicTda.Models.GenAI do
       for _img_b64 in image_b64_list:
           _unique_id = str(uuid.uuid4())[:8]
           _results.append(f"{prefix} {_unique_id}")
-      result = _results
+      return _results
       """,
-      %{"image_b64_list" => image_b64_list, "prefix" => prefix},
-      returning: "result"
+      %{"image_b64_list" => image_b64_list, "prefix" => prefix}
     )
   end
 end

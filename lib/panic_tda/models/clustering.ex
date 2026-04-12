@@ -50,14 +50,13 @@ defmodule PanicTda.Models.Clustering do
                        best_idx = np.argmin(distances)
                        medoid_indices[int(label)] = int(cluster_indices[best_idx])
 
-           result = {"labels": labels, "medoid_indices": medoid_indices}
+           return {"labels": labels, "medoid_indices": medoid_indices}
            """,
            %{
              "embeddings_b64" => embeddings_b64,
              "n_embeddings" => n_embeddings,
              "epsilon" => epsilon
            },
-           returning: "result",
            timeout: 600_000
          ) do
       {:ok, result} ->

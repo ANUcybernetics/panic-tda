@@ -32,7 +32,7 @@ defmodule PanicTda.Models.Lyapunov do
            ss_tot = np.sum((ln_divergence - np.mean(ln_divergence)) ** 2)
            r_squared = 1.0 - ss_res / ss_tot if ss_tot > 0 else None
 
-           result = {
+           return {
                "exponent": float(slope),
                "r_squared": float(r_squared) if r_squared is not None else None,
                "divergence_curve": divergence_curve.tolist(),
@@ -45,8 +45,7 @@ defmodule PanicTda.Models.Lyapunov do
              "num_trajectories" => num_trajectories,
              "num_timesteps" => num_timesteps,
              "dimension" => dimension
-           },
-           returning: "result"
+           }
          ) do
       {:ok, result} ->
         {:ok,

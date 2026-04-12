@@ -22,7 +22,7 @@ defmodule PanicTda.Models.Tda do
            dgm = ripser_parallel(point_cloud, maxdim=max_dim, return_generators=False, n_threads=4)
            dgm["entropy"] = persistent_entropy(dgm["dgms"], normalize=False)
 
-           result = {
+           return {
                "dgms": [d.tolist() for d in dgm["dgms"]],
                "entropy": dgm["entropy"].tolist(),
                "num_edges": int(dgm.get("num_edges", 0))
@@ -32,8 +32,7 @@ defmodule PanicTda.Models.Tda do
              "point_cloud_b64" => point_cloud_b64,
              "dimension" => dimension,
              "max_dim" => max_dim
-           },
-           returning: "result"
+           }
          ) do
       {:ok, result} ->
         {:ok,
