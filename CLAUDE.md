@@ -25,7 +25,10 @@ For detailed design rationale, see @DESIGN.md.
 - run GPU smoke tests (all real model combinations) with
   `mise exec -- mix test --include gpu`
 - Python interop is via Snex --- the interpreter maintains persistent state
-  across `pyeval` calls; Python code is inline in the Elixir source files
+  across `pyeval` calls. The model registry (loading, invoking, embedding)
+  lives in `priv/python/panic_models.py`; Elixir calls into it via short
+  inline `pyeval` glue. The Snex venv spec (dependencies, Python version) is
+  declared inline in `lib/panic_tda/models/python_interpreter.ex`
 - the project uses a separate SQLite database
 - tidewave MCP server is available for dev-time BEAM introspection; start it
   with `mise exec -- mix tidewave` (runs on port 4000)

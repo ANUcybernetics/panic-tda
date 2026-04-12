@@ -146,8 +146,13 @@ Python interop is via [Snex](https://hexdocs.pm/snex/), which maintains a
 persistent Python interpreter with shared state across calls. This means models
 are loaded once into GPU memory and reused across invocations, and the Python
 environment (imports, variables, loaded models) persists for the lifetime of an
-experiment. The Python code is written inline in the Elixir source files ---
-there are no separate `.py` files to maintain.
+experiment. The model registry --- loading, invoking and embedding for every
+supported model --- lives in `priv/python/panic_models.py`; the Elixir side
+imports it once during setup and then calls into it via short inline `pyeval`
+glue in the `PanicTda.Models.*` modules. The Snex venv spec (dependencies and
+Python version) is declared inline in
+`lib/panic_tda/models/python_interpreter.ex`, so Snex can build the venv on
+first boot without a repo-root `pyproject.toml`.
 
 Model loading is lazy: the `PythonBridge` module ensures each model is loaded at
 most once per experiment, and `PythonBridge.unload_all_models/1` frees GPU
