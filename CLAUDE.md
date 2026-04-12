@@ -23,7 +23,8 @@ For detailed design rationale, see @DESIGN.md.
 - follow the Ash usage rules below (synced via `usage_rules` hex package)
 - run tests with `mise exec -- mix test`
 - run GPU smoke tests (all real model combinations) with
-  `mise exec -- mix test --include gpu`
+  `mise exec -- mix test --include gpu` --- takes ~4h 40m on an RTX
+  6000 Ada (174 tests, mostly bottlenecked by T2I model invocations)
 - Python interop is via Snex --- the interpreter maintains persistent state
   across `pyeval` calls. The model registry (loading, invoking, embedding)
   lives in `priv/python/panic_models.py`; Elixir calls into it via short
