@@ -98,6 +98,19 @@ def setup() -> None:
 
         import transformers.modeling_utils as _tmu
 
+        # transformers 5.x passes code_revision through from_config → _from_config
+        # → cls(config, **kwargs), but remote-code model classes (e.g. JinaClip's
+        # XLMRobertaLoRA) don't accept it. Strip it — code_revision is only
+        # meaningful for from_pretrained, not from_config.
+        _orig_from_config = _tmu.PreTrainedModel._from_config.__func__
+
+        @classmethod  # type: ignore[misc]
+        def _safe_from_config(cls, config, **kwargs):  # type: ignore[no-untyped-def]
+            kwargs.pop("code_revision", None)
+            return _orig_from_config(cls, config, **kwargs)
+
+        _tmu.PreTrainedModel._from_config = _safe_from_config
+
         _orig_ptm_init = _tmu.PreTrainedModel.__init__
 
         def _patched_ptm_init(self: Any, *args: Any, **kwargs: Any) -> None:
