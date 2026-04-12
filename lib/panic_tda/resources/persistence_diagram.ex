@@ -69,5 +69,4 @@ defmodule PanicTda.PersistenceDiagram do
       expr(fragment("(julianday(?) - julianday(?)) * 86400", completed_at, started_at))
     )
   end
-
 end

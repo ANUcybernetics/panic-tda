@@ -174,7 +174,9 @@ defmodule PanicTda.ExportTest do
   describe "video/3" do
     test "creates a valid MP4 video file" do
       experiment = run_experiment()
-      output_path = Path.join(System.tmp_dir!(), "test_export_#{System.unique_integer([:positive])}.mp4")
+
+      output_path =
+        Path.join(System.tmp_dir!(), "test_export_#{System.unique_integer([:positive])}.mp4")
 
       on_exit(fn -> File.rm(output_path) end)
 
@@ -196,7 +198,11 @@ defmodule PanicTda.ExportTest do
           max_length: 4
         })
 
-      output_path = Path.join(System.tmp_dir!(), "test_export_multi_#{System.unique_integer([:positive])}.mp4")
+      output_path =
+        Path.join(
+          System.tmp_dir!(),
+          "test_export_multi_#{System.unique_integer([:positive])}.mp4"
+        )
 
       on_exit(fn -> File.rm(output_path) end)
 
@@ -209,7 +215,9 @@ defmodule PanicTda.ExportTest do
 
     test "creates video with multiple runs" do
       experiment = run_experiment(%{num_runs: 2, max_length: 4})
-      output_path = Path.join(System.tmp_dir!(), "test_export_runs_#{System.unique_integer([:positive])}.mp4")
+
+      output_path =
+        Path.join(System.tmp_dir!(), "test_export_runs_#{System.unique_integer([:positive])}.mp4")
 
       on_exit(fn -> File.rm(output_path) end)
 
@@ -226,7 +234,9 @@ defmodule PanicTda.ExportTest do
 
       image_inv = Enum.find(run.invocations, &(&1.type == :image))
 
-      output_path = Path.join(System.tmp_dir!(), "test_image_#{System.unique_integer([:positive])}.avif")
+      output_path =
+        Path.join(System.tmp_dir!(), "test_image_#{System.unique_integer([:positive])}.avif")
+
       on_exit(fn -> File.rm(output_path) end)
 
       assert {:ok, ^output_path} = PanicTda.Export.image(image_inv.id, output_path)
@@ -243,7 +253,9 @@ defmodule PanicTda.ExportTest do
 
       image_inv = Enum.find(run.invocations, &(&1.type == :image))
 
-      output_path = Path.join(System.tmp_dir!(), "test_image_#{System.unique_integer([:positive])}.png")
+      output_path =
+        Path.join(System.tmp_dir!(), "test_image_#{System.unique_integer([:positive])}.png")
+
       on_exit(fn -> File.rm(output_path) end)
 
       assert {:ok, ^output_path} = PanicTda.Export.image(image_inv.id, output_path)

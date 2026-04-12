@@ -76,5 +76,4 @@ defmodule PanicTda.Embedding do
       expr(fragment("(julianday(?) - julianday(?)) * 86400", completed_at, started_at))
     )
   end
-
 end

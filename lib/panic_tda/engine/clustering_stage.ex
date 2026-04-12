@@ -27,9 +27,7 @@ defmodule PanicTda.Engine.ClusteringStage do
   defp delete_existing_clustering(experiment, embedding_model) do
     existing =
       PanicTda.ClusteringResult
-      |> Ash.Query.filter(
-        experiment_id == ^experiment.id and embedding_model == ^embedding_model
-      )
+      |> Ash.Query.filter(experiment_id == ^experiment.id and embedding_model == ^embedding_model)
       |> Ash.Query.load(:embedding_clusters)
       |> Ash.read!()
 

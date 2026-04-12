@@ -21,7 +21,6 @@ defmodule PanicTda.Export do
     "Florence2" => "Flor2"
   }
 
-
   def video(experiment_id, output_path, opts \\ []) do
     experiment =
       PanicTda.get_experiment!(experiment_id)
@@ -80,7 +79,9 @@ defmodule PanicTda.Export do
     try do
       for seq <- 0..(max_length - 1) do
         frame_images = load_frame_images(all_run_ids, seq)
-        frame = render_frame(border, layout, run_id_map, frame_images, prompts, networks, num_runs)
+
+        frame =
+          render_frame(border, layout, run_id_map, frame_images, prompts, networks, num_runs)
 
         frame_path =
           Path.join(tmp_dir, "frame_#{String.pad_leading(Integer.to_string(seq), 6, "0")}.jpg")
@@ -145,12 +146,21 @@ defmodule PanicTda.Export do
     end
   end
 
-  def compute_layout(n_prompts, n_networks, n_runs, frame_w, frame_h, resolution \\ :hd, opts \\ []) do
+  def compute_layout(
+        n_prompts,
+        n_networks,
+        n_runs,
+        frame_w,
+        frame_h,
+        resolution \\ :hd,
+        opts \\ []
+      ) do
     prompt_shapes = grid_shapes(n_prompts)
     net_shapes = grid_shapes(n_networks)
     run_shapes = grid_shapes(n_runs)
 
-    {prompt_gutter, net_gutter, prompt_label_h, default_net_label_h, prompt_font_size, net_font_size} =
+    {prompt_gutter, net_gutter, prompt_label_h, default_net_label_h, prompt_font_size,
+     net_font_size} =
       case resolution do
         :hd -> {16, 6, 40, 24, 20, 14}
         :"4k" -> {32, 12, 80, 48, 40, 28}
@@ -342,7 +352,9 @@ defmodule PanicTda.Export do
 
   defp load_frame_images(run_ids, seq) do
     PanicTda.Invocation
-    |> Ash.Query.filter(run_id in ^run_ids and sequence_number == ^seq and not is_nil(output_image))
+    |> Ash.Query.filter(
+      run_id in ^run_ids and sequence_number == ^seq and not is_nil(output_image)
+    )
     |> Ash.read!()
     |> Map.new(fn inv -> {inv.run_id, inv.output_image} end)
   end

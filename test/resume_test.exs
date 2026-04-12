@@ -152,9 +152,7 @@ defmodule PanicTda.ResumeTest do
 
       embeddings_before =
         PanicTda.Embedding
-        |> Ash.Query.filter(
-          invocation.run_id == ^run.id and embedding_model == "DummyText"
-        )
+        |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == "DummyText")
         |> Ash.count!()
 
       assert embeddings_before == 1
@@ -163,9 +161,7 @@ defmodule PanicTda.ResumeTest do
 
       embeddings_after =
         PanicTda.Embedding
-        |> Ash.Query.filter(
-          invocation.run_id == ^run.id and embedding_model == "DummyText"
-        )
+        |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == "DummyText")
         |> Ash.count!()
 
       assert embeddings_after == 2
@@ -204,9 +200,7 @@ defmodule PanicTda.ResumeTest do
 
       embedding_count =
         PanicTda.Embedding
-        |> Ash.Query.filter(
-          invocation.run_id == ^run.id and embedding_model == "DummyText"
-        )
+        |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == "DummyText")
         |> Ash.count!()
 
       assert embedding_count == 2

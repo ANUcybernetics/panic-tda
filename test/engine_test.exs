@@ -13,9 +13,11 @@ defmodule PanicTda.EngineTest do
     setup do
       {:ok, interpreter} = PythonInterpreter.start_link()
       {:ok, env} = Snex.make_env(interpreter)
+
       on_exit(fn ->
         if Process.alive?(interpreter), do: GenServer.stop(interpreter)
       end)
+
       %{env: env}
     end
 

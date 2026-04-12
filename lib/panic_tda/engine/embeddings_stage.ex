@@ -23,9 +23,7 @@ defmodule PanicTda.Engine.EmbeddingsStage do
     Enum.each(embedding_models, fn embedding_model ->
       embedded_invocation_ids =
         PanicTda.Embedding
-        |> Ash.Query.filter(
-          invocation.run_id == ^run.id and embedding_model == ^embedding_model
-        )
+        |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == ^embedding_model)
         |> Ash.Query.load(:invocation)
         |> Ash.read!()
         |> MapSet.new(& &1.invocation.id)

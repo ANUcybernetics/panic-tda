@@ -100,7 +100,10 @@ defmodule PanicTda.Models.GenAI do
              timeout: @t2i_timeout * length(prompts)
            ) do
         {:ok, base64_list} ->
-          {:ok, Enum.map(base64_list, fn b64 -> b64 |> Base.decode64!() |> ImageConverter.to_avif!() end)}
+          {:ok,
+           Enum.map(base64_list, fn b64 ->
+             b64 |> Base.decode64!() |> ImageConverter.to_avif!()
+           end)}
 
         error ->
           error
@@ -202,8 +205,12 @@ defmodule PanicTda.Models.GenAI do
            %{"prompts" => prompts, "color_offset" => color_offset},
            returning: "result"
          ) do
-      {:ok, base64_list} -> {:ok, Enum.map(base64_list, fn b64 -> b64 |> Base.decode64!() |> ImageConverter.to_avif!() end)}
-      error -> error
+      {:ok, base64_list} ->
+        {:ok,
+         Enum.map(base64_list, fn b64 -> b64 |> Base.decode64!() |> ImageConverter.to_avif!() end)}
+
+      error ->
+        error
     end
   end
 

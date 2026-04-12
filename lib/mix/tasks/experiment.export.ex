@@ -72,7 +72,13 @@ defmodule Mix.Tasks.Experiment.Export do
 
     Mix.shell().info("Exporting video for experiment #{short_id(experiment.id)}...")
 
-    {:ok, path} = PanicTda.Export.video(experiment.id, output, fps: fps, resolution: resolution, quality: quality)
+    {:ok, path} =
+      PanicTda.Export.video(experiment.id, output,
+        fps: fps,
+        resolution: resolution,
+        quality: quality
+      )
+
     Mix.shell().info("Video exported to #{path}")
   end
 

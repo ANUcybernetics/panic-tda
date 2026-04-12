@@ -74,7 +74,12 @@ defmodule PanicTda.Engine.RunExecutor do
                 :image -> last.output_image
               end
 
-            %{run: run, input: output, prev_invocation_id: last.id, completed_seq: last.sequence_number}
+            %{
+              run: run,
+              input: output,
+              prev_invocation_id: last.id,
+              completed_seq: last.sequence_number
+            }
         end
       end)
 
