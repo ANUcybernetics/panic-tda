@@ -1,9 +1,10 @@
 ---
 id: TASK-67
 title: Redesign video export layout to fill full frame with constraint-based grid
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-20 01:56'
+updated_date: '2026-04-14'
 labels:
   - export
   - video
@@ -33,11 +34,41 @@ The current video export layout (lib/panic_tda/export.ex) doesn't use the full v
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Images scale to fill the full HD/4K frame (no 512px cap, minimal dead margin)
-- [ ] #2 Each subgrid is labelled with network name and prompt
-- [ ] #3 Subgrid arrangement of runs targets 16:9 aspect ratio
-- [ ] #4 Outer grid arrangement of subgrids also targets 16:9
-- [ ] #5 Fixed-pixel gutters between subgrids
-- [ ] #6 Unsupported run counts or network×prompt counts raise clear errors
-- [ ] #7 Layout logic has comprehensive ExUnit tests
+- [x] #1 Images scale to fill the full HD/4K frame (no 512px cap, minimal dead margin)
+- [x] #2 Each subgrid is labelled with network name and prompt
+- [x] #3 Subgrid arrangement of runs targets 16:9 aspect ratio
+- [x] #4 Outer grid arrangement of subgrids also targets 16:9
+- [x] #5 Fixed-pixel gutters between subgrids
+- [x] #6 Unsupported run counts or network×prompt counts raise clear errors
+- [x] #7 Layout logic has comprehensive ExUnit tests
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented as a hierarchical nested layout (prompt → network → run) rather
+than a flat outer grid keyed on (network, prompt) pairs. The hierarchy makes
+the grouping of prompts visually explicit, which matters for the current
+experiments.
+
+Key pieces in `lib/panic_tda/export.ex`:
+
+- `grid_shapes/1` now iterates over columns (`c=1..n`, `r=ceil(n/c)`) so every
+  generated factorisation fills all its rows. The old row-iteration produced
+  shapes like `{4,3}` for n=9 where the fourth row was entirely empty.
+- `compute_layout/6` scores each candidate by `img_size * fill_ratio`, where
+  `fill_ratio` is the product of `n_items / (rows*cols)` across the three
+  nested sub-grids. This prefers balanced factorisations (e.g. 3×3 for 9
+  networks) over sparse ones (e.g. 2×5 with an empty cell) when the raw
+  thumbnail size is close. This indirectly targets 16:9 because frame-fit is
+  already baked into `img_size`, and fill_ratio pushes away from wasteful
+  shapes that would distort the overall aspect.
+- After picking the best candidate, raises `ArgumentError` if `img_size`
+  drops below a resolution-dependent minimum (20px HD, 40px 4K). The error
+  names the specific counts and suggests run counts with balanced
+  factorisations.
+
+Tests in `test/export_test.exs` cover the penguin combo (5,9,8) → 3×3 nets
++ 4×2 or 2×4 runs, verify no chosen sub-grid has an empty row for a range of
+combos, and exercise the error path.
+<!-- SECTION:NOTES:END -->

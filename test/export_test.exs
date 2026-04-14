@@ -169,6 +169,49 @@ defmodule PanicTda.ExportTest do
       assert layout.net_rows * layout.net_cols >= 4
       assert layout.run_rows * layout.run_cols >= 12
     end
+
+    test "penguin combo (5,9,8) picks balanced sub-grids" do
+      layout = PanicTda.Export.compute_layout(5, 9, 8, 1920, 1080, :hd)
+
+      assert {layout.net_rows, layout.net_cols} == {3, 3},
+             "expected 3×3 network grid for 9 networks, got " <>
+               "#{layout.net_rows}×#{layout.net_cols}"
+
+      assert {layout.run_rows, layout.run_cols} in [{4, 2}, {2, 4}],
+             "expected 4×2 or 2×4 run grid for 8 runs, got " <>
+               "#{layout.run_rows}×#{layout.run_cols}"
+    end
+
+    test "no chosen sub-grid leaves an entirely empty row" do
+      combos = [
+        {5, 9, 8},
+        {1, 1, 5},
+        {1, 1, 7},
+        {3, 4, 3},
+        {3, 4, 12},
+        {1, 5, 3},
+        {2, 1, 6}
+      ]
+
+      for {n_prom, n_net, n_run} <- combos do
+        layout = PanicTda.Export.compute_layout(n_prom, n_net, n_run, 1920, 1080, :hd)
+
+        assert (layout.prompt_rows - 1) * layout.prompt_cols < n_prom,
+               "prompt grid #{layout.prompt_rows}×#{layout.prompt_cols} has empty row for #{n_prom} prompts"
+
+        assert (layout.net_rows - 1) * layout.net_cols < n_net,
+               "network grid #{layout.net_rows}×#{layout.net_cols} has empty row for #{n_net} networks"
+
+        assert (layout.run_rows - 1) * layout.run_cols < n_run,
+               "run grid #{layout.run_rows}×#{layout.run_cols} has empty row for #{n_run} runs"
+      end
+    end
+
+    test "raises for configs that produce unacceptably tiny thumbnails" do
+      assert_raise ArgumentError, ~r/Cannot produce acceptable video layout/, fn ->
+        PanicTda.Export.compute_layout(20, 20, 100, 1920, 1080, :hd)
+      end
+    end
   end
 
   describe "video/3" do

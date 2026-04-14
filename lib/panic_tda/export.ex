@@ -181,8 +181,12 @@ defmodule PanicTda.Export do
 
         img_size = floor(min(img_w, img_h)) |> trunc()
 
+        fill_ratio =
+          n_prompts / (pr * pc) * (n_networks / (nr * nc)) * (n_runs / (rr * rc))
+
         %{
           img_size: img_size,
+          score: img_size * fill_ratio,
           prompt_rows: pr,
           prompt_cols: pc,
           net_rows: nr,
@@ -192,7 +196,19 @@ defmodule PanicTda.Export do
         }
       end
 
-    best = Enum.max_by(candidates, & &1.img_size)
+    best = Enum.max_by(candidates, & &1.score)
+
+    min_img_size = if resolution == :"4k", do: 40, else: 20
+
+    if best.img_size < min_img_size do
+      raise ArgumentError,
+            "Cannot produce acceptable video layout for " <>
+              "#{n_prompts} prompts × #{n_networks} networks × #{n_runs} runs " <>
+              "at #{resolution} resolution: best thumbnail size is #{best.img_size}px " <>
+              "(minimum #{min_img_size}px). " <>
+              "Try a higher resolution, fewer prompts/networks, or a run count with " <>
+              "a balanced factorisation (1, 2, 3, 4, 6, 8, 9, 12, 16)."
+    end
 
     net_tile_w = best.run_cols * best.img_size
     prompt_tile_w = best.net_cols * net_tile_w + (best.net_cols - 1) * net_gutter
@@ -228,7 +244,7 @@ defmodule PanicTda.Export do
 
   defp grid_shapes(n) do
     1..n
-    |> Enum.map(fn r -> {r, div(n + r - 1, r)} end)
+    |> Enum.map(fn c -> {div(n + c - 1, c), c} end)
     |> Enum.uniq()
   end
 
