@@ -82,7 +82,7 @@ defmodule PanicTda.Models.Embeddings do
            import numpy as np
            import base64
 
-           EMBEDDING_DIM = 768
+           EMBEDDING_DIM = 256
            embeddings = []
 
            for content in texts:
@@ -118,7 +118,7 @@ defmodule PanicTda.Models.Embeddings do
            import base64
            from PIL import Image
 
-           EMBEDDING_DIM = 768
+           EMBEDDING_DIM = 256
            embeddings = []
 
            for image_b64 in image_b64_list:

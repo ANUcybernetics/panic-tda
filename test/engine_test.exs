@@ -41,8 +41,8 @@ defmodule PanicTda.EngineTest do
 
       assert is_binary(emb1)
       assert is_binary(emb2)
-      assert byte_size(emb1) == 768 * 4
-      assert byte_size(emb2) == 768 * 4
+      assert byte_size(emb1) == 256 * 4
+      assert byte_size(emb2) == 256 * 4
     end
 
     test "DummyVision generates embeddings from images", %{env: env} do
@@ -50,7 +50,7 @@ defmodule PanicTda.EngineTest do
       {:ok, [emb]} = Embeddings.embed(env, "DummyVision", [image])
 
       assert is_binary(emb)
-      assert byte_size(emb) == 768 * 4
+      assert byte_size(emb) == 256 * 4
     end
   end
 
@@ -109,7 +109,7 @@ defmodule PanicTda.EngineTest do
 
       Enum.each(embeddings, fn emb ->
         assert %Nx.Tensor{} = emb.vector
-        assert Nx.shape(emb.vector) == {768}
+        assert Nx.shape(emb.vector) == {256}
       end)
     end
 
@@ -130,7 +130,7 @@ defmodule PanicTda.EngineTest do
 
       Enum.each(embeddings, fn emb ->
         assert %Nx.Tensor{} = emb.vector
-        assert Nx.shape(emb.vector) == {768}
+        assert Nx.shape(emb.vector) == {256}
       end)
     end
 

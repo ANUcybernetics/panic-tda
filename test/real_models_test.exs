@@ -49,21 +49,34 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "real Embedding models" do
-    test "STSBMpnet generates 768-dim float32 text embeddings", %{env: env} do
+    defp assert_unit_norm(binary) do
+      f32_count = div(byte_size(binary), 4)
+      values =
+        for <<v::float-32-little <- binary>>, do: v
+
+      assert length(values) == f32_count
+      norm = :math.sqrt(Enum.reduce(values, 0.0, fn v, acc -> acc + v * v end))
+      assert_in_delta norm, 1.0, 1.0e-4
+    end
+
+    test "STSBMpnet generates 256-dim unit-norm float32 text embeddings", %{env: env} do
       {:ok, [emb1, emb2]} = Embeddings.embed(env, "STSBMpnet", ["hello world", "test sentence"])
 
       assert is_binary(emb1)
       assert is_binary(emb2)
-      assert byte_size(emb1) == 768 * 4
-      assert byte_size(emb2) == 768 * 4
+      assert byte_size(emb1) == 256 * 4
+      assert byte_size(emb2) == 256 * 4
+      assert_unit_norm(emb1)
+      assert_unit_norm(emb2)
     end
 
-    test "NomicVision generates 768-dim float32 image embeddings", %{env: env} do
+    test "NomicVision generates 256-dim unit-norm float32 image embeddings", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "SD35Medium", "A blue sky")
       {:ok, [emb]} = Embeddings.embed(env, "NomicVision", [image])
 
       assert is_binary(emb)
-      assert byte_size(emb) == 768 * 4
+      assert byte_size(emb) == 256 * 4
+      assert_unit_norm(emb)
     end
 
     test "ColNomic generates float32 text embeddings", %{env: env} do
@@ -175,7 +188,7 @@ defmodule PanicTda.RealModelsTest do
 
       Enum.each(embeddings, fn emb ->
         assert %Nx.Tensor{} = emb.vector
-        assert Nx.shape(emb.vector) == {768}
+        assert Nx.shape(emb.vector) == {256}
       end)
 
       pds = Ash.read!(PanicTda.PersistenceDiagram)

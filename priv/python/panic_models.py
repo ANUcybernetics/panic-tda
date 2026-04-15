@@ -21,7 +21,7 @@ from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import batch_to_device
 
 IMAGE_SIZE = 256
-EMBEDDING_DIM = 768
+EMBEDDING_DIM = 256
 
 _T2I_IMAGE_SIZES: dict[str, int] = {
     "SD35Medium": 1024,
@@ -328,6 +328,10 @@ def _decode_image_b64(b64: str) -> Image.Image:
 def _encode_embedding(arr: np.ndarray) -> str:
     f32 = arr.astype(np.float32)
     np.nan_to_num(f32, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
+    f32 = f32[:EMBEDDING_DIM]
+    norm = float(np.linalg.norm(f32))
+    if norm > 0.0:
+        f32 = f32 / norm
     return base64.b64encode(f32.tobytes()).decode("ascii")
 
 
@@ -1174,7 +1178,7 @@ def embed_text(name: str, texts: list[str]) -> list[str]:
             embs = _models[name].encode(
                 texts, convert_to_numpy=True, normalize_embeddings=True
             )
-            return [_encode_embedding(e[:EMBEDDING_DIM]) for e in embs]
+            return [_encode_embedding(e) for e in embs]
         elif name == "ColNomic":
             return _embed_colnomic_text(texts)
         else:
@@ -1236,11 +1240,7 @@ def _embed_jina_clip_vision(images: list[Image.Image]) -> list[str]:
         embs = _models["JinaClipVision"].encode_image(
             images, truncate_dim=EMBEDDING_DIM
         )
-        embs_np = [np.array(e).astype(np.float32) for e in embs]
-        for e in embs_np:
-            if np.isnan(e).any():
-                e[:] = 0.0
-        return [base64.b64encode(e.tobytes()).decode("ascii") for e in embs_np]
+        return [_encode_embedding(np.array(e)) for e in embs]
 
 
 # --- ColNomic (multi-vector, mean-pooled to single dense vector) ---
