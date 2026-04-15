@@ -28,7 +28,7 @@ defmodule PanicTda.Export do
 
     fps = Keyword.get(opts, :fps, @default_fps)
     crf = Keyword.get(opts, :quality, @default_crf)
-    resolution = Keyword.get(opts, :resolution, :hd)
+    resolution = Keyword.get(opts, :resolution, :"4k")
 
     {target_w, target_h} =
       case resolution do

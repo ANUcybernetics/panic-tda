@@ -16,7 +16,7 @@ defmodule Mix.Tasks.Experiment.Export do
 
     - `--output` - output file path (default: `export.mp4`)
     - `--fps` - frames per second (default: 10)
-    - `--resolution` - `hd` (1920×1080) or `4k` (3840×2160, default: `hd`)
+    - `--resolution` - `hd` (1920×1080) or `4k` (3840×2160, default: `4k`)
     - `--quality` - CRF value for encoding quality (default: 22)
 
   ## Image export
@@ -65,9 +65,9 @@ defmodule Mix.Tasks.Experiment.Export do
     quality = Keyword.get(opts, :quality, 22)
 
     resolution =
-      case Keyword.get(opts, :resolution, "hd") do
-        "4k" -> :"4k"
-        _ -> :hd
+      case Keyword.get(opts, :resolution, "4k") do
+        "hd" -> :hd
+        _ -> :"4k"
       end
 
     Mix.shell().info("Exporting video for experiment #{short_id(experiment.id)}...")
