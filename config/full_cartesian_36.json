@@ -38,7 +38,7 @@
     ["GLMImage", "Florence2"]
   ],
   "prompts": ["a man", "a woman"],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 100,
   "num_runs": 4
 }

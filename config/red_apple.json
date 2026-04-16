@@ -1,6 +1,6 @@
 {
   "network": ["SD35Medium", "Moondream"],
   "prompts": ["a red apple"],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 100
 }

@@ -16,7 +16,7 @@
     "this is me on a typical winter's day",
     "this is me on a typical spring's day"
   ],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 50,
   "num_runs": 8
 }

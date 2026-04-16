@@ -17,7 +17,7 @@
     "a penguin sitting beside a campfire",
     "a penguin sitting next to a campfire"
   ],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 200,
   "num_runs": 8
 }

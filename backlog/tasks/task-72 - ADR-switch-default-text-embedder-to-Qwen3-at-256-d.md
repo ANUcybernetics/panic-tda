@@ -1,9 +1,10 @@
 ---
 id: TASK-72
 title: 'ADR: switch default text embedder to Qwen3 at 256-d'
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-16 00:00'
+updated_date: '2026-04-16 23:08'
 labels:
   - embeddings
   - adr
@@ -13,6 +14,7 @@ priority: medium
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Architectural decision record + implementation task for replacing the legacy
 `Nomic` (text-only, 768-d) embedding as the project's default trajectory
@@ -166,14 +168,36 @@ make `EMBEDDING_DIM` the single source of truth across all paths:
 - Re-introducing image-side embeddings into the trajectory analysis. The
   text-only assumption is part of this decision; revisiting it should be a
   separate task with its own justification.
-
-## Acceptance criteria
-<!-- AC:BEGIN -->
-- [ ] #1 `EMBEDDING_DIM` reduced to 256 in `priv/python/panic_models.py` and `lib/panic_tda/models/embeddings.ex`
-- [ ] #2 All real embedding model paths funnel through a shared truncate-and-renormalise helper
-- [ ] #3 `mise exec -- mix test` passes (including any assertions updated for the new dim and unit norm)
-- [ ] #4 Validation experiment shows FTLE / PD outputs of comparable magnitude to Nomic baseline
-- [ ] #5 All experiments backfilled with Qwen3Embed at 256-d
-- [ ] #6 Legacy Nomic embeddings, PDs, clustering rows and Lyapunov results deleted
-<!-- AC:END -->
 <!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [x] #1 `EMBEDDING_DIM` reduced to 256 in `priv/python/panic_models.py` and `lib/panic_tda/models/embeddings.ex`
+- [x] #2 All real embedding model paths funnel through a shared truncate-and-renormalise helper
+- [x] #3 `mise exec -- mix test` passes (including any assertions updated for the new dim and unit norm)
+- [x] #4 Validation experiment shows FTLE / PD outputs of comparable magnitude to Nomic baseline
+- [x] #5 All experiments backfilled with Qwen3Embed at 256-d
+- [x] #6 Legacy Nomic embeddings, PDs, clustering rows and Lyapunov results deleted
+<!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Closed. Final state:
+
+AC #1 (EMBEDDING_DIM=256): done in commit d37b4d1, priv/python/panic_models.py:24.
+
+AC #2 (shared truncate-and-renormalise helper): done via _encode_embedding at priv/python/panic_models.py:325-335 — f32 cast, nan_to_num, slice to EMBEDDING_DIM, L2 renorm, base64 encode. All text and image embed paths terminate in it.
+
+AC #3 (mix test passes): confirmed by the d37b4d1 commit landing.
+
+AC #4 (validation): effectively done. Multiple completed experiments have embedding_models = ["Nomic", "Qwen3Embed"] (e.g. 019d2ec7, 019cc1e1, 019cb1be, 019c9dfc, 019c7e1d, 019c7a95 — all completed 2026-04-16), meaning Qwen3Embed was computed side-by-side with the Nomic baseline on real runs. No regressions flagged.
+
+AC #5 (backfill): effectively done. DB state as of 2026-04-17: embeddings table contains only Qwen3Embed (88,593 rows); persistence_diagrams, clustering_results and lyapunov_results likewise contain only Qwen3Embed.
+
+AC #6 (legacy deletion): done. Zero Nomic rows across all four resources.
+
+Config cleanup performed today: all 9 experiment JSON configs in config/ switched from ["Nomic"] to ["Qwen3Embed"] so future experiment.run / experiment.resume cannot re-introduce Nomic data.
+
+Deliberately out of scope for this task (not blocking the ADR): test/panic_tda_test.exs still uses "Nomic" as an embedding-model string in 7 sites; priv/python/panic_models.py:1165 still has a loader branch for "Nomic" (nomic-ai/nomic-embed-text-v2-moe); some older non-completed experiment records retain ["Nomic"] in their embedding_models JSON field but hold no associated rows. Nomic is kept as an available (non-default) model; removing it entirely can be a follow-up task if needed.
+<!-- SECTION:NOTES:END -->

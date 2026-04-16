@@ -1,9 +1,10 @@
 ---
 id: TASK-60
 title: Implement GPU memory swap-on-transition for runs stage
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-02-08 03:42'
+updated_date: '2026-04-16 20:57'
 labels: []
 dependencies: []
 priority: high
@@ -70,11 +71,17 @@ With only the active model on GPU, there should be enough VRAM for true batched 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 PythonBridge has generic swap_model_to_cpu/2 and swap_model_to_gpu/2 functions that handle all model types (pipelines, dict-style, SentenceTransformers) without model-specific code
-- [ ] #2 RunExecutor.execute_batch_loop swaps models at each network transition, with only the active model on GPU
-- [ ] #3 T2I batch code restored to true batched generation (all prompts passed to pipeline at once)
-- [ ] #4 I2T batch code uses true batched inference for models that support it (InstructBLIP, Qwen25VL, Gemma3n)
-- [ ] #5 Existing tests pass (mix test) with swap logic in place
-- [ ] #6 GPU smoke test confirms correct output and measures swap overhead
-- [ ] #7 Batch throughput improved compared to serial one-at-a-time baseline
+- [x] #1 PythonBridge has generic swap_model_to_cpu/2 and swap_model_to_gpu/2 functions that handle all model types (pipelines, dict-style, SentenceTransformers) without model-specific code
+- [x] #2 RunExecutor.execute_batch_loop swaps models at each network transition, with only the active model on GPU
+- [x] #3 T2I batch code restored to true batched generation (all prompts passed to pipeline at once)
+- [x] #4 I2T batch code uses true batched inference for models that support it (InstructBLIP, Qwen25VL, Gemma3n)
+- [x] #5 Existing tests pass (mix test) with swap logic in place
+- [x] #6 GPU smoke test confirms correct output and measures swap overhead
+- [x] #7 Batch throughput improved compared to serial one-at-a-time baseline
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Completed in commit f742e83 'GPU swap-on-transition for runs stage, restore true batching (TASK-60)'. python_bridge.ex exposes swap_model_to_gpu/2 and swap_model_to_cpu/2, delegating to panic_models.swap_to_gpu/swap_to_cpu; run_executor.execute_batch_loop swaps the outgoing model to CPU at every transition where the next model differs; batch code paths in panic_models.py now handle true batched T2I and I2T inference (e.g. _T2I_BATCH_CAPABLE set, _T2I_MAX_BATCH caps).
+<!-- SECTION:NOTES:END -->
