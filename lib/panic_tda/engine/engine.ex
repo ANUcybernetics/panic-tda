@@ -52,13 +52,17 @@ defmodule PanicTda.Engine do
 
   def resume_experiment(experiment_id, opts \\ []) do
     experiment = PanicTda.get_experiment!(experiment_id)
+    force? = Keyword.get(opts, :force, false)
 
     cond do
       is_nil(experiment.started_at) ->
         {:error, :not_started}
 
-      not is_nil(experiment.completed_at) ->
+      not is_nil(experiment.completed_at) and not force? ->
         {:error, :already_completed}
+
+      not is_nil(experiment.completed_at) and force? ->
+        experiment |> PanicTda.reopen_experiment!() |> do_resume(opts)
 
       true ->
         do_resume(experiment, opts)

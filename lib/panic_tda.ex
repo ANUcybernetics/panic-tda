@@ -8,6 +8,7 @@ defmodule PanicTda do
       define :list_experiments, action: :read
       define :start_experiment, action: :start
       define :complete_experiment, action: :complete
+      define :reopen_experiment, action: :reopen
     end
 
     resource PanicTda.Run do

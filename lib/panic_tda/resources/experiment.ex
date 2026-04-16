@@ -87,6 +87,11 @@ defmodule PanicTda.Experiment do
       require_atomic?(false)
       change(set_attribute(:completed_at, &DateTime.utc_now/0))
     end
+
+    update :reopen do
+      require_atomic?(false)
+      change(set_attribute(:completed_at, nil))
+    end
   end
 
   validations do

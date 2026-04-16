@@ -60,6 +60,23 @@ defmodule PanicTda.ResumeTest do
       {:ok, completed} = Engine.perform_experiment(experiment.id)
       assert {:error, :already_completed} = Engine.resume_experiment(completed.id)
     end
+
+    test "force: true reopens a completed experiment and re-runs resume" do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          prompts: ["test"],
+          embedding_models: ["DummyText"],
+          max_length: 4
+        })
+
+      {:ok, completed} = Engine.perform_experiment(experiment.id)
+      assert completed.completed_at != nil
+
+      assert {:ok, resumed} = Engine.resume_experiment(completed.id, force: true)
+      assert resumed.completed_at != nil
+      assert DateTime.compare(resumed.completed_at, completed.completed_at) == :gt
+    end
   end
 
   describe "partial run resume" do

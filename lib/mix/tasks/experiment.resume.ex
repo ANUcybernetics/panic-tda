@@ -5,11 +5,16 @@ defmodule Mix.Tasks.Experiment.Resume do
   Resumes a previously started but incomplete experiment.
 
       $ mix experiment.resume <experiment-id-prefix>
+      $ mix experiment.resume <experiment-id-prefix> --force
 
   The experiment must have been started (has `started_at`) but not completed
   (no `completed_at`). The task picks up where the experiment left off:
   missing runs are created, partial runs are continued, missing embeddings
   and persistence diagrams are computed, and clustering is recomputed.
+
+  `--force` reopens an already-completed experiment before resuming — useful
+  when new embedding models have been added to the config and missing
+  downstream artefacts need to be backfilled.
   """
 
   use Mix.Task
@@ -17,27 +22,38 @@ defmodule Mix.Tasks.Experiment.Resume do
   require Ash.Query
 
   @impl Mix.Task
-  def run([id_prefix]) do
-    setup_db()
-    Mix.Task.run("app.start")
+  def run(args) do
+    {opts, positional, _} = OptionParser.parse(args, strict: [force: :boolean])
 
-    experiment = find_experiment(id_prefix)
-    Mix.shell().info("Resuming experiment #{short_id(experiment.id)}")
+    case positional do
+      [id_prefix] ->
+        setup_db()
+        Mix.Task.run("app.start")
 
-    case PanicTda.Engine.resume_experiment(experiment.id) do
-      {:ok, experiment} ->
-        print_summary(experiment)
+        experiment = find_experiment(id_prefix)
+        force? = Keyword.get(opts, :force, false)
 
-      {:error, :not_started} ->
-        Mix.raise("Experiment #{short_id(experiment.id)} has not been started yet")
+        Mix.shell().info(
+          "Resuming experiment #{short_id(experiment.id)}#{if force?, do: " (forced)", else: ""}"
+        )
 
-      {:error, :already_completed} ->
-        Mix.raise("Experiment #{short_id(experiment.id)} is already completed")
+        case PanicTda.Engine.resume_experiment(experiment.id, force: force?) do
+          {:ok, experiment} ->
+            print_summary(experiment)
+
+          {:error, :not_started} ->
+            Mix.raise("Experiment #{short_id(experiment.id)} has not been started yet")
+
+          {:error, :already_completed} ->
+            Mix.raise(
+              "Experiment #{short_id(experiment.id)} is already completed " <>
+                "(pass --force to reopen and resume)"
+            )
+        end
+
+      _ ->
+        Mix.raise("Usage: mix experiment.resume <experiment-id-prefix> [--force]")
     end
-  end
-
-  def run(_args) do
-    Mix.raise("Usage: mix experiment.resume <experiment-id-prefix>")
   end
 
   defp setup_db do
