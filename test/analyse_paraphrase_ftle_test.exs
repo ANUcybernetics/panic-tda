@@ -110,6 +110,52 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
         Mix.Tasks.Analyse.ParaphraseFtle.run(["nonexistent-prefix"])
       end
     end
+
+    test "writes identical-prompt FTLE rows to CSV from LyapunovResult" do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          num_runs: 2,
+          prompts: ["alpha", "beta"],
+          embedding_models: ["DummyText"],
+          max_length: 4
+        })
+
+      {:ok, _} = PanicTda.Engine.perform_experiment(experiment.id)
+
+      tmp_dir = Path.join(System.tmp_dir!(), "paraphrase_ftle_csv_#{System.unique_integer([:positive])}")
+
+      Mix.Tasks.Analyse.ParaphraseFtle.run([experiment.id, "--out", tmp_dir])
+
+      csv_path = Path.join(tmp_dir, "ftle_values.csv")
+      assert File.exists?(csv_path)
+
+      [header | data] =
+        csv_path
+        |> File.read!()
+        |> String.split("\n", trim: true)
+
+      assert header ==
+        "experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps"
+
+      headers = String.split(header, ",")
+
+      rows =
+        Enum.map(data, fn line ->
+          line
+          |> String.split(",")
+          |> Enum.zip(headers)
+          |> Map.new(fn {v, h} -> {h, v} end)
+        end)
+
+      identical_rows = Enum.filter(rows, &(&1["category"] == "identical"))
+      # 2 prompts × 1 network × 1 embedding model
+      assert length(identical_rows) == 2
+      assert Enum.all?(identical_rows, &(&1["embedding_model"] == "DummyText"))
+      assert Enum.all?(identical_rows, &(&1["network"] == "DummyT2I|DummyI2T"))
+
+      File.rm_rf!(tmp_dir)
+    end
   end
 
   describe "cross_prompt_ftle" do
