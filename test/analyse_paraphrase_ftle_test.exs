@@ -58,6 +58,41 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
     end
   end
 
+  describe "plot_divergence_curves" do
+    test "writes a non-empty PNG given two synthetic divergence curves", %{env: env} do
+      tmp_dir = Path.join(System.tmp_dir!(), "div_curves_test_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(tmp_dir)
+      out_path = Path.join(tmp_dir, "divergence_curves.png")
+
+      {:ok, true} =
+        Snex.pyeval(
+          env,
+          """
+          import penguin_analysis
+          import numpy as np
+
+          t = np.arange(200)
+          identical_curve = np.exp(0.005 * t + 0.01 * np.random.default_rng(0).normal(size=t.shape)).tolist()
+          paraphrase_curve = np.exp(0.03 * t + 0.01 * np.random.default_rng(1).normal(size=t.shape)).tolist()
+
+          penguin_analysis.plot_divergence_curves(
+              out_path,
+              network="SD35Medium|Moondream",
+              embedding_model="Nomic",
+              identical_curve=identical_curve,
+              paraphrase_curve=paraphrase_curve,
+          )
+          return True
+          """,
+          %{"out_path" => out_path}
+        )
+
+      stat = File.stat!(out_path)
+      assert stat.size > 1000
+      File.rm_rf!(tmp_dir)
+    end
+  end
+
   describe "cross_prompt_ftle" do
     test "recovers a known exponential divergence rate", %{env: env} do
       {:ok, result} =

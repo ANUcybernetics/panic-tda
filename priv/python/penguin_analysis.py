@@ -146,3 +146,41 @@ def plot_ftle_grid(csv_path: str, out_path: str) -> None:
     fig.tight_layout(rect=(0, 0.04, 1, 0.96))
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
+
+
+def plot_divergence_curves(
+    out_path: str,
+    network: str,
+    embedding_model: str,
+    identical_curve: list,
+    paraphrase_curve: list,
+) -> None:
+    """
+    Plot two divergence curves on a log-y axis: the mean within-prompt
+    divergence (identical-prompt) and the mean between-prompt divergence
+    (paraphrase), both for a single (network, embedding) cell.
+
+    Inputs are lists of per-timestep mean distances (not yet logged).
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    t_identical = np.arange(len(identical_curve))
+    t_paraphrase = np.arange(len(paraphrase_curve))
+
+    fig, ax = plt.subplots(figsize=(7.0, 4.2))
+    ax.plot(t_identical, identical_curve, label="identical prompt", linewidth=1.5)
+    ax.plot(t_paraphrase, paraphrase_curve, label="paraphrase", linewidth=1.5)
+    ax.set_yscale("log")
+    ax.set_xlabel("invocation step")
+    ax.set_ylabel("mean pairwise Euclidean distance (log scale)")
+    ax.set_title(
+        f"Divergence curve: {network.replace('|', ' -> ')}  ·  {embedding_model}"
+    )
+    ax.legend()
+    ax.grid(True, which="both", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
