@@ -185,6 +185,41 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
 
       File.rm_rf!(tmp_dir)
     end
+
+    test "generates plots and report.md alongside the CSV" do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          num_runs: 2,
+          prompts: ["alpha", "beta"],
+          embedding_models: ["DummyText"],
+          max_length: 4
+        })
+
+      {:ok, _} = PanicTda.Engine.perform_experiment(experiment.id)
+
+      tmp_dir = Path.join(System.tmp_dir!(), "paraphrase_ftle_full_#{System.unique_integer([:positive])}")
+
+      Mix.Tasks.Analyse.ParaphraseFtle.run([experiment.id, "--out", tmp_dir])
+
+      grid_png = Path.join(tmp_dir, "ftle_grid.png")
+      divergence_png = Path.join(tmp_dir, "divergence_curves.png")
+      report_md = Path.join(tmp_dir, "report.md")
+
+      assert File.exists?(grid_png)
+      assert File.stat!(grid_png).size > 1000
+      assert File.exists?(divergence_png)
+      assert File.stat!(divergence_png).size > 1000
+      assert File.exists?(report_md)
+
+      text = File.read!(report_md)
+      assert text =~ experiment.id
+      assert text =~ "ftle_grid.png"
+      assert text =~ "divergence_curves.png"
+      assert text =~ "TODO"
+
+      File.rm_rf!(tmp_dir)
+    end
   end
 
   describe "cross_prompt_ftle" do

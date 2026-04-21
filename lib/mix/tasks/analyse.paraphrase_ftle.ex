@@ -49,10 +49,21 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
     csv_path = Path.join(out_dir, "ftle_values.csv")
     write_csv(csv_path, all_rows)
 
+    cell_override = parse_cell_override(opts[:cell])
+
+    {grid_png, divergence_png, chosen_cell} =
+      generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override)
+
+    report_path = Path.join(out_dir, "report.md")
+    write_report_stub(report_path, experiment, chosen_cell, grid_png, divergence_png)
+
     Mix.shell().info("""
     Identical-prompt rows: #{length(identical_rows)}
     Paraphrase rows:       #{length(paraphrase_rows)}
-    Wrote CSV: #{csv_path}
+    Wrote CSV:        #{csv_path}
+    Wrote grid plot:  #{grid_png}
+    Wrote divergence: #{divergence_png || "(skipped — no paraphrase cell found)"}
+    Wrote report:     #{report_path}
     """)
 
     :ok
@@ -224,6 +235,260 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
     end
   end
   defp csv_escape(v), do: inspect(v)
+
+  defp parse_cell_override(nil), do: nil
+
+  defp parse_cell_override(str) do
+    case String.split(str, ",", parts: 2) do
+      [network, embedding] -> {String.trim(network), String.trim(embedding)}
+      _ -> Mix.raise("--cell must be NETWORK,EMBEDDING (network uses | between model names)")
+    end
+  end
+
+  defp generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override) do
+    grid_png = Path.join(out_dir, "ftle_grid.png")
+
+    {:ok, true} =
+      Snex.pyeval(
+        env,
+        "penguin_analysis.plot_ftle_grid(csv_path, out_path); return True",
+        %{"csv_path" => csv_path, "out_path" => grid_png}
+      )
+
+    chosen_cell = cell_override || pick_cell(all_rows)
+    divergence_png = Path.join(out_dir, "divergence_curves.png")
+
+    case chosen_cell do
+      {network, embedding_model} ->
+        {identical_curve, paraphrase_curve} =
+          mean_divergence_curves(env, experiment, network, embedding_model)
+
+        {:ok, true} =
+          Snex.pyeval(
+            env,
+            """
+            penguin_analysis.plot_divergence_curves(
+                out_path,
+                network=network,
+                embedding_model=embedding_model,
+                identical_curve=identical_curve,
+                paraphrase_curve=paraphrase_curve,
+            )
+            return True
+            """,
+            %{
+              "out_path" => divergence_png,
+              "network" => network,
+              "embedding_model" => embedding_model,
+              "identical_curve" => identical_curve,
+              "paraphrase_curve" => paraphrase_curve
+            }
+          )
+
+        {grid_png, divergence_png, chosen_cell}
+
+      nil ->
+        {grid_png, nil, nil}
+    end
+  end
+
+  defp pick_cell(all_rows) do
+    grouped = Enum.group_by(all_rows, fn r -> {r.network, r.embedding_model} end)
+
+    grouped
+    |> Enum.map(fn {cell, rows} ->
+      identical = Enum.filter(rows, &(&1.category == "identical"))
+      paraphrase = Enum.filter(rows, &(&1.category == "paraphrase"))
+      {cell, separation_score(identical, paraphrase)}
+    end)
+    |> Enum.reject(fn {_cell, score} -> score == nil end)
+    |> Enum.max_by(fn {_cell, score} -> score end, fn -> {nil, nil} end)
+    |> elem(0)
+  end
+
+  defp separation_score([], _), do: nil
+  defp separation_score(_, []), do: nil
+
+  defp separation_score(identical, paraphrase) do
+    ident_vals = identical |> Enum.map(& &1.ftle) |> Enum.sort()
+    para_vals = paraphrase |> Enum.map(& &1.ftle) |> Enum.sort()
+
+    ident_median = median(ident_vals)
+    para_median = median(para_vals)
+    ident_mad = mad(ident_vals, ident_median)
+
+    if ident_mad <= 0 do
+      nil
+    else
+      (para_median - ident_median) / ident_mad
+    end
+  end
+
+  defp median(values) do
+    n = length(values)
+
+    cond do
+      n == 0 -> 0.0
+      rem(n, 2) == 1 -> Enum.at(values, div(n, 2))
+      true -> (Enum.at(values, div(n, 2) - 1) + Enum.at(values, div(n, 2))) / 2.0
+    end
+  end
+
+  defp mad(values, centre) do
+    values
+    |> Enum.map(&abs(&1 - centre))
+    |> Enum.sort()
+    |> median()
+  end
+
+  defp mean_divergence_curves(env, experiment, network_str, embedding_model) do
+    network = String.split(network_str, "|")
+
+    identical_curves =
+      PanicTda.LyapunovResult
+      |> Ash.Query.filter(
+        experiment_id == ^experiment.id and
+          embedding_model == ^embedding_model and
+          network == ^network
+      )
+      |> Ash.read!()
+      |> Enum.map(& &1.lyapunov_data.divergence_curve)
+
+    identical_mean = mean_curves(identical_curves)
+
+    runs =
+      PanicTda.Run
+      |> Ash.Query.filter(experiment_id == ^experiment.id and network == ^network)
+      |> Ash.read!()
+
+    prompts = runs |> Enum.map(& &1.initial_prompt) |> Enum.uniq()
+
+    case pairs(prompts) do
+      [] ->
+        {identical_mean, List.duplicate(0.0, length(identical_mean))}
+
+      [{p1, p2} | _] ->
+        curve = paraphrase_curve_for_pair(env, runs, p1, p2, embedding_model)
+        {identical_mean, curve}
+    end
+  end
+
+  defp paraphrase_curve_for_pair(env, runs, p1, p2, embedding_model) do
+    trajs_a =
+      runs
+      |> Enum.filter(&(&1.initial_prompt == p1))
+      |> Enum.map(&load_trajectory(&1, embedding_model))
+      |> Enum.reject(&(&1 == []))
+
+    trajs_b =
+      runs
+      |> Enum.filter(&(&1.initial_prompt == p2))
+      |> Enum.map(&load_trajectory(&1, embedding_model))
+      |> Enum.reject(&(&1 == []))
+
+    min_length =
+      (trajs_a ++ trajs_b)
+      |> Enum.map(&length/1)
+      |> Enum.min()
+
+    trajs_a_trunc = Enum.map(trajs_a, &Enum.take(&1, min_length))
+    trajs_b_trunc = Enum.map(trajs_b, &Enum.take(&1, min_length))
+
+    dimension = trajs_a_trunc |> hd() |> hd() |> Nx.size()
+
+    a_binary = trajs_a_trunc |> List.flatten() |> Nx.stack() |> Nx.to_binary()
+    b_binary = trajs_b_trunc |> List.flatten() |> Nx.stack() |> Nx.to_binary()
+
+    {:ok, result} =
+      Snex.pyeval(
+        env,
+        "return penguin_analysis.cross_prompt_ftle(a_b64, b_b64, num_a, num_b, num_ts, dim)",
+        %{
+          "a_b64" => Base.encode64(a_binary),
+          "b_b64" => Base.encode64(b_binary),
+          "num_a" => length(trajs_a_trunc),
+          "num_b" => length(trajs_b_trunc),
+          "num_ts" => min_length,
+          "dim" => dimension
+        }
+      )
+
+    result["divergence_curve"]
+  end
+
+  defp mean_curves([]), do: []
+
+  defp mean_curves(curves) do
+    min_length = curves |> Enum.map(&length/1) |> Enum.min()
+
+    for t <- 0..(min_length - 1) do
+      sum = Enum.reduce(curves, 0.0, fn c, acc -> acc + Enum.at(c, t) end)
+      sum / length(curves)
+    end
+  end
+
+  defp write_report_stub(path, experiment, chosen_cell, grid_png, divergence_png) do
+    grid_rel = Path.relative_to(grid_png, Path.dirname(path))
+
+    divergence_rel =
+      if divergence_png, do: Path.relative_to(divergence_png, Path.dirname(path)), else: "(n/a)"
+
+    cell_str =
+      case chosen_cell do
+        {network, embedding} -> "#{network}  ·  #{embedding}"
+        _ -> "(n/a — no paraphrase rows)"
+      end
+
+    content = """
+    # Paraphrase-FTLE analysis: #{Enum.join(experiment.prompts || [], " / ")}
+
+    Experiment: `#{experiment.id}`
+    Networks: #{inspect(experiment.networks)}
+    Embedding models: #{inspect(experiment.embedding_models)}
+    Num runs per (network, prompt): #{experiment.num_runs}
+    Max length: #{experiment.max_length}
+
+    ## Setup
+
+    TODO: 150 words on dynamical-systems framing, config, and FTLE definition.
+
+    ## Identical-prompt baseline
+
+    TODO: characterise distribution (median, spread, outliers).
+
+    ## Paraphrase FTLEs
+
+    TODO: characterise distribution.
+
+    ## Comparison
+
+    ![FTLE grid](#{grid_rel})
+
+    TODO: one sentence per network row on separation between identical and paraphrase FTLE.
+
+    ## Qualitative divergence
+
+    Representative cell: **#{cell_str}**.
+
+    ![Divergence curves](#{divergence_rel})
+
+    TODO: one paragraph on what the two curves show.
+
+    ## Interpretation
+
+    TODO: does within-category spread < between-category gap? 200 words, honest either way.
+
+    ## Proposed next wave (5-category controlled perturbation)
+
+    TODO: 300 words. Minimum viable (physics violation only + matched controls, reuse 9-network grid) vs full sweep. Open questions for Sungyeon:
+
+    - Who writes the violating and control prompts?
+    - Cut the 9-network grid down to 3 to afford more prompts per category?
+    - Add paraphrases of each violating prompt too (nested design)?
+    """
+
+    File.write!(path, content)
+  end
 
   defp experiment_slug(experiment) do
     prompts = experiment.prompts || []
