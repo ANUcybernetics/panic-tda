@@ -12,6 +12,7 @@ defmodule PanicTda.Models.PythonInterpreter do
     dependencies = [
       "pillow>=11.0",
       "numpy>=1.26",
+      "matplotlib>=3.9",
       "giotto-ph>=0.2.4",
       "persim>=0.3.8",
       "torch>=2.7",
