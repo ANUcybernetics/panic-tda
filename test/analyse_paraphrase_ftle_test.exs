@@ -156,6 +156,35 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
 
       File.rm_rf!(tmp_dir)
     end
+
+    test "writes paraphrase FTLE rows from cross-prompt computation" do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          num_runs: 2,
+          prompts: ["alpha", "beta", "gamma"],
+          embedding_models: ["DummyText"],
+          max_length: 4
+        })
+
+      {:ok, _} = PanicTda.Engine.perform_experiment(experiment.id)
+
+      tmp_dir = Path.join(System.tmp_dir!(), "paraphrase_ftle_cross_#{System.unique_integer([:positive])}")
+
+      Mix.Tasks.Analyse.ParaphraseFtle.run([experiment.id, "--out", tmp_dir])
+
+      csv_path = Path.join(tmp_dir, "ftle_values.csv")
+      text = File.read!(csv_path)
+
+      assert text =~ "paraphrase"
+
+      # Parse and count paraphrase rows: C(3,2) = 3 pairs × 1 network × 1 embedding
+      [_header | data] = String.split(text, "\n", trim: true)
+      paraphrase_rows = Enum.filter(data, &String.contains?(&1, ",paraphrase,"))
+      assert length(paraphrase_rows) == 3
+
+      File.rm_rf!(tmp_dir)
+    end
   end
 
   describe "cross_prompt_ftle" do
