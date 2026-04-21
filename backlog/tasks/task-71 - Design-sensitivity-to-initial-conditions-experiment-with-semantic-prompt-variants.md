@@ -3,7 +3,7 @@ id: TASK-71
 title: >-
   Design sensitivity-to-initial-conditions experiment with semantic prompt
   variants
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-14 07:28'
 labels: []
@@ -103,4 +103,6 @@ design before burning GPU time.
   task is design/discussion only
 - Changes to `LyapunovStage` or `LyapunovResult` schema
 - Decisions about publication venue
+
+Implemented the paraphrase/identical analysis from existing penguin_campfire data. Spec: `docs/superpowers/specs/2026-04-21-penguin-campfire-paraphrase-ftle-analysis-design.md`. Plan: `docs/superpowers/plans/2026-04-22-penguin-campfire-paraphrase-ftle-analysis.md`. Outputs (CSV, two PNGs, report stub): `analysis/penguin_campfire/`.
 <!-- SECTION:DESCRIPTION:END -->
