@@ -62,3 +62,87 @@ def cross_prompt_ftle(
         "num_pairs": int(num_runs_a * num_runs_b),
         "num_timesteps": int(num_timesteps),
     }
+
+
+def plot_ftle_grid(csv_path: str, out_path: str) -> None:
+    """
+    Read the per-value FTLE CSV and produce a per-network panel grid of
+    strip plots comparing identical-prompt and paraphrase FTLEs, coloured
+    by embedding model. Saves a PNG to out_path.
+    """
+    import csv
+    import math
+
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rows = []
+    with open(csv_path, newline="") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            rows.append(
+                {
+                    "network": row["network"],
+                    "embedding_model": row["embedding_model"],
+                    "category": row["category"],
+                    "ftle": float(row["ftle"]),
+                }
+            )
+
+    networks = sorted({r["network"] for r in rows})
+    embeddings = sorted({r["embedding_model"] for r in rows})
+    categories = ["identical", "paraphrase"]
+
+    ncols = min(3, max(1, len(networks)))
+    nrows = max(1, math.ceil(len(networks) / ncols))
+
+    fig, axes = plt.subplots(
+        nrows, ncols, figsize=(4.5 * ncols, 3.2 * nrows), squeeze=False, sharey=True
+    )
+
+    emb_colours = {emb: f"C{i}" for i, emb in enumerate(embeddings)}
+    cat_positions = {cat: i for i, cat in enumerate(categories)}
+    jitter_rng = np.random.default_rng(0)
+
+    for idx, network in enumerate(networks):
+        ax = axes[idx // ncols][idx % ncols]
+        for emb in embeddings:
+            for cat in categories:
+                values = [
+                    r["ftle"]
+                    for r in rows
+                    if r["network"] == network
+                    and r["embedding_model"] == emb
+                    and r["category"] == cat
+                ]
+                if not values:
+                    continue
+                xs = cat_positions[cat] + jitter_rng.uniform(
+                    -0.1, 0.1, size=len(values)
+                )
+                ax.scatter(
+                    xs,
+                    values,
+                    color=emb_colours[emb],
+                    alpha=0.75,
+                    s=28,
+                    label=emb if idx == 0 and cat == "identical" else None,
+                )
+        ax.set_xticks(list(cat_positions.values()))
+        ax.set_xticklabels(list(cat_positions.keys()))
+        ax.set_title(network.replace("|", " -> "), fontsize=10)
+        ax.axhline(0, color="grey", linewidth=0.5, linestyle="--")
+
+    for idx in range(len(networks), nrows * ncols):
+        axes[idx // ncols][idx % ncols].axis("off")
+
+    axes[0][0].set_ylabel("FTLE (per step, natural log)")
+    fig.suptitle("FTLE: identical-prompt vs paraphrase (penguin_campfire)")
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    if handles:
+        fig.legend(handles, labels, loc="lower center", ncol=len(embeddings))
+    fig.tight_layout(rect=(0, 0.04, 1, 0.96))
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)

@@ -25,6 +25,39 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
     {:ok, env: env}
   end
 
+  describe "plot_ftle_grid" do
+    test "writes a non-empty PNG given a small synthetic CSV", %{env: env} do
+      tmp_dir = Path.join(System.tmp_dir!(), "ftle_grid_test_#{System.unique_integer([:positive])}")
+      File.mkdir_p!(tmp_dir)
+      csv_path = Path.join(tmp_dir, "ftle_values.csv")
+      out_path = Path.join(tmp_dir, "ftle_grid.png")
+
+      File.write!(csv_path, """
+      experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps
+      exp1,SD35Medium|Moondream,Nomic,identical,p1,0.01,0.9,28,200
+      exp1,SD35Medium|Moondream,Nomic,identical,p2,0.012,0.9,28,200
+      exp1,SD35Medium|Moondream,Nomic,paraphrase,p1 || p2,0.03,0.9,64,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,identical,p1,0.009,0.9,28,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,paraphrase,p1 || p2,0.028,0.9,64,200
+      """)
+
+      {:ok, true} =
+        Snex.pyeval(
+          env,
+          """
+          import penguin_analysis
+          penguin_analysis.plot_ftle_grid(csv_path, out_path)
+          return True
+          """,
+          %{"csv_path" => csv_path, "out_path" => out_path}
+        )
+
+      stat = File.stat!(out_path)
+      assert stat.size > 1000
+      File.rm_rf!(tmp_dir)
+    end
+  end
+
   describe "cross_prompt_ftle" do
     test "recovers a known exponential divergence rate", %{env: env} do
       {:ok, result} =
