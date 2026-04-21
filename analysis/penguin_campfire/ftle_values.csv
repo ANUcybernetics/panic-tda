@@ -1,0 +1,136 @@
+experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,identical,a penguin sitting alongside a campfire,-2.6937183219261177e-5,1.8996481035093993e-4,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,identical,a penguin sitting beside a campfire,0.003662124242320354,0.5358367597190137,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.0033557118119791622,0.6367231423722299,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,identical,a penguin sitting by a campfire,-5.248034319892624e-4,0.017052265739325057,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,identical,a penguin sitting by a campfire,0.0017377305351422945,0.26263999029641616,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.0031077269422408508,0.7970221440038678,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,identical,a penguin sitting by a fire,0.001440775033324799,0.24138861160611869,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a campfire,0.004651583607368348,0.7561206368607369,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,identical,a penguin sitting beside a campfire,6.67141934578432e-4,0.02601440603817906,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,identical,a penguin sitting beside a campfire,-0.0023766458664201944,0.24751995045639796,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,identical,a penguin sitting beside a campfire,0.0061199738677045305,0.7118314166897644,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,identical,a penguin sitting next to a campfire,0.0033825711002444664,0.4704327938480355,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,identical,a penguin sitting next to a campfire,0.004741071934680555,0.751654650863951,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a fire,0.0036773260377997038,0.6658714383280315,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,identical,a penguin sitting beside a campfire,0.0021655841586832748,0.3771310544638513,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,identical,a penguin sitting by a fire,0.006673364571116956,0.8073023545219122,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,identical,a penguin sitting next to a campfire,0.00516592607354678,0.7710427281971222,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a campfire,0.0034539318548505262,0.5764731694839418,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,identical,a penguin sitting by a fire,0.0016687913450212427,0.3248739067629426,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a fire,-9.481002449790052e-4,0.1884642902779765,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,identical,a penguin sitting by a fire,0.00249794418890647,0.5217664903308225,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,identical,a penguin sitting next to a campfire,0.0029624724734523575,0.5256025859686784,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.003185042768933258,0.503027710924425,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,identical,a penguin sitting next to a campfire,0.0029422189424446045,0.5268338921918945,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,identical,a penguin sitting by a fire,-0.002419399572977137,0.4457357415380615,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,identical,a penguin sitting next to a campfire,0.0018204256413525035,0.2577991805873161,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a campfire,0.004966662673523983,0.7338453595011298,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,identical,a penguin sitting by a campfire,0.002066970457408156,0.2502451706406045,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.003739402413224219,0.4498539519078063,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,identical,a penguin sitting beside a campfire,0.004404581452100546,0.7288226251958536,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.0027274373124190204,0.44649175321899914,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,identical,a penguin sitting by a campfire,0.004095874118703065,0.6466429463785663,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,identical,a penguin sitting by a fire,0.001968264554061497,0.29010379801754904,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,identical,a penguin sitting beside a campfire,0.007443301969994019,0.8349867371250248,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,identical,a penguin sitting next to a campfire,0.0054173443672837695,0.5696041865532913,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,identical,a penguin sitting by a campfire,0.0012245264144556994,0.15523822712797408,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,identical,a penguin sitting beside a campfire,0.0036077078680319644,0.7164278761042726,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,identical,a penguin sitting beside a campfire,0.004204655123349629,0.7445701467914667,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.002160811309027065,0.357229359675845,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.005489186976961133,0.5796248783528009,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,identical,a penguin sitting next to a campfire,-3.362126077704962e-4,0.018095706766055097,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,identical,a penguin sitting alongside a campfire,0.003389557262242106,0.4804976342097995,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,identical,a penguin sitting by a fire,8.694066330644676e-4,0.11433384967768367,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,identical,a penguin sitting by a campfire,0.005986894057194475,0.5267613259930607,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,identical,a penguin sitting next to a campfire,0.004843206019509542,0.6136072482627184,28,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.0029312527338531675,0.6060245798889525,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0014798484538425334,0.22552490722182783,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.002019910446969298,0.4170161229976943,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.0027868253962361547,0.5108084450386314,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.002696935967581658,0.5575616112636963,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.0026299659290658075,0.6374618127643736,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.0031492221591042173,0.6318435844497714,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.002345311337954296,0.4850980491194762,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.0024328471898759025,0.5292107405132209,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.002466112966309301,0.4946322463878523,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.005791891639528748,0.7913276715954025,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.005261975311239714,0.5657758502572239,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.004313051189269156,0.6344370518480817,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.004216286133514208,0.7005998586916762,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.005934743617422652,0.6696635960948001,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.005149669058296256,0.7453141592210965,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.005978645445896707,0.8359109446606015,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.005635514575665501,0.6202909809877863,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.005294935972912272,0.6242748052073013,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.004751659190043269,0.7415656702504629,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.003432414627884248,0.6940263714877779,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0039020685907907504,0.747632668102054,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.0025748002571405497,0.4586828310500559,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.003518774351027623,0.6021574452643608,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.004174554387832937,0.7827376858067085,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.002379204321508392,0.4649362192022075,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.0025186143374518973,0.4575025991982411,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.00295821292408481,0.6261672996337376,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.0037361973004259143,0.6665877890976621,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.002875759517944588,0.6130580157319252,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.0032441659048593023,0.5476891029601236,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0022890651211665202,0.37963694965519623,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.0017070360781530772,0.32830387887705015,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.003921154864450071,0.6162875702163826,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.0024008373414685313,0.39521802269459316,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.0017814737526186306,0.3651885461559906,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.00414221709775943,0.6288275223301405,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.0014077078662265597,0.25744126264628087,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.002902381755816007,0.5211302616555594,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.00253496437316068,0.4893397629392534,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.004115228705648448,0.8634532719543677,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0034488228312235776,0.7995776092990137,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.0011276933820339044,0.5190117384604284,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.0033904776601951566,0.6766013670895503,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.004290599212647996,0.7387194838975975,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.0014761581736950765,0.5069662954853595,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.0036511164859358747,0.566325728232068,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.0018350992928345318,0.6035964421545001,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.0037609110958753103,0.5994072104646849,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.0017857852852121144,0.5038544277230452,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.004203883161422956,0.733949468813687,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0032324567076520783,0.5627973249984013,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.0016743394620579446,0.47102452403248496,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.002529521344792241,0.45503490114536616,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.003718115426476817,0.6110944881841323,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.0015936889080624308,0.4465101030096108,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.0030777792545388515,0.5815416761172618,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.0016861616808277293,0.539498058079444,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.002530641867280453,0.4278390635455682,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,GLMImage|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.0011083189462499565,0.2851602520568163,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,-8.323727508694058e-4,0.1181929724014823,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,-4.4446749689520644e-4,0.048334363910638056,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,-5.291454768170643e-4,0.08237337346032092,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,1.0735868579722325e-5,4.3124450397447056e-5,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,-0.0017872904932767322,0.20366405532585852,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,-0.0016491902023744512,0.23522602459117103,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,-9.144981127931566e-4,0.11850675142013112,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,-0.0011475998451277428,0.12403877680992459,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,-6.559316524838207e-4,0.06465761958683869,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Moondream,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,-0.0014705655283785194,0.32253533061956907,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.0023660766946525563,0.2680027549265721,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.0027738339708853576,0.35885613171455566,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.002135339215367223,0.38350671902110034,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.0044690202331356225,0.4877364119177654,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.001752583569274495,0.2085705598324321,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,6.354946884817329e-4,0.05005399060756277,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.00425652576905648,0.5127238114447495,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.001746750356161643,0.31447720959753744,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.003912330470287671,0.47931496458186484,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Pixtral,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.003420411708095072,0.5294694005871132,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting beside a campfire,0.006410140258165732,0.6754914609644928,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a campfire,0.004452430247741445,0.6500922849435161,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting by a fire,0.004821893919466649,0.6542743375947215,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting alongside a campfire || a penguin sitting next to a campfire,0.00538063678850848,0.7046008231990342,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a campfire,0.005138842598276937,0.7275794861256848,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting by a fire,0.0059532376897602456,0.6837141532450459,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting beside a campfire || a penguin sitting next to a campfire,0.00554674100462496,0.7380066444916835,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting by a fire,0.0045532170863102905,0.7763483056508724,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a campfire || a penguin sitting next to a campfire,0.0049670917489463935,0.7785048778254721,64,100
+019d2ec7-2b02-7658-a8fe-4af8be31d75e,SD35Medium|Qwen25VL,Qwen3Embed,paraphrase,a penguin sitting by a fire || a penguin sitting next to a campfire,0.004605371899666105,0.7596557198393928,64,100

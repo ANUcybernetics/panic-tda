@@ -32,7 +32,7 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     experiment = find_experiment(id_prefix)
 
-    out_dir = opts[:out] || Path.join(["analysis", experiment_slug(experiment)])
+    out_dir = (opts[:out] || Path.join(["analysis", experiment_slug(experiment)])) |> Path.expand()
     File.mkdir_p!(out_dir)
 
     Mix.shell().info("Analysing experiment #{experiment.id}")
