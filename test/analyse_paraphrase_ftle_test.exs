@@ -93,6 +93,25 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
     end
   end
 
+  describe "Mix.Tasks.Analyse.ParaphraseFtle" do
+    setup do
+      :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
+      :ok
+    end
+
+    test "raises on no args" do
+      assert_raise Mix.Error, ~r/Usage:/, fn ->
+        Mix.Tasks.Analyse.ParaphraseFtle.run([])
+      end
+    end
+
+    test "raises when no experiment matches the id prefix" do
+      assert_raise Mix.Error, ~r/No experiment found/, fn ->
+        Mix.Tasks.Analyse.ParaphraseFtle.run(["nonexistent-prefix"])
+      end
+    end
+  end
+
   describe "cross_prompt_ftle" do
     test "recovers a known exponential divergence rate", %{env: env} do
       {:ok, result} =
