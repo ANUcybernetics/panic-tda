@@ -440,51 +440,93 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
       end
 
     content = """
-    # Paraphrase-FTLE analysis: #{Enum.join(experiment.prompts || [], " / ")}
+    # Lyapunov-style divergence analysis: #{Enum.join(experiment.prompts || [], " / ")}
 
     Experiment: `#{experiment.id}`
     Networks: #{inspect(experiment.networks)}
-    Embedding models: #{inspect(experiment.embedding_models)}
+    Embedding models: #{inspect(experiment.embedding_models)} (L2-normalised onto the unit sphere)
     Num runs per (network, prompt): #{experiment.num_runs}
-    Max length: #{experiment.max_length}
+    Max length: #{experiment.max_length} invocations (text embeddings ≈ half this)
 
-    ## Setup
+    ## Data
 
-    TODO: 150 words on dynamical-systems framing, config, and FTLE definition.
+    TODO: 2-3 sentences on what this experiment contains and how the prompt
+    set was chosen (paraphrase cluster, distant-topic set, controlled
+    perturbation category, etc.).
 
-    ## Identical-prompt baseline
+    ## Method and a caveat on classical FTLE
 
-    TODO: characterise distribution (median, spread, outliers).
+    For each prompt (or prompt pair) we compute the mean pairwise Euclidean
+    distance between trajectories at each invocation step, take the natural
+    log, and fit a line. The slope is the finite-time Lyapunov exponent.
 
-    ## Paraphrase FTLEs
+    Our embeddings are L2-normalised onto the unit sphere, so pairwise
+    Euclidean distance is bounded in [0, 2]. Classical Lyapunov analysis
+    assumes unbounded exponential growth of initial separation, so the
+    slope we measure is really the *escape rate* from the starting
+    separation before the trajectories saturate against the bound — not
+    true sensitivity to initial conditions. This matters for interpretation
+    below.
 
-    TODO: characterise distribution.
+    ## Heatmap
 
-    ## Comparison
+    [FTLE heatmap — per-network prompt × prompt matrices (PDF)](#{heatmap_rel})
 
-    [FTLE heatmap (PDF)](#{heatmap_rel})
+    Diagonal cells = within-prompt FTLE (stochastic-noise divergence).
+    Off-diagonal cells = cross-prompt FTLE (paraphrase or distant-prompt
+    pairs, depending on the experiment). Matrix is symmetric.
 
-    TODO: one sentence per network row on separation between identical and paraphrase FTLE.
+    TODO: 2-3 sentences characterising the pattern (are diagonal cells
+    consistently brighter/darker than off-diagonal? do networks differ?).
 
-    ## Qualitative divergence
+    ## Qualitative divergence curve
 
     Representative cell: **#{cell_str}**.
 
     #{if divergence_rel, do: "[Divergence curves (PDF)](#{divergence_rel})", else: "_(no divergence curve generated)_"}
 
-    TODO: one paragraph on what the two curves show.
+    TODO: 1 paragraph — do the curves show early-time linear growth in
+    log-space, or do they saturate quickly? How well does the log-linear
+    fit actually describe the data?
+
+    ## Fit quality
+
+    TODO: report median R² for identical rows and for paraphrase rows. If
+    R² is consistently low, that's evidence that the log-linear fit is
+    struggling — likely because distances saturate before exponential
+    growth can establish itself.
 
     ## Interpretation
 
-    TODO: does within-category spread < between-category gap? 200 words, honest either way.
+    TODO: 200 words. Given the bounded-space caveat:
 
-    ## Proposed next wave (5-category controlled perturbation)
+    - If diagonal (identical-prompt) FTLEs are similar to off-diagonal
+      (paraphrase) FTLEs, that could be a genuine invariance OR a trivial
+      artefact — both regimes are saturation-limited from near-zero
+      separation.
+    - If distant-prompt FTLEs are *smaller* than identical-prompt FTLEs,
+      that's consistent with the distant pairs already starting near
+      saturation with no room to grow.
+    - A classical-FTLE-style "sensitivity-to-initial-conditions" story is
+      hard to support directly; the useful signal may be the *shape* of
+      the divergence curve (early-time slope, saturation time,
+      stationary distance), not the whole-trajectory slope.
 
-    TODO: 300 words. Minimum viable (physics violation only + matched controls, reuse 9-network grid) vs full sweep. Open questions for Sungyeon:
+    ## Proposed next moves
 
-    - Who writes the violating and control prompts?
-    - Cut the 9-network grid down to 3 to afford more prompts per category?
-    - Add paraphrases of each violating prompt too (nested design)?
+    TODO: 200-300 words. Options:
+
+    1. Keep classical FTLE but report only the early-time slope (first
+       10-30 steps, before saturation) — gives a more defensible chaotic
+       exponent.
+    2. Switch to a geometry-first statistic: stationary distance
+       distribution, mixing time, or distance-autocorrelation — these
+       respect the bounded space.
+    3. If pushing ahead with the 5-category experiment, decide on the
+       statistic first, because classical FTLE on distant prompts
+       saturates immediately (as this data shows).
+    4. Orthogonal: compare across embedding models / dimensions to see
+       whether the bounded-space issue is geometry-specific.
     """
 
     File.write!(path, content)
