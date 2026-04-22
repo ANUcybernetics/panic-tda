@@ -20,7 +20,7 @@ TODO: characterise distribution.
 
 ## Comparison
 
-![FTLE grid](ftle_grid.png)
+[FTLE grid (PDF)](ftle_grid.pdf)
 
 TODO: one sentence per network row on separation between identical and paraphrase FTLE.
 
@@ -28,7 +28,7 @@ TODO: one sentence per network row on separation between identical and paraphras
 
 Representative cell: **SD35Medium|Pixtral  ·  Qwen3Embed**.
 
-![Divergence curves](divergence_curves.png)
+[Divergence curves (PDF)](divergence_curves.pdf)
 
 TODO: one paragraph on what the two curves show.
 
