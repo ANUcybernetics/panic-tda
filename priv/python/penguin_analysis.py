@@ -64,18 +64,19 @@ def cross_prompt_ftle(
     }
 
 
-def plot_ftle_grid(csv_path: str, out_path: str) -> None:
+def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
     """
-    Read the per-value FTLE CSV and produce a per-network panel grid of
-    strip plots comparing identical-prompt and paraphrase FTLEs, coloured
-    by embedding model. Saves a PDF (or other format inferred from
-    out_path's extension) via altair + vl-convert.
+    Read the per-value FTLE CSV and produce a faceted per-network prompt ×
+    prompt heatmap. Diagonal cells are identical-prompt FTLEs; off-diagonal
+    cells are paraphrase (cross-prompt) FTLEs. Matrix is symmetric — both
+    halves rendered for readability.
+
+    Saves to out_path (format inferred from extension) via altair +
+    vl-convert.
     """
     import csv
 
     import altair as alt
-
-    jitter_rng = np.random.default_rng(0)
 
     rows = []
     with open(csv_path, newline="") as fh:
@@ -83,51 +84,183 @@ def plot_ftle_grid(csv_path: str, out_path: str) -> None:
         for row in reader:
             rows.append(
                 {
-                    "network": row["network"].replace("|", " → "),
+                    "network": row["network"],
                     "embedding_model": row["embedding_model"],
                     "category": row["category"],
+                    "prompt_or_pair": row["prompt_or_pair"],
                     "ftle": float(row["ftle"]),
-                    "jitter": float(jitter_rng.uniform(-0.2, 0.2)),
                 }
             )
 
-    data = alt.Data(values=rows)
+    prompts = sorted({r["prompt_or_pair"] for r in rows if r["category"] == "identical"})
+    prompt_labels = {p: f"p{i + 1}" for i, p in enumerate(prompts)}
 
-    chart = (
+    cells = []
+    for (network, embedding_model), _ in _grouped(
+        rows, lambda r: (r["network"], r["embedding_model"])
+    ):
+        cell_rows = [
+            r
+            for r in rows
+            if r["network"] == network and r["embedding_model"] == embedding_model
+        ]
+
+        identical = {
+            r["prompt_or_pair"]: r["ftle"] for r in cell_rows if r["category"] == "identical"
+        }
+        paraphrase = {}
+        for r in cell_rows:
+            if r["category"] != "paraphrase":
+                continue
+            p1, p2 = r["prompt_or_pair"].split(" || ", 1)
+            paraphrase[(p1, p2)] = r["ftle"]
+
+        for i, p_i in enumerate(prompts):
+            for j, p_j in enumerate(prompts):
+                if i == j:
+                    ftle = identical.get(p_i)
+                else:
+                    ftle = paraphrase.get((p_i, p_j)) or paraphrase.get((p_j, p_i))
+                if ftle is None:
+                    continue
+                cells.append(
+                    {
+                        "network": network.replace("|", " → "),
+                        "embedding_model": embedding_model,
+                        "row_label": prompt_labels[p_i],
+                        "col_label": prompt_labels[p_j],
+                        "row_prompt": p_i,
+                        "col_prompt": p_j,
+                        "ftle": ftle,
+                    }
+                )
+
+    if not cells:
+        raise ValueError(f"No cells to plot from {csv_path}")
+
+    max_abs = max(abs(c["ftle"]) for c in cells) or 1.0
+    label_order = [prompt_labels[p] for p in prompts]
+
+    legend_text = "  |  ".join(f"{prompt_labels[p]}: {p}" for p in prompts)
+
+    data = alt.Data(values=cells)
+
+    heatmap = (
         alt.Chart(data)
-        .mark_circle(opacity=0.75, size=50)
+        .mark_rect()
         .encode(
             x=alt.X(
-                "category:N",
-                title=None,
-                sort=["identical", "paraphrase"],
-                axis=alt.Axis(labelAngle=0),
+                "col_label:N",
+                sort=label_order,
+                axis=alt.Axis(labelAngle=0, title=None),
             ),
-            xOffset=alt.XOffset("jitter:Q", scale=alt.Scale(domain=[-0.5, 0.5])),
-            y=alt.Y("ftle:Q", title="FTLE (per step, natural log)"),
+            y=alt.Y("row_label:N", sort=label_order, axis=alt.Axis(title=None)),
             color=alt.Color(
-                "embedding_model:N", legend=alt.Legend(title="Embedding model")
+                "ftle:Q",
+                scale=alt.Scale(
+                    scheme="redblue",
+                    domain=[-max_abs, max_abs],
+                    reverse=True,
+                ),
+                legend=alt.Legend(title="FTLE", format=".4f"),
             ),
             tooltip=[
                 alt.Tooltip("network:N"),
-                alt.Tooltip("embedding_model:N"),
-                alt.Tooltip("category:N"),
-                alt.Tooltip("ftle:Q", format=".4f"),
+                alt.Tooltip("row_prompt:N"),
+                alt.Tooltip("col_prompt:N"),
+                alt.Tooltip("ftle:Q", format=".5f"),
             ],
         )
-        .properties(width=180, height=180)
+        .properties(width=140, height=140)
         .facet(
-            facet=alt.Facet("network:N", title=None),
+            facet=alt.Facet("network:N", title=None, header=alt.Header(labelFontSize=9)),
             columns=3,
             title=alt.TitleParams(
-                "FTLE: identical-prompt vs paraphrase (penguin_campfire)",
+                "FTLE heatmap (diagonal = identical prompt, off-diagonal = paraphrase pair)",
+                subtitle=legend_text,
                 anchor="middle",
+                subtitleFontSize=9,
             ),
         )
-        .resolve_scale(y="shared")
+        .resolve_scale(color="shared")
+    )
+
+    heatmap.save(out_path)
+
+
+def plot_three_regime_overlay(
+    out_path: str,
+    network: str,
+    embedding_model: str,
+    identical_curve: list,
+    close_curve: list,
+    far_curve: list,
+) -> None:
+    """
+    Overlay three divergence curves on a log-y axis for one
+    (network, embedding) cell, showing how distance evolves under three
+    regimes of prompt variation: identical prompt (stochastic noise only),
+    close paraphrase, and distant-topic prompts.
+
+    Each input is a list of per-timestep mean pairwise Euclidean distances
+    (unlogged). The three curves may have different lengths; each is plotted
+    for its own duration.
+    """
+    import altair as alt
+
+    rows = []
+    for label, curve in [
+        ("1. identical prompt (noise)", identical_curve),
+        ("2. close paraphrase", close_curve),
+        ("3. distant topic", far_curve),
+    ]:
+        rows.extend(
+            {"step": t, "distance": float(d), "regime": label}
+            for t, d in enumerate(curve)
+        )
+
+    data = alt.Data(values=rows)
+
+    title = (
+        f"Three-regime divergence: {network.replace('|', ' → ')}  ·  {embedding_model}"
+    )
+
+    chart = (
+        alt.Chart(data)
+        .mark_line(strokeWidth=2)
+        .encode(
+            x=alt.X("step:Q", title="invocation step"),
+            y=alt.Y(
+                "distance:Q",
+                title="mean pairwise Euclidean distance (log scale)",
+                scale=alt.Scale(type="log"),
+            ),
+            color=alt.Color(
+                "regime:N",
+                legend=alt.Legend(title=None, orient="bottom"),
+                scale=alt.Scale(
+                    domain=[
+                        "1. identical prompt (noise)",
+                        "2. close paraphrase",
+                        "3. distant topic",
+                    ],
+                    range=["#4c72b0", "#dd8452", "#55a868"],
+                ),
+            ),
+        )
+        .properties(width=640, height=360, title=title)
     )
 
     chart.save(out_path)
+
+
+def _grouped(items, key):
+    """Lightweight groupby that preserves first-seen order."""
+    seen = {}
+    for item in items:
+        k = key(item)
+        seen.setdefault(k, []).append(item)
+    return seen.items()
 
 
 def plot_divergence_curves(

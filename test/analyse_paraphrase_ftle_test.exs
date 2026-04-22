@@ -25,20 +25,21 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
     {:ok, env: env}
   end
 
-  describe "plot_ftle_grid" do
+  describe "plot_ftle_heatmap" do
     test "writes a non-empty PDF given a small synthetic CSV", %{env: env} do
-      tmp_dir = Path.join(System.tmp_dir!(), "ftle_grid_test_#{System.unique_integer([:positive])}")
+      tmp_dir = Path.join(System.tmp_dir!(), "ftle_heatmap_test_#{System.unique_integer([:positive])}")
       File.mkdir_p!(tmp_dir)
       csv_path = Path.join(tmp_dir, "ftle_values.csv")
-      out_path = Path.join(tmp_dir, "ftle_grid.pdf")
+      out_path = Path.join(tmp_dir, "ftle_heatmap.pdf")
 
       File.write!(csv_path, """
       experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps
-      exp1,SD35Medium|Moondream,Nomic,identical,p1,0.01,0.9,28,200
-      exp1,SD35Medium|Moondream,Nomic,identical,p2,0.012,0.9,28,200
-      exp1,SD35Medium|Moondream,Nomic,paraphrase,p1 || p2,0.03,0.9,64,200
-      exp1,SD35Medium|Moondream,Qwen3Embed,identical,p1,0.009,0.9,28,200
-      exp1,SD35Medium|Moondream,Qwen3Embed,paraphrase,p1 || p2,0.028,0.9,64,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,identical,p1,0.01,0.9,28,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,identical,p2,0.012,0.9,28,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,identical,p3,0.009,0.9,28,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,paraphrase,p1 || p2,0.03,0.9,64,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,paraphrase,p1 || p3,0.028,0.9,64,200
+      exp1,SD35Medium|Moondream,Qwen3Embed,paraphrase,p2 || p3,0.025,0.9,64,200
       """)
 
       {:ok, true} =
@@ -46,7 +47,7 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
           env,
           """
           import penguin_analysis
-          penguin_analysis.plot_ftle_grid(csv_path, out_path)
+          penguin_analysis.plot_ftle_heatmap(csv_path, out_path)
           return True
           """,
           %{"csv_path" => csv_path, "out_path" => out_path}
@@ -202,19 +203,19 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
 
       Mix.Tasks.Analyse.ParaphraseFtle.run([experiment.id, "--out", tmp_dir])
 
-      grid_pdf = Path.join(tmp_dir, "ftle_grid.pdf")
+      heatmap_pdf = Path.join(tmp_dir, "ftle_heatmap.pdf")
       divergence_pdf = Path.join(tmp_dir, "divergence_curves.pdf")
       report_md = Path.join(tmp_dir, "report.md")
 
-      assert File.exists?(grid_pdf)
-      assert File.stat!(grid_pdf).size > 1000
+      assert File.exists?(heatmap_pdf)
+      assert File.stat!(heatmap_pdf).size > 1000
       assert File.exists?(divergence_pdf)
       assert File.stat!(divergence_pdf).size > 1000
       assert File.exists?(report_md)
 
       text = File.read!(report_md)
       assert text =~ experiment.id
-      assert text =~ "ftle_grid.pdf"
+      assert text =~ "ftle_heatmap.pdf"
       assert text =~ "divergence_curves.pdf"
       assert text =~ "TODO"
 

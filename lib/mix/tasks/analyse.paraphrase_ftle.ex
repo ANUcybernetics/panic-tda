@@ -51,17 +51,17 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     cell_override = parse_cell_override(opts[:cell])
 
-    {grid_pdf, divergence_pdf, chosen_cell} =
+    {heatmap_pdf, divergence_pdf, chosen_cell} =
       generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override)
 
     report_path = Path.join(out_dir, "report.md")
-    write_report_stub(report_path, experiment, chosen_cell, grid_pdf, divergence_pdf)
+    write_report_stub(report_path, experiment, chosen_cell, heatmap_pdf, divergence_pdf)
 
     Mix.shell().info("""
     Identical-prompt rows: #{length(identical_rows)}
     Paraphrase rows:       #{length(paraphrase_rows)}
     Wrote CSV:        #{csv_path}
-    Wrote grid plot:  #{grid_pdf}
+    Wrote heatmap:    #{heatmap_pdf}
     Wrote divergence: #{divergence_pdf || "(skipped — no paraphrase cell found)"}
     Wrote report:     #{report_path}
     """)
@@ -246,13 +246,13 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
   end
 
   defp generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override) do
-    grid_pdf = Path.join(out_dir, "ftle_grid.pdf")
+    heatmap_pdf = Path.join(out_dir, "ftle_heatmap.pdf")
 
     {:ok, true} =
       Snex.pyeval(
         env,
-        "penguin_analysis.plot_ftle_grid(csv_path, out_path); return True",
-        %{"csv_path" => csv_path, "out_path" => grid_pdf}
+        "penguin_analysis.plot_ftle_heatmap(csv_path, out_path); return True",
+        %{"csv_path" => csv_path, "out_path" => heatmap_pdf}
       )
 
     chosen_cell = cell_override || pick_cell(all_rows)
@@ -285,10 +285,10 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
             }
           )
 
-        {grid_pdf, divergence_pdf, chosen_cell}
+        {heatmap_pdf, divergence_pdf, chosen_cell}
 
       nil ->
-        {grid_pdf, nil, nil}
+        {heatmap_pdf, nil, nil}
     end
   end
 
@@ -427,8 +427,8 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
     end
   end
 
-  defp write_report_stub(path, experiment, chosen_cell, grid_pdf, divergence_pdf) do
-    grid_rel = Path.relative_to(grid_pdf, Path.dirname(path))
+  defp write_report_stub(path, experiment, chosen_cell, heatmap_pdf, divergence_pdf) do
+    heatmap_rel = Path.relative_to(heatmap_pdf, Path.dirname(path))
 
     divergence_rel =
       if divergence_pdf, do: Path.relative_to(divergence_pdf, Path.dirname(path)), else: nil
@@ -462,7 +462,7 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     ## Comparison
 
-    [FTLE grid (PDF)](#{grid_rel})
+    [FTLE heatmap (PDF)](#{heatmap_rel})
 
     TODO: one sentence per network row on separation between identical and paraphrase FTLE.
 
