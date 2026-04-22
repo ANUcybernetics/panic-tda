@@ -26,11 +26,11 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
   end
 
   describe "plot_ftle_grid" do
-    test "writes a non-empty PNG given a small synthetic CSV", %{env: env} do
+    test "writes a non-empty PDF given a small synthetic CSV", %{env: env} do
       tmp_dir = Path.join(System.tmp_dir!(), "ftle_grid_test_#{System.unique_integer([:positive])}")
       File.mkdir_p!(tmp_dir)
       csv_path = Path.join(tmp_dir, "ftle_values.csv")
-      out_path = Path.join(tmp_dir, "ftle_grid.png")
+      out_path = Path.join(tmp_dir, "ftle_grid.pdf")
 
       File.write!(csv_path, """
       experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps
@@ -59,10 +59,10 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
   end
 
   describe "plot_divergence_curves" do
-    test "writes a non-empty PNG given two synthetic divergence curves", %{env: env} do
+    test "writes a non-empty PDF given two synthetic divergence curves", %{env: env} do
       tmp_dir = Path.join(System.tmp_dir!(), "div_curves_test_#{System.unique_integer([:positive])}")
       File.mkdir_p!(tmp_dir)
-      out_path = Path.join(tmp_dir, "divergence_curves.png")
+      out_path = Path.join(tmp_dir, "divergence_curves.pdf")
 
       {:ok, true} =
         Snex.pyeval(
@@ -202,20 +202,20 @@ defmodule PanicTda.AnalyseParaphraseFtleTest do
 
       Mix.Tasks.Analyse.ParaphraseFtle.run([experiment.id, "--out", tmp_dir])
 
-      grid_png = Path.join(tmp_dir, "ftle_grid.png")
-      divergence_png = Path.join(tmp_dir, "divergence_curves.png")
+      grid_pdf = Path.join(tmp_dir, "ftle_grid.pdf")
+      divergence_pdf = Path.join(tmp_dir, "divergence_curves.pdf")
       report_md = Path.join(tmp_dir, "report.md")
 
-      assert File.exists?(grid_png)
-      assert File.stat!(grid_png).size > 1000
-      assert File.exists?(divergence_png)
-      assert File.stat!(divergence_png).size > 1000
+      assert File.exists?(grid_pdf)
+      assert File.stat!(grid_pdf).size > 1000
+      assert File.exists?(divergence_pdf)
+      assert File.stat!(divergence_pdf).size > 1000
       assert File.exists?(report_md)
 
       text = File.read!(report_md)
       assert text =~ experiment.id
-      assert text =~ "ftle_grid.png"
-      assert text =~ "divergence_curves.png"
+      assert text =~ "ftle_grid.pdf"
+      assert text =~ "divergence_curves.pdf"
       assert text =~ "TODO"
 
       File.rm_rf!(tmp_dir)

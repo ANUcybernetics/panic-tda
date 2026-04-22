@@ -51,18 +51,18 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     cell_override = parse_cell_override(opts[:cell])
 
-    {grid_png, divergence_png, chosen_cell} =
+    {grid_pdf, divergence_pdf, chosen_cell} =
       generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override)
 
     report_path = Path.join(out_dir, "report.md")
-    write_report_stub(report_path, experiment, chosen_cell, grid_png, divergence_png)
+    write_report_stub(report_path, experiment, chosen_cell, grid_pdf, divergence_pdf)
 
     Mix.shell().info("""
     Identical-prompt rows: #{length(identical_rows)}
     Paraphrase rows:       #{length(paraphrase_rows)}
     Wrote CSV:        #{csv_path}
-    Wrote grid plot:  #{grid_png}
-    Wrote divergence: #{divergence_png || "(skipped — no paraphrase cell found)"}
+    Wrote grid plot:  #{grid_pdf}
+    Wrote divergence: #{divergence_pdf || "(skipped — no paraphrase cell found)"}
     Wrote report:     #{report_path}
     """)
 
@@ -246,17 +246,17 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
   end
 
   defp generate_plots(env, out_dir, csv_path, all_rows, experiment, cell_override) do
-    grid_png = Path.join(out_dir, "ftle_grid.png")
+    grid_pdf = Path.join(out_dir, "ftle_grid.pdf")
 
     {:ok, true} =
       Snex.pyeval(
         env,
         "penguin_analysis.plot_ftle_grid(csv_path, out_path); return True",
-        %{"csv_path" => csv_path, "out_path" => grid_png}
+        %{"csv_path" => csv_path, "out_path" => grid_pdf}
       )
 
     chosen_cell = cell_override || pick_cell(all_rows)
-    divergence_png = Path.join(out_dir, "divergence_curves.png")
+    divergence_pdf = Path.join(out_dir, "divergence_curves.pdf")
 
     case chosen_cell do
       {network, embedding_model} ->
@@ -277,7 +277,7 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
             return True
             """,
             %{
-              "out_path" => divergence_png,
+              "out_path" => divergence_pdf,
               "network" => network,
               "embedding_model" => embedding_model,
               "identical_curve" => identical_curve,
@@ -285,10 +285,10 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
             }
           )
 
-        {grid_png, divergence_png, chosen_cell}
+        {grid_pdf, divergence_pdf, chosen_cell}
 
       nil ->
-        {grid_png, nil, nil}
+        {grid_pdf, nil, nil}
     end
   end
 
@@ -427,11 +427,11 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
     end
   end
 
-  defp write_report_stub(path, experiment, chosen_cell, grid_png, divergence_png) do
-    grid_rel = Path.relative_to(grid_png, Path.dirname(path))
+  defp write_report_stub(path, experiment, chosen_cell, grid_pdf, divergence_pdf) do
+    grid_rel = Path.relative_to(grid_pdf, Path.dirname(path))
 
     divergence_rel =
-      if divergence_png, do: Path.relative_to(divergence_png, Path.dirname(path)), else: "(n/a)"
+      if divergence_pdf, do: Path.relative_to(divergence_pdf, Path.dirname(path)), else: nil
 
     cell_str =
       case chosen_cell do
@@ -462,7 +462,7 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     ## Comparison
 
-    ![FTLE grid](#{grid_rel})
+    [FTLE grid (PDF)](#{grid_rel})
 
     TODO: one sentence per network row on separation between identical and paraphrase FTLE.
 
@@ -470,7 +470,7 @@ defmodule Mix.Tasks.Analyse.ParaphraseFtle do
 
     Representative cell: **#{cell_str}**.
 
-    ![Divergence curves](#{divergence_rel})
+    #{if divergence_rel, do: "[Divergence curves (PDF)](#{divergence_rel})", else: "_(no divergence curve generated)_"}
 
     TODO: one paragraph on what the two curves show.
 

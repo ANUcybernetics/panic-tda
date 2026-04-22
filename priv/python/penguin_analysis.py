@@ -68,15 +68,14 @@ def plot_ftle_grid(csv_path: str, out_path: str) -> None:
     """
     Read the per-value FTLE CSV and produce a per-network panel grid of
     strip plots comparing identical-prompt and paraphrase FTLEs, coloured
-    by embedding model. Saves a PNG to out_path.
+    by embedding model. Saves a PDF (or other format inferred from
+    out_path's extension) via altair + vl-convert.
     """
     import csv
-    import math
 
-    import matplotlib
+    import altair as alt
 
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    jitter_rng = np.random.default_rng(0)
 
     rows = []
     with open(csv_path, newline="") as fh:
@@ -84,68 +83,51 @@ def plot_ftle_grid(csv_path: str, out_path: str) -> None:
         for row in reader:
             rows.append(
                 {
-                    "network": row["network"],
+                    "network": row["network"].replace("|", " → "),
                     "embedding_model": row["embedding_model"],
                     "category": row["category"],
                     "ftle": float(row["ftle"]),
+                    "jitter": float(jitter_rng.uniform(-0.2, 0.2)),
                 }
             )
 
-    networks = sorted({r["network"] for r in rows})
-    embeddings = sorted({r["embedding_model"] for r in rows})
-    categories = ["identical", "paraphrase"]
+    data = alt.Data(values=rows)
 
-    ncols = min(3, max(1, len(networks)))
-    nrows = max(1, math.ceil(len(networks) / ncols))
-
-    fig, axes = plt.subplots(
-        nrows, ncols, figsize=(4.5 * ncols, 3.2 * nrows), squeeze=False, sharey=True
+    chart = (
+        alt.Chart(data)
+        .mark_circle(opacity=0.75, size=50)
+        .encode(
+            x=alt.X(
+                "category:N",
+                title=None,
+                sort=["identical", "paraphrase"],
+                axis=alt.Axis(labelAngle=0),
+            ),
+            xOffset=alt.XOffset("jitter:Q", scale=alt.Scale(domain=[-0.5, 0.5])),
+            y=alt.Y("ftle:Q", title="FTLE (per step, natural log)"),
+            color=alt.Color(
+                "embedding_model:N", legend=alt.Legend(title="Embedding model")
+            ),
+            tooltip=[
+                alt.Tooltip("network:N"),
+                alt.Tooltip("embedding_model:N"),
+                alt.Tooltip("category:N"),
+                alt.Tooltip("ftle:Q", format=".4f"),
+            ],
+        )
+        .properties(width=180, height=180)
+        .facet(
+            facet=alt.Facet("network:N", title=None),
+            columns=3,
+            title=alt.TitleParams(
+                "FTLE: identical-prompt vs paraphrase (penguin_campfire)",
+                anchor="middle",
+            ),
+        )
+        .resolve_scale(y="shared")
     )
 
-    emb_colours = {emb: f"C{i}" for i, emb in enumerate(embeddings)}
-    cat_positions = {cat: i for i, cat in enumerate(categories)}
-    jitter_rng = np.random.default_rng(0)
-
-    for idx, network in enumerate(networks):
-        ax = axes[idx // ncols][idx % ncols]
-        for emb in embeddings:
-            for cat in categories:
-                values = [
-                    r["ftle"]
-                    for r in rows
-                    if r["network"] == network
-                    and r["embedding_model"] == emb
-                    and r["category"] == cat
-                ]
-                if not values:
-                    continue
-                xs = cat_positions[cat] + jitter_rng.uniform(
-                    -0.1, 0.1, size=len(values)
-                )
-                ax.scatter(
-                    xs,
-                    values,
-                    color=emb_colours[emb],
-                    alpha=0.75,
-                    s=28,
-                    label=emb if idx == 0 and cat == "identical" else None,
-                )
-        ax.set_xticks(list(cat_positions.values()))
-        ax.set_xticklabels(list(cat_positions.keys()))
-        ax.set_title(network.replace("|", " -> "), fontsize=10)
-        ax.axhline(0, color="grey", linewidth=0.5, linestyle="--")
-
-    for idx in range(len(networks), nrows * ncols):
-        axes[idx // ncols][idx % ncols].axis("off")
-
-    axes[0][0].set_ylabel("FTLE (per step, natural log)")
-    fig.suptitle("FTLE: identical-prompt vs paraphrase (penguin_campfire)")
-    handles, labels = axes[0][0].get_legend_handles_labels()
-    if handles:
-        fig.legend(handles, labels, loc="lower center", ncol=len(embeddings))
-    fig.tight_layout(rect=(0, 0.04, 1, 0.96))
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
+    chart.save(out_path)
 
 
 def plot_divergence_curves(
@@ -161,26 +143,36 @@ def plot_divergence_curves(
     (paraphrase), both for a single (network, embedding) cell.
 
     Inputs are lists of per-timestep mean distances (not yet logged).
+    Saves the file at out_path via altair + vl-convert (format inferred
+    from the extension).
     """
-    import matplotlib
+    import altair as alt
 
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    rows = [
+        {"step": t, "distance": float(d), "curve": "identical prompt"}
+        for t, d in enumerate(identical_curve)
+    ] + [
+        {"step": t, "distance": float(d), "curve": "paraphrase"}
+        for t, d in enumerate(paraphrase_curve)
+    ]
 
-    t_identical = np.arange(len(identical_curve))
-    t_paraphrase = np.arange(len(paraphrase_curve))
+    data = alt.Data(values=rows)
 
-    fig, ax = plt.subplots(figsize=(7.0, 4.2))
-    ax.plot(t_identical, identical_curve, label="identical prompt", linewidth=1.5)
-    ax.plot(t_paraphrase, paraphrase_curve, label="paraphrase", linewidth=1.5)
-    ax.set_yscale("log")
-    ax.set_xlabel("invocation step")
-    ax.set_ylabel("mean pairwise Euclidean distance (log scale)")
-    ax.set_title(
-        f"Divergence curve: {network.replace('|', ' -> ')}  ·  {embedding_model}"
+    title = f"Divergence curve: {network.replace('|', ' → ')}  ·  {embedding_model}"
+
+    chart = (
+        alt.Chart(data)
+        .mark_line(strokeWidth=2)
+        .encode(
+            x=alt.X("step:Q", title="invocation step"),
+            y=alt.Y(
+                "distance:Q",
+                title="mean pairwise Euclidean distance (log scale)",
+                scale=alt.Scale(type="log"),
+            ),
+            color=alt.Color("curve:N", legend=alt.Legend(title=None)),
+        )
+        .properties(width=600, height=340, title=title)
     )
-    ax.legend()
-    ax.grid(True, which="both", alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
+
+    chart.save(out_path)
