@@ -1,10 +1,10 @@
-# Paraphrase-FTLE analysis: a penguin sitting by a campfire / a penguin sitting alongside a campfire / a penguin sitting by a fire / a penguin sitting beside a campfire / a penguin sitting next to a campfire
+# Paraphrase-FTLE analysis: A penguin enjoying a wood fire / A big mouse hunting for a small cat / A crocodile having a salad
 
-Experiment: `019d2ec7-2b02-7658-a8fe-4af8be31d75e`
-Networks: [["SD35Medium", "Moondream"], ["SD35Medium", "Qwen25VL"], ["SD35Medium", "Pixtral"], ["Flux2Klein", "Moondream"], ["Flux2Klein", "Qwen25VL"], ["Flux2Klein", "Pixtral"], ["GLMImage", "Moondream"], ["GLMImage", "Qwen25VL"], ["GLMImage", "Pixtral"]]
+Experiment: `019cb1be-f312-76ce-97a7-903d879f07b4`
+Networks: [["SD35Medium", "Moondream"], ["Flux2Klein", "Qwen25VL"], ["ZImageTurbo", "Gemma3n"], ["QwenImage", "Pixtral"], ["GLMImage", "LLaMA32Vision"], ["SD35Medium", "Pixtral"], ["Flux2Klein", "Moondream"], ["ZImageTurbo", "LLaMA32Vision"], ["QwenImage", "Qwen25VL"], ["GLMImage", "Gemma3n"]]
 Embedding models: ["Nomic", "Qwen3Embed"]
-Num runs per (network, prompt): 8
-Max length: 200
+Num runs per (network, prompt): 4
+Max length: 100
 
 ## Setup
 
@@ -26,7 +26,7 @@ TODO: one sentence per network row on separation between identical and paraphras
 
 ## Qualitative divergence
 
-Representative cell: **SD35Medium|Pixtral  ·  Qwen3Embed**.
+Representative cell: **QwenImage|Pixtral  ·  Qwen3Embed**.
 
 [Divergence curves (PDF)](divergence_curves.pdf)
 

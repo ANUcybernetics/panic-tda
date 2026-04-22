@@ -1,0 +1,61 @@
+experiment_id,network,embedding_model,category,prompt_or_pair,ftle,r_squared,num_pairs,num_timesteps
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,identical,A big mouse hunting for a small cat,0.0041646808386766355,0.5030018679240972,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,identical,A crocodile having a salad,0.007458034740181181,0.8753353874732935,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,identical,A penguin enjoying a wood fire,0.009215506920525751,0.8464993643285776,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,identical,A big mouse hunting for a small cat,0.008028569853032977,0.6365059575473981,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,identical,A crocodile having a salad,0.004606240761111078,0.3202054493095604,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,identical,A penguin enjoying a wood fire,0.007475312366586891,0.5880869325611495,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,identical,A big mouse hunting for a small cat,0.006007397690214809,0.4369304460763882,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,identical,A crocodile having a salad,0.00350949954120012,0.29825912650788966,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,identical,A penguin enjoying a wood fire,0.002024211397522639,0.11859671431022623,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,identical,A big mouse hunting for a small cat,0.003057025606134309,0.1844679760194411,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,identical,A crocodile having a salad,0.003076546378477386,0.20395782240528615,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,identical,A penguin enjoying a wood fire,5.789213837520557e-4,0.015444185515860132,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,identical,A big mouse hunting for a small cat,0.010174217036008893,0.5477038627474609,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,identical,A crocodile having a salad,-8.627380146845652e-4,0.025956295405591523,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,identical,A penguin enjoying a wood fire,-1.3614490970074796e-4,5.186578321686452e-4,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,identical,A big mouse hunting for a small cat,0.001143729409104963,0.003631501400331749,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,identical,A crocodile having a salad,0.0022260254004707585,0.06566290770786187,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,identical,A penguin enjoying a wood fire,-0.010254923400777369,0.31395550374277503,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,identical,A big mouse hunting for a small cat,-3.2899533950622945e-4,0.029373825272253296,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,identical,A crocodile having a salad,0.003865680265498221,0.4688295098223444,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,identical,A penguin enjoying a wood fire,5.257480782245686e-4,0.007231047200014329,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,identical,A big mouse hunting for a small cat,0.008133535223400355,0.7988051145533862,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,identical,A crocodile having a salad,0.008430703105014552,0.6297102040583045,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,identical,A penguin enjoying a wood fire,0.009252323835029365,0.7317569030264667,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,identical,A big mouse hunting for a small cat,0.0011028444981925054,0.035631207862682146,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,identical,A crocodile having a salad,0.00961885866146078,0.6298816124173241,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,identical,A penguin enjoying a wood fire,0.009554260984687521,0.41222273708716806,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,identical,A big mouse hunting for a small cat,0.002885542551063982,0.22968941285198607,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,identical,A crocodile having a salad,0.004108300870813484,0.18033318857081515,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,identical,A penguin enjoying a wood fire,0.0021472465951794845,0.08110650945984355,6,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,1.659760247837039e-4,0.0034678561633947336,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,0.0010053790553304414,0.40856466449072126,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Moondream,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,4.927226614797694e-4,0.02848973581666603,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,7.486711692041572e-4,0.06265315277192685,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,-3.5955974074925676e-4,0.029981244461724343,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,Flux2Klein|Qwen25VL,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,0.0013448969696493694,0.44920108869431485,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,5.920210405090118e-4,0.12983118645018843,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,0.0013997979174056971,0.2919940067401179,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|Gemma3n,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,9.78095566674187e-4,0.19966608431463206,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,0.001352609152267366,0.3332987606485932,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,8.035577919119556e-4,0.10087416170772667,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,GLMImage|LLaMA32Vision,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,4.607158129536459e-5,3.275193104426144e-4,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,0.0016312091675975927,0.08481855522474135,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,-0.0028606714598536794,0.4690369221081355,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Pixtral,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,-2.3503951036283002e-4,0.006332457945410153,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,-0.002846480829632432,0.07624498092152265,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,-0.005659421961269334,0.1270469953615252,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,QwenImage|Qwen25VL,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,-0.006094159245102686,0.3239932553001845,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,1.4696830247918128e-4,0.00823901585933362,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,2.942599070874239e-4,0.032818777516308795,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Moondream,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,-5.976060204192744e-4,0.06620327049148955,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,-2.1676689772125578e-4,0.0067214687282299845,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,-5.929537824335873e-4,0.04633363288527392,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,SD35Medium|Pixtral,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,3.952658575940424e-4,0.03958578170029825,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,0.0010615517927315672,0.21634803200603192,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,0.0011339914700526628,0.14453037004074654,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|Gemma3n,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,0.0021603237124833137,0.4762094490518257,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A crocodile having a salad,-6.207488880817831e-4,0.06638887636262913,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,paraphrase,A big mouse hunting for a small cat || A penguin enjoying a wood fire,9.016436444185692e-4,0.10255125972818158,16,50
+019cb1be-f312-76ce-97a7-903d879f07b4,ZImageTurbo|LLaMA32Vision,Qwen3Embed,paraphrase,A crocodile having a salad || A penguin enjoying a wood fire,0.0017782426683320006,0.25584475976800325,16,50
