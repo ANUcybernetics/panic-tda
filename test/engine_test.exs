@@ -196,7 +196,7 @@ defmodule PanicTda.EngineTest do
       assert length(completed.runs) == 4
     end
 
-    test "creates clustering results across experiment" do
+    test "global clustering across all embeddings of a model" do
       experiment =
         PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
@@ -208,27 +208,42 @@ defmodule PanicTda.EngineTest do
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
+      assert PanicTda.list_clustering_results!() == []
+
+      {:ok, interpreter} = PythonInterpreter.start_link()
+      {:ok, env} = Snex.make_env(interpreter)
+
+      try do
+        :ok = PanicTda.Engine.ClusteringStage.recompute(env, ["DummyText"])
+      after
+        GenServer.stop(interpreter)
+      end
+
       clustering_results = PanicTda.list_clustering_results!()
-      assert length(clustering_results) == 1
+      assert length(clustering_results) >= 1
 
-      cr = hd(clustering_results)
-      assert cr.embedding_model == "DummyText"
-      assert cr.algorithm == "hdbscan"
-      assert is_map(cr.parameters)
-      assert cr.parameters["epsilon"] == 0.4
-      assert cr.started_at != nil
-      assert cr.completed_at != nil
+      Enum.each(clustering_results, fn cr ->
+        assert cr.embedding_model == "DummyText"
+        assert cr.algorithm == "evoc"
+        assert is_map(cr.parameters)
+        assert cr.parameters["metric"] == "euclidean_on_normalised"
+        assert is_integer(cr.layer) and cr.layer >= 0
+        assert cr.started_at != nil
+        assert cr.completed_at != nil
+      end)
 
-      embedding_clusters = PanicTda.list_embedding_clusters!()
-      assert length(embedding_clusters) > 0
+      layer_indices = clustering_results |> Enum.map(& &1.layer) |> Enum.sort()
+      assert layer_indices == Enum.to_list(0..(length(clustering_results) - 1))
 
       all_embeddings =
         PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText"]])
 
-      assert length(embedding_clusters) == length(all_embeddings)
+      embedding_clusters = PanicTda.list_embedding_clusters!()
+      assert length(embedding_clusters) == length(all_embeddings) * length(clustering_results)
 
-      Enum.each(embedding_clusters, fn ec ->
-        assert ec.clustering_result_id == cr.id
+      Enum.each(clustering_results, fn cr ->
+        per_layer = Enum.filter(embedding_clusters, &(&1.clustering_result_id == cr.id))
+        assert length(per_layer) == length(all_embeddings)
       end)
     end
   end

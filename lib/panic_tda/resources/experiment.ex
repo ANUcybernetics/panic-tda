@@ -57,10 +57,6 @@ defmodule PanicTda.Experiment do
       destination_attribute(:experiment_id)
     end
 
-    has_many :clustering_results, PanicTda.ClusteringResult do
-      destination_attribute(:experiment_id)
-    end
-
     has_many :lyapunov_results, PanicTda.LyapunovResult do
       destination_attribute(:experiment_id)
     end

@@ -11,7 +11,7 @@ defmodule PanicTda.Engine do
 
   require Ash.Query
 
-  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, LyapunovStage, ClusteringStage}
+  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, LyapunovStage}
   alias PanicTda.Models.PythonBridge
 
   def perform_experiment(experiment_id, opts \\ []) do
@@ -39,9 +39,6 @@ defmodule PanicTda.Engine do
 
       :ok = PythonBridge.unload_all_models(env)
       :ok = LyapunovStage.compute(env, experiment, experiment.embedding_models)
-
-      :ok = PythonBridge.unload_all_models(env)
-      :ok = ClusteringStage.compute(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
@@ -91,9 +88,6 @@ defmodule PanicTda.Engine do
 
       :ok = PythonBridge.unload_all_models(env)
       :ok = LyapunovStage.resume(env, experiment, experiment.embedding_models)
-
-      :ok = PythonBridge.unload_all_models(env)
-      :ok = ClusteringStage.resume(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}

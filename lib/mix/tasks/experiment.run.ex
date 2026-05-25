@@ -23,6 +23,8 @@ defmodule Mix.Tasks.Experiment.Run do
 
   use Mix.Task
 
+  require Ash.Query
+
   @impl Mix.Task
   def run([config_path]) do
     setup_db()
@@ -77,8 +79,6 @@ defmodule Mix.Tasks.Experiment.Run do
   end
 
   defp print_summary(experiment) do
-    require Ash.Query
-
     counts = experiment_counts(experiment)
 
     Mix.shell().info("""
@@ -88,13 +88,19 @@ defmodule Mix.Tasks.Experiment.Run do
       Runs:                 #{counts.runs}
       Embeddings:           #{counts.embeddings}
       Persistence diagrams: #{counts.persistence_diagrams}
-      Clustering results:   #{counts.clustering_results}
+      Clustering layers:    #{format_layers(counts.clustering_layers)}
     """)
   end
 
-  defp experiment_counts(experiment) do
-    require Ash.Query
+  defp format_layers(layers) when layers == %{}, do: "(none)"
 
+  defp format_layers(layers) do
+    layers
+    |> Enum.sort_by(fn {model, _} -> model end)
+    |> Enum.map_join(", ", fn {model, count} -> "#{model}=#{count}" end)
+  end
+
+  defp experiment_counts(experiment) do
     %{
       runs:
         PanicTda.Run
@@ -108,11 +114,16 @@ defmodule Mix.Tasks.Experiment.Run do
         PanicTda.PersistenceDiagram
         |> Ash.Query.filter(run.experiment_id == ^experiment.id)
         |> Ash.count!(),
-      clustering_results:
-        PanicTda.ClusteringResult
-        |> Ash.Query.filter(experiment_id == ^experiment.id)
-        |> Ash.count!()
+      clustering_layers: clustering_layers(experiment)
     }
+  end
+
+  defp clustering_layers(experiment) do
+    PanicTda.ClusteringResult
+    |> Ash.Query.filter(embedding_model in ^experiment.embedding_models)
+    |> Ash.read!()
+    |> Enum.group_by(& &1.embedding_model)
+    |> Map.new(fn {model, results} -> {model, length(results)} end)
   end
 
   defp short_id(id), do: String.slice(id, 0, 8)

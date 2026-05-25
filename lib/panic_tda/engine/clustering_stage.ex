@@ -1,33 +1,36 @@
 defmodule PanicTda.Engine.ClusteringStage do
   @moduledoc """
-  Clusters embeddings across an entire experiment using HDBSCAN.
-  Runs after all per-run stages complete.
+  Global EVoC clustering across all embeddings for a given embedding model.
+  Cluster identities are shared across experiments: cluster N in any
+  experiment refers to the same semantic region.
+
+  Run explicitly via `mix cluster.recompute`; not invoked automatically
+  by the per-experiment pipeline.
   """
 
   require Ash.Query
   alias PanicTda.Models.Clustering
 
-  def compute(env, experiment, embedding_models) do
+  def all_embedding_models do
+    import Ecto.Query
+
+    PanicTda.Repo.all(
+      from e in "embeddings", distinct: true, select: e.embedding_model, order_by: e.embedding_model
+    )
+  end
+
+  def recompute(env, embedding_models) do
     Enum.each(embedding_models, fn embedding_model ->
-      :ok = compute_for_model(env, experiment, embedding_model)
+      :ok = recompute_for_model(env, embedding_model)
     end)
 
     :ok
   end
 
-  def resume(env, experiment, embedding_models) do
-    Enum.each(embedding_models, fn embedding_model ->
-      delete_existing_clustering(experiment, embedding_model)
-      :ok = compute_for_model(env, experiment, embedding_model)
-    end)
-
-    :ok
-  end
-
-  defp delete_existing_clustering(experiment, embedding_model) do
+  defp delete_existing_clustering(embedding_model) do
     existing =
       PanicTda.ClusteringResult
-      |> Ash.Query.filter(experiment_id == ^experiment.id and embedding_model == ^embedding_model)
+      |> Ash.Query.filter(embedding_model == ^embedding_model)
       |> Ash.Query.load(:embedding_clusters)
       |> Ash.read!()
 
@@ -37,16 +40,15 @@ defmodule PanicTda.Engine.ClusteringStage do
     end)
   end
 
-  defp compute_for_model(env, experiment, embedding_model) do
+  defp recompute_for_model(env, embedding_model) do
+    delete_existing_clustering(embedding_model)
+
     embeddings =
       PanicTda.Embedding
-      |> Ash.Query.filter(
-        embedding_model == ^embedding_model and
-          invocation.run.experiment_id == ^experiment.id
-      )
+      |> Ash.Query.filter(embedding_model == ^embedding_model)
       |> Ash.read!()
 
-    if length(embeddings) < 2 do
+    if length(embeddings) < 16 do
       :ok
     else
       started_at = DateTime.utc_now()
@@ -54,43 +56,51 @@ defmodule PanicTda.Engine.ClusteringStage do
       vectors = Enum.map(embeddings, & &1.vector)
       stacked_binary = vectors |> Nx.stack() |> Nx.to_binary()
 
-      {:ok, %{labels: labels, medoid_indices: medoid_indices}} =
-        Clustering.hdbscan(env, stacked_binary, n_embeddings)
+      {:ok, %{layers: layers, base_min_cluster_size: base_min_cluster_size}} =
+        Clustering.evoc(env, stacked_binary, n_embeddings)
 
       completed_at = DateTime.utc_now()
       dimension = Nx.size(hd(vectors))
 
-      clustering_result =
-        PanicTda.create_clustering_result!(%{
-          embedding_model: embedding_model,
-          algorithm: "hdbscan",
-          parameters: %{
-            "epsilon" => 0.4,
-            "min_cluster_size_pct" => 0.001,
-            "metric" => "euclidean_on_normalised",
-            "dimension" => dimension
-          },
-          started_at: started_at,
-          completed_at: completed_at,
-          experiment_id: experiment.id
-        })
+      parameters = %{
+        "noise_level" => 0.5,
+        "base_min_cluster_size" => base_min_cluster_size,
+        "min_samples" => 5,
+        "random_state" => 42,
+        "metric" => "euclidean_on_normalised",
+        "dimension" => dimension,
+        "n_layers" => length(layers),
+        "n_embeddings" => n_embeddings
+      }
 
-      medoid_embedding_ids =
-        Map.new(medoid_indices, fn {label, idx} ->
-          {label, Enum.at(embeddings, idx).id}
+      Enum.each(layers, fn %{layer: layer_idx, labels: labels, medoid_indices: medoid_indices} ->
+        clustering_result =
+          PanicTda.create_clustering_result!(%{
+            embedding_model: embedding_model,
+            algorithm: "evoc",
+            parameters: parameters,
+            layer: layer_idx,
+            started_at: started_at,
+            completed_at: completed_at
+          })
+
+        medoid_embedding_ids =
+          Map.new(medoid_indices, fn {label, idx} ->
+            {label, Enum.at(embeddings, idx).id}
+          end)
+
+        embeddings
+        |> Enum.zip(labels)
+        |> Enum.each(fn {embedding, label} ->
+          medoid_embedding_id =
+            if label == -1, do: nil, else: Map.get(medoid_embedding_ids, label)
+
+          PanicTda.create_embedding_cluster!(%{
+            embedding_id: embedding.id,
+            clustering_result_id: clustering_result.id,
+            medoid_embedding_id: medoid_embedding_id
+          })
         end)
-
-      embeddings
-      |> Enum.zip(labels)
-      |> Enum.each(fn {embedding, label} ->
-        medoid_embedding_id =
-          if label == -1, do: nil, else: Map.get(medoid_embedding_ids, label)
-
-        PanicTda.create_embedding_cluster!(%{
-          embedding_id: embedding.id,
-          clustering_result_id: clustering_result.id,
-          medoid_embedding_id: medoid_embedding_id
-        })
       end)
 
       :ok

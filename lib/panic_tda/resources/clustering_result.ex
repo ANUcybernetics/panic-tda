@@ -26,6 +26,12 @@ defmodule PanicTda.ClusteringResult do
       public?(true)
     end
 
+    attribute :layer, :integer do
+      allow_nil?(false)
+      default(0)
+      public?(true)
+    end
+
     attribute :started_at, :utc_datetime_usec do
       allow_nil?(false)
       public?(true)
@@ -40,11 +46,6 @@ defmodule PanicTda.ClusteringResult do
   end
 
   relationships do
-    belongs_to :experiment, PanicTda.Experiment do
-      allow_nil?(false)
-      attribute_type(:uuid_v7)
-    end
-
     has_many :embedding_clusters, PanicTda.EmbeddingCluster do
       destination_attribute(:clustering_result_id)
     end
@@ -58,9 +59,9 @@ defmodule PanicTda.ClusteringResult do
         :embedding_model,
         :algorithm,
         :parameters,
+        :layer,
         :started_at,
-        :completed_at,
-        :experiment_id
+        :completed_at
       ])
     end
 
@@ -73,6 +74,10 @@ defmodule PanicTda.ClusteringResult do
     validate {PanicTda.Validations.TimestampOrder, []} do
       on([:create])
     end
+  end
+
+  identities do
+    identity(:unique_layer, [:embedding_model, :algorithm, :layer])
   end
 
   calculations do

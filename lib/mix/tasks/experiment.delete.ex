@@ -3,7 +3,9 @@ defmodule Mix.Tasks.Experiment.Delete do
 
   @moduledoc """
   Deletes an experiment and all associated data (runs, invocations, embeddings,
-  persistence diagrams, clustering results).
+  persistence diagrams, embedding-cluster assignments). The global
+  `ClusteringResult` rows are left intact; rerun `mix cluster.recompute`
+  to refresh them.
 
       $ mix experiment.delete <experiment-id-prefix>
       $ mix experiment.delete <experiment-id-prefix> --force
@@ -52,11 +54,7 @@ defmodule Mix.Tasks.Experiment.Delete do
 
   defp delete_experiment(experiment) do
     PanicTda.EmbeddingCluster
-    |> Ash.Query.filter(clustering_result.experiment_id == ^experiment.id)
-    |> Ash.bulk_destroy!(:destroy, %{})
-
-    PanicTda.ClusteringResult
-    |> Ash.Query.filter(experiment_id == ^experiment.id)
+    |> Ash.Query.filter(embedding.invocation.run.experiment_id == ^experiment.id)
     |> Ash.bulk_destroy!(:destroy, %{})
 
     PanicTda.Embedding

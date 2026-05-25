@@ -43,12 +43,20 @@ defmodule Mix.Tasks.Experiment.Status do
       Runs:                 #{counts.runs}
       Embeddings:           #{counts.embeddings}
       Persistence diagrams: #{counts.persistence_diagrams}
-      Clustering results:   #{counts.clustering_results}
+      Clustering layers:    #{format_layers(counts.clustering_layers)}
     """)
   end
 
   def run(_args) do
     Mix.raise("Usage: mix experiment.status <experiment-id>")
+  end
+
+  defp format_layers(layers) when layers == %{}, do: "(none)"
+
+  defp format_layers(layers) do
+    layers
+    |> Enum.sort_by(fn {model, _} -> model end)
+    |> Enum.map_join(", ", fn {model, count} -> "#{model}=#{count}" end)
   end
 
   defp find_experiment(id_prefix) do
@@ -72,11 +80,16 @@ defmodule Mix.Tasks.Experiment.Status do
         PanicTda.PersistenceDiagram
         |> Ash.Query.filter(run.experiment_id == ^experiment.id)
         |> Ash.count!(),
-      clustering_results:
-        PanicTda.ClusteringResult
-        |> Ash.Query.filter(experiment_id == ^experiment.id)
-        |> Ash.count!()
+      clustering_layers: clustering_layers(experiment)
     }
+  end
+
+  defp clustering_layers(experiment) do
+    PanicTda.ClusteringResult
+    |> Ash.Query.filter(embedding_model in ^experiment.embedding_models)
+    |> Ash.read!()
+    |> Enum.group_by(& &1.embedding_model)
+    |> Map.new(fn {model, results} -> {model, length(results)} end)
   end
 
   defp last_activity(experiment) do

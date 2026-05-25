@@ -131,11 +131,10 @@ defmodule PanicTdaTest do
     clustering =
       PanicTda.create_clustering_result!(%{
         embedding_model: "Nomic",
-        algorithm: "hdbscan",
+        algorithm: "evoc",
         parameters: %{min_cluster_size: 5},
         started_at: now,
-        completed_at: now,
-        experiment_id: experiment.id
+        completed_at: now
       })
 
     cluster_assignment =
