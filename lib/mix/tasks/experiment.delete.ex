@@ -67,6 +67,7 @@ defmodule Mix.Tasks.Experiment.Delete do
 
     PanicTda.Invocation
     |> Ash.Query.filter(run.experiment_id == ^experiment.id)
+    |> Ash.Query.sort(sequence_number: :desc)
     |> Ash.bulk_destroy!(:destroy, %{})
 
     PanicTda.Run
