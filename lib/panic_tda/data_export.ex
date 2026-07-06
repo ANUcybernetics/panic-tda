@@ -16,6 +16,8 @@ defmodule PanicTda.DataExport do
 
   require Ash.Query
 
+  alias PanicTda.Models.Embeddings
+
   @doc """
   Export `experiment_ids` to parquet files under `output_dir`.
 
@@ -25,14 +27,32 @@ defmodule PanicTda.DataExport do
       both the `embeddings` and `persistence_diagrams` tables. Defaults to all
       models.
 
+    * `:embed_prompts` — when `true`, embed each run's `initial_prompt` and emit
+      it as a synthetic `sequence_number == -1` row in both the `invocations`
+      and `embeddings` tables (the input text state, `t_0`). This lets analysis
+      distinguish drift from the original prompt versus drift from the first
+      generated text state. Requires the Python interpreter (loads the text
+      embedding model). Defaults to `false`.
+
+    * `:env` — an existing Snex env to reuse for `:embed_prompts`. When absent, a
+      fresh interpreter is started.
+
   Returns `{:ok, [{table, path, row_count}]}`.
   """
   def export(experiment_ids, output_dir, opts \\ []) when is_list(experiment_ids) do
     File.mkdir_p!(output_dir)
     models = Keyword.get(opts, :embedding_models)
 
+    extra_rows =
+      if Keyword.get(opts, :embed_prompts, false) do
+        prompt_synthetic_rows(experiment_ids, models, opts)
+      else
+        %{}
+      end
+
     results =
       Enum.map(specs(experiment_ids, models), fn {table, records, columns} ->
+        records = records ++ Map.get(extra_rows, table, [])
         df = build_frame(records, columns)
         path = Path.join(output_dir, "#{table}.parquet")
         Explorer.DataFrame.to_parquet!(df, path, compression: {:zstd, nil})
@@ -40,6 +60,92 @@ defmodule PanicTda.DataExport do
       end)
 
     {:ok, results}
+  end
+
+  # Build synthetic `t_0` invocation + embedding rows for each run's initial
+  # prompt. One invocation row per run (sequence -1) holds the prompt text; one
+  # embedding row per (run, text embedding model) holds its vector. Ids are
+  # prefixed `prompt-` so they never collide with real uuid_v7 ids and are easy
+  # to filter out. Returns `%{invocations: [...], embeddings: [...]}`.
+  defp prompt_synthetic_rows(experiment_ids, models, opts) do
+    runs = read_runs(experiment_ids)
+    text_models = prompt_text_models(experiment_ids, models)
+
+    if runs == [] or text_models == [] do
+      %{}
+    else
+      env = ensure_env(opts)
+      prompts = runs |> Enum.map(& &1.initial_prompt) |> Enum.uniq()
+
+      embedding_rows =
+        Enum.flat_map(text_models, fn model ->
+          {:ok, vectors} = Embeddings.embed(env, model, prompts)
+          vector_by_prompt = Map.new(Enum.zip(prompts, vectors))
+
+          Enum.map(runs, fn run ->
+            binary = Map.fetch!(vector_by_prompt, run.initial_prompt)
+            prompt_embedding_row(run, model, binary)
+          end)
+        end)
+
+      %{
+        invocations: Enum.map(runs, &prompt_invocation_row/1),
+        embeddings: embedding_rows
+      }
+    end
+  end
+
+  # The text embedding spaces to place prompts in: the requested `--embedding-model`
+  # filter if given, else every model the experiments actually used, restricted
+  # to text models (image embedders can't embed a text prompt).
+  defp prompt_text_models(experiment_ids, models) do
+    candidates =
+      models || experiment_ids |> read_experiments() |> Enum.flat_map(& &1.embedding_models)
+
+    candidates
+    |> Enum.uniq()
+    |> Enum.filter(&(Embeddings.model_type(&1) == :text))
+  end
+
+  defp prompt_invocation_row(run) do
+    %{
+      id: "prompt-" <> run.id,
+      run_id: run.id,
+      input_invocation_id: nil,
+      sequence_number: -1,
+      type: :text,
+      model: nil,
+      output_text: run.initial_prompt,
+      started_at: nil,
+      completed_at: nil,
+      inserted_at: nil,
+      updated_at: nil
+    }
+  end
+
+  defp prompt_embedding_row(run, model, binary) do
+    %{
+      id: "prompt-" <> run.id <> "-" <> model,
+      invocation_id: "prompt-" <> run.id,
+      embedding_model: model,
+      vector: Nx.from_binary(binary, :f32),
+      started_at: nil,
+      completed_at: nil,
+      inserted_at: nil,
+      updated_at: nil
+    }
+  end
+
+  defp ensure_env(opts) do
+    case Keyword.get(opts, :env) do
+      nil ->
+        {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
+        {:ok, env} = Snex.make_env(interpreter)
+        env
+
+      env ->
+        env
+    end
   end
 
   # Each spec is `{table, records, columns}` where `columns` is a list of

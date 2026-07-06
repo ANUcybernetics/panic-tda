@@ -81,6 +81,42 @@ defmodule PanicTda.DataExportTest do
     assert all_tables[:embeddings] == 4
   end
 
+  test "embed_prompts adds a synthetic t_0 row per run to invocations and embeddings" do
+    experiment = run_experiment()
+    dir = tmp_dir()
+
+    {:ok, results} = PanicTda.DataExport.export([experiment.id], dir, embed_prompts: true)
+    tables = Map.new(results, fn {table, path, rows} -> {table, {path, rows}} end)
+
+    # 4 real invocations + 1 synthetic prompt row (1 run)
+    assert {_, 5} = tables[:invocations]
+    # 2 real text embeddings + 1 prompt embedding (1 run × 1 text model)
+    assert {_, 3} = tables[:embeddings]
+
+    inv_rows =
+      elem(tables[:invocations], 0)
+      |> Explorer.DataFrame.from_parquet!()
+      |> Explorer.DataFrame.to_rows()
+
+    prompt_rows = Enum.filter(inv_rows, &(&1["sequence_number"] == -1))
+
+    assert [%{"output_text" => "test prompt", "type" => "text", "id" => id, "run_id" => run_id}] =
+             prompt_rows
+
+    assert id == "prompt-" <> run_id
+
+    # the prompt embedding joins back to the synthetic invocation
+    emb_rows =
+      elem(tables[:embeddings], 0)
+      |> Explorer.DataFrame.from_parquet!()
+      |> Explorer.DataFrame.to_rows()
+
+    prompt_emb = Enum.filter(emb_rows, &(&1["invocation_id"] == id))
+
+    assert [%{"embedding_model" => "DummyText", "vector" => vector}] = prompt_emb
+    assert is_list(vector) and vector != []
+  end
+
   test "exports multiple experiments into combined files" do
     a = run_experiment()
     b = run_experiment(%{prompts: ["another prompt"]})

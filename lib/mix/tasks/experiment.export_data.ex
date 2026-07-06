@@ -7,7 +7,7 @@ defmodule Mix.Tasks.Experiment.ExportData do
   `embeddings`, `persistence_diagrams`), suitable for loading back into
   polars/pandas for analysis.
 
-      $ mix experiment.export_data <experiment-id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME]
+      $ mix experiment.export_data <experiment-id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]
 
   Array/nested attributes (`networks`, `network`, `prompts`) and the
   persistence-diagram payload (`diagram_data`) are written as JSON strings;
@@ -21,6 +21,10 @@ defmodule Mix.Tasks.Experiment.ExportData do
     - `--embedding-model` — only include this embedding model (repeatable);
       filters both `embeddings` and `persistence_diagrams`. Defaults to all
       models.
+    - `--embed-prompts` — also embed each run's `initial_prompt` and emit it as a
+      synthetic `sequence_number == -1` row (`t_0`) in the `invocations` and
+      `embeddings` tables. Requires the GPU/Python interpreter (loads the text
+      embedding model). Off by default.
   """
 
   use Mix.Task
@@ -29,7 +33,7 @@ defmodule Mix.Tasks.Experiment.ExportData do
   def run(args) do
     {opts, prefixes, _} =
       OptionParser.parse(args,
-        strict: [output: :string, embedding_model: :keep],
+        strict: [output: :string, embedding_model: :keep, embed_prompts: :boolean],
         aliases: [o: :output]
       )
 
@@ -59,13 +63,19 @@ defmodule Mix.Tasks.Experiment.ExportData do
         list -> list
       end
 
+    embed_prompts? = Keyword.get(opts, :embed_prompts, false)
+
     Mix.shell().info(
       "Exporting #{length(experiments)} experiment(s) to #{output_dir}/" <>
-        if(models, do: " (embedding models: #{Enum.join(models, ", ")})", else: "")
+        if(models, do: " (embedding models: #{Enum.join(models, ", ")})", else: "") <>
+        if(embed_prompts?, do: " [embedding initial prompts]", else: "")
     )
 
     {:ok, results} =
-      PanicTda.DataExport.export(experiment_ids, output_dir, embedding_models: models)
+      PanicTda.DataExport.export(experiment_ids, output_dir,
+        embedding_models: models,
+        embed_prompts: embed_prompts?
+      )
 
     for {table, path, rows} <- results do
       size_mb = File.stat!(path).size / 1024 / 1024

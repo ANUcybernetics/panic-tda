@@ -125,9 +125,10 @@ above exclude that one-off cost.
 - `mise exec -- mix experiment.export_images <id-prefix> [--output dir] [--limit N]`
   --- dump every image invocation as an AVIF file (organised by
   network/prompt/run) with EXIF/XMP metadata (needs `exiftool`)
-- `mise exec -- mix experiment.export_data <id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME]`
+- `mise exec -- mix experiment.export_data <id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]`
   --- dump experiment data (everything except image bytes) to parquet, one file
-  per table, for analysis in polars/pandas
+  per table, for analysis in polars/pandas; `--embed-prompts` also embeds each
+  run's initial prompt as a synthetic `sequence_number == -1` row (`t_0`)
 - `mise exec -- mix experiment.delete <id-prefix> [--force]` --- delete an
   experiment and all its data
 
