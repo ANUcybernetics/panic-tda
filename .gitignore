@@ -21,6 +21,10 @@ logs/
 db/
 *.mp4
 
+# Export outputs
+*_images/
+*_parquet/
+
 # Tools
 mise.local.toml
 .benchmarks/
