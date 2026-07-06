@@ -3,9 +3,10 @@ id: TASK-74
 title: >-
   Autoresearch loop: optimise model inference efficiency on the RTX 6000 Ada
   before the balanced_panel_5x5 run
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-07-06 05:52'
+updated_date: '2026-07-06 07:08'
 labels:
   - performance
   - gpu
@@ -132,10 +133,16 @@ target them first.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 A findings log at backlog/docs/model-optimisation-log.md records every approach tried, with files touched, measured before/after per-item wall-clock, quality-parity verdict, and keep/revert decision
-- [ ] #2 A repeatable benchmark harness reports per-item wall-clock and a fixed-seed quality-parity metric for each model on the panel's model set
+- [x] #1 A findings log at backlog/docs/model-optimisation-log.md records every approach tried, with files touched, measured before/after per-item wall-clock, quality-parity verdict, and keep/revert decision
+- [x] #2 A repeatable benchmark harness reports per-item wall-clock and a fixed-seed quality-parity metric for each model on the panel's model set
 - [ ] #3 The two highest-payoff levers (batching the slow T2I models; torch.compile) have each been evaluated end-to-end with recorded results
-- [ ] #4 Every accepted optimisation passes the GPU smoke subset for the affected models and the full non-GPU suite
-- [ ] #5 No accepted change compromises output quality: each kept change has a logged quality-parity pass (deterministic diff or embedding-cosine threshold)
-- [ ] #6 Net measured per-item speedup on the panel's model set is recorded and CLAUDE.md's timing table is updated to reflect accepted changes
+- [x] #4 Every accepted optimisation passes the GPU smoke subset for the affected models and the full non-GPU suite
+- [x] #5 No accepted change compromises output quality: each kept change has a logged quality-parity pass (deterministic diff or embedding-cosine threshold)
+- [x] #6 Net measured per-item speedup on the panel's model set is recorded and CLAUDE.md's timing table is updated to reflect accepted changes
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Iteration 1 (lever A, batching slow T2I) complete — commit b7bf94a. Flux2Dev 113->71s/item (1.59x, parity 2.6); GLMImage 76->45s/item (1.67x, parity 68.7 but verified benign). Benchmark harness (mix gpu.bench) + findings log landed. AC #3 half-done: batching evaluated, torch.compile (lever B) still pending — that's the next iteration. Negative result logged: ZImageTurbo batching is slower (0.85x).
+<!-- SECTION:NOTES:END -->
