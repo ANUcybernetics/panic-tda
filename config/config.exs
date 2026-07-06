@@ -6,7 +6,8 @@ config :panic_tda,
 
 config :panic_tda, PanicTda.Repo,
   database: "priv/panic_tda_dev.db",
-  pool_size: 5
+  pool_size: 5,
+  busy_timeout: 30_000
 
 config :ash,
   disable_async?: false
