@@ -125,6 +125,42 @@ priority). The two slow models (Flux2Dev, GLMImage) dominate the panel's cost.
   unchanged (it was already batch-capable at 4; not worth revisiting). Confirms
   the harness correctly reports non-wins.
 
+### Real-schedule validation: Flux2Dev batch=4 in `balanced_panel_5x5` — CONFIRMED
+
+- **Date:** 2026-07-06
+- **Context:** first live confirmation that lever A holds under the production
+  swap/offload schedule (not just the isolated `mix gpu.bench` harness). Started
+  the full `balanced_panel_5x5` run and observed its first T2I network.
+- **Execution order caveat:** networks do _not_ run in config-JSON order.
+  `engine.ex` groups runs with `Enum.group_by(& &1.network)` then iterates the
+  resulting map, so the BEAM iterates in sorted-term order — effectively
+  **alphabetical by T2I model**. Actual order: Flux2Dev (1–5) → Flux2Klein
+  (6–10) → GLMImage (11–15) → SD35Medium (16–20) → ZImageTurbo (21–25). So
+  Flux2Dev is the _first_ network group; GLMImage validation is still pending
+  (many hours in).
+- **Observed (first network `["Flux2Dev", "Gemma3n"]`, T2I step 0, batch=4):**
+
+  | Metric              | Real schedule  | Isolated bench (batch=4) | Serial baseline |
+  | ------------------- | -------------- | ------------------------ | --------------- |
+  | per-step (15 steps) | 18.6–19.9 s/it | —                        | 7.5 s/it        |
+  | per-item            | **~74.5 s**    | 71 s                     | 113 s           |
+
+  Two consecutive chunks of 4 each took 298 s (consistent). Per-step time is
+  2.48× the batch=1 baseline for 4× the images = **1.6× throughput**, matching
+  the bench's 1.59×. The ~5% gap over the bench's 71 s is expected swap/offload
+  overhead the isolated harness excludes.
+
+- **Batched, not serial:** confirmed via the code path (`invoke_t2i_batch` takes
+  the real batched branch — one pipeline call with a list of 4 prompts, not the
+  per-prompt `_invoke_t2i_single` fallback) and via timing (18.6 s/it, not the
+  7.5 s/it a serial fallback would show).
+- **Memory / stability:** GPU peak **5.6 GB / 48 GB** (Flux2Dev sequential CPU
+  offload keeps the footprint tiny), 90–97% util. No CUDA OOM, no tracebacks, no
+  `attempt … failed, retrying`. Clean.
+- **Verdict:** lever A validated in production for Flux2Dev at batch=4 — on
+  projection, comfortable memory headroom. GLMImage validation to follow when
+  network group 11 begins.
+
 ### Untried / future levers (ranked)
 
 - Probe `Flux2Dev`/`GLMImage` at batch=8+ for marginal additional headroom
