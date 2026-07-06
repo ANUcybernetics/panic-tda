@@ -1,0 +1,20 @@
+{
+  "networks": [
+    ["SD35Medium", "Moondream"],
+    ["SD35Medium", "Qwen25VL"],
+    ["SD35Medium", "Pixtral"],
+    ["Flux2Klein", "Moondream"],
+    ["Flux2Klein", "Qwen25VL"],
+    ["Flux2Klein", "Pixtral"]
+  ],
+  "prompts": [
+    "mermaid",
+    "manatee",
+    "woman swimming under water",
+    "soldier",
+    "farmer"
+  ],
+  "embedding_models": ["Qwen3Embed"],
+  "max_length": 100,
+  "num_runs": 6
+}
