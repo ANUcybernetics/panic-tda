@@ -34,6 +34,7 @@ defmodule PanicTda.Export do
       case resolution do
         :hd -> {1920, 1080}
         :"4k" -> {3840, 2160}
+        :"8k" -> {7680, 4320}
       end
 
     prompts = experiment.prompts
@@ -164,6 +165,7 @@ defmodule PanicTda.Export do
       case resolution do
         :hd -> {16, 6, 40, 24, 20, 14}
         :"4k" -> {32, 12, 80, 48, 40, 28}
+        :"8k" -> {64, 24, 160, 96, 80, 56}
       end
 
     net_label_h = Keyword.get(opts, :net_label_h, default_net_label_h)
@@ -198,7 +200,12 @@ defmodule PanicTda.Export do
 
     best = Enum.max_by(candidates, & &1.score)
 
-    min_img_size = if resolution == :"4k", do: 40, else: 20
+    min_img_size =
+      case resolution do
+        :hd -> 20
+        :"4k" -> 40
+        :"8k" -> 80
+      end
 
     if best.img_size < min_img_size do
       raise ArgumentError,
