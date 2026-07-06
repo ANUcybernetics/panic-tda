@@ -740,12 +740,27 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "Flux2Klein": {"num_inference_steps": 4, "guidance_scale": 1.0},
 }
 
-_T2I_BATCH_CAPABLE: set[str] = {"SD35Medium", "ZImageTurbo", "Flux2Klein"}
+_T2I_BATCH_CAPABLE: set[str] = {
+    "SD35Medium",
+    "ZImageTurbo",
+    "Flux2Klein",
+    "Flux2Dev",
+    "GLMImage",
+}
 _I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
 
 
 _T2I_MAX_RETRIES = 3
-_T2I_MAX_BATCH: dict[str, int] = {"SD35Medium": 4, "ZImageTurbo": 4, "Flux2Klein": 2}
+# Batch caps tuned on the RTX 6000 Ada (48 GB). Flux2Dev/GLMImage added in
+# TASK-74: batch=4 gives ~1.6x/1.7x per-item speedup with no OOM; batch=8 is
+# left unprobed (a mid-run OOM would crash the ~2-week panel run).
+_T2I_MAX_BATCH: dict[str, int] = {
+    "SD35Medium": 4,
+    "ZImageTurbo": 4,
+    "Flux2Klein": 2,
+    "Flux2Dev": 4,
+    "GLMImage": 4,
+}
 
 
 def _invoke_t2i_single(name: str, prompt: str) -> str:
@@ -1333,3 +1348,115 @@ def probe_max_batch(
             results[n] = str(e)
             break
     return results
+
+
+# ---------------------------------------------------------------------------
+# Benchmark harness (TASK-74): seeded T2I generation + per-item timing/parity.
+# Benchmark-only — does NOT touch the production invoke_t2i* path, which uses
+# generator=None (random). Seeds exist solely so batched-vs-serial output can be
+# compared at matched noise to prove batching introduces no systematic change.
+# ---------------------------------------------------------------------------
+
+
+def _t2i_generate_seeded(name: str, prompts: list[str], seeds: list[int]) -> list:
+    """Generate images for `prompts` with matched per-item `seeds`.
+
+    Returns a list of PIL images. Passing a list of per-item generators makes the
+    i-th image depend only on seeds[i], so a batch of N reproduces N single calls
+    at the same seeds up to GPU kernel nondeterminism.
+    """
+    cfg = _T2I_INVOKE_CONFIGS[name]
+    size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    gens = [torch.Generator(device=device).manual_seed(int(s)) for s in seeds]
+    return _models[name](
+        prompt=list(prompts),
+        height=size,
+        width=size,
+        generator=gens if len(gens) > 1 else gens[0],
+        **cfg,
+    ).images
+
+
+def benchmark_t2i(
+    name: str,
+    prompts: list[str],
+    seeds: list[int],
+    batch_sizes: list[int],
+    dump_dir: str = "",
+) -> dict[str, Any]:
+    """Measure per-item wall-clock and batched-vs-serial pixel parity for a T2I model.
+
+    Returns {n, single_per_item_s, batches: {bs: {per_item_s, parity_mean_abs_delta,
+    parity_max_abs_delta, status}}}. per-item time is wall-clock / n; parity is the
+    mean abs pixel delta (0-255) between each batched image and its seed-matched
+    serial reference.
+    """
+    import time
+
+    n = len(prompts)
+    seeds = [int(s) for s in seeds]
+
+    # Serial references (batch size 1), timed.
+    torch.cuda.empty_cache()
+    gc.collect()
+    refs = []
+    torch.cuda.synchronize()
+    t0 = time.perf_counter()
+    for p, s in zip(prompts, seeds):
+        refs.extend(_t2i_generate_seeded(name, [p], [s]))
+    torch.cuda.synchronize()
+    single_per_item = (time.perf_counter() - t0) / n
+
+    ref_arrs = [np.asarray(im, dtype=np.float32) for im in refs]
+    result: dict[str, Any] = {
+        "n": n,
+        "single_per_item_s": single_per_item,
+        "batches": {},
+    }
+
+    if dump_dir:
+        os.makedirs(dump_dir, exist_ok=True)
+        for i, im in enumerate(refs):
+            im.save(os.path.join(dump_dir, f"{name}_{i}_serial.png"))
+
+    for bs in batch_sizes:
+        if bs <= 1:
+            continue
+        try:
+            torch.cuda.empty_cache()
+            gc.collect()
+            torch.cuda.synchronize()
+            t0 = time.perf_counter()
+            batched = []
+            for i in range(0, n, bs):
+                batched.extend(
+                    _t2i_generate_seeded(name, prompts[i : i + bs], seeds[i : i + bs])
+                )
+            torch.cuda.synchronize()
+            per_item = (time.perf_counter() - t0) / n
+            deltas = [
+                float(np.abs(np.asarray(b, dtype=np.float32) - r).mean())
+                for b, r in zip(batched, ref_arrs)
+            ]
+            if dump_dir:
+                for i, im in enumerate(batched):
+                    im.save(os.path.join(dump_dir, f"{name}_{i}_b{bs}.png"))
+            result["batches"][bs] = {
+                "per_item_s": per_item,
+                "parity_mean_abs_delta": float(np.mean(deltas)),
+                "parity_max_abs_delta": float(np.max(deltas)),
+                "status": "ok",
+            }
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            gc.collect()
+            result["batches"][bs] = {"status": "oom"}
+            break
+        except Exception as e:  # noqa: BLE001 - surface the failure in the report
+            torch.cuda.empty_cache()
+            gc.collect()
+            result["batches"][bs] = {"status": f"error: {e}"}
+            break
+
+    return result
