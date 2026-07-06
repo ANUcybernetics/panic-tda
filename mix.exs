@@ -27,6 +27,7 @@ defmodule PanicTda.MixProject do
       {:ash_sqlite, "~> 0.2"},
       {:ecto_sqlite3, "~> 0.18"},
       {:nx, "~> 0.9"},
+      {:explorer, "~> 0.10"},
       {:jason, "~> 1.4"},
       {:snex, "~> 0.3"},
       {:vix, "~> 0.35"},
