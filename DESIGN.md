@@ -83,12 +83,12 @@ First, some nomenclature (since many of these terms are overloaded). In the
   and following the models in a network for `max_length` steps
 - **embedding model**: an
   [embedding model](https://huggingface.co/blog/getting-started-with-embeddings)
-  (e.g. _RoBERTa_, _Nomic_) which takes text or image input and returns a
-  vector in a high (e.g. 768)-dimensional space such that inputs that are
-  "semantically similar" are close together in this space (implementations are
-  in `lib/panic_tda/models/embeddings.ex`)
-- **experiment**: a specification for a batch of runs with a given network,
-  set of prompts, embedding models and number of runs per prompt
+  (e.g. _RoBERTa_, _Nomic_) which takes text or image input and returns a vector
+  in a high (e.g. 768)-dimensional space such that inputs that are "semantically
+  similar" are close together in this space (implementations are in
+  `lib/panic_tda/models/embeddings.ex`)
+- **experiment**: a specification for a batch of runs with a given network, set
+  of prompts, embedding models and number of runs per prompt
 
 The data model is implemented using
 [Ash](https://hexdocs.pm/ash/get-started.html) resources backed by SQLite (via
@@ -102,8 +102,8 @@ persistence diagram data. See the **Use** section of the
 The code for performing experiments is in the `lib/panic_tda/engine/` modules.
 The `Engine.perform_experiment/1` function is the main workhorse.
 
-For a given experiment config, the engine first creates all runs --- one for each
-combination of prompt and run number (from `0` to `num_runs - 1`). Each run
+For a given experiment config, the engine first creates all runs --- one for
+each combination of prompt and run number (from `0` to `num_runs - 1`). Each run
 shares the experiment's network and `max_length`.
 
 The computation then proceeds through four stages:
@@ -117,8 +117,8 @@ The computation then proceeds through four stages:
 
 - In the **embeddings stage** (`EmbeddingsStage.compute/3`) each run's text
   invocations are embedded using all of the text embedding models specified in
-  the experiment config, and image invocations are embedded using image embedding
-  models. Each embedding is stored as a float32 binary vector.
+  the experiment config, and image invocations are embedded using image
+  embedding models. Each embedding is stored as a float32 binary vector.
 
 - In the **persistence diagram stage** (`PdStage.compute/3`) each run's sequence
   of embeddings (under a particular embedding model) is processed by the
@@ -126,11 +126,17 @@ The computation then proceeds through four stages:
   [persistence diagram](https://en.wikipedia.org/wiki/Persistent_homology).
   There is one persistence diagram per run per embedding model.
 
-- In the **clustering stage** (`ClusteringStage.compute/3`) all persistence
-  diagrams for a given embedding model are clustered using
-  [HDBSCAN](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.HDBSCAN.html)
-  to identify groups of runs with similar topological structure. Medoid
-  indices are computed for each cluster.
+- In the **Lyapunov stage** (`LyapunovStage.compute/3`) runs are grouped by
+  (network, prompt) and finite-time Lyapunov exponents are estimated from the
+  pairwise divergence of the group's embedding trajectories over time (requires
+  `num_runs >= 2`). There is one Lyapunov result per group per embedding model.
+
+Clustering is deliberately not part of the per-experiment pipeline. The
+`mix cluster.recompute` task (`ClusteringStage.recompute/2`) clusters all raw
+embeddings for a given embedding model --- pooled across every experiment in the
+database, so cluster identities are shared between experiments --- using
+[EVoC](https://github.com/TutteInstitute/evoc), storing a hierarchy of
+clustering layers with a medoid caption for each cluster.
 
 All stages support resuming --- if an experiment is interrupted, each stage can
 detect which work has already been completed and pick up where it left off via

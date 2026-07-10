@@ -1,12 +1,15 @@
 defmodule PanicTda.Engine do
   @moduledoc """
   Main engine for running PANIC-TDA experiments.
-  Orchestrates the five-stage pipeline:
+  Orchestrates the four-stage pipeline:
   1. Runs stage - batch execute model networks
   2. Embeddings stage - compute embeddings for outputs
   3. Persistence diagrams stage - TDA computation
   4. Lyapunov stage - compute FTLE from multi-run trajectory divergence
-  5. Clustering stage - cluster embeddings via HDBSCAN
+
+  Clustering (global EVoC clustering of raw embeddings, pooled across
+  experiments) is not part of this pipeline; run it separately via
+  `mix cluster.recompute`.
   """
 
   require Ash.Query

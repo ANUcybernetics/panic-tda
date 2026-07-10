@@ -9,8 +9,10 @@ defmodule Mix.Tasks.Experiment.Resume do
 
   The experiment must have been started (has `started_at`) but not completed
   (no `completed_at`). The task picks up where the experiment left off:
-  missing runs are created, partial runs are continued, missing embeddings
-  and persistence diagrams are computed, and clustering is recomputed.
+  missing runs are created, partial runs are continued, and missing
+  embeddings, persistence diagrams and Lyapunov results are computed.
+  Clustering is not resumed automatically; run `mix cluster.recompute`
+  separately.
 
   `--force` reopens an already-completed experiment before resuming — useful
   when new embedding models have been added to the config and missing
