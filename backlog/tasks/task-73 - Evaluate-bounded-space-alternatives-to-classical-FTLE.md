@@ -101,12 +101,35 @@ are uninformative.
 - TDA of the stationary distribution — Sungyeon's domain, see her
   email / PKB 741
 
+## How the existing FTLE numbers were computed
+
+Ported from the TASK-71 design doc, so any replacement statistic can be
+compared against the same baseline.
+
+- **Data**: `penguin_campfire` (id prefix `019d2ec7`). 9 networks —
+  {SD35Medium, Flux2Klein, GLMImage} × {Moondream, Qwen25VL, Pixtral}. 5
+  near-paraphrase prompts, 8 runs each = 360 runs, max 200 invocations.
+  Embeddings: Nomic and Qwen3Embed.
+- **Within-prompt FTLE** (`PanicTda.Models.Lyapunov.compute_ftle/5`): stack
+  trajectories to `(num_trajectories, num_timesteps, dimension)`; per
+  timestep take the mean pairwise Euclidean distance (`pdist`); clamp at
+  `epsilon = 1e-10`; natural log; `np.polyfit(t, ln_divergence, 1)` slope is
+  the FTLE, reported with `r_squared` and `num_pairs`. 90 identical-prompt
+  baseline rows.
+- **Cross-prompt FTLE**: for prompt-pair (p₁, p₂) in one (network,
+  embedding) cell, `cdist(A[:, t, :], B[:, t, :])` gives an 8×8 matrix of
+  across-prompt distances (64 pairs, no within-prompt pairs); mean, clamp,
+  log and polyfit as above. Aggregated **per-pair** (10 values per cell),
+  not pooled, so within-category spread and between-category gap stay
+  visible. 180 paraphrase-FTLE values.
+
+The bounded `[0, 2]` range that motivates this task is a direct consequence
+of L2-normalised embeddings feeding those Euclidean distances.
+
 ## References
 
 - Prior analysis: `analysis/penguin_campfire/`, `analysis/pilot_3cat/`,
   `analysis/comparison/`
 - Predecessor task: TASK-71
-- Spec: `docs/superpowers/specs/2026-04-21-penguin-campfire-paraphrase-ftle-analysis-design.md`
-- Plan: `docs/superpowers/plans/2026-04-22-penguin-campfire-paraphrase-ftle-analysis.md`
 - Sungyeon's original framing: PKB note 741
 <!-- SECTION:DESCRIPTION:END -->
