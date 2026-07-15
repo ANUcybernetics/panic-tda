@@ -161,6 +161,36 @@ priority). The two slow models (Flux2Dev, GLMImage) dominate the panel's cost.
   projection, comfortable memory headroom. GLMImage validation to follow when
   network group 11 begins.
 
+### Real-schedule validation: GLMImage batch=4 in `balanced_panel_5x5` — CONFIRMED
+
+- **Date:** 2026-07-15
+- **Context:** second half of the lever A production validation. Network group
+  11 (first GLMImage network) began ~9 days into the panel run, after the
+  Flux2Dev (1–5) and Flux2Klein (6–10) tiers completed.
+- **Observed (first GLMImage network, T2I step 0, batch=4):**
+
+  | Metric                | Real schedule | Isolated bench (batch=4) | Serial baseline |
+  | --------------------- | ------------- | ------------------------ | --------------- |
+  | per-step (25 steps)   | 5.2–5.4 s/it  | —                        | ~2.5–3 s/it     |
+  | per-item              | **44.3 s**    | 45 s                     | 76 s            |
+
+  First 80-image lockstep step: 3,545 s ÷ 80 = 44.3 s/item — slightly _under_
+  the bench projection, 1.72× throughput vs serial (bench: 1.67–1.71×). Chunk
+  bars consistent at 5.2–5.4 s/it across all 20 chunks of 4.
+
+- **Batched, not serial:** the 25-step tqdm bars run at ~5.4 s/it (four images
+  per denoising step); a serial fallback would show ~2.5–3 s/it single-image
+  bars and ~76 s/item overall.
+- **Memory / stability:** GPU peak **6.85 GB / 48 GB**, 99% util. No CUDA OOM,
+  no tracebacks, no retries anywhere in the log (checked at 40,160/100,000
+  invocations, 800/2000 runs complete).
+- **Bonus datapoint:** the Flux2Klein tier (already batch-capable pre-TASK-74)
+  completed all 10,000 T2I invocations at 328 s per 80-image step =
+  **4.10 s/item**, matching its 4.1 s projection.
+- **Verdict:** lever A fully validated in production — both formerly-serial
+  models (Flux2Dev, GLMImage) batch at 4 on the real swap/offload schedule, on
+  projection, with large memory headroom. Closes the TASK-74 validation loop.
+
 ### Untried / future levers (ranked)
 
 - Probe `Flux2Dev`/`GLMImage` at batch=8+ for marginal additional headroom
