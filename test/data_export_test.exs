@@ -2,6 +2,7 @@ defmodule PanicTda.DataExportTest do
   use ExUnit.Case
 
   alias PanicTda.Engine
+  alias PanicTda.Models.PythonInterpreter
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
@@ -37,8 +38,16 @@ defmodule PanicTda.DataExportTest do
     {:ok, results} = PanicTda.DataExport.export([experiment.id], dir)
     tables = Map.new(results, fn {table, path, rows} -> {table, {path, rows}} end)
 
-    assert Enum.sort(Map.keys(tables)) ==
-             [:embeddings, :experiments, :invocations, :persistence_diagrams, :runs]
+    assert Enum.sort(Map.keys(tables)) == [
+             :clustering_results,
+             :embedding_clusters,
+             :embeddings,
+             :experiments,
+             :invocations,
+             :lyapunov_results,
+             :persistence_diagrams,
+             :runs
+           ]
 
     for {_table, {path, _rows}} <- tables, do: assert(File.exists?(path))
 
@@ -115,6 +124,64 @@ defmodule PanicTda.DataExportTest do
 
     assert [%{"embedding_model" => "DummyText", "vector" => vector}] = prompt_emb
     assert is_list(vector) and vector != []
+  end
+
+  test "exports cluster assignments and lyapunov results" do
+    # enough runs for a Lyapunov exponent (>= 2 per network/prompt) and enough
+    # embeddings for EVoC to cluster at all (>= 16)
+    experiment =
+      run_experiment(%{num_runs: 3, prompts: ["Alpha", "Beta", "Gamma"], max_length: 6})
+
+    {:ok, interpreter} = PythonInterpreter.start_link()
+    {:ok, env} = Snex.make_env(interpreter)
+
+    try do
+      :ok = PanicTda.Engine.ClusteringStage.recompute(env, ["DummyText"])
+    after
+      GenServer.stop(interpreter)
+    end
+
+    dir = tmp_dir()
+    {:ok, results} = PanicTda.DataExport.export([experiment.id], dir)
+    tables = Map.new(results, fn {table, path, rows} -> {table, {path, rows}} end)
+
+    {_, n_layers} = tables[:clustering_results]
+    {_, n_embeddings} = tables[:embeddings]
+    {_, n_assignments} = tables[:embedding_clusters]
+
+    assert n_layers >= 1
+    # every embedding is assigned in every layer (outliers get a null medoid)
+    assert n_assignments == n_embeddings * n_layers
+
+    clusters =
+      elem(tables[:embedding_clusters], 0)
+      |> Explorer.DataFrame.from_parquet!()
+      |> Explorer.DataFrame.to_rows()
+
+    embedding_ids =
+      elem(tables[:embeddings], 0)
+      |> Explorer.DataFrame.from_parquet!()
+      |> Explorer.DataFrame.to_rows()
+      |> MapSet.new(& &1["id"])
+
+    # assignments point at embeddings that are actually in the export
+    assert Enum.all?(clusters, &MapSet.member?(embedding_ids, &1["embedding_id"]))
+    # at least some rows are non-outliers, i.e. clustering did something
+    assert Enum.any?(clusters, &(&1["medoid_embedding_id"] != nil))
+
+    # one FTLE per network × prompt × embedding model
+    assert {_, 3} = tables[:lyapunov_results]
+
+    [lyapunov | _] =
+      elem(tables[:lyapunov_results], 0)
+      |> Explorer.DataFrame.from_parquet!()
+      |> Explorer.DataFrame.to_rows()
+
+    assert lyapunov["experiment_id"] == experiment.id
+    assert lyapunov["embedding_model"] == "DummyText"
+    assert Jason.decode!(lyapunov["network"]) == ["DummyT2I", "DummyI2T"]
+    assert is_float(lyapunov["exponent"])
+    assert is_list(lyapunov["divergence_curve"]) and lyapunov["divergence_curve"] != []
   end
 
   test "exports multiple experiments into combined files" do

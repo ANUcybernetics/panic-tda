@@ -4,7 +4,8 @@ defmodule Mix.Tasks.Experiment.ExportData do
   @moduledoc """
   Dumps one or more experiments to parquet files — everything except the image
   bytes. One file per table (`experiments`, `runs`, `invocations`,
-  `embeddings`, `persistence_diagrams`), suitable for loading back into
+  `embeddings`, `persistence_diagrams`, `clustering_results`,
+  `embedding_clusters`, `lyapunov_results`), suitable for loading back into
   polars/pandas for analysis.
 
       $ mix experiment.export_data <experiment-id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]
@@ -19,8 +20,8 @@ defmodule Mix.Tasks.Experiment.ExportData do
     - `--output` — output directory (default: `./<short-id>_parquet`, or
       `./panic_tda_parquet` when more than one experiment is given)
     - `--embedding-model` — only include this embedding model (repeatable);
-      filters both `embeddings` and `persistence_diagrams`. Defaults to all
-      models.
+      filters `embeddings`, `persistence_diagrams`, `clustering_results`,
+      `embedding_clusters` and `lyapunov_results`. Defaults to all models.
     - `--embed-prompts` — also embed each run's `initial_prompt` and emit it as a
       synthetic `sequence_number == -1` row (`t_0`) in the `invocations` and
       `embeddings` tables. Requires the GPU/Python interpreter (loads the text

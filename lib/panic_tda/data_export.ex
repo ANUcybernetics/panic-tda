@@ -4,11 +4,23 @@ defmodule PanicTda.DataExport do
   files via Explorer.
 
   One file is written per table (`experiments`, `runs`, `invocations`,
-  `embeddings`, `persistence_diagrams`). Array and nested attributes
+  `embeddings`, `persistence_diagrams`, `clustering_results`,
+  `embedding_clusters`, `lyapunov_results`). Array and nested attributes
   (`networks`, `network`, `prompts`, `embedding_models`) and the persistence
   diagram payload (`diagram_data`) are serialised to JSON strings so the output
   is portable; embedding vectors become a `list[f32]` column. Timestamps are
   ISO 8601 strings.
+
+  Clustering is global — a clustering run pools every embedding for a model
+  across all experiments — so the two cluster tables are scoped rather than
+  copied wholesale: `embedding_clusters` covers only the embeddings belonging to
+  the exported experiments, and `clustering_results` only the runs for the
+  embedding models those experiments used. Two consequences for downstream
+  analysis: a cluster's `medoid_embedding_id` may name an embedding that lives
+  in an experiment outside the export (treat it as an opaque cluster label, not
+  a joinable key), and cluster sizes computed from the export are counts within
+  the export, not within the clustering run that produced them. A null
+  `medoid_embedding_id` marks an outlier.
 
   The output is intended to be read back with polars/pandas for downstream
   analysis; see `db/load_with_polars.py` for an example wide join.
@@ -211,6 +223,44 @@ defmodule PanicTda.DataExport do
          {"completed_at", &iso(&1.completed_at), :string},
          {"inserted_at", &iso(&1.inserted_at), :string},
          {"updated_at", &iso(&1.updated_at), :string}
+       ]},
+      {:clustering_results, read_clustering_results(experiment_ids, models),
+       [
+         {"id", & &1.id, :string},
+         {"embedding_model", & &1.embedding_model, :string},
+         {"algorithm", & &1.algorithm, :string},
+         {"parameters", &json(&1.parameters), :string},
+         {"layer", & &1.layer, {:s, 64}},
+         {"started_at", &iso(&1.started_at), :string},
+         {"completed_at", &iso(&1.completed_at), :string},
+         {"inserted_at", &iso(&1.inserted_at), :string},
+         {"updated_at", &iso(&1.updated_at), :string}
+       ]},
+      {:embedding_clusters, read_embedding_clusters(experiment_ids, models),
+       [
+         {"id", & &1.id, :string},
+         {"embedding_id", & &1.embedding_id, :string},
+         {"clustering_result_id", & &1.clustering_result_id, :string},
+         {"medoid_embedding_id", & &1.medoid_embedding_id, :string},
+         {"inserted_at", &iso(&1.inserted_at), :string},
+         {"updated_at", &iso(&1.updated_at), :string}
+       ]},
+      {:lyapunov_results, read_lyapunov_results(experiment_ids, models),
+       [
+         {"id", & &1.id, :string},
+         {"experiment_id", & &1.experiment_id, :string},
+         {"embedding_model", & &1.embedding_model, :string},
+         {"network", &json(&1.network), :string},
+         {"prompt", & &1.prompt, :string},
+         {"exponent", &lyapunov_field(&1, :exponent), {:f, 64}},
+         {"r_squared", &lyapunov_field(&1, :r_squared), {:f, 64}},
+         {"num_pairs", &lyapunov_field(&1, :num_pairs), {:s, 64}},
+         {"num_timesteps", &lyapunov_field(&1, :num_timesteps), {:s, 64}},
+         {"divergence_curve", &lyapunov_field(&1, :divergence_curve), {:list, {:f, 64}}},
+         {"started_at", &iso(&1.started_at), :string},
+         {"completed_at", &iso(&1.completed_at), :string},
+         {"inserted_at", &iso(&1.inserted_at), :string},
+         {"updated_at", &iso(&1.updated_at), :string}
        ]}
     ]
   end
@@ -261,10 +311,48 @@ defmodule PanicTda.DataExport do
     |> Ash.read!()
   end
 
+  # Clustering runs are global, so there is no experiment to filter on — scope
+  # instead to the embedding models the exported experiments actually used.
+  defp read_clustering_results(experiment_ids, models) do
+    model_names = models || exported_embedding_models(experiment_ids)
+
+    PanicTda.ClusteringResult
+    |> Ash.Query.filter(embedding_model in ^model_names)
+    |> Ash.read!()
+  end
+
+  defp read_embedding_clusters(experiment_ids, models) do
+    PanicTda.EmbeddingCluster
+    |> Ash.Query.filter(embedding.invocation.run.experiment_id in ^experiment_ids)
+    |> filter_cluster_models(models)
+    |> Ash.read!()
+  end
+
+  defp read_lyapunov_results(experiment_ids, models) do
+    PanicTda.LyapunovResult
+    |> Ash.Query.filter(experiment_id in ^experiment_ids)
+    |> filter_models(models)
+    |> Ash.read!()
+  end
+
+  defp exported_embedding_models(experiment_ids) do
+    experiment_ids
+    |> read_experiments()
+    |> Enum.flat_map(& &1.embedding_models)
+    |> Enum.uniq()
+  end
+
   defp filter_models(query, nil), do: query
 
   defp filter_models(query, models) when is_list(models),
     do: Ash.Query.filter(query, embedding_model in ^models)
+
+  # `embedding_clusters` has no `embedding_model` of its own; it inherits one
+  # from the clustering run it belongs to.
+  defp filter_cluster_models(query, nil), do: query
+
+  defp filter_cluster_models(query, models) when is_list(models),
+    do: Ash.Query.filter(query, clustering_result.embedding_model in ^models)
 
   defp build_frame(records, columns) do
     data =
@@ -285,4 +373,7 @@ defmodule PanicTda.DataExport do
 
   defp vector_to_list(nil), do: nil
   defp vector_to_list(%Nx.Tensor{} = tensor), do: Nx.to_flat_list(tensor)
+
+  defp lyapunov_field(%{lyapunov_data: nil}, _key), do: nil
+  defp lyapunov_field(%{lyapunov_data: data}, key), do: Map.get(data, key)
 end
