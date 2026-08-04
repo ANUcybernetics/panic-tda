@@ -51,7 +51,7 @@ defmodule Mix.Tasks.Experiment.ExportImages do
     File.mkdir_p!(output_dir)
 
     Mix.shell().info("Loading invocations from experiment #{short_id(experiment.id)}...")
-    {invocations, text_lookup} = load_invocations(experiment.id)
+    {invocations, run_lookup, text_lookup} = load_invocations(experiment.id)
 
     invocations =
       case Keyword.get(opts, :limit) do
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Experiment.ExportImages do
 
     invocations
     |> Task.async_stream(
-      fn inv -> write_invocation(inv, experiment, output_dir, text_lookup) end,
+      fn inv -> write_invocation(inv, experiment, output_dir, run_lookup, text_lookup) end,
       max_concurrency: System.schedulers_online() * 2,
       timeout: 60_000,
       ordered: false
@@ -96,19 +96,27 @@ defmodule Mix.Tasks.Experiment.ExportImages do
       |> Ash.read!()
       |> Map.new(fn inv -> {inv.id, inv.output_text} end)
 
+    # Loading `:run` per invocation expands to one `id ==` clause per run, which
+    # blows SQLite's expression-depth limit (1000) once an experiment has more
+    # than a few hundred runs. Fetch the runs in one query and join in memory.
+    run_lookup =
+      PanicTda.Run
+      |> Ash.Query.filter(experiment_id == ^experiment_id)
+      |> Ash.read!()
+      |> Map.new(fn run -> {run.id, run} end)
+
     image_invocations =
       PanicTda.Invocation
       |> Ash.Query.filter(run.experiment_id == ^experiment_id)
       |> Ash.Query.filter(not is_nil(output_image))
-      |> Ash.Query.load([:run])
       |> Ash.Query.sort([:run_id, :sequence_number])
       |> Ash.read!()
 
-    {image_invocations, text_lookup}
+    {image_invocations, run_lookup, text_lookup}
   end
 
-  defp write_invocation(inv, experiment, output_dir, text_lookup) do
-    run = inv.run
+  defp write_invocation(inv, experiment, output_dir, run_lookup, text_lookup) do
+    run = Map.fetch!(run_lookup, inv.run_id)
 
     network_slug = Enum.join(run.network, "_")
     prompt_slug = slugify(run.initial_prompt)
