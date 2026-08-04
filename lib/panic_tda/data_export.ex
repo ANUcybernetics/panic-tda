@@ -23,7 +23,7 @@ defmodule PanicTda.DataExport do
   `medoid_embedding_id` marks an outlier.
 
   The output is intended to be read back with polars/pandas for downstream
-  analysis; see `db/load_with_polars.py` for an example wide join.
+  analysis; see `analysis/load_with_polars.py` for an example wide join.
   """
 
   require Ash.Query
