@@ -142,6 +142,15 @@ All stages support resuming --- if an experiment is interrupted, each stage can
 detect which work has already been completed and pick up where it left off via
 `Engine.resume_experiment/1`.
 
+A failed invocation step in the runs stage is retried rather than aborting the
+experiment (`Engine.Retry`). The failed step has written nothing, so the retry
+simply redraws it. The first retry reuses the Python process; later ones replace
+it, because a CUDA device-side assert poisons the process's CUDA context and
+every subsequent call in that process returns the same sticky error. The
+interpreter and its env are therefore held together as a restartable
+`Models.PythonSession`, which hands out its current env so a restart can happen
+underneath the run loop.
+
 ### Python interop
 
 GPU model invocation, embedding computation, TDA and clustering all happen in
