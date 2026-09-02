@@ -104,7 +104,10 @@ See TASK-82.
 
 ## Reproducing
 
-Script: `analysis/caption_length.py` (to be added — see TASK-80 acceptance
-criterion 1). Group `invocations.parquet` by `model` for rows where
-`type == "text"` and `sequence_number > 0`, and count whitespace-separated
-tokens in `output_text`.
+```
+./analysis/caption_length.py [parquet_dir ...]
+```
+
+Defaults to the `balanced_panel_5x5` dump and reproduces every table above.
+Pass several dumps to pool them, which is how the truncated panel and the
+natural-length runs get compared in one table.

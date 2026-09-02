@@ -87,7 +87,7 @@ def load_arm(export_dir: pathlib.Path, network: str | None) -> pl.DataFrame:
 
 def caption_stats(frame: pl.DataFrame) -> pl.DataFrame:
     return frame.with_columns(
-        words=pl.col("output_text").str.split(" ").list.len(),
+        words=pl.col("output_text").str.extract_all(r"\S+").list.len(),
         chars=pl.col("output_text").str.len_chars(),
         complete=pl.col("output_text").str.strip_chars().str.contains(TERMINAL.pattern),
     )
