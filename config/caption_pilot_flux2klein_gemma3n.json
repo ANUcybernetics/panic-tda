@@ -1,0 +1,29 @@
+{
+  "networks": [["Flux2Klein", "Gemma3n"]],
+  "prompts": [
+    "a red apple on a wooden table",
+    "a cat sitting on a windowsill",
+    "a bicycle leaning against a brick wall",
+    "a glass bottle beside a candle",
+    "a picnic basket under a tree beside a river",
+    "a bookshelf filled with plants, books, and photographs",
+    "a train station with travellers carrying colourful luggage",
+    "a market stall displaying fruit, flowers, and handmade crafts",
+    "a man standing in a doorway",
+    "a woman reading beside a window",
+    "a family dinner in a small kitchen",
+    "two friends talking at a cafe",
+    "a bustling Tokyo street at night",
+    "a storm approaching a fishing village",
+    "a festival procession moving through a narrow street",
+    "firefighters responding to a building fire",
+    "a machine dreaming of a forest",
+    "the feeling of nostalgia",
+    "a city slowly turning into a forest",
+    "a library with impossible architecture"
+  ],
+  "embedding_models": ["Qwen3Embed"],
+  "max_length": 50,
+  "num_runs": 4,
+  "i2t_max_new_tokens": 1024
+}
