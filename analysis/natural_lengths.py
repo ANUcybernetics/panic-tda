@@ -111,13 +111,19 @@ pm.load_model("SD35Medium")
 pm.swap_to_gpu("SD35Medium")
 import torch
 
+# the captioners above have already peaked, so start the SD35 measurement clean
+torch.cuda.reset_peak_memory_stats()
 t0 = time.time()
 _ = pm.invoke_t2i_batch("SD35Medium", caps)
 secs = time.time() - t0
+# diffusers warns separately for the two encoders. A CLIP warning is expected
+# and architectural (77 tokens, decision-01); a T5 warning is a failure, since
+# the whole point of loading T5 is that it sees the caption in full.
 results["SD35Medium+T5"] = {
     "secs_per_image": secs / len(caps),
     "prompt_words": [len(c.split()) for c in caps],
-    "truncation_warnings": [w for w in warnings_seen if "truncated" in w],
+    "t5_truncation_warnings": [w for w in warnings_seen if "max_sequence_length" in w],
+    "clip_truncation_warnings": [w for w in warnings_seen if "CLIP can only handle" in w],
     "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9,
 }
 print("SD35Medium+T5", json.dumps(results["SD35Medium+T5"]), flush=True)

@@ -731,7 +731,15 @@ def unload_all_models() -> None:
 # ---------------------------------------------------------------------------
 
 _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
-    "SD35Medium": {"num_inference_steps": 20, "guidance_scale": 5.0},
+    # max_sequence_length is the T5 branch's ceiling and defaults to 256 in
+    # diffusers; 512 is the pipeline maximum and what decision-01 calls for,
+    # since natural captions reach ~300 words. CLIP's 77 tokens are separate
+    # and architectural.
+    "SD35Medium": {
+        "num_inference_steps": 20,
+        "guidance_scale": 5.0,
+        "max_sequence_length": 512,
+    },
     "Flux2Dev": {"num_inference_steps": 15, "guidance_scale": 3.5},
     "HunyuanImage": {"num_inference_steps": 25},
     "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
