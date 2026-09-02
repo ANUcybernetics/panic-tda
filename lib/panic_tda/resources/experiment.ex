@@ -40,6 +40,12 @@ defmodule PanicTda.Experiment do
       public?(true)
     end
 
+    # Uniform generation ceiling applied to every image-to-text model in the
+    # experiment; nil keeps each model's own default from panic_models.py.
+    attribute :i2t_max_new_tokens, :integer do
+      public?(true)
+    end
+
     attribute :started_at, :utc_datetime_usec do
       public?(true)
     end
@@ -66,11 +72,26 @@ defmodule PanicTda.Experiment do
     defaults([:read, :destroy])
 
     create :create do
-      accept([:networks, :num_runs, :prompts, :embedding_models, :max_length])
+      accept([
+        :networks,
+        :num_runs,
+        :prompts,
+        :embedding_models,
+        :max_length,
+        :i2t_max_new_tokens
+      ])
     end
 
     update :update do
-      accept([:networks, :num_runs, :prompts, :embedding_models, :max_length])
+      accept([
+        :networks,
+        :num_runs,
+        :prompts,
+        :embedding_models,
+        :max_length,
+        :i2t_max_new_tokens
+      ])
+
       require_atomic?(false)
     end
 
@@ -98,6 +119,12 @@ defmodule PanicTda.Experiment do
 
     validate compare(:num_runs, greater_than: 0) do
       message("must be greater than 0")
+      on([:create, :update])
+    end
+
+    validate compare(:i2t_max_new_tokens, greater_than: 0) do
+      message("must be greater than 0")
+      where(present(:i2t_max_new_tokens))
       on([:create, :update])
     end
 

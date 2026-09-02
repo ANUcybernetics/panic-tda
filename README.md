@@ -66,6 +66,8 @@ Fields:
 - **embedding_models**: models used in the embeddings stage
 - **max_length**: number of model invocations per run
 - **num_runs** (optional, default 1): how many runs to create per prompt
+- **i2t_max_new_tokens** (optional): uniform generation ceiling for every
+  image-to-text model; defaults to each model's own limit
 
 Then, to run the experiment:
 

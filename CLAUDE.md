@@ -73,6 +73,8 @@ embeddings → TDA → Lyapunov).
 - **embedding_models**: models used in the embeddings stage
 - **max_length**: number of model invocations per run
 - **num_runs**: number of runs per prompt per network (optional, default 1)
+- **i2t_max_new_tokens**: uniform generation ceiling for every image-to-text
+  model (optional; default is each model's own limit in `panic_models.py`)
 
 ### Available models
 

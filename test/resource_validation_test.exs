@@ -77,6 +77,20 @@ defmodule ResourceValidationTest do
       end
     end
 
+    test "rejects i2t_max_new_tokens of 0" do
+      assert_raise Ash.Error.Invalid, fn ->
+        create_experiment(%{i2t_max_new_tokens: 0})
+      end
+    end
+
+    test "accepts nil i2t_max_new_tokens" do
+      assert create_experiment().i2t_max_new_tokens == nil
+    end
+
+    test "accepts positive i2t_max_new_tokens" do
+      assert create_experiment(%{i2t_max_new_tokens: 512}).i2t_max_new_tokens == 512
+    end
+
     test "accepts num_runs of 1" do
       experiment = create_experiment(%{num_runs: 1})
       assert experiment.num_runs == 1

@@ -172,6 +172,7 @@ defmodule PanicTda.DataExport do
          {"prompts", &json(&1.prompts), :string},
          {"embedding_models", &json(&1.embedding_models), :string},
          {"max_length", & &1.max_length, {:s, 64}},
+         {"i2t_max_new_tokens", & &1.i2t_max_new_tokens, {:s, 64}},
          {"started_at", &iso(&1.started_at), :string},
          {"completed_at", &iso(&1.completed_at), :string},
          {"inserted_at", &iso(&1.inserted_at), :string},

@@ -34,6 +34,18 @@ defmodule PanicTda.Models.PythonBridge do
     end
   end
 
+  @doc """
+  Apply an experiment's uniform image-to-text generation ceiling to the Python
+  model registry (nil restores each model's own default).
+  """
+  def set_i2t_max_new_tokens(env, value) when is_nil(value) or is_integer(value) do
+    with :ok <- ensure_setup(env),
+         {:ok, nil} <-
+           Snex.pyeval(env, "panic_models.set_i2t_max_new_tokens(value)", %{"value" => value}) do
+      :ok
+    end
+  end
+
   def ensure_model_loaded(env, model_name) do
     case Snex.pyeval(
            env,

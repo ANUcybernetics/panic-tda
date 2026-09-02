@@ -831,6 +831,24 @@ def invoke_i2t(name: str, image_b64: str) -> str:
 
 _I2T_MAX_BATCH = 8
 
+# Experiment-level override for the per-model generation ceilings below. None
+# means each captioner keeps its own default; an int replaces every ceiling
+# (including Moondream's max_tokens) so the limit is uniform across the panel.
+_I2T_MAX_NEW_TOKENS_OVERRIDE: int | None = None
+
+
+def set_i2t_max_new_tokens(value: int | None) -> None:
+    global _I2T_MAX_NEW_TOKENS_OVERRIDE
+    _I2T_MAX_NEW_TOKENS_OVERRIDE = value
+
+
+def _i2t_max_new_tokens(default: int) -> int:
+    return (
+        default
+        if _I2T_MAX_NEW_TOKENS_OVERRIDE is None
+        else _I2T_MAX_NEW_TOKENS_OVERRIDE
+    )
+
 
 def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
     """Run batch I2T inference. Returns list of caption texts."""
@@ -848,17 +866,15 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
 # --- Moondream ---
 
 
-_MOONDREAM_SETTINGS: dict[str, Any] = {
-    "temperature": 0.0,
-    "max_tokens": 256,
-}
+def _moondream_settings() -> dict[str, Any]:
+    return {"temperature": 0.0, "max_tokens": _i2t_max_new_tokens(256)}
 
 
 def _invoke_moondream(_name: str, img: Image.Image) -> str:
     model = _models["Moondream"]
     with torch.inference_mode():
         encoded = model.encode_image(img)
-        cap = model.caption(encoded, length="short", settings=_MOONDREAM_SETTINGS)
+        cap = model.caption(encoded, length="short", settings=_moondream_settings())
     return cap["caption"].strip()
 
 
@@ -868,7 +884,7 @@ def _invoke_moondream_batch(_name: str, images: list[Image.Image]) -> list[str]:
     with torch.inference_mode():
         for img in images:
             encoded = model.encode_image(img)
-            cap = model.caption(encoded, length="short", settings=_MOONDREAM_SETTINGS)
+            cap = model.caption(encoded, length="short", settings=_moondream_settings())
             results.append(cap["caption"].strip())
     return results
 
@@ -932,7 +948,9 @@ def _invoke_chat_template(name: str, img: Image.Image) -> str:
         inputs = inputs.to(target)
     with torch.no_grad():
         gen_ids = model_dict["model"].generate(
-            **inputs, max_new_tokens=128, **cfg["extra_generate_kwargs"]
+            **inputs,
+            max_new_tokens=_i2t_max_new_tokens(128),
+            **cfg["extra_generate_kwargs"],
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return (
@@ -963,7 +981,9 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
         inputs = inputs.to(target)
     with torch.no_grad():
         gen_ids = model_dict["model"].generate(
-            **inputs, max_new_tokens=128, **cfg["extra_generate_kwargs"]
+            **inputs,
+            max_new_tokens=_i2t_max_new_tokens(128),
+            **cfg["extra_generate_kwargs"],
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return [
@@ -982,7 +1002,9 @@ def _invoke_florence2(_name: str, img: Image.Image) -> str:
         text=task_prompt, images=img, return_tensors="pt"
     ).to(florence["model"].device, torch.bfloat16)
     with torch.no_grad():
-        gen_ids = florence["model"].generate(**inputs, max_new_tokens=1024, num_beams=3)
+        gen_ids = florence["model"].generate(
+            **inputs, max_new_tokens=_i2t_max_new_tokens(1024), num_beams=3
+        )
     text = florence["processor"].batch_decode(gen_ids, skip_special_tokens=False)[0]
     parsed = florence["processor"].post_process_generation(
         text, task=task_prompt, image_size=img.size
@@ -1022,7 +1044,9 @@ def _invoke_qwen25vl(_name: str, img: Image.Image) -> str:
         return_tensors="pt",
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
-        gen_ids = qwen_vl["model"].generate(**inputs, max_new_tokens=128)
+        gen_ids = qwen_vl["model"].generate(
+            **inputs, max_new_tokens=_i2t_max_new_tokens(128)
+        )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return (
         qwen_vl["processor"].batch_decode(gen_ids, skip_special_tokens=True)[0].strip()
@@ -1059,7 +1083,9 @@ def _invoke_qwen25vl_batch(_name: str, images: list[Image.Image]) -> list[str]:
         return_tensors="pt",
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
-        gen_ids = qwen_vl["model"].generate(**inputs, max_new_tokens=128)
+        gen_ids = qwen_vl["model"].generate(
+            **inputs, max_new_tokens=_i2t_max_new_tokens(128)
+        )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return [
         s.strip()
@@ -1095,7 +1121,7 @@ def _invoke_gemma3n(_name: str, img: Image.Image) -> str:
     input_len = inputs["input_ids"].shape[1]
     with torch.no_grad():
         gen_ids = gemma3n["model"].generate(
-            **inputs, max_new_tokens=100, do_sample=False
+            **inputs, max_new_tokens=_i2t_max_new_tokens(100), do_sample=False
         )
     return (
         gemma3n["processor"]
@@ -1134,7 +1160,7 @@ def _invoke_gemma3n_batch(_name: str, images: list[Image.Image]) -> list[str]:
     input_len = inputs["input_ids"].shape[1]
     with torch.no_grad():
         gen_ids = gemma3n["model"].generate(
-            **inputs, max_new_tokens=100, do_sample=False
+            **inputs, max_new_tokens=_i2t_max_new_tokens(100), do_sample=False
         )
     return [
         s.strip()

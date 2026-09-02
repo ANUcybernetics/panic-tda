@@ -92,6 +92,40 @@ defmodule PanicTda.EngineTest do
       assert inv3.model == "DummyI2T"
     end
 
+    test "applies i2t_max_new_tokens to the Python model registry" do
+      {:ok, interpreter} = PythonInterpreter.start_link()
+      {:ok, env} = Snex.make_env(interpreter)
+      on_exit(fn -> if Process.alive?(interpreter), do: GenServer.stop(interpreter) end)
+
+      read_override = fn ->
+        {:ok, value} = Snex.pyeval(env, "return panic_models._I2T_MAX_NEW_TOKENS_OVERRIDE", %{})
+        value
+      end
+
+      capped =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          prompts: ["A beautiful sunset"],
+          embedding_models: ["DummyText"],
+          max_length: 2,
+          i2t_max_new_tokens: 512
+        })
+
+      {:ok, _} = Engine.perform_experiment(capped.id, env: env)
+      assert read_override.() == 512
+
+      uncapped =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          prompts: ["A beautiful sunset"],
+          embedding_models: ["DummyText"],
+          max_length: 2
+        })
+
+      {:ok, _} = Engine.perform_experiment(uncapped.id, env: env)
+      assert read_override.() == nil
+    end
+
     test "creates embeddings for text invocations" do
       experiment =
         PanicTda.create_experiment!(%{

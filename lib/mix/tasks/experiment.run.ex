@@ -17,6 +17,8 @@ defmodule Mix.Tasks.Experiment.Run do
   Optional keys:
 
     - `num_runs` - number of runs per prompt (default: 1)
+    - `i2t_max_new_tokens` - uniform generation ceiling for every image-to-text
+      model (default: each model's own hardcoded limit)
 
   The task ensures the database is created and migrated before running.
   """
@@ -59,7 +61,8 @@ defmodule Mix.Tasks.Experiment.Run do
   }
 
   @optional_keys %{
-    "num_runs" => {:num_runs, 1}
+    "num_runs" => {:num_runs, 1},
+    "i2t_max_new_tokens" => {:i2t_max_new_tokens, nil}
   }
 
   defp read_config(path) do

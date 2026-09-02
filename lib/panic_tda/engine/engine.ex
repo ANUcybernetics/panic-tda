@@ -24,6 +24,7 @@ defmodule PanicTda.Engine do
     {env, interpreter} = env_from_opts(opts)
 
     try do
+      :ok = PythonBridge.set_i2t_max_new_tokens(env, experiment.i2t_max_new_tokens)
       runs = init_runs(experiment)
 
       runs
@@ -73,6 +74,7 @@ defmodule PanicTda.Engine do
     {env, interpreter} = env_from_opts(opts)
 
     try do
+      :ok = PythonBridge.set_i2t_max_new_tokens(env, experiment.i2t_max_new_tokens)
       runs = find_or_create_runs(experiment)
 
       runs
