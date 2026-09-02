@@ -867,6 +867,8 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
 # --- Moondream ---
 
 
+# caption() is left at its default length="normal" (decision-01); the SMC 2025
+# runs used length="short", which is a brevity instruction, not a ceiling.
 def _moondream_settings() -> dict[str, Any]:
     return {"temperature": 0.0, "max_tokens": _i2t_max_new_tokens()}
 
@@ -875,7 +877,7 @@ def _invoke_moondream(_name: str, img: Image.Image) -> str:
     model = _models["Moondream"]
     with torch.inference_mode():
         encoded = model.encode_image(img)
-        cap = model.caption(encoded, length="short", settings=_moondream_settings())
+        cap = model.caption(encoded, settings=_moondream_settings())
     return cap["caption"].strip()
 
 
@@ -885,7 +887,7 @@ def _invoke_moondream_batch(_name: str, images: list[Image.Image]) -> list[str]:
     with torch.inference_mode():
         for img in images:
             encoded = model.encode_image(img)
-            cap = model.caption(encoded, length="short", settings=_moondream_settings())
+            cap = model.caption(encoded, settings=_moondream_settings())
             results.append(cap["caption"].strip())
     return results
 

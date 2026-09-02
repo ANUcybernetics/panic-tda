@@ -26,7 +26,7 @@ The alternative Sungyeon proposed in TASK-80 (matched capped/uncapped arms) rema
 
 - `balanced_panel_5x5` is a truncated dataset for four captioners and for all five SD35Medium networks; the paper's methods must say so, and the caption-length pilot (`config/caption_pilot_flux2klein_gemma3n.json`) tests whether the truncation changed the dynamics
 - captioner verbosity becomes a genuine property of the captioner rather than of the ceiling; RQ2 attribution treats length as a measured covariate
-- Moondream's `length="short"` is still a length instruction; whether to switch it to `normal` is open (it is the cross-era anchor with SMC 2025, which also used `short`)
+- Moondream now uses its API default `length="normal"` (Ben: don't get hung up on matching the 2025 paper, which used `short`); the cross-era comparison in TASK-81 has to treat that as a changed setting alongside the changed weight revision
 - longer captions cost more captioner time (Gemma3n batches took roughly 2--3x longer in the pilot) and a loaded T5 encoder adds memory and time to SD35Medium
 
 ## Decision
