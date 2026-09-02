@@ -15,25 +15,25 @@ defmodule PanicTda.Engine do
   require Ash.Query
 
   alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, LyapunovStage}
-  alias PanicTda.Models.PythonBridge
+  alias PanicTda.Models.{PythonBridge, PythonSession}
 
   def perform_experiment(experiment_id, opts \\ []) do
     experiment = PanicTda.get_experiment!(experiment_id)
     experiment = PanicTda.start_experiment!(experiment)
 
-    {env, interpreter} = env_from_opts(opts)
+    {:ok, session} = session_from_opts(opts, experiment)
 
     try do
-      :ok = PythonBridge.set_i2t_max_new_tokens(env, experiment.i2t_max_new_tokens)
       runs = init_runs(experiment)
 
       runs
       |> Enum.group_by(& &1.network)
       |> Enum.each(fn {_network, group} ->
-        :ok = PythonBridge.unload_all_models(env)
-        :ok = RunExecutor.execute_batch(env, group)
+        :ok = PythonBridge.unload_all_models(PythonSession.env(session))
+        :ok = RunExecutor.execute_batch(session, group)
       end)
 
+      env = PythonSession.env(session)
       :ok = PythonBridge.unload_all_models(env)
 
       Enum.each(runs, fn run ->
@@ -47,7 +47,7 @@ defmodule PanicTda.Engine do
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
     after
-      if interpreter, do: GenServer.stop(interpreter)
+      PythonSession.stop(session)
     end
   end
 
@@ -71,19 +71,19 @@ defmodule PanicTda.Engine do
   end
 
   defp do_resume(experiment, opts) do
-    {env, interpreter} = env_from_opts(opts)
+    {:ok, session} = session_from_opts(opts, experiment)
 
     try do
-      :ok = PythonBridge.set_i2t_max_new_tokens(env, experiment.i2t_max_new_tokens)
       runs = find_or_create_runs(experiment)
 
       runs
       |> Enum.group_by(& &1.network)
       |> Enum.each(fn {_network, group} ->
-        :ok = PythonBridge.unload_all_models(env)
-        :ok = RunExecutor.resume_batch(env, group)
+        :ok = PythonBridge.unload_all_models(PythonSession.env(session))
+        :ok = RunExecutor.resume_batch(session, group)
       end)
 
+      env = PythonSession.env(session)
       :ok = PythonBridge.unload_all_models(env)
 
       Enum.each(runs, fn run ->
@@ -97,7 +97,7 @@ defmodule PanicTda.Engine do
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
     after
-      if interpreter, do: GenServer.stop(interpreter)
+      PythonSession.stop(session)
     end
   end
 
@@ -115,15 +115,15 @@ defmodule PanicTda.Engine do
     end
   end
 
-  defp env_from_opts(opts) do
-    case Keyword.get(opts, :env) do
-      nil ->
-        {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
-        {:ok, env} = Snex.make_env(interpreter)
-        {env, interpreter}
+  # The experiment's image-to-text ceiling is Python-side state, so it is
+  # re-applied through `on_start` whenever the session boots a fresh
+  # interpreter — including after a retry restarts one mid-run.
+  defp session_from_opts(opts, experiment) do
+    on_start = &PythonBridge.set_i2t_max_new_tokens(&1, experiment.i2t_max_new_tokens)
 
-      env ->
-        {env, nil}
+    case Keyword.get(opts, :env) do
+      nil -> PythonSession.start(on_start)
+      env -> PythonSession.wrap(env, on_start)
     end
   end
 

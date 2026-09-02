@@ -9,3 +9,6 @@ config :ash,
   disable_async?: true
 
 config :logger, level: :warning
+
+# no point sleeping between injected-fault retries
+config :panic_tda, retry_backoff_ms: 0

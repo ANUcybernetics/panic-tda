@@ -5,7 +5,7 @@ defmodule PanicTda.ResumeTest do
 
   alias PanicTda.Engine
   alias PanicTda.Engine.{RunExecutor, EmbeddingsStage}
-  alias PanicTda.Models.PythonInterpreter
+  alias PanicTda.Models.{PythonInterpreter, PythonSession}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
@@ -27,12 +27,13 @@ defmodule PanicTda.ResumeTest do
   defp with_python(_context) do
     {:ok, interpreter} = PythonInterpreter.start_link()
     {:ok, env} = Snex.make_env(interpreter)
+    {:ok, session} = PythonSession.wrap(env)
 
     on_exit(fn ->
       if Process.alive?(interpreter), do: GenServer.stop(interpreter)
     end)
 
-    %{env: env}
+    %{env: env, session: session}
   end
 
   describe "resume_experiment/1" do
@@ -82,11 +83,11 @@ defmodule PanicTda.ResumeTest do
   describe "partial run resume" do
     setup :with_python
 
-    test "completes a partial run", %{env: env} do
+    test "completes a partial run", %{session: session} do
       experiment = create_started_experiment(%{max_length: 4})
       [run] = Engine.init_runs(experiment)
 
-      RunExecutor.execute(env, %{run | max_length: 2})
+      RunExecutor.execute(session, %{run | max_length: 2})
 
       invocations_before =
         PanicTda.Invocation
@@ -95,7 +96,7 @@ defmodule PanicTda.ResumeTest do
 
       assert invocations_before == 2
 
-      :ok = RunExecutor.resume(env, run)
+      :ok = RunExecutor.resume(session, run)
 
       invocations_after =
         PanicTda.Invocation
@@ -105,11 +106,11 @@ defmodule PanicTda.ResumeTest do
       assert invocations_after == 4
     end
 
-    test "skips already-complete runs", %{env: env} do
+    test "skips already-complete runs", %{session: session} do
       experiment = create_started_experiment(%{max_length: 4})
       [run] = Engine.init_runs(experiment)
 
-      RunExecutor.execute(env, run)
+      RunExecutor.execute(session, run)
 
       invocations_before =
         PanicTda.Invocation
@@ -118,7 +119,7 @@ defmodule PanicTda.ResumeTest do
 
       assert invocations_before == 4
 
-      :ok = RunExecutor.resume(env, run)
+      :ok = RunExecutor.resume(session, run)
 
       invocations_after =
         PanicTda.Invocation
@@ -152,10 +153,10 @@ defmodule PanicTda.ResumeTest do
   describe "embeddings resume" do
     setup :with_python
 
-    test "fills in missing embeddings", %{env: env} do
+    test "fills in missing embeddings", %{env: env, session: session} do
       experiment = create_started_experiment(%{max_length: 4})
       [run] = Engine.init_runs(experiment)
-      RunExecutor.execute(env, run)
+      RunExecutor.execute(session, run)
 
       invocations =
         run
@@ -197,11 +198,12 @@ defmodule PanicTda.ResumeTest do
 
       {:ok, interpreter} = PythonInterpreter.start_link()
       {:ok, env} = Snex.make_env(interpreter)
+      {:ok, session} = PythonSession.wrap(env)
 
       experiment = PanicTda.start_experiment!(experiment)
       [run] = Engine.init_runs(experiment)
 
-      RunExecutor.execute(env, %{run | max_length: 2})
+      RunExecutor.execute(session, %{run | max_length: 2})
 
       GenServer.stop(interpreter)
 

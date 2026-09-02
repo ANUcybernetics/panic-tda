@@ -2,17 +2,22 @@ defmodule PanicTda.Engine.RunExecutor do
   @moduledoc """
   Executes runs through their model network.
   Supports both single-run and batch execution.
+
+  Every function here takes a `PanicTda.Models.PythonSession` rather than a
+  raw env, so that a step whose Python process died can be retried against a
+  fresh one (see `PanicTda.Engine.Retry`).
   """
 
   require Ash.Query
 
-  alias PanicTda.Models.{GenAI, PythonBridge}
+  alias PanicTda.Engine.Retry
+  alias PanicTda.Models.{GenAI, PythonBridge, PythonSession}
 
-  def execute(env, run) do
-    execute_loop(env, run, run.initial_prompt, 0, nil)
+  def execute(session, run) do
+    execute_loop(session, run, run.initial_prompt, 0, nil)
   end
 
-  def resume(env, run) do
+  def resume(session, run) do
     invocations =
       PanicTda.Invocation
       |> Ash.Query.filter(run_id == ^run.id)
@@ -22,7 +27,7 @@ defmodule PanicTda.Engine.RunExecutor do
 
     case invocations do
       [] ->
-        execute(env, run)
+        execute(session, run)
 
       [last_invocation] ->
         next_seq = last_invocation.sequence_number + 1
@@ -36,12 +41,12 @@ defmodule PanicTda.Engine.RunExecutor do
               :image -> last_invocation.output_image
             end
 
-          execute_loop(env, run, output, next_seq, last_invocation.id)
+          execute_loop(session, run, output, next_seq, last_invocation.id)
         end
     end
   end
 
-  def execute_batch(env, runs) do
+  def execute_batch(session, runs) do
     network = hd(runs).network
     max_length = hd(runs).max_length
 
@@ -50,10 +55,10 @@ defmodule PanicTda.Engine.RunExecutor do
         %{run: run, input: run.initial_prompt, prev_invocation_id: nil}
       end)
 
-    execute_batch_loop(env, network, max_length, states, 0)
+    execute_batch_loop(session, network, max_length, states, 0)
   end
 
-  def resume_batch(env, runs) do
+  def resume_batch(session, runs) do
     states =
       Enum.map(runs, fn run ->
         invocations =
@@ -97,28 +102,33 @@ defmodule PanicTda.Engine.RunExecutor do
           Map.drop(state, [:completed_seq])
         end)
 
-      execute_batch_loop(env, network, max_length, resume_states, start_seq)
+      execute_batch_loop(session, network, max_length, resume_states, start_seq)
     end
   end
 
-  defp execute_batch_loop(_env, _network, max_length, _states, seq) when seq >= max_length do
+  defp execute_batch_loop(_session, _network, max_length, _states, seq) when seq >= max_length do
     :ok
   end
 
-  defp execute_batch_loop(env, network, max_length, states, seq) do
+  defp execute_batch_loop(session, network, max_length, states, seq) do
     model_name = Enum.at(network, rem(seq, length(network)))
     output_type = GenAI.output_type(model_name)
     inputs = Enum.map(states, & &1.input)
 
     started_at = DateTime.utc_now()
-    {:ok, outputs} = GenAI.invoke_batch(env, model_name, inputs)
+
+    {:ok, outputs} =
+      Retry.with_retry("#{model_name} step #{seq} (batch of #{length(inputs)})", session, fn env ->
+        GenAI.invoke_batch(env, model_name, inputs)
+      end)
+
     completed_at = DateTime.utc_now()
 
     next_seq = seq + 1
     next_model = Enum.at(network, rem(next_seq, length(network)))
 
     if next_seq < max_length and next_model != model_name do
-      :ok = PythonBridge.swap_model_to_cpu(env, model_name)
+      :ok = PythonBridge.swap_model_to_cpu(PythonSession.env(session), model_name)
     end
 
     new_states =
@@ -145,26 +155,31 @@ defmodule PanicTda.Engine.RunExecutor do
         %{state | input: output, prev_invocation_id: invocation.id}
       end)
 
-    execute_batch_loop(env, network, max_length, new_states, next_seq)
+    execute_batch_loop(session, network, max_length, new_states, next_seq)
   end
 
-  defp execute_loop(_env, run, _input, seq, _prev_id) when seq >= run.max_length do
+  defp execute_loop(_session, run, _input, seq, _prev_id) when seq >= run.max_length do
     :ok
   end
 
-  defp execute_loop(env, run, input, seq, prev_invocation_id) do
+  defp execute_loop(session, run, input, seq, prev_invocation_id) do
     model_name = Enum.at(run.network, rem(seq, length(run.network)))
     output_type = GenAI.output_type(model_name)
 
     started_at = DateTime.utc_now()
-    {:ok, output} = GenAI.invoke(env, model_name, input)
+
+    {:ok, output} =
+      Retry.with_retry("#{model_name} step #{seq}", session, fn env ->
+        GenAI.invoke(env, model_name, input)
+      end)
+
     completed_at = DateTime.utc_now()
 
     next_seq = seq + 1
     next_model = Enum.at(run.network, rem(next_seq, length(run.network)))
 
     if next_seq < run.max_length and next_model != model_name do
-      :ok = PythonBridge.swap_model_to_cpu(env, model_name)
+      :ok = PythonBridge.swap_model_to_cpu(PythonSession.env(session), model_name)
     end
 
     attrs = %{
@@ -185,6 +200,6 @@ defmodule PanicTda.Engine.RunExecutor do
 
     invocation = PanicTda.create_invocation!(attrs)
 
-    execute_loop(env, run, output, next_seq, invocation.id)
+    execute_loop(session, run, output, next_seq, invocation.id)
   end
 end
