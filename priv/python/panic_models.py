@@ -831,9 +831,12 @@ def invoke_i2t(name: str, image_b64: str) -> str:
 
 _I2T_MAX_BATCH = 8
 
-# Experiment-level override for the per-model generation ceilings below. None
-# means each captioner keeps its own default; an int replaces every ceiling
-# (including Moondream's max_tokens) so the limit is uniform across the panel.
+# Generation ceiling for every captioner. The default is deliberately far
+# above any natural caption length so models terminate on their own (the
+# panel's captioners stop at ~100-300 words); the balanced_panel_5x5 run used
+# per-model ceilings of 100-128 tokens that cut most captions off mid-sentence.
+# An experiment can override it via its i2t_max_new_tokens config key.
+_I2T_MAX_NEW_TOKENS_DEFAULT = 1024
 _I2T_MAX_NEW_TOKENS_OVERRIDE: int | None = None
 
 
@@ -842,12 +845,10 @@ def set_i2t_max_new_tokens(value: int | None) -> None:
     _I2T_MAX_NEW_TOKENS_OVERRIDE = value
 
 
-def _i2t_max_new_tokens(default: int) -> int:
-    return (
-        default
-        if _I2T_MAX_NEW_TOKENS_OVERRIDE is None
-        else _I2T_MAX_NEW_TOKENS_OVERRIDE
-    )
+def _i2t_max_new_tokens() -> int:
+    if _I2T_MAX_NEW_TOKENS_OVERRIDE is None:
+        return _I2T_MAX_NEW_TOKENS_DEFAULT
+    return _I2T_MAX_NEW_TOKENS_OVERRIDE
 
 
 def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
@@ -867,7 +868,7 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
 
 
 def _moondream_settings() -> dict[str, Any]:
-    return {"temperature": 0.0, "max_tokens": _i2t_max_new_tokens(256)}
+    return {"temperature": 0.0, "max_tokens": _i2t_max_new_tokens()}
 
 
 def _invoke_moondream(_name: str, img: Image.Image) -> str:
@@ -949,7 +950,7 @@ def _invoke_chat_template(name: str, img: Image.Image) -> str:
     with torch.no_grad():
         gen_ids = model_dict["model"].generate(
             **inputs,
-            max_new_tokens=_i2t_max_new_tokens(128),
+            max_new_tokens=_i2t_max_new_tokens(),
             **cfg["extra_generate_kwargs"],
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
@@ -982,7 +983,7 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     with torch.no_grad():
         gen_ids = model_dict["model"].generate(
             **inputs,
-            max_new_tokens=_i2t_max_new_tokens(128),
+            max_new_tokens=_i2t_max_new_tokens(),
             **cfg["extra_generate_kwargs"],
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
@@ -1003,7 +1004,7 @@ def _invoke_florence2(_name: str, img: Image.Image) -> str:
     ).to(florence["model"].device, torch.bfloat16)
     with torch.no_grad():
         gen_ids = florence["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(1024), num_beams=3
+            **inputs, max_new_tokens=_i2t_max_new_tokens(), num_beams=3
         )
     text = florence["processor"].batch_decode(gen_ids, skip_special_tokens=False)[0]
     parsed = florence["processor"].post_process_generation(
@@ -1045,7 +1046,7 @@ def _invoke_qwen25vl(_name: str, img: Image.Image) -> str:
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
         gen_ids = qwen_vl["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(128)
+            **inputs, max_new_tokens=_i2t_max_new_tokens()
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return (
@@ -1084,7 +1085,7 @@ def _invoke_qwen25vl_batch(_name: str, images: list[Image.Image]) -> list[str]:
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
         gen_ids = qwen_vl["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(128)
+            **inputs, max_new_tokens=_i2t_max_new_tokens()
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return [
@@ -1121,7 +1122,7 @@ def _invoke_gemma3n(_name: str, img: Image.Image) -> str:
     input_len = inputs["input_ids"].shape[1]
     with torch.no_grad():
         gen_ids = gemma3n["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(100), do_sample=False
+            **inputs, max_new_tokens=_i2t_max_new_tokens(), do_sample=False
         )
     return (
         gemma3n["processor"]
@@ -1160,7 +1161,7 @@ def _invoke_gemma3n_batch(_name: str, images: list[Image.Image]) -> list[str]:
     input_len = inputs["input_ids"].shape[1]
     with torch.no_grad():
         gen_ids = gemma3n["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(100), do_sample=False
+            **inputs, max_new_tokens=_i2t_max_new_tokens(), do_sample=False
         )
     return [
         s.strip()

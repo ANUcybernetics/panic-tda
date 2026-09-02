@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - sungyeon-hong
 created_date: '2026-08-13'
+updated_date: '2026-09-02 06:17'
 labels:
   - analysis
   - paper
@@ -35,3 +36,9 @@ Depends on TASK-82. The observed lengths are not natural model behaviour — fou
 - [ ] #4 Decision recorded on whether future runs use matched capped/uncapped arms, a single capped condition, or no cap, with rationale
 - [ ] #5 If a cap is adopted, generation-time `max_tokens` support confirmed or implemented for every image-to-text model in the panel, and the equivalent word count documented per model
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Ben's decision 2026-09-02 (backlog/decisions/decision-01): no truncation anywhere by default; captioners run to natural termination (ceiling 1024 in panic_models.py, override via i2t_max_new_tokens config key), SD35Medium loads its T5 encoder. A capped arm is still possible via the config key but is a manipulation, not the default. Also: Moondream's brevity is its length="short" mode (a prompt-level instruction, used in the SMC 2025 code too), so a uniform max_tokens cap does not make the mechanism uniform; and SD35Medium had no T5 loaded, so its networks truncated every caption at 77 CLIP tokens regardless of captioner.
+<!-- SECTION:NOTES:END -->

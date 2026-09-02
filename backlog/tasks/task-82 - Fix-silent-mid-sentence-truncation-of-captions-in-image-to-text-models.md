@@ -5,6 +5,7 @@ status: To Do
 assignee:
   - sungyeon-hong
 created_date: '2026-08-13'
+updated_date: '2026-09-02 06:17'
 labels:
   - analysis
   - paper
@@ -35,10 +36,16 @@ Note this also reframes TASK-80. The question is not whether to introduce trunca
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `max_new_tokens` audited for every image-to-text model in the panel, with current values and the resulting word-length ceiling documented per model
+- [x] #1 `max_new_tokens` audited for every image-to-text model in the panel, with current values and the resulting word-length ceiling documented per model
 - [ ] #2 Natural caption length measured per model with the limit raised high enough that generation terminates on its own, establishing what each model produces unconstrained
-- [ ] #3 Decision recorded on the truncation policy: either allow natural termination, or impose a uniform cap with trimming back to the last complete sentence rather than mid-word
-- [ ] #4 Policy applied consistently across all image-to-text models, with the chosen limit recorded in the experiment config rather than hardcoded per model
+- [x] #3 Decision recorded on the truncation policy: either allow natural termination, or impose a uniform cap with trimming back to the last complete sentence rather than mid-word
+- [x] #4 Policy applied consistently across all image-to-text models, with the chosen limit recorded in the experiment config rather than hardcoded per model
 - [ ] #5 Assessment written of what this means for `balanced_panel_5x5` and earlier data: whether affected analyses need re-running, and what has to be disclosed in the paper's methods
-- [ ] #6 Truncation rate added as a routine data-quality check, so this cannot recur silently
+- [x] #6 Truncation rate added as a routine data-quality check, so this cannot recur silently
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Ben confirmed the limits were never deliberate. Decision recorded in backlog/decisions/decision-01 (natural termination everywhere). Implemented: uniform ceiling default 1024 with experiment-config override (AC #4), truncation rate in mix experiment.status (AC #6), pilot config/caption_pilot_flux2klein_gemma3n.json running to assess balanced_panel_5x5 (AC #5). Natural-length measurement for the other captioners (AC #2) queued after the pilot.
+<!-- SECTION:NOTES:END -->

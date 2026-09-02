@@ -32,6 +32,7 @@ defmodule Mix.Tasks.Experiment.Status do
       Prompts:          #{inspect(experiment.prompts)}
       Embedding models: #{inspect(experiment.embedding_models)}
       Max length:       #{experiment.max_length}
+      I2T token ceiling: #{experiment.i2t_max_new_tokens || "model default"}
 
     Timestamps:
       Created:       #{format_time(experiment.inserted_at)}
@@ -44,11 +45,39 @@ defmodule Mix.Tasks.Experiment.Status do
       Embeddings:           #{counts.embeddings}
       Persistence diagrams: #{counts.persistence_diagrams}
       Clustering layers:    #{format_layers(counts.clustering_layers)}
+
+    Caption truncation (share not ending in terminal punctuation):
+    #{format_truncation(caption_truncation(experiment))}
     """)
   end
 
   def run(_args) do
     Mix.raise("Usage: mix experiment.status <experiment-id>")
+  end
+
+  # A caption that hit its generation ceiling is cut off mid-sentence, so the
+  # share without terminal punctuation is a direct data-quality check.
+  defp caption_truncation(experiment) do
+    PanicTda.Invocation
+    |> Ash.Query.filter(run.experiment_id == ^experiment.id and type == :text)
+    |> Ash.Query.select([:model, :output_text])
+    |> Ash.read!()
+    |> Enum.group_by(& &1.model, & &1.output_text)
+    |> Enum.map(fn {model, captions} ->
+      truncated = Enum.count(captions, &(not String.match?(String.trim(&1), ~r/[.!?"”)]$/u)))
+      max_words = captions |> Enum.map(&length(String.split(&1))) |> Enum.max()
+      {model, length(captions), truncated, max_words}
+    end)
+    |> Enum.sort()
+  end
+
+  defp format_truncation([]), do: "  (no captions yet)"
+
+  defp format_truncation(rows) do
+    Enum.map_join(rows, "\n", fn {model, n, truncated, max_words} ->
+      pct = Float.round(100 * truncated / n, 1)
+      "  #{model}: #{truncated}/#{n} (#{pct}%), longest #{max_words} words"
+    end)
   end
 
   defp format_layers(layers) when layers == %{}, do: "(none)"
