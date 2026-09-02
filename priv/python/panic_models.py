@@ -353,9 +353,8 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "pipeline_cls": "StableDiffusion3Pipeline",
         "repo": "stabilityai/stable-diffusion-3.5-medium",
         "offload": "model_cpu_offload",
+        # T5 is kept (decision-01): without it SD3.5 sees only CLIP's 77 tokens.
         "extra_kwargs": {
-            "text_encoder_3": None,
-            "tokenizer_3": None,
             "torch_dtype": "bfloat16",
             "use_fast": True,
         },
