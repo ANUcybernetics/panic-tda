@@ -13,7 +13,7 @@ the GPU is free:
 Results -> analysis/natural_lengths.json.
 """
 
-import base64, io, json, logging, sqlite3, sys, time, pathlib, re
+import base64, io, json, sqlite3, sys, time, pathlib, re
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
 import panic_models as pm
@@ -98,15 +98,6 @@ for name in ["Moondream", "Gemma3n", "Qwen25VL", "Pixtral", "LLaMA32Vision"]:
     OUT.write_text(json.dumps(results, indent=2))
 
 # SD35Medium with T5
-warnings_seen = []
-
-
-class Catch(logging.Handler):
-    def emit(self, record):
-        warnings_seen.append(record.getMessage()[:200])
-
-
-logging.getLogger("diffusers").addHandler(Catch())
 pm.load_model("SD35Medium")
 pm.swap_to_gpu("SD35Medium")
 import torch
@@ -116,14 +107,27 @@ torch.cuda.reset_peak_memory_stats()
 t0 = time.time()
 _ = pm.invoke_t2i_batch("SD35Medium", caps)
 secs = time.time() - t0
-# diffusers warns separately for the two encoders. A CLIP warning is expected
-# and architectural (77 tokens, decision-01); a T5 warning is a failure, since
-# the whole point of loading T5 is that it sees the caption in full.
+# Token counts, not warnings, are the evidence here: panic_models.setup() calls
+# diffusers.logging.set_verbosity_error(), so the truncation warnings never
+# fire and their absence proves nothing. Measure directly instead --- T5 must
+# stay under max_sequence_length (512), while CLIP's 77 is expected to overflow
+# and is architectural (decision-01).
+from transformers import AutoTokenizer
+
+_repo = pm._T2I_LOADER_CONFIGS["SD35Medium"]["repo"]
+_t5 = AutoTokenizer.from_pretrained(_repo, subfolder="tokenizer_3")
+_clip = AutoTokenizer.from_pretrained(_repo, subfolder="tokenizer")
+_t5_tokens = [len(_t5(c, padding=False, truncation=False).input_ids) for c in caps]
+_clip_tokens = [len(_clip(c, padding=False, truncation=False).input_ids) for c in caps]
+
 results["SD35Medium+T5"] = {
     "secs_per_image": secs / len(caps),
     "prompt_words": [len(c.split()) for c in caps],
-    "t5_truncation_warnings": [w for w in warnings_seen if "max_sequence_length" in w],
-    "clip_truncation_warnings": [w for w in warnings_seen if "CLIP can only handle" in w],
+    "t5_tokens": _t5_tokens,
+    "t5_max_sequence_length": pm._T2I_INVOKE_CONFIGS["SD35Medium"]["max_sequence_length"],
+    "t5_truncated": [n for n in _t5_tokens if n > 512],
+    "clip_tokens": _clip_tokens,
+    "clip_truncated_expected": [n for n in _clip_tokens if n > 77],
     "peak_gpu_gb": torch.cuda.max_memory_allocated() / 1e9,
 }
 print("SD35Medium+T5", json.dumps(results["SD35Medium+T5"]), flush=True)

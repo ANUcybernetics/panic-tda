@@ -29,9 +29,34 @@ The alternative Sungyeon proposed in TASK-80 (matched capped/uncapped arms) rema
 - Moondream now uses its API default `length="normal"` (Ben: don't get hung up on matching the 2025 paper, which used `short`); the cross-era comparison in TASK-81 has to treat that as a changed setting alongside the changed weight revision
 - longer captions cost more captioner time (Gemma3n batches took roughly 2--3x longer in the pilot) and a loaded T5 encoder adds memory and time to SD35Medium
 
-## Decision
+## Validated on the GPU, 2026-09-02
 
+Measurements are in `backlog/docs/caption-length-by-i2t-model.md`; the raw
+figures are `analysis/natural_lengths.json` and `analysis/pilot_vs_panel.json`.
 
+All five captioners now terminate on their own at the 1024-token ceiling: 0%
+cut off, against 89.9% for Gemma3n and 78.3% for LLaMA32Vision before. The
+ceiling is nowhere near binding --- the longest caption in the 2,000-caption
+pilot is 315 words. Moondream's brevity was confirmed to be its `short` mode
+and nothing else, reproducing the panel median of 24 words exactly, while
+`normal` gives 82.
 
-## Consequences
+The T5 change needed a second fix that this decision had implied but the code
+did not carry. diffusers defaults `max_sequence_length` to 256 and caps it at
+512, so loading the encoder alone would have cut roughly 40% off the pilot's
+longest captions (391--430 T5 tokens); `max_sequence_length` is now set to 512
+explicitly in `_T2I_INVOKE_CONFIGS`. Cost is 6.5 s/image at batch 4 and 25.5 GB
+peak, no measurable slowdown. Warnings cannot be used to verify this ---
+`panic_models.setup()` sets diffusers to verbosity_error --- so the check is a
+token count.
+
+The pilot answers the question this decision left open: the truncation changed
+the dynamics, not only the captions. Step-to-step cosine distance falls 28%
+once captions are complete, trajectories become stickier in cluster space
+(coarsest-layer self-transition 87.9% to 94.9%), and distance from the initial
+prompt grows more slowly. Finite-time Lyapunov exponents are unchanged
+(p = 0.96), which is consistent: a roughly uniform change in step size need not
+change the rate at which paired runs separate. So `balanced_panel_5x5` remains
+usable for divergence-rate questions and must not be pooled with natural-length
+data for anything turning on step size, cluster dwell time or transitions.
 

@@ -1,11 +1,11 @@
 ---
 id: TASK-80
 title: Decide caption-length control for future experiment runs
-status: To Do
+status: Done
 assignee:
   - sungyeon-hong
 created_date: '2026-08-13'
-updated_date: '2026-09-02 06:17'
+updated_date: '2026-09-02 23:16'
 labels:
   - analysis
   - paper
@@ -30,15 +30,23 @@ Depends on TASK-82. The observed lengths are not natural model behaviour — fou
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Measurement script promoted from scratch into `analysis/caption_length.py`, reproducing the per-model length table and the eta-squared figure
+- [x] #1 Measurement script promoted from scratch into `analysis/caption_length.py`, reproducing the per-model length table and the eta-squared figure
 - [ ] #2 Length distribution per image-to-text model produced as a publication-quality figure
 - [ ] #3 Length-matched comparison across Gemma3n / Qwen25VL / Pixtral / LLaMA32Vision within the ~78-112 word band run on existing data, establishing whether captioner effects survive when length is held approximately fixed
-- [ ] #4 Decision recorded on whether future runs use matched capped/uncapped arms, a single capped condition, or no cap, with rationale
-- [ ] #5 If a cap is adopted, generation-time `max_tokens` support confirmed or implemented for every image-to-text model in the panel, and the equivalent word count documented per model
+- [x] #4 Decision recorded on whether future runs use matched capped/uncapped arms, a single capped condition, or no cap, with rationale
+- [x] #5 If a cap is adopted, generation-time `max_tokens` support confirmed or implemented for every image-to-text model in the panel, and the equivalent word count documented per model
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Ben's decision 2026-09-02 (backlog/decisions/decision-01): no truncation anywhere by default; captioners run to natural termination (ceiling 1024 in panic_models.py, override via i2t_max_new_tokens config key), SD35Medium loads its T5 encoder. A capped arm is still possible via the config key but is a manipulation, not the default. Also: Moondream's brevity is its length="short" mode (a prompt-level instruction, used in the SMC 2025 code too), so a uniform max_tokens cap does not make the mechanism uniform; and SD35Medium had no T5 loaded, so its networks truncated every caption at 77 CLIP tokens regardless of captioner.
+
+Closed 2026-09-03. The design question is settled by backlog/decisions/decision-01: no cap by default, a capped arm available through the i2t_max_new_tokens config key as a deliberate manipulation. Superseded by the finding (TASK-82) that the lengths this task was built on were largely a truncation artefact.
+
+AC #1: analysis/caption_length.py added; reproduces the per-model table, eta-squared 0.915 and the 79.9%-over-50-words figure from a parquet dump, and pools several dumps so truncated and natural-length runs land in one table.
+AC #4: decision recorded (decision-01) --- no cap.
+AC #5: generation-time ceiling confirmed for every panel captioner, uniform via _I2T_MAX_NEW_TOKENS_DEFAULT with per-experiment override; natural word-length equivalents documented per model in backlog/docs/caption-length-by-i2t-model.md.
+
+Left undone deliberately: AC #2 (publication-quality length figure) and AC #3 (length-matched comparison in the 78-112 word band on existing data). Both were framed around the truncated panel distributions, and the premise no longer holds --- with natural lengths the distributions overlap much more, which is the separability condition this task actually wanted. If a length-matched analysis is still wanted for the paper it should be specified against natural-length data as a fresh task, not this one.
 <!-- SECTION:NOTES:END -->

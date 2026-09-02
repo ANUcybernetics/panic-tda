@@ -1,0 +1,329 @@
+{
+  "captions": {
+    "panel": {
+      "condition": "balanced_panel_5x5 (ceiling 128)",
+      "n": 2000,
+      "words_median": 83.0,
+      "words_p10": 79.0,
+      "words_p90": 87.0,
+      "words_max": 92,
+      "complete_share": 0.091
+    },
+    "pilot": {
+      "condition": "caption pilot (ceiling 1024)",
+      "n": 2000,
+      "words_median": 160.0,
+      "words_p10": 124.0,
+      "words_p90": 207.0,
+      "words_max": 315,
+      "complete_share": 1.0
+    },
+    "mann_whitney_p": 0.0
+  },
+  "ftle": {
+    "n_prompts": 20,
+    "panel_mean": 0.011897009342029344,
+    "pilot_mean": 0.010852411699576217,
+    "panel_median": 0.012656830179010415,
+    "pilot_median": 0.010034897477250278,
+    "mean_diff": -0.0010445976424531252,
+    "wilcoxon_p": 0.956329345703125,
+    "spearman_r": 0.20300751879699244,
+    "panel_r2_median": 0.4550358805601432,
+    "pilot_r2_median": 0.4601461308968936,
+    "per_prompt": [
+      {
+        "prompt": "a bicycle leaning against a brick wall",
+        "exponent": -5.7906716996633226e-05,
+        "exponent_pilot": 0.012436085640517897
+      },
+      {
+        "prompt": "a bookshelf filled with plants, books, and photographs",
+        "exponent": 0.025337395116175814,
+        "exponent_pilot": 0.02004682265976926
+      },
+      {
+        "prompt": "a bustling Tokyo street at night",
+        "exponent": 0.01651331866124253,
+        "exponent_pilot": -0.002969404161179255
+      },
+      {
+        "prompt": "a cat sitting on a windowsill",
+        "exponent": -0.0009068044156288767,
+        "exponent_pilot": 0.002739307286433946
+      },
+      {
+        "prompt": "a city slowly turning into a forest",
+        "exponent": 0.01954962656414097,
+        "exponent_pilot": 0.01925818464191533
+      },
+      {
+        "prompt": "a family dinner in a small kitchen",
+        "exponent": 0.00781232462195977,
+        "exponent_pilot": 0.004280190052054644
+      },
+      {
+        "prompt": "a festival procession moving through a narrow street",
+        "exponent": 0.012432026300924564,
+        "exponent_pilot": 0.026470356752169553
+      },
+      {
+        "prompt": "a glass bottle beside a candle",
+        "exponent": 0.00046336108131410646,
+        "exponent_pilot": 0.015050773021507733
+      },
+      {
+        "prompt": "a library with impossible architecture",
+        "exponent": 0.004454253057924735,
+        "exponent_pilot": 0.009743882671117834
+      },
+      {
+        "prompt": "a machine dreaming of a forest",
+        "exponent": 0.012940527645962591,
+        "exponent_pilot": 0.007883702726030534
+      },
+      {
+        "prompt": "a man standing in a doorway",
+        "exponent": 0.01162384507840524,
+        "exponent_pilot": 0.005001398067480961
+      },
+      {
+        "prompt": "a market stall displaying fruit, flowers, and handmade crafts",
+        "exponent": 0.023894160139120515,
+        "exponent_pilot": -0.011195215363743091
+      },
+      {
+        "prompt": "a picnic basket under a tree beside a river",
+        "exponent": 0.02669878004087089,
+        "exponent_pilot": 0.008110423948569333
+      },
+      {
+        "prompt": "a red apple on a wooden table",
+        "exponent": 0.013642011171025953,
+        "exponent_pilot": 0.026966989161187876
+      },
+      {
+        "prompt": "a storm approaching a fishing village",
+        "exponent": 0.01827235353581867,
+        "exponent_pilot": 0.010325912283382725
+      },
+      {
+        "prompt": "a train station with travellers carrying colourful luggage",
+        "exponent": 0.012881634057096265,
+        "exponent_pilot": 0.013388914588480376
+      },
+      {
+        "prompt": "a woman reading beside a window",
+        "exponent": 0.012063395721150245,
+        "exponent_pilot": 0.016204799138343724
+      },
+      {
+        "prompt": "firefighters responding to a building fire",
+        "exponent": 0.0009537321829932666,
+        "exponent_pilot": -0.000944492038469631
+      },
+      {
+        "prompt": "the feeling of nostalgia",
+        "exponent": 0.002950782555014121,
+        "exponent_pilot": 0.006303452017931096
+      },
+      {
+        "prompt": "two friends talking at a cafe",
+        "exponent": 0.016421370442072133,
+        "exponent_pilot": 0.02794615089802351
+      }
+    ]
+  },
+  "clusters": {
+    "layer_0": {
+      "n_clusters": 272,
+      "nearest_medoid_agrees_with_evoc": 0.7988871224165341,
+      "panel": {
+        "occupied_clusters": 70,
+        "occupancy_entropy_bits": 5.317160197541927,
+        "distinct_per_run_mean": 2.5375,
+        "self_transition_rate": 0.7994791666666666
+      },
+      "pilot": {
+        "occupied_clusters": 69,
+        "occupancy_entropy_bits": 5.3047864291627285,
+        "distinct_per_run_mean": 2.45,
+        "self_transition_rate": 0.8114583333333333
+      },
+      "occupancy_js_bits": 0.22800347943322638,
+      "transition_js_bits": 0.3233319130405075
+    },
+    "layer_1": {
+      "n_clusters": 170,
+      "nearest_medoid_agrees_with_evoc": 0.815033161385409,
+      "panel": {
+        "occupied_clusters": 57,
+        "occupancy_entropy_bits": 5.079737762684558,
+        "distinct_per_run_mean": 2.3125,
+        "self_transition_rate": 0.8166666666666667
+      },
+      "pilot": {
+        "occupied_clusters": 51,
+        "occupancy_entropy_bits": 5.0798707156132155,
+        "distinct_per_run_mean": 2.2,
+        "self_transition_rate": 0.8302083333333333
+      },
+      "occupancy_js_bits": 0.20621772982204323,
+      "transition_js_bits": 0.2963510644378342
+    },
+    "layer_2": {
+      "n_clusters": 80,
+      "nearest_medoid_agrees_with_evoc": 0.8299776286353467,
+      "panel": {
+        "occupied_clusters": 36,
+        "occupancy_entropy_bits": 4.636232753061458,
+        "distinct_per_run_mean": 1.875,
+        "self_transition_rate": 0.8791666666666667
+      },
+      "pilot": {
+        "occupied_clusters": 30,
+        "occupancy_entropy_bits": 4.610574686924212,
+        "distinct_per_run_mean": 1.725,
+        "self_transition_rate": 0.9104166666666667
+      },
+      "occupancy_js_bits": 0.13261346638470367,
+      "transition_js_bits": 0.20754863052966932
+    },
+    "layer_3": {
+      "n_clusters": 16,
+      "nearest_medoid_agrees_with_evoc": 0.7170028818443804,
+      "panel": {
+        "occupied_clusters": 16,
+        "occupancy_entropy_bits": 3.6761971973471645,
+        "distinct_per_run_mean": 1.8625,
+        "self_transition_rate": 0.8791666666666667
+      },
+      "pilot": {
+        "occupied_clusters": 13,
+        "occupancy_entropy_bits": 3.470596983808507,
+        "distinct_per_run_mean": 1.375,
+        "self_transition_rate": 0.9489583333333333
+      },
+      "occupancy_js_bits": 0.036387534434920966,
+      "transition_js_bits": 0.0780444767084163
+    }
+  },
+  "drift": {
+    "panel": {
+      "from_prompt_curve": {
+        "1": 0.19960290640592576,
+        "3": 0.20370032340288163,
+        "5": 0.2090405970811844,
+        "7": 0.21238354593515396,
+        "9": 0.21354688555002213,
+        "11": 0.2153740257024765,
+        "13": 0.2174098812043667,
+        "15": 0.22051272839307784,
+        "17": 0.21905161291360856,
+        "19": 0.2225921593606472,
+        "21": 0.22092302441596984,
+        "23": 0.22749054208397865,
+        "25": 0.22737993896007538,
+        "27": 0.2258777566254139,
+        "29": 0.22683007568120955,
+        "31": 0.22846247851848603,
+        "33": 0.23088782876729966,
+        "35": 0.23121257573366166,
+        "37": 0.23428830727934838,
+        "39": 0.23460419103503227,
+        "41": 0.23382378071546556,
+        "43": 0.23623394072055817,
+        "45": 0.2379686303436756,
+        "47": 0.23724866658449173,
+        "49": 0.2377559706568718
+      },
+      "step_to_step_curve": {
+        "3": 0.022127769887447357,
+        "5": 0.01755515709519386,
+        "7": 0.01691616028547287,
+        "9": 0.017495083808898925,
+        "11": 0.016235793381929396,
+        "13": 0.01813136339187622,
+        "15": 0.01746356040239334,
+        "17": 0.01766379252076149,
+        "19": 0.016284485906362535,
+        "21": 0.01775699630379677,
+        "23": 0.016018978506326675,
+        "25": 0.015526383370161056,
+        "27": 0.014480404555797577,
+        "29": 0.014534030109643936,
+        "31": 0.015849877893924714,
+        "33": 0.015499594807624816,
+        "35": 0.015492746233940124,
+        "37": 0.013631831854581833,
+        "39": 0.014961453527212143,
+        "41": 0.014109864830970764,
+        "43": 0.016705189645290375,
+        "45": 0.015332957357168197,
+        "47": 0.014300768077373505,
+        "49": 0.014239444583654403
+      },
+      "from_prompt_mean": 0.22416809496283532,
+      "step_to_step_mean": 0.01617973701407512,
+      "step_to_step_late_mean": 0.014974195911334112
+    },
+    "pilot": {
+      "from_prompt_curve": {
+        "1": 0.2203171044588089,
+        "3": 0.22163286283612252,
+        "5": 0.22618927359580993,
+        "7": 0.22753006145358085,
+        "9": 0.22921512126922608,
+        "11": 0.23026136979460715,
+        "13": 0.23309876546263694,
+        "15": 0.23322120755910875,
+        "17": 0.23197984248399733,
+        "19": 0.233702589571476,
+        "21": 0.23561398088932037,
+        "23": 0.23816289901733398,
+        "25": 0.2388119675219059,
+        "27": 0.2403544433414936,
+        "29": 0.24116120636463165,
+        "31": 0.23891474008560182,
+        "33": 0.23831772133708,
+        "35": 0.23859877735376359,
+        "37": 0.2398568108677864,
+        "39": 0.24161799103021622,
+        "41": 0.24123478606343268,
+        "43": 0.24321717470884324,
+        "45": 0.24406083449721336,
+        "47": 0.24330155029892922,
+        "49": 0.24361596256494522
+      },
+      "step_to_step_curve": {
+        "3": 0.01449170708656311,
+        "5": 0.013091056048870087,
+        "7": 0.014132006466388703,
+        "9": 0.01243036538362503,
+        "11": 0.012679614126682281,
+        "13": 0.01259138286113739,
+        "15": 0.011897317320108413,
+        "17": 0.012123384326696397,
+        "19": 0.011423655599355698,
+        "21": 0.01214013174176216,
+        "23": 0.011770648509263992,
+        "25": 0.011217042058706283,
+        "27": 0.011930122226476669,
+        "29": 0.0108174629509449,
+        "31": 0.010892874747514724,
+        "33": 0.009987948089838028,
+        "35": 0.011082156747579574,
+        "37": 0.010595314949750901,
+        "39": 0.010238400101661682,
+        "41": 0.011477642506361008,
+        "43": 0.010365330427885056,
+        "45": 0.010109201073646545,
+        "47": 0.009524912387132645,
+        "49": 0.010204561799764634
+      },
+      "from_prompt_mean": 0.23575956177711488,
+      "step_to_step_mean": 0.011550593314071496,
+      "step_to_step_late_mean": 0.010649459235943282
+    }
+  }
+}

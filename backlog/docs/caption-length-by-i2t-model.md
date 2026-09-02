@@ -76,6 +76,116 @@ against a ceiling around 118-120 words, consistent with a 128-token limit.
 
 See TASK-82.
 
+## Natural lengths, measured 2026-09-02
+
+Decision-01 raised the ceiling to 1024 tokens. `analysis/natural_lengths.py`
+then ran every panel captioner over 16 images from the caption pilot, with
+Moondream in both its new default (`normal`) and the old `short` mode.
+
+| Image-to-text model | median | min–max | % cut off | s/caption | panel median | panel % cut off |
+|---|---|---|---|---|---|---|
+| Moondream (`short`) | 24 | 19–33 | 0.0% | 0.29 | 24 | 0.0% |
+| Qwen25VL | 80 | 61–105 | 0.0% | 0.91 | 90 | 17.6% |
+| Moondream (`normal`) | 82 | 50–121 | 0.0% | 0.68 | — | — |
+| Pixtral | 113 | 74–154 | 0.0% | 2.97 | 102 | 64.0% |
+| LLaMA32Vision | 124 | 88–198 | 0.0% | 2.13 | 106 | 78.3% |
+| Gemma3n | 154 | 97–212 | 0.0% | 1.21 | 83 | 89.9% |
+
+Every captioner now terminates on its own. The ceiling is nowhere near binding:
+the longest caption in the entire 2,000-caption pilot is 315 words, against a
+1024-token limit. The 16 images all came from Flux2Klein, whereas the panel
+column mixes five text-to-image models, so the two median columns are not
+strictly comparable --- the cut-off share is the column to read across.
+
+Two findings matter beyond the numbers.
+
+Moondream's brevity was its `length="short"` mode and nothing else. Run at
+`short` on pilot images it reproduces the panel median of 24 words exactly, so
+none of its shortness was ever truncation. At `normal` it is 3.4 times longer
+and 2.4 times slower per caption, and it stops being the disjoint outlier that
+made every Moondream-versus-other comparison fully confounded with length.
+
+The verbosity ordering is largely an artefact of where each ceiling bit. Under
+truncation Gemma3n looked like the second-shortest captioner; uncapped it is
+the longest by a clear margin, and Qwen25VL --- which was barely truncated ---
+is now the shortest of the verbose four. Any captioner effect measured on
+`balanced_panel_5x5` is therefore partly a measure of how hard each model was
+being cut, which is what TASK-82 suspected.
+
+The practical consequence for TASK-80 is that the length distributions now
+overlap far more than they did. That is the condition TASK-80 actually needed
+--- not matched word counts, but enough overlap that caption length and model
+identity stop being one variable.
+
+## SD35Medium with the T5 encoder
+
+Loading T5 (decision-01) costs 6.5 s/image at batch 4 and 25.5 GB peak on the
+48 GB card, against roughly 6.5 s/item previously --- no measurable slowdown.
+
+The check that matters is whether the caption survives the encoder. Warnings
+are useless as evidence here, because `panic_models.setup()` calls
+`diffusers.logging.set_verbosity_error()`, so diffusers' truncation warnings
+never fire and their absence proves nothing. Token counts are the evidence
+instead. The four longest pilot captions (315, 302, 276 and 262 words) come to
+423, 430, 391 and 406 T5 tokens.
+
+That lands between the two ceilings, which is why `max_sequence_length` had to
+be set explicitly. diffusers defaults it to 256 and caps it at 512, so simply
+loading T5 would still have cut roughly 40% off every one of these captions;
+at the 512 decision-01 specifies, none are touched. The same captions are
+314–373 CLIP tokens against CLIP's fixed 77, so that branch does truncate, as
+decision-01 says --- architectural, and documented rather than worked around.
+
+## Did the truncation change the dynamics?
+
+The caption pilot (`01a060b4`, Flux2Klein+Gemma3n, ceiling 1024) repeats the
+same 20 prompts × 4 runs × 50 steps as the corresponding arm of
+`balanced_panel_5x5`, so the two differ only in whether captions were cut.
+`analysis/pilot_vs_panel.py` compares them.
+
+The captions differ exactly as intended: median 83 words and 9.1% complete
+sentences in the panel, against median 160 and 100% complete in the pilot.
+
+Finite-time Lyapunov exponents are statistically indistinguishable --- panel
+mean 0.0119, pilot 0.0109, Wilcoxon p = 0.96 over the 20 paired prompts. The
+per-prompt ordering does not survive (Spearman 0.20), but the fits are weak in
+both conditions (median r² 0.46) and some pilot exponents come out negative, so
+that is better read as estimator noise than as a real reshuffle.
+
+Everything that measures step size, however, moves consistently. Complete
+captions make the loop markedly less jittery: mean step-to-step cosine distance
+falls from 0.0162 to 0.0116, a 28% reduction, holding at 29% over the second
+half of the trajectory. Trajectories are correspondingly stickier in cluster
+space, with the self-transition rate rising from 79.9% to 81.1% at the finest
+clustering layer and from 87.9% to 94.9% at the coarsest, where the pilot
+visits 1.4 distinct clusters per run against the panel's 1.9. Occupancy and
+transition structure shift accordingly (Jensen–Shannon divergence 0.23 and 0.32
+bits at layer 0, falling to 0.04 and 0.08 bits at layer 3).
+
+Distance from the initial prompt tells the same story from the other side. The
+pilot starts further out --- 0.220 versus 0.200 at step 1, since a 160-word
+caption departs from a short prompt faster than an 83-word fragment --- but
+travels less thereafter, ending at 0.244 versus 0.238. The panel gains 0.038
+over the trajectory, the pilot 0.023.
+
+So the answer is that truncation changed the dynamics, not merely the captions.
+A mid-sentence fragment is a noisier input than a complete description, and the
+loop driven by fragments takes visibly larger and less repeatable steps. That
+the FTLE is nonetheless unchanged is consistent rather than contradictory:
+divergence between paired runs measures the rate at which nearby trajectories
+separate, which a roughly uniform change in step size need not affect.
+
+For the paper, `balanced_panel_5x5` has to be described as a truncated dataset
+for four of five captioners and for all five SD35Medium networks, with the
+measured consequence stated: step-level dynamics are affected, aggregate
+divergence rates appear not to be. Comparisons that turn on step size, cluster
+dwell time or transition structure should not be pooled across the two regimes.
+Note also that the cluster comparison assigns both conditions to the panel's
+existing EVoC medoids by nearest cosine, since a global recluster would relabel
+both at once; on panel rows that assignment reproduces EVoC's own labels 72–83%
+of the time depending on layer, so the absolute occupancy figures are
+approximate while the comparison between conditions is not.
+
 ## Why this matters
 
 1. **Model identity and caption length cannot be separated statistically.** At
@@ -105,7 +215,9 @@ See TASK-82.
 ## Reproducing
 
 ```
-./analysis/caption_length.py [parquet_dir ...]
+./analysis/caption_length.py [parquet_dir ...]   # length tables above
+./analysis/natural_lengths.py                    # natural lengths, SD35+T5 (GPU)
+./analysis/pilot_vs_panel.py                     # pilot vs panel dynamics
 ```
 
 Defaults to the `balanced_panel_5x5` dump and reproduces every table above.

@@ -1,0 +1,105 @@
+{
+  "Moondream": {
+    "n": 16,
+    "median_words": 82,
+    "max_words": 121,
+    "min_words": 50,
+    "pct_cut": 0.0,
+    "secs_per_caption": 0.6826390027999878,
+    "samples": [
+      "A single, vibrant red apple sits in the center of a rustic wooden table. The apple's glossy surface reflects the soft light around it. The table's surface shows signs of wear and tear, with small cracks and imperfections visible. In the background, a blurred wooden chair can be seen. The background is out of focus, giving a sense of depth to the image.",
+      "A single, vibrant red apple sits in a wooden setting. The apple's glossy skin reflects the light, and its stem points upwards. The apple has a slight speckle or texture on its skin. It is positioned slightly to the left of the center of the image. The wooden surface beneath the apple is weathered, with visible grain and variations in color, adding texture to the scene. The background is blurred, drawing focus to the apple."
+    ]
+  },
+  "Moondream(short)": {
+    "n": 16,
+    "median_words": 24,
+    "max_words": 33,
+    "min_words": 19,
+    "pct_cut": 0.0,
+    "secs_per_caption": 0.2870035469532013,
+    "samples": [
+      "A red apple with a small stem sits on a light brown wooden table, casting a shadow and contrasting with the smooth surface.",
+      "A red apple with a small stem sits on a weathered wooden table, casting a shadow and reflecting light from its glossy surface."
+    ]
+  },
+  "Gemma3n": {
+    "n": 16,
+    "median_words": 154,
+    "max_words": 212,
+    "min_words": 97,
+    "pct_cut": 0.0,
+    "secs_per_caption": 1.2084962129592896,
+    "samples": [
+      "A single, vibrant red apple sits centered on a rustic wooden table. The apple is round and glossy, with a slightly textured surface dotted with tiny brown specks. It has a short, brown stem protruding from the top. \n\nThe table is made of light brown wood with visible grain and some darker streaks, suggesting age and use. The surface has a slightly uneven texture. \n\nThe background is softly blurred, but hints of a light beige wall and a wooden structure (possibly a chair or cabinet) can be seen. The lighting appears to be natural, casting a subtle shadow of the apple on the table to its right. \n\nThe overall impression is one of simplicity and natural beauty, highlighting the fresh, appealing look of the apple.",
+      "A single, vibrant red apple sits centered on a rustic wooden surface. The apple is round and glossy, with a slightly textured skin dotted with tiny, darker speckles. Its stem, a small brown twig with a hint of green, protrudes from the top. \n\nThe wooden surface beneath the apple is made of planks with visible grain and variations in color, ranging from light brown to darker, weathered tones. There are subtle cracks and imperfections in the wood, adding to its rustic charm. The lighting appears to be soft and natural, casting gentle highlights on the apple's surface and subtle shadows on the wood. \n\nThe overall impression is one of simplicity and natural beauty, highlighting the fresh, appealing look of the apple against the textured backdrop of the wood."
+    ]
+  },
+  "Qwen25VL": {
+    "n": 16,
+    "median_words": 80,
+    "max_words": 105,
+    "min_words": 61,
+    "pct_cut": 0.0,
+    "secs_per_caption": 0.9085771441459656,
+    "samples": [
+      "The image shows a single, ripe red apple placed on a wooden surface. The apple has a smooth, shiny skin with a few small speckles and a small stem at the top. The background features a wooden cabinet or piece of furniture, which is slightly out of focus, emphasizing the apple as the main subject. The lighting in the image highlights the glossy texture of the apple, creating a warm and inviting atmosphere.",
+      "The image shows a single, ripe red apple with a small stem on top. The apple is placed on a wooden surface that appears to be weathered and has visible scratches and marks, suggesting it might be an old or well-used table. The lighting in the image highlights the glossy texture of the apple's skin, making it look fresh and vibrant."
+    ]
+  },
+  "Pixtral": {
+    "n": 16,
+    "median_words": 113,
+    "max_words": 154,
+    "min_words": 74,
+    "pct_cut": 0.0,
+    "secs_per_caption": 2.972054749727249,
+    "samples": [
+      "The image features a single, vibrant red apple placed on a wooden surface. The apple has a glossy skin with small, light-colored speckles. The stem is visible and appears to be intact. The apple is positioned centrally in the frame, with the wooden background providing a natural, rustic setting. The lighting is soft, highlighting the apple's smooth and shiny texture. The overall composition is simple and focuses on the apple as the main subject.",
+      "The image shows a single, bright red apple with a few small white spots on its skin. The apple has a greenish stem and is placed on a wooden surface. The wood has a natural, rustic appearance with visible grain patterns and some small marks or scratches. The apple is the central focus of the image, and the background is slightly blurred, drawing attention to the fruit. The overall setting gives a simple, natural, and somewhat vintage feel."
+    ]
+  },
+  "LLaMA32Vision": {
+    "n": 16,
+    "median_words": 124,
+    "max_words": 198,
+    "min_words": 88,
+    "pct_cut": 0.0,
+    "secs_per_caption": 2.1289165914058685,
+    "samples": [
+      "This image presents a close-up view of a red apple on a wooden table, with the apple positioned centrally in the frame.\n\nThe apple, which is the primary focus of the image, is a vibrant red color with a small stem at the top and a subtle yellow-green hue visible in the center of the fruit. It is situated on a light brown wooden table, which features a rough texture with visible grain. The table's surface is characterized by a few dark spots and a shadow cast by the apple, adding depth to the scene.\n\nIn the background, a blurred wooden chair or table is visible, although it is out of focus. The overall effect is one of simplicity and warmth, with the apple and table taking center stage.",
+      "This image presents a close-up view of a vibrant red apple, centered and slightly angled to the right, on a wooden table with a worn, weathered finish. The apple's stem is visible at the top, and its red skin features white speckles, with a subtle greenish hue around the stem. The apple's bright red color is highlighted by a yellowish-green center.\n\nThe apple rests on a wooden surface with a warm, golden-brown color, characterized by visible scratches and darkened areas, indicating a long history of use. The overall atmosphere of the image suggests a still life setting, likely in a kitchen or dining area, where the apple is the main subject."
+    ]
+  },
+  "SD35Medium+T5": {
+    "secs_per_image": 6.5193030834198,
+    "prompt_words": [
+      315,
+      302,
+      276,
+      262
+    ],
+    "peak_gpu_gb": 25.535540224,
+    "t5_tokens": [
+      423,
+      430,
+      391,
+      406
+    ],
+    "t5_max_sequence_length": 512,
+    "t5_truncated": [],
+    "clip_tokens": [
+      373,
+      368,
+      336,
+      340
+    ],
+    "clip_truncated_expected": [
+      373,
+      368,
+      336,
+      340
+    ],
+    "note": "Token counts measured separately after the run: diffusers logging is set to verbosity_error in panic_models.setup(), so the truncation warnings this script originally looked for never fire. T5 stays under 512; CLIP overflows 77 as expected and architecturally (decision-01)."
+  }
+}
