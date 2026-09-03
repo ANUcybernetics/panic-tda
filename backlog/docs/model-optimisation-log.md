@@ -191,6 +191,71 @@ priority). The two slow models (Flux2Dev, GLMImage) dominate the panel's cost.
   models (Flux2Dev, GLMImage) batch at 4 on the real swap/offload schedule, on
   projection, with large memory headroom. Closes the TASK-74 validation loop.
 
+### 2. Diffusion step counts (lever H) — KEEP (Flux2Dev 15 → 12)
+
+- **Date:** 2026-09-03
+- **Files touched:** `priv/python/panic_models.py` (`_T2I_INVOKE_CONFIGS`),
+  `analysis/step_sweep.py`, `analysis/flux2dev_steps_confirm.py`
+- **Change:** TASK-66 cut step counts below the pipeline defaults without
+  measuring the cost. Swept SD35Medium, Flux2Dev and GLMImage over five step
+  counts each at a fixed seed, four prompts (two short, two natural-length
+  pilot captions), highest count as reference.
+
+The metric that matters for a recursive loop is not pixel fidelity but whether
+the captioner reads the same content, since only the caption propagates to the
+next step. Its scale had to be established first: Gemma3n is deterministic, so
+the same image gives byte-identical captions and cosine 1.000, while images
+from different prompts sit near 0.876.
+
+| Model | steps | s/image (serial) | caption cos | pixel MAE |
+| --- | --- | --- | --- | --- |
+| SD35Medium | 10 / 15 / **20** / 28 / 40 | 3.3 / 4.6 / **6.1** / 8.5 / 12.0 | .985 / .984 / **.989** / .989 / ref | 41 / 33 / 26 / 16 / 0 |
+| Flux2Dev | 8 / **15** / 25 / 35 / 50 | 68 / **110** / 172 / 240 / 341 | .990 / **.989** / .990 / .988 / ref | 23 / 12 / 6.4 / 4.7 / 0 |
+| GLMImage | 10 / 15 / **25** / 35 / 50 | 59 / 63 / **76** / 90 / 111 | .991 / .993 / **.995** / .992 / ref | 20 / 13 / 5.6 / 2.9 / 0 |
+
+Pixel MAE falls steadily with steps while caption cosine does not move: image
+fidelity keeps improving, but what a captioner reads off the image saturates
+almost immediately. Since only the caption drives the next invocation, the loop
+is largely indifferent to step count above the smallest values tested.
+
+Because caption cosine came out non-monotone for Flux2Dev — better at 8 steps
+than at 35 — the four-prompt sweep could not be trusted for the panel's most
+expensive model. Repeated on twelve prompts (eight of them natural-length pilot
+captions) against a 25-step reference:
+
+| steps | s/image (serial) | caption cos mean | caption cos min | pixel MAE |
+| --- | --- | --- | --- | --- |
+| 8 | 62.5 | 0.9908 | 0.9839 | 13.4 |
+| 12 | 84.3 | **0.9923** | 0.9833 | 9.3 |
+| 15 (was) | 104.5 | 0.9918 | 0.9817 | 5.6 |
+
+Still flat, still non-monotone with three times the prompts. On the
+0.876–1.000 scale that is 92.6% / 93.7% / 93.4% — about one percentage point,
+with the ordering scrambled, so the metric genuinely cannot separate 8 from 15.
+
+- **Decision + rationale:** Flux2Dev 15 → 12; SD35Medium stays at 20; GLMImage
+  stays at 25. The stated criterion (smallest count at which caption cosine has
+  flattened) points at 8 for Flux2Dev, but the metric has run out of resolution
+  across that whole band, so taking the grid edge would be fitting to noise.
+  Among counts the metric cannot separate, 12 has the best mean caption cosine
+  and much better pixel fidelity than 8, which still matters for the exported
+  mosaics and paper figures, while cutting ~19% off the dearest model.
+  SD35Medium is the one model with a real knee (10/15 ≈ .984 rising to
+  20/28 ≈ .989), and 20 is it. GLMImage rises monotonically to 25 and its
+  runtime barely scales with steps (59 → 76 s for 10 → 25), so there is little
+  to win.
+- **Quality parity:** caption cosine against the reference, on the measured
+  0.876–1.000 scale; no count in the retained band falls outside the noise of
+  its neighbours.
+- **Caveat:** the sweep times images serially, one per call, so its seconds are
+  not comparable with the batched per-item figures elsewhere in this log; the
+  batched number for Flux2Dev at 12 steps was measured separately with
+  `mix gpu.bench`.
+- **Discarded metric:** the sweep's NomicVision image-embedding column is
+  unusable — that model returns NaN-zeroed or non-reproducible embeddings
+  depending on the process, silently. Nulled in the results and raised as
+  TASK-86.
+
 ### Untried / future levers (ranked)
 
 - Probe `Flux2Dev`/`GLMImage` at batch=8+ for marginal additional headroom

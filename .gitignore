@@ -32,3 +32,7 @@ mise.local.toml
 .pytest_cache/
 docs/*.pdf
 nohup.out
+
+# Step-sweep full-res images: ~88 MB, regenerable via analysis/step_sweep.py.
+# The downscaled contact sheets and results.json alongside them are tracked.
+analysis/step_sweep/*/

@@ -10,6 +10,10 @@ count; the max step count is the reference. Metrics per (model, steps):
 seconds per image, pixel MAE vs reference, NomicVision image-embedding cosine
 vs reference, and the loop-relevant one: cosine (Qwen3Embed) between the
 Gemma3n caption of this image and of the reference image.
+
+The NomicVision column is not trustworthy --- that model returns NaN-zeroed or
+non-reproducible embeddings depending on the process (TASK-86), so read
+caption_cos, which is the metric the step-count decision turns on anyway.
 Results -> step_sweep.json; images -> step_sweep/<model>/<prompt>_<steps>.png
 """
 

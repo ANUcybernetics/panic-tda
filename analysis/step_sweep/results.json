@@ -1,0 +1,215 @@
+[
+  {
+    "_note": "img_cos nulled: NomicVision returns NaN-zeroed or non-reproducible embeddings across processes (TASK-86). caption_cos is the loop-relevant metric and is unaffected --- Gemma3n is deterministic, so identical images give cosine 1.000, and unrelated images sit near 0.876."
+  },
+  {
+    "model": "SD35Medium",
+    "steps": 10,
+    "secs_per_image": 3.3492679595947266,
+    "pixel_mae": 41.41979789733887,
+    "img_cos": null,
+    "caption_cos": 0.9847094565629959,
+    "captions": [
+      "The image shows a black bicycle leaning against a vibrant orange brick wall. The bicycle is positioned slightly to the l",
+      "The image captures a vibrant and bustling street scene at night in what appears to be a densely populated urban area, li",
+      "The image shows a single, vibrant red apple sitting on a light-colored wooden surface. The apple is positioned slightly ",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, with a hint of"
+    ]
+  },
+  {
+    "model": "SD35Medium",
+    "steps": 15,
+    "secs_per_image": 4.622731566429138,
+    "pixel_mae": 32.776052474975586,
+    "img_cos": null,
+    "caption_cos": 0.9839901626110077,
+    "captions": [
+      "Captured from a slightly low angle, the image showcases a black mountain bike leaning against a vibrant orange brick wal",
+      "The image captures a vibrant and bustling night scene on a street in what appears to be a densely populated urban area, ",
+      "A single, vibrant red apple with a touch of yellow on its bottom half sits centered on a light-colored wooden surface. T",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, with a sligh"
+    ]
+  },
+  {
+    "model": "SD35Medium",
+    "steps": 20,
+    "secs_per_image": 6.08564966917038,
+    "pixel_mae": 26.009027242660522,
+    "img_cos": null,
+    "caption_cos": 0.9888289868831635,
+    "captions": [
+      "A black bicycle is leaning against a textured red brick wall. The bicycle is positioned slightly off-center, with its fr",
+      "The image captures a vibrant and bustling street scene at night in what appears to be a densely populated urban area, li",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface, bathed in bright sunlight. The apple is rou",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and has a slightly textu"
+    ]
+  },
+  {
+    "model": "SD35Medium",
+    "steps": 28,
+    "secs_per_image": 8.472231805324554,
+    "pixel_mae": 16.00655174255371,
+    "img_cos": null,
+    "caption_cos": 0.9888356924057007,
+    "captions": [
+      "A blue bicycle is leaning against a red brick wall. The bicycle is positioned diagonally from the bottom left to the top",
+      "The image captures a vibrant and bustling street scene at night in what appears to be a densely populated urban area, li",
+      "The image shows a vibrant red apple sitting on a light-colored wooden surface. The apple is positioned slightly off-cent",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, with a sligh"
+    ]
+  },
+  {
+    "model": "SD35Medium",
+    "steps": 40,
+    "secs_per_image": 12.012203931808472,
+    "pixel_mae": 0.0,
+    "img_cos": null,
+    "caption_cos": 1.0000000298023224,
+    "captions": [
+      "The image shows a black bicycle leaning against a red brick wall. The bicycle is positioned diagonally, with its front w",
+      "The image captures a bustling night scene on a very crowded street in what appears to be a Japanese city. The street is ",
+      "The image shows a vibrant red apple sitting on a light-colored wooden surface, likely a table or countertop. The apple i",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and has a slightly textu"
+    ]
+  },
+  {
+    "model": "Flux2Dev",
+    "steps": 8,
+    "secs_per_image": 67.99143522977829,
+    "pixel_mae": 22.53977918624878,
+    "img_cos": null,
+    "caption_cos": 0.9896832406520844,
+    "captions": [
+      "Captured from a slightly low angle, a stylish, dark green bicycle is parked against a vibrant red brick wall. The bicycl",
+      "The image captures a bustling urban scene at night, likely in a major city in Japan, given the prominent Japanese text o",
+      "The image shows a vibrant red apple sitting on a light wooden windowsill. The apple is the focal point, positioned sligh",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, reflecting l"
+    ]
+  },
+  {
+    "model": "Flux2Dev",
+    "steps": 15,
+    "secs_per_image": 109.96168702840805,
+    "pixel_mae": 12.094531416893005,
+    "img_cos": null,
+    "caption_cos": 0.9891365021467209,
+    "captions": [
+      "Captured from a slightly low angle, a stylish dark green bicycle is parked against a textured red brick wall. The bicycl",
+      "The image captures a bustling intersection at night in what appears to be Tokyo, Japan. The scene is dominated by toweri",
+      "The image shows a vibrant red apple sitting on a light wooden surface, likely a windowsill or a table. The apple is the ",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, reflecting l"
+    ]
+  },
+  {
+    "model": "Flux2Dev",
+    "steps": 25,
+    "secs_per_image": 172.36850118637085,
+    "pixel_mae": 6.36664605140686,
+    "img_cos": null,
+    "caption_cos": 0.9897048026323318,
+    "captions": [
+      "Captured from a slightly low angle, a vintage-style green bicycle is parked against a textured red brick wall. The bicyc",
+      "The image captures a bustling intersection at night in what appears to be Tokyo, Japan. The scene is dominated by toweri",
+      "The image shows a vibrant red apple sitting on a light wooden surface, likely a windowsill or a table. The apple is the ",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, reflecting t"
+    ]
+  },
+  {
+    "model": "Flux2Dev",
+    "steps": 35,
+    "secs_per_image": 239.88446706533432,
+    "pixel_mae": 4.682884782552719,
+    "img_cos": null,
+    "caption_cos": 0.9877578318119049,
+    "captions": [
+      "Captured from a slightly low angle, a vintage-style green bicycle is parked against a textured red brick wall. The bicyc",
+      "The image captures a bustling night scene in Shibuya, Tokyo, famous for its iconic scramble crossing. The photograph is ",
+      "The image shows a vibrant red apple sitting on a light wooden surface, likely a windowsill or a table. The apple is the ",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, reflecting l"
+    ]
+  },
+  {
+    "model": "Flux2Dev",
+    "steps": 50,
+    "secs_per_image": 341.2374804019928,
+    "pixel_mae": 0.0,
+    "img_cos": null,
+    "caption_cos": 1.0000000298023224,
+    "captions": [
+      "Captured from a slightly low angle, a vintage-style bicycle is the central focus of the image, positioned against a text",
+      "The image captures a bustling night scene on a major intersection in Tokyo, Japan. The street is filled with a dense cro",
+      "The image shows a vibrant red apple sitting on a light wooden surface, likely a windowsill or a table. The apple is the ",
+      "A single, vibrant red apple sits centered on a light-colored wooden surface. The apple is round and glossy, reflecting l"
+    ]
+  },
+  {
+    "model": "GLMImage",
+    "steps": 10,
+    "secs_per_image": 58.74689966440201,
+    "pixel_mae": 20.460394144058228,
+    "img_cos": null,
+    "caption_cos": 0.9906635135412216,
+    "captions": [
+      "Captured in a medium shot, a vintage-style bicycle is the focal point, leaning against a weathered brick wall. The bicyc",
+      "The image captures a vibrant and bustling street scene in Tokyo at night. The street is wide and lined with tall buildin",
+      "The image shows a vibrant red apple sitting on a wooden windowsill, bathed in warm sunlight streaming through a window. ",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, reflecting lig"
+    ]
+  },
+  {
+    "model": "GLMImage",
+    "steps": 15,
+    "secs_per_image": 62.73405283689499,
+    "pixel_mae": 12.75463342666626,
+    "img_cos": null,
+    "caption_cos": 0.9925621896982193,
+    "captions": [
+      "Captured from a slightly low angle, the image showcases a vintage-style bicycle leaning against a weathered brick wall. ",
+      "The image captures a vibrant nighttime scene in a bustling city, likely Tokyo, Japan. The street is wide and lined with ",
+      "The image shows a vibrant red apple sitting on a wooden windowsill, bathed in bright sunlight streaming through a window",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, reflecting lig"
+    ]
+  },
+  {
+    "model": "GLMImage",
+    "steps": 25,
+    "secs_per_image": 76.37032163143158,
+    "pixel_mae": 5.611637115478516,
+    "img_cos": null,
+    "caption_cos": 0.9951097518205643,
+    "captions": [
+      "Captured from a slightly low angle, the image showcases a stylish, vintage-inspired bicycle leaning against a weathered ",
+      "The image captures a vibrant and bustling street scene in Tokyo at night. The street is wide and lined with tall buildin",
+      "The image shows a vibrant red apple sitting on a wooden windowsill, bathed in warm sunlight streaming through a window. ",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, reflecting lig"
+    ]
+  },
+  {
+    "model": "GLMImage",
+    "steps": 35,
+    "secs_per_image": 90.44350379705429,
+    "pixel_mae": 2.8669627904891968,
+    "img_cos": null,
+    "caption_cos": 0.9917692095041275,
+    "captions": [
+      "Captured from a slightly low angle, the image showcases a vintage-style bicycle leaning against a weathered brick wall. ",
+      "The image captures a vibrant, bustling street scene in Tokyo at night. The street is wide and multi-laned, filled with a",
+      "The image shows a vibrant red apple sitting on a wooden windowsill, bathed in warm sunlight streaming through a window. ",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, reflecting lig"
+    ]
+  },
+  {
+    "model": "GLMImage",
+    "steps": 50,
+    "secs_per_image": 110.54295128583908,
+    "pixel_mae": 0.0,
+    "img_cos": null,
+    "caption_cos": 1.0000000298023224,
+    "captions": [
+      "Captured from a slightly low angle, the image showcases a vintage-style bicycle leaning against a weathered brick wall. ",
+      "The image captures a vibrant, bustling street scene in Tokyo at night. The street is wide and multi-lane, filled with a ",
+      "The image shows a vibrant red apple sitting on a wooden windowsill, bathed in warm sunlight streaming through a window. ",
+      "A single, vibrant red apple sits centered on a light brown wooden surface. The apple is round and glossy, reflecting lig"
+    ]
+  }
+]

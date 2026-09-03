@@ -740,7 +740,11 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
         "guidance_scale": 5.0,
         "max_sequence_length": 512,
     },
-    "Flux2Dev": {"num_inference_steps": 15, "guidance_scale": 3.5},
+    # 12 rather than 15 (TASK-83): caption cosine against a 25-step reference is
+    # flat and non-monotone across 8-15 steps over 12 prompts, so the metric
+    # cannot separate them; 12 keeps the best of that band on both caption
+    # cosine and pixel fidelity while cutting ~19% off the panel's dearest model.
+    "Flux2Dev": {"num_inference_steps": 12, "guidance_scale": 3.5},
     "HunyuanImage": {"num_inference_steps": 25},
     "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
     "ZImageTurbo": {"num_inference_steps": 8, "guidance_scale": 0.0},
