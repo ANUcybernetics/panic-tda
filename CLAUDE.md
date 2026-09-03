@@ -104,8 +104,8 @@ estimates.
 | SD35Medium             | ~9s               | ~9s        | ~6.5s †          |
 | ZImageTurbo            | ~8s               | ~18s       | ~6s              |
 | Flux2Klein             | ~20s              | ~20s       | ~4.1s †          |
-| Flux2Dev               | ~91s              | ~181s §    | ~57s ‡           |
-| GLMImage               | ~44s              | ~85s       | ~45s ‡           |
+| Flux2Dev               | ~104s             | ~181s §    | ~58s ‡           |
+| GLMImage               | ~77s              | ~85s §     | ~42s ‡           |
 | **Image-to-text**      |                   |            |                  |
 | Moondream              | ~4s               | ~10s       | ~0.3s †          |
 | Qwen25VL               | ~12s              | ~14s       | ~0.9s †          |

@@ -696,15 +696,16 @@ _I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
 
 
 _T2I_MAX_RETRIES = 3
-# Batch caps tuned on the RTX 6000 Ada (48 GB). Flux2Dev/GLMImage added in
-# TASK-74: batch=4 gives ~1.6x/1.7x per-item speedup with no OOM; batch=8 is
-# left unprobed (a mid-run OOM would crash the ~2-week panel run).
+# Batch caps tuned on the RTX 6000 Ada (48 GB). Probed at 4/8/16 in TASK-78:
+# Flux2Dev is flat from 4 to 16 (57.7 / 58.4 / 57.8 s/item), so it is already
+# compute-saturated and stays at 4. GLMImage gains 7.3% at 8 (45.8 -> 42.4)
+# and OOMs at 16, so 8 is its knee.
 _T2I_MAX_BATCH: dict[str, int] = {
     "SD35Medium": 4,
     "ZImageTurbo": 4,
     "Flux2Klein": 2,
     "Flux2Dev": 4,
-    "GLMImage": 4,
+    "GLMImage": 8,
 }
 
 

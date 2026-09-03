@@ -256,10 +256,41 @@ with the ordering scrambled, so the metric genuinely cannot separate 8 from 15.
   depending on the process, silently. Nulled in the results and raised as
   TASK-86.
 
+### 3. Batch headroom at 8 and 16 (TASK-78) — KEEP (GLMImage 4 → 8), REVERT (Flux2Dev)
+
+- **Date:** 2026-09-03
+- **Files touched:** `priv/python/panic_models.py` (`_T2I_MAX_BATCH`),
+  `lib/mix/tasks/gpu.bench.ex`
+- **Change:** `mix gpu.bench Flux2Dev GLMImage --batch-sizes 4,8,16 --n 16`,
+  the probe TASK-78 called for once the memory-safety rationale for capping at
+  4 had been resolved by the real-schedule validation above.
+
+| Model | batch=1 | batch=4 | batch=8 | batch=16 |
+| --- | --- | --- | --- | --- |
+| Flux2Dev (12 steps) | 103.9 s | **57.7 s** (1.80×) | 58.4 s (1.78×) | 57.8 s (1.80×) |
+| GLMImage (25 steps) | 76.7 s | 45.8 s (1.67×) | **42.4 s** (1.81×) | OOM |
+
+- **Decision + rationale:** GLMImage 4 → 8, a 7.3% per-item gain; Flux2Dev stays
+  at 4. The hypothesis in TASK-78 — another 10–20% for both models at batch=8 —
+  holds for GLMImage and is simply wrong for Flux2Dev, which is flat within
+  measurement noise from 4 all the way to 16 and so is already compute-bound
+  rather than launch-bound at 4. GLMImage at 16 exhausts the card (down to
+  ~15 MB free of 50.8 GB), so 8 is a genuine knee rather than an arbitrary stop.
+- **Quality parity:** the comparison that matters is batched-vs-batched, not
+  against an absolute threshold: GLMImage's parity is 70.69 at 8 against 70.61
+  at 4, i.e. unchanged from the value already accepted as benign in iteration 1.
+  Flux2Dev sits at 4.2–4.7 across all three batch sizes.
+- **Caveat on the OOM:** batch=16 was measured in a process that had just run
+  Flux2Dev, so some of the exhaustion may be fragmentation rather than a hard
+  ceiling. Not worth chasing — a mid-run OOM would stall a multi-week panel, and
+  8 already captures the available gain.
+- **Harness fix:** `@bench_timeout` was a flat hour, but the run generates `n`
+  images serially plus `n` at every batch size. The first attempt at
+  `--n 16 --batch-sizes 4,8,16` died an hour in having done most of the work.
+  The budget now scales per image.
+
 ### Untried / future levers (ranked)
 
-- Probe `Flux2Dev`/`GLMImage` at batch=8+ for marginal additional headroom
-  (memory-gated).
 - Batch `HunyuanImage` (sequential offload like Flux2Dev — likely benefits; not
   in the panel, unbenchmarked).
 - `torch.compile` (lever B), `channels_last` (C), attention backend (D), FP8 vs

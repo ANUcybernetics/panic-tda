@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
+updated_date: '2026-09-03 09:31'
 labels:
   - models
   - experiment-design
@@ -46,3 +47,11 @@ Practical constraints. _load_moondream in priv/python/panic_models.py is bespoke
 - [ ] #5 Impact on TASK-81's cross-era comparison stated explicitly once the Moondream decision is made
 - [ ] #6 mix test --include gpu green for the new lineup, and CLAUDE.md model table plus run-time rows updated
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Ben, 2026-09-03: happy with the chat-tuned successors (Qwen3-VL, Gemma 4, Mistral Small 3.2, Llama 4 Scout, Moondream 3) --- those are endorsed as candidates, so the task is scoped to picking sizes/variants and validating them rather than re-litigating whether to upgrade at all.
+
+Still open: whether the caption-first models in TASK-88 (fancyfeast/llama-joycaption-beta-one-hf-llava, internlm/CapRL-Qwen3VL-4B) join the same lineup decision, either as additions to the panel or as replacements for one of the chat-tuned slots. They are not successors, so they widen the panel's objective diversity rather than modernising it --- which matters more now that decision-01 makes caption length a measured covariate.
+<!-- SECTION:NOTES:END -->
