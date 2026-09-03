@@ -1,0 +1,45 @@
+{
+  "model": "Flux2Klein",
+  "n": 6,
+  "n_truncated": 6,
+  "mean_caption_cos_truncated": 0.919510950644811,
+  "mean_pixel_mae_truncated": 41.05553277333578,
+  "rows": [
+    {
+      "t5_tokens": 423,
+      "tokens_dropped": 167,
+      "caption_cos_full_vs_cut": 0.9313581585884094,
+      "pixel_mae": 24.880712509155273
+    },
+    {
+      "t5_tokens": 430,
+      "tokens_dropped": 174,
+      "caption_cos_full_vs_cut": 0.8561927080154419,
+      "pixel_mae": 25.900634765625
+    },
+    {
+      "t5_tokens": 391,
+      "tokens_dropped": 135,
+      "caption_cos_full_vs_cut": 0.9590322971343994,
+      "pixel_mae": 36.617042541503906
+    },
+    {
+      "t5_tokens": 406,
+      "tokens_dropped": 150,
+      "caption_cos_full_vs_cut": 0.9337611794471741,
+      "pixel_mae": 51.2099723815918
+    },
+    {
+      "t5_tokens": 385,
+      "tokens_dropped": 129,
+      "caption_cos_full_vs_cut": 0.9349774718284607,
+      "pixel_mae": 58.04984664916992
+    },
+    {
+      "t5_tokens": 382,
+      "tokens_dropped": 126,
+      "caption_cos_full_vs_cut": 0.9017438888549805,
+      "pixel_mae": 49.67498779296875
+    }
+  ]
+}

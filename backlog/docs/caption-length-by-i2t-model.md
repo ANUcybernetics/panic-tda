@@ -176,6 +176,45 @@ times more verbose than their 2025 predecessors, so the 512-token encoder
 ceiling --- not generation length --- is now the binding constraint on which
 captioners this loop can use at all.
 
+## Is the 512-token encoder ceiling costing us anything?
+
+Measured 2026-09-04 (`analysis/prompt_tail.py`), prompted by the obvious
+question: the ceiling is not a decision anyone made, so what is it buying?
+
+What is possible. Flux2Klein and Flux2Dev encode text with
+`Mistral3ForConditionalGeneration`, a full LLM with a long context, and
+Z-Image has no hard cap either --- for those, 512 is merely the diffusers
+default. GLMImage already reads 2048. **SD35Medium is the sole hard
+constraint**: `StableDiffusion3Pipeline` raises above 512, and that limit is
+real, since its T5 branch was trained to 512.
+
+What it costs. Nothing at present. The v2 lineup's captions run 382--430 T5
+tokens, so no caption is being truncated by any encoder. Raising the ceiling
+would change the images without adding any text.
+
+That last point is not obvious, and matters on its own: **`max_sequence_length`
+is not a neutral knob.** With identical, untruncated prompts at a fixed seed,
+moving it from 512 to 1024 still moved caption cosine to 0.896--0.988 (mean
+0.943), because it sets the padding length and so changes the shape of the
+conditioning tensor. It must therefore be fixed before a run and held.
+
+Whether the discarded tail carries information is harder to answer than it
+looks. Holding padding fixed and cutting 126--174 tokens from the end gives
+mean caption cosine 0.920 (0.856--0.959). On the measured scale --- 1.000 for
+identical images, 0.876 for unrelated ones --- that is a large change, but it is
+barely larger than the padding artefact above. Flux2Klein at four steps is
+simply very sensitive to any conditioning perturbation, so this metric cannot
+cleanly separate "the tail carries content" from "any change reshuffles the
+image". Six captions, one model: treat it as inconclusive on the mechanism and
+conclusive only on the practical point.
+
+Practical conclusion: keep 512 uniformly and treat it as a constraint on which
+captioners are eligible, not as a parameter to tune. Uniformity matters more
+than the value --- raising it on the four models that allow it while SD35Medium
+stayed at 512 would reintroduce exactly the per-model truncation asymmetry that
+made `balanced_panel_5x5` hard to interpret. Revisit only if a wanted captioner
+genuinely exceeds it, and price that as replacing SD35Medium.
+
 ## Did the truncation change the dynamics?
 
 The caption pilot (`01a060b4`, Flux2Klein+Gemma3n, ceiling 1024) repeats the
