@@ -39,9 +39,9 @@ defmodule PanicTda.RealModelsTest do
       assert <<_::binary-size(4), "ftyp", _::binary>> = image
     end
 
-    test "Moondream generates text caption from image", %{env: env} do
+    test "Moondream3 generates text caption from image", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "SD35Medium", "A red apple on a table")
-      {:ok, caption} = GenAI.invoke(env, "Moondream", image)
+      {:ok, caption} = GenAI.invoke(env, "Moondream3", image)
 
       assert is_binary(caption)
       assert String.length(caption) > 0
@@ -53,11 +53,11 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "end-to-end pipeline with real models" do
-    test "full experiment with SD35Medium + Moondream + Qwen3Embed", %{env: env} do
+    test "full experiment with SD35Medium + Moondream3 + Qwen3Embed", %{env: env} do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
-          networks: [["SD35Medium", "Moondream"]],
+          networks: [["SD35Medium", "Moondream3"]],
           prompts: ["A peaceful garden"],
           embedding_models: ["Qwen3Embed"],
           max_length: 4
@@ -79,14 +79,14 @@ defmodule PanicTda.RealModelsTest do
       assert inv0.output_image != nil
 
       assert inv1.type == :text
-      assert inv1.model == "Moondream"
+      assert inv1.model == "Moondream3"
       assert inv1.output_text != nil
 
       assert inv2.type == :image
       assert inv2.model == "SD35Medium"
 
       assert inv3.type == :text
-      assert inv3.model == "Moondream"
+      assert inv3.model == "Moondream3"
 
       embeddings =
         PanicTda.Embedding
@@ -148,7 +148,8 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model I2T tests" do
-    for i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision) do
+    # every registered captioner, one image each
+    for i2t <- ~w(Moondream3 Qwen25VL Qwen3VL Gemma3n Gemma4 Pixtral LLaMA32Vision JoyCaption) do
       @tag timeout: 600_000
       test "#{i2t} single invoke", %{env: env} do
         i2t = unquote(i2t)
@@ -202,9 +203,9 @@ defmodule PanicTda.RealModelsTest do
       assert is_binary(img1)
       :ok = PythonBridge.swap_model_to_cpu(env, "SD35Medium")
 
-      {:ok, caption} = GenAI.invoke(env, "Moondream", img1)
+      {:ok, caption} = GenAI.invoke(env, "Moondream3", img1)
       assert String.length(caption) > 0
-      :ok = PythonBridge.swap_model_to_cpu(env, "Moondream")
+      :ok = PythonBridge.swap_model_to_cpu(env, "Moondream3")
 
       {:ok, img2} = GenAI.invoke(env, "SD35Medium", caption)
       assert is_binary(img2)
@@ -216,8 +217,10 @@ defmodule PanicTda.RealModelsTest do
   describe "all model combinations smoke test" do
     @real_text_embedding_models ~w(Qwen3Embed)
 
+    # the balanced_panel_5x5_v2 lineup: the combinations we will actually run.
+    # Captioners outside it are covered by the per-model tests above.
     for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev GLMImage),
-        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision) do
+        i2t <- ~w(Moondream3 Qwen25VL Qwen3VL Gemma4 JoyCaption) do
       @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models", %{env: env} do
         t2i = unquote(t2i)

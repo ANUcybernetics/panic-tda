@@ -41,7 +41,6 @@ _REVISIONS: dict[str, str] = {
     "black-forest-labs/FLUX.2-klein-9B": "92196c8e11f7b6cf2b7493e037d8c5345c559216",
     "black-forest-labs/FLUX.2-dev": "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
     "zai-org/GLM-Image": "2c433cc0cbc293bde2ac8ca9624f279b5d23fcf4",
-    "vikhyatk/moondream2": "6b714b26eea5cbd9f31e4edb2541c170afa935ba",
     "Qwen/Qwen2.5-VL-7B-Instruct": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
     "google/gemma-3n-E2B-it": "5e092ebca197cdcd8d8b195040accf22693501bc",
     "mistral-community/pixtral-12b": "c2756cbbb9422eba9f6c5c439a214b0392dfc998",
@@ -424,45 +423,30 @@ def _load_t2i_pipeline(name: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-_MOONDREAM_REPO = "vikhyatk/moondream2"
+_MOONDREAM_REPO = "moondream/moondream3-preview"
 _MOONDREAM_REV = _REVISIONS[_MOONDREAM_REPO]
 
 
 def _load_moondream() -> None:
-    import sys
+    """Moondream 3, loaded through the documented remote-code path.
 
-    from huggingface_hub import snapshot_download
-    from safetensors.torch import load_file
-    from transformers import AutoConfig
+    Moondream 2 needed a bespoke loader: fish the model class out of
+    `transformers_modules`, build the config by hand, then load a single
+    `model.safetensors` with a prefix strip. Moondream 3 ships a sharded
+    checkpoint with a working `auto_map`, so `from_pretrained` is enough.
+    """
+    from transformers import AutoModelForCausalLM
 
-    snap_dir = snapshot_download(_MOONDREAM_REPO, revision=_MOONDREAM_REV)
-
-    AutoConfig.from_pretrained(
-        _MOONDREAM_REPO, revision=_MOONDREAM_REV, trust_remote_code=True
+    # No device_map: an accelerate-hooked model cannot be moved with .to(), and
+    # swap_to_cpu does exactly that for anything outside _models_offload_only.
+    # At 9B in bf16 it fits without offloading anyway.
+    model = AutoModelForCausalLM.from_pretrained(
+        _MOONDREAM_REPO,
+        revision=_MOONDREAM_REV,
+        trust_remote_code=True,
+        torch_dtype=torch.bfloat16,
     )
-
-    md_mod = next(
-        mod
-        for name, mod in sys.modules.items()
-        if "transformers_modules" in name
-        and "moondream" in name
-        and "MoondreamModel" in getattr(mod, "__dict__", {})
-        and "MoondreamConfig" in getattr(mod, "__dict__", {})
-    )
-
-    import json
-
-    with open(f"{snap_dir}/config.json") as f:
-        raw_config = json.load(f)
-
-    config = md_mod.MoondreamConfig.from_dict(raw_config["config"])
-    model = md_mod.MoondreamModel(config, setup_caches=True)
-
-    state_dict = load_file(f"{snap_dir}/model.safetensors")
-    stripped = {k.removeprefix("model."): v for k, v in state_dict.items()}
-    model.load_state_dict(stripped, strict=False)
-
-    _models["Moondream"] = model.to("cuda").eval()
+    _models["Moondream3"] = model.to("cuda").eval()
 
 
 def _load_pixtral() -> None:
@@ -579,6 +563,24 @@ def _load_gemma3n() -> None:
     _models["Gemma3n"] = {"processor": processor, "model": model}
 
 
+def _load_gemma4() -> None:
+    from transformers import AutoProcessor, Gemma4ForConditionalGeneration
+
+    # 26B total (A4B active). Unlike Gemma3n's 2B, this does not fit in bf16
+    # alongside a diffusion model, so it is quantised like the other large VLMs.
+    repo = "google/gemma-4-26B-A4B-it"
+    model = Gemma4ForConditionalGeneration.from_pretrained(
+        repo,
+        revision=_rev(repo),
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        quantization_config=_bnb_4bit_config(),
+    )
+    processor = AutoProcessor.from_pretrained(repo, revision=_rev(repo))
+    _models["Gemma4"] = {"processor": processor, "model": model}
+    _models_offload_only.add("Gemma4")
+
+
 # ---------------------------------------------------------------------------
 # Model loading: embedding models
 # ---------------------------------------------------------------------------
@@ -589,13 +591,14 @@ def _load_gemma3n() -> None:
 # ---------------------------------------------------------------------------
 
 _I2T_LOADERS: dict[str, Any] = {
-    "Moondream": _load_moondream,
+    "Moondream3": _load_moondream,
     "Pixtral": _load_pixtral,
     "LLaMA32Vision": _load_llama32vision,
     "Qwen25VL": functools.partial(_load_qwen_vl, "Qwen25VL"),
     "Qwen3VL": functools.partial(_load_qwen_vl, "Qwen3VL"),
     "JoyCaption": _load_joycaption,
     "Gemma3n": _load_gemma3n,
+    "Gemma4": _load_gemma4,
 }
 
 _EMBEDDING_LOADERS: dict[str, tuple[str, dict[str, Any]]] = {
@@ -852,7 +855,7 @@ def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
     return results
 
 
-# --- Moondream ---
+# --- Moondream 3 ---
 
 
 # caption() is left at its default length="normal" (decision-01); the SMC 2025
@@ -861,16 +864,16 @@ def _moondream_settings() -> dict[str, Any]:
     return {"temperature": 0.0, "max_tokens": _i2t_max_new_tokens()}
 
 
-def _invoke_moondream(_name: str, img: Image.Image) -> str:
-    model = _models["Moondream"]
+def _invoke_moondream(name: str, img: Image.Image) -> str:
+    model = _models[name]
     with torch.inference_mode():
         encoded = model.encode_image(img)
         cap = model.caption(encoded, settings=_moondream_settings())
     return cap["caption"].strip()
 
 
-def _invoke_moondream_batch(_name: str, images: list[Image.Image]) -> list[str]:
-    model = _models["Moondream"]
+def _invoke_moondream_batch(name: str, images: list[Image.Image]) -> list[str]:
+    model = _models[name]
     results = []
     with torch.inference_mode():
         for img in images:
@@ -1079,11 +1082,11 @@ def _invoke_qwen_vl_batch(name: str, images: list[Image.Image]) -> list[str]:
     ]
 
 
-# --- Gemma3n ---
+# --- Gemma family (Gemma3n, Gemma4) ---
 
 
-def _invoke_gemma3n(_name: str, img: Image.Image) -> str:
-    gemma3n = _models["Gemma3n"]
+def _invoke_gemma(name: str, img: Image.Image) -> str:
+    gemma3n = _models[name]
     messages = [
         {
             "role": "user",
@@ -1116,8 +1119,8 @@ def _invoke_gemma3n(_name: str, img: Image.Image) -> str:
     )
 
 
-def _invoke_gemma3n_batch(_name: str, images: list[Image.Image]) -> list[str]:
-    gemma3n = _models["Gemma3n"]
+def _invoke_gemma_batch(name: str, images: list[Image.Image]) -> list[str]:
+    gemma3n = _models[name]
     all_messages = []
     for img in images:
         all_messages.append(
@@ -1159,23 +1162,25 @@ def _invoke_gemma3n_batch(_name: str, images: list[Image.Image]) -> list[str]:
 # Strategy dispatch tables
 
 _I2T_STRATEGIES: dict[str, Any] = {
-    "Moondream": _invoke_moondream,
+    "Moondream3": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
     "Qwen25VL": _invoke_qwen_vl,
     "Qwen3VL": _invoke_qwen_vl,
     "JoyCaption": _invoke_chat_template,
-    "Gemma3n": _invoke_gemma3n,
+    "Gemma3n": _invoke_gemma,
+    "Gemma4": _invoke_gemma,
 }
 
 _I2T_BATCH_STRATEGIES: dict[str, Any] = {
-    "Moondream": _invoke_moondream_batch,
+    "Moondream3": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
     "Qwen25VL": _invoke_qwen_vl_batch,
     "Qwen3VL": _invoke_qwen_vl_batch,
     "JoyCaption": _invoke_chat_template_batch,
-    "Gemma3n": _invoke_gemma3n_batch,
+    "Gemma3n": _invoke_gemma_batch,
+    "Gemma4": _invoke_gemma_batch,
 }
 
 

@@ -11,13 +11,18 @@ defmodule PanicTda.Export do
     "Flux2Klein" => "F2Klein",
     "Flux2Dev" => "F2Dev",
     "ZImageTurbo" => "ZImg",
-    "HunyuanImage" => "Hunyuan",
     "GLMImage" => "GLM",
-    "Moondream" => "Moon",
-    "Qwen25VL" => "Qwen",
-    "Gemma3n" => "Gemma",
+    "Moondream3" => "Moon3",
+    "Qwen25VL" => "Qwen25",
+    "Qwen3VL" => "Qwen3",
+    "Gemma3n" => "Gemma3n",
+    "Gemma4" => "Gemma4",
+    "JoyCaption" => "Joy",
     "Pixtral" => "Pix",
     "LLaMA32Vision" => "LLaMA",
+    # retired, but historical experiments still carry these model names
+    "Moondream" => "Moon",
+    "HunyuanImage" => "Hunyuan",
     "Florence2" => "Flor2"
   }
 
