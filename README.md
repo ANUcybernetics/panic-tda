@@ -51,7 +51,7 @@ example configuration:
 
 ```json
 {
-  "network": ["SD35Medium", "Moondream"],
+  "network": ["SD35Medium", "Moondream3"],
   "prompts": ["a red apple"],
   "embedding_models": ["Qwen3Embed"],
   "max_length": 100,
@@ -90,7 +90,7 @@ mise exec -- mix experiment.resume abc123
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage` |
-| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision` |
+| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma3n`, `Gemma4`, `Pixtral`, `LLaMA32Vision`, `JoyCaption` |
 | text embedding  | `Qwen3Embed` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
@@ -108,7 +108,7 @@ Times include model loading/swapping overhead.
 | GLMImage | ~44s | ~28s |
 | Flux2Dev | ~100s | ~75s |
 | **Image-to-text** | | |
-| Moondream | ~4s | ~3s |
+| Moondream3 | — | ~2.4s |
 | Qwen25VL | ~12s | ~5s |
 | Gemma3n | ~16s | ~6s |
 | LLaMA32Vision | ~17s | ~8s |

@@ -81,7 +81,7 @@ embeddings → TDA → Lyapunov).
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`                                          |
-| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`                                             |
+| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma3n`, `Gemma4`, `Pixtral`, `LLaMA32Vision`, `JoyCaption`         |
 | text embedding  | `Qwen3Embed`                                                                                               |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
@@ -107,9 +107,12 @@ estimates.
 | Flux2Dev               | ~104s             | ~181s §    | ~58s ‡           |
 | GLMImage               | ~77s              | ~85s §     | ~42s ‡           |
 | **Image-to-text**      |                   |            |                  |
-| Moondream              | ~4s               | ~10s       | ~0.3s †          |
+| Moondream3             | —                 | —          | ~2.4s ¶          |
 | Qwen25VL               | ~12s              | ~14s       | ~0.9s †          |
+| Qwen3VL                | —                 | —          | ~4.0s ¶          |
 | Gemma3n                | ~16s              | ~18s       | ~6s              |
+| Gemma4                 | —                 | —          | ~2.6s ¶          |
+| JoyCaption             | —                 | —          | ~2.2s ¶          |
 | Pixtral                | ~19s              | ~24s       | ~2.6s †          |
 | LLaMA32Vision          | ~17s              | ~23s       | ~8s              |
 
@@ -120,7 +123,9 @@ that these two ran serially even inside `invoke_t2i_batch`. Benchmark and
 quality gate: `mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
 
 The Flux2Dev row is measured at its current 12 steps (TASK-83); § is the only
-cell scaled rather than measured. Captioner rows predate decision-01 and now
+cell scaled rather than measured. ¶ marks seconds per caption at natural
+length over a batch of four (TASK-87); those models have no single-invocation
+or batch-of-three figure yet. Captioner rows predate decision-01 and now
 understate: captions run to natural length, so a Gemma3n batch takes roughly
 two to three times longer than it did under the old 128-token ceiling. Measured
 seconds per caption at natural length are in

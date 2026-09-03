@@ -136,6 +136,46 @@ at the 512 decision-01 specifies, none are touched. The same captions are
 314–373 CLIP tokens against CLIP's fixed 77, so that branch does truncate, as
 decision-01 says --- architectural, and documented rather than worked around.
 
+## The v2 lineup, measured 2026-09-03/04
+
+TASK-87 replaced three of the five captioners. Measured the same way as above
+(four Flux2Dev images, natural length, the same `Describe this image.`
+instruction for every model so captioner and prompt stay unconfounded). The T5
+token counts matter because the text-to-image encoders read at most 512 tokens
+--- SD35Medium hard-caps there, Flux2Klein/Flux2Dev/ZImageTurbo default to it,
+GLMImage takes 2048.
+
+| Image-to-text model | median | min–max | T5 tokens | % cut off | s/caption |
+|---|---|---|---|---|---|
+| Moondream3 | 59 | 36–62 | 52–81 | 0.0% | 2.4 |
+| Qwen25VL (retained) | 80 | 61–105 | — | 0.0% | 0.9 |
+| JoyCaption | 178 | 91–178 | 131–250 | 0.0% | 2.2 |
+| Gemma4 (E4B) | 225 | 180–252 | 262–389 | 0.0% | 2.6 |
+| Qwen3VL | 292 | 198–317 | 312–466 | 0.0% | 4.0 |
+
+The spread is roughly fivefold with overlapping distributions, which is the
+separability condition TASK-80 actually wanted --- and a marked improvement on
+the old lineup, where Moondream sat disjoint from every other captioner. Note
+Qwen3VL has the least headroom against the 512-token ceiling (466 of 512 on
+easy images), so it is the one to watch on visually complex inputs.
+
+Two models were rejected during integration, both for reasons invisible in
+their caption output:
+
+- **CapRL-Qwen3VL-4B** captions at 466 words median and 466--836 T5 tokens,
+  exceeding the 512-token ceiling on three of four images. Its captions would
+  have been silently truncated by four of the five text-to-image models,
+  reintroducing exactly what decision-01 removed.
+- **Gemma 4 26B-A4B** captioned well but occupied 48.4 GB of a 50.9 GB card:
+  bitsandbytes quantises `nn.Linear` only, and 47.2 GB of that model sits in
+  `Gemma4ClippableLinear` layers it skips silently. The dense E4B variant needs
+  no quantisation and takes 15.9 GB. See TASK-87.
+
+The general lesson for future lineup changes: 2026 captioners are three to six
+times more verbose than their 2025 predecessors, so the 512-token encoder
+ceiling --- not generation length --- is now the binding constraint on which
+captioners this loop can use at all.
+
 ## Did the truncation change the dynamics?
 
 The caption pilot (`01a060b4`, Flux2Klein+Gemma3n, ceiling 1024) repeats the
