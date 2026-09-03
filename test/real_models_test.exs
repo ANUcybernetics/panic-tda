@@ -59,98 +59,16 @@ defmodule PanicTda.RealModelsTest do
       assert_in_delta norm, 1.0, 1.0e-4
     end
 
-    test "STSBMpnet generates 256-dim unit-norm float32 text embeddings", %{env: env} do
-      {:ok, [emb1, emb2]} = Embeddings.embed(env, "STSBMpnet", ["hello world", "test sentence"])
-
-      assert is_binary(emb1)
-      assert is_binary(emb2)
-      assert byte_size(emb1) == 256 * 4
-      assert byte_size(emb2) == 256 * 4
-      assert_unit_norm(emb1)
-      assert_unit_norm(emb2)
-    end
-
-    test "NomicVision generates 256-dim unit-norm float32 image embeddings", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A blue sky")
-      {:ok, [emb]} = Embeddings.embed(env, "NomicVision", [image])
-
-      assert is_binary(emb)
-      assert byte_size(emb) == 256 * 4
-      assert_unit_norm(emb)
-    end
-
-    test "ColNomic generates float32 text embeddings", %{env: env} do
-      {:ok, [emb1, emb2]} = Embeddings.embed(env, "ColNomic", ["hello world", "test sentence"])
-
-      assert is_binary(emb1)
-      assert is_binary(emb2)
-      assert byte_size(emb1) == byte_size(emb2)
-      assert rem(byte_size(emb1), 4) == 0
-      assert byte_size(emb1) > 0
-    end
-
-    test "ColNomicVision generates float32 image embeddings", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "SD35Medium", "A blue sky")
-      {:ok, [emb]} = Embeddings.embed(env, "ColNomicVision", [image])
-
-      assert is_binary(emb)
-      assert rem(byte_size(emb), 4) == 0
-      assert byte_size(emb) > 0
-    end
-
-    test "ColNomic batches 9 texts correctly (spans internal chunk size)", %{env: env} do
-      texts =
-        for i <- 1..9, do: "sample sentence number #{i} describing an object or scene"
-
-      {:ok, embs} = Embeddings.embed(env, "ColNomic", texts)
-
-      assert length(embs) == 9
-      sizes = Enum.map(embs, &byte_size/1)
-      assert Enum.uniq(sizes) == [Enum.at(sizes, 0)]
-      assert Enum.at(sizes, 0) > 0
-      assert rem(Enum.at(sizes, 0), 4) == 0
-
-      # distinct inputs should produce distinct vectors
-      assert length(Enum.uniq(embs)) == 9
-    end
-
-    test "ColNomicVision batches 6 images correctly (spans internal chunk size)", %{env: env} do
-      prompts = [
-        "a red apple",
-        "a blue ocean",
-        "a green forest",
-        "a yellow sunflower",
-        "a white cloud",
-        "a black cat"
-      ]
-
-      images =
-        Enum.map(prompts, fn p ->
-          {:ok, img} = GenAI.invoke(env, "SD35Medium", p)
-          img
-        end)
-
-      {:ok, embs} = Embeddings.embed(env, "ColNomicVision", images)
-
-      assert length(embs) == 6
-      sizes = Enum.map(embs, &byte_size/1)
-      assert Enum.uniq(sizes) == [Enum.at(sizes, 0)]
-      assert Enum.at(sizes, 0) > 0
-      assert rem(Enum.at(sizes, 0), 4) == 0
-
-      # distinct images should produce distinct vectors
-      assert length(Enum.uniq(embs)) == 6
-    end
   end
 
   describe "end-to-end pipeline with real models" do
-    test "full experiment with SD35Medium + Moondream + STSBMpnet", %{env: env} do
+    test "full experiment with SD35Medium + Moondream + Qwen3Embed", %{env: env} do
       {:ok, experiment} =
         PanicTda.Experiment
         |> Ash.Changeset.for_create(:create, %{
           networks: [["SD35Medium", "Moondream"]],
           prompts: ["A peaceful garden"],
-          embedding_models: ["STSBMpnet"],
+          embedding_models: ["Qwen3Embed"],
           max_length: 4
         })
         |> Ash.create()
@@ -181,7 +99,7 @@ defmodule PanicTda.RealModelsTest do
 
       embeddings =
         PanicTda.Embedding
-        |> Ash.Query.filter(embedding_model == ^"STSBMpnet")
+        |> Ash.Query.filter(embedding_model == ^"Qwen3Embed")
         |> Ash.read!()
 
       assert length(embeddings) == 2
@@ -194,13 +112,13 @@ defmodule PanicTda.RealModelsTest do
       pds = Ash.read!(PanicTda.PersistenceDiagram)
       assert length(pds) == 1
       pd = hd(pds)
-      assert pd.embedding_model == "STSBMpnet"
+      assert pd.embedding_model == "Qwen3Embed"
       assert pd.diagram_data != nil
     end
   end
 
   describe "per-model T2I tests" do
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage) do
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev GLMImage) do
       @tag timeout: 600_000
       test "#{t2i} single invoke", %{env: env} do
         t2i = unquote(t2i)
@@ -239,7 +157,7 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model I2T tests" do
-    for i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do
+    for i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision) do
       @tag timeout: 600_000
       test "#{i2t} single invoke", %{env: env} do
         i2t = unquote(i2t)
@@ -305,11 +223,10 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "all model combinations smoke test" do
-    @real_text_embedding_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed ColNomic)
-    @real_image_embedding_models ~w(NomicVision JinaClipVision ColNomicVision)
+    @real_text_embedding_models ~w(Qwen3Embed)
 
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
-        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev GLMImage),
+        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision) do
       @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models", %{env: env} do
         t2i = unquote(t2i)
@@ -346,40 +263,5 @@ defmodule PanicTda.RealModelsTest do
       end
     end
 
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev HunyuanImage GLMImage),
-        i2t <- ~w(Moondream Qwen25VL Gemma3n Pixtral LLaMA32Vision Florence2) do
-      @tag timeout: 900_000
-      test "pipeline: #{t2i} + #{i2t} with all image embedding models", %{env: env} do
-        t2i = unquote(t2i)
-        i2t = unquote(i2t)
-
-        experiment =
-          PanicTda.create_experiment!(%{
-            networks: [[t2i, i2t]],
-            prompts: ["a red apple"],
-            embedding_models: @real_image_embedding_models,
-            max_length: 4
-          })
-
-        {:ok, completed} = Engine.perform_experiment(experiment.id, env: env)
-
-        assert completed.completed_at != nil
-
-        completed = Ash.load!(completed, runs: [:invocations])
-        run = hd(completed.runs)
-        assert length(run.invocations) == 4
-
-        for model <- @real_image_embedding_models do
-          embeddings =
-            PanicTda.list_embeddings!(query: [filter: [embedding_model: model]])
-
-          assert length(embeddings) == 2,
-                 "expected 2 embeddings for #{model}, got #{length(embeddings)}"
-        end
-
-        pds = PanicTda.list_persistence_diagrams!()
-        assert length(pds) == length(@real_image_embedding_models)
-      end
-    end
   end
 end

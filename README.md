@@ -53,7 +53,7 @@ example configuration:
 {
   "network": ["SD35Medium", "Moondream"],
   "prompts": ["a red apple"],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 100,
   "num_runs": 4
 }
@@ -89,10 +89,9 @@ mise exec -- mix experiment.resume abc123
 
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
-| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `QwenImage`, `HunyuanImage`, `GLMImage` |
-| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`, `Florence2`                               |
-| text embedding  | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed`                         |
-| image embedding | `NomicVision`, `JinaClipVision`                                                                            |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage` |
+| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision` |
+| text embedding  | `Qwen3Embed` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
 
 ### Approximate run times
@@ -107,16 +106,13 @@ Times include model loading/swapping overhead.
 | ZImageTurbo | ~8s | ~6s |
 | Flux2Klein | ~20s | ~7s |
 | GLMImage | ~44s | ~28s |
-| QwenImage | ~46s | ~23s |
 | Flux2Dev | ~100s | ~75s |
-| HunyuanImage | ~124s | ~109s |
 | **Image-to-text** | | |
 | Moondream | ~4s | ~3s |
 | Qwen25VL | ~12s | ~5s |
 | Gemma3n | ~16s | ~6s |
 | LLaMA32Vision | ~17s | ~8s |
 | Pixtral | ~19s | ~8s |
-| Florence2 | TBD | TBD |
 
 The design space of different models is vast; with both fundamentally different
 architectures and many different finetunes of the same base models. This

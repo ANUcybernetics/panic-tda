@@ -116,7 +116,7 @@ defmodule PanicTda.DataExport do
 
     candidates
     |> Enum.uniq()
-    |> Enum.filter(&(Embeddings.model_type(&1) == :text))
+    |> Enum.filter(&(Embeddings.registered?(&1) and Embeddings.model_type(&1) == :text))
   end
 
   defp prompt_invocation_row(run) do

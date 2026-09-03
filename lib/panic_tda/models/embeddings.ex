@@ -10,10 +10,14 @@ defmodule PanicTda.Models.Embeddings do
 
   @dummy_text_models ~w(DummyText DummyText2)
   @dummy_image_models ~w(DummyVision DummyVision2)
-  @real_text_models ~w(STSBMpnet STSBRoberta STSBDistilRoberta Nomic JinaClip Qwen3Embed ColNomic)
-  @real_image_models ~w(NomicVision JinaClipVision ColNomicVision)
+  @real_text_models ~w(Qwen3Embed)
+  # No real image embedder is registered (TASK-84 removed NomicVision,
+  # JinaClipVision and ColNomicVision). The embeddings stage still supports
+  # image embedding and the dummy vision models keep that path exercised, so
+  # adding one back means restoring a clause here and a loader in
+  # priv/python/panic_models.py.
   @text_models @dummy_text_models ++ @real_text_models
-  @image_models @dummy_image_models ++ @real_image_models
+  @image_models @dummy_image_models
 
   @embed_timeout 60_000
 
@@ -24,6 +28,15 @@ defmodule PanicTda.Models.Embeddings do
   def model_type(model_name) when model_name in @text_models, do: :text
   def model_type(model_name) when model_name in @image_models, do: :image
   def model_type(model_name), do: raise("Unknown embedding model: #{model_name}")
+
+  @doc """
+  Whether this embedding model is still registered.
+
+  Historical experiments name embedders that have since been retired, so read
+  paths over old data have to skip them rather than raise the way the compute
+  path should.
+  """
+  def registered?(model_name), do: model_name in @text_models or model_name in @image_models
 
   def embed(env, model_name, contents) when model_name in @dummy_text_models do
     embed_dummy_text(env, model_name, contents)
@@ -37,10 +50,6 @@ defmodule PanicTda.Models.Embeddings do
     embed_real_text(env, model_name, contents)
   end
 
-  def embed(env, model_name, contents) when model_name in @real_image_models do
-    embed_real_images(env, model_name, contents)
-  end
-
   defp embed_real_text(env, model_name, texts) when is_list(texts) do
     with :ok <- PythonBridge.ensure_setup(env),
          :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
@@ -48,23 +57,6 @@ defmodule PanicTda.Models.Embeddings do
              env,
              "return panic_models.embed_text(model_name, texts)",
              %{"model_name" => model_name, "texts" => texts},
-             timeout: @embed_timeout
-           ) do
-        {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
-        error -> error
-      end
-    end
-  end
-
-  defp embed_real_images(env, model_name, image_binaries) when is_list(image_binaries) do
-    image_b64_list = Enum.map(image_binaries, &Base.encode64/1)
-
-    with :ok <- PythonBridge.ensure_setup(env),
-         :ok <- PythonBridge.ensure_model_loaded(env, model_name) do
-      case Snex.pyeval(
-             env,
-             "return panic_models.embed_images(model_name, image_b64_list)",
-             %{"model_name" => model_name, "image_b64_list" => image_b64_list},
              timeout: @embed_timeout
            ) do
         {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}

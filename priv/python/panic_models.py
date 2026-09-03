@@ -26,11 +26,33 @@ EMBEDDING_DIM = 256
 _T2I_IMAGE_SIZES: dict[str, int] = {
     "SD35Medium": 1024,
     "Flux2Dev": 1024,
-    "HunyuanImage": 1024,
     "GLMImage": 1024,
     "ZImageTurbo": 1024,
     "Flux2Klein": 1024,
 }
+
+# Upstream revisions, pinned 2026-09-02 (TASK-84). Each was the repo's HEAD at
+# that date. Pinning matters because an unpinned repo resolves to whatever was
+# cached at first download, which differs between machines and drifts silently.
+_REVISIONS: dict[str, str] = {
+    "stabilityai/stable-diffusion-3.5-medium": "b940f670f0eda2d07fbb75229e779da1ad11eb80",
+    "Tongyi-MAI/Z-Image-Turbo": "f332072aa78be7aecdf3ee76d5c247082da564a6",
+    "black-forest-labs/FLUX.2-klein-9B": "92196c8e11f7b6cf2b7493e037d8c5345c559216",
+    "black-forest-labs/FLUX.2-dev": "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
+    "zai-org/GLM-Image": "2c433cc0cbc293bde2ac8ca9624f279b5d23fcf4",
+    "vikhyatk/moondream2": "6b714b26eea5cbd9f31e4edb2541c170afa935ba",
+    "Qwen/Qwen2.5-VL-7B-Instruct": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
+    "google/gemma-3n-E2B-it": "5e092ebca197cdcd8d8b195040accf22693501bc",
+    "mistral-community/pixtral-12b": "c2756cbbb9422eba9f6c5c439a214b0392dfc998",
+    "meta-llama/Llama-3.2-11B-Vision-Instruct": "9eb2daaa8597bf192a8b0e73f848f3a102794df5",
+    "Qwen/Qwen3-Embedding-4B": "5cf2132abc99cad020ac570b19d031efec650f2b",
+}
+
+
+def _rev(repo: str) -> str:
+    """The pinned revision for `repo`, for a from_pretrained `revision=` kwarg."""
+    return _REVISIONS[repo]
+
 
 _models: dict[str, Any] = {}
 _models_offload_only: set[str] = set()
@@ -99,9 +121,9 @@ def setup() -> None:
         import transformers.modeling_utils as _tmu
 
         # transformers 5.x passes code_revision through from_config → _from_config
-        # → cls(config, **kwargs), but remote-code model classes (e.g. JinaClip's
-        # XLMRobertaLoRA) don't accept it. Strip it — code_revision is only
-        # meaningful for from_pretrained, not from_config.
+        # → cls(config, **kwargs), but remote-code model classes (Moondream's,
+        # for one) don't accept it. Strip it — code_revision is only meaningful
+        # for from_pretrained, not from_config.
         _orig_from_config = _tmu.PreTrainedModel._from_config.__func__
 
         @classmethod  # type: ignore[misc]
@@ -185,9 +207,9 @@ def setup() -> None:
         # transformers 5.5.x has a bug in _convert_peft_config_moe: it runs
         # for any model that has a checkpoint-conversion mapping, then does a
         # bracket lookup in _MOE_TARGET_MODULE_MAPPING which only contains
-        # real MoE architectures. Loading ColNomic (qwen2_5_vl → qwen2_vl)
-        # crashes with KeyError: 'qwen2_vl'. Patch it to no-op when the
-        # mapped base type isn't a known MoE.
+        # real MoE architectures. A qwen2_5_vl checkpoint (Qwen25VL) maps to
+        # qwen2_vl and crashes with KeyError: 'qwen2_vl'. Patch it to no-op
+        # when the mapped base type isn't a known MoE.
         import transformers.integrations.peft as _tip
 
         if hasattr(_tip, "_convert_peft_config_moe") and not getattr(
@@ -289,32 +311,6 @@ def _load_sentence_transformer(name: str, model_path: str, **kwargs: Any) -> Non
     _models[name] = m
 
 
-def _load_remote_code_model(
-    model_path: str, model_cls: Any = None, **kwargs: Any
-) -> Any:
-    import contextlib
-
-    import transformers.modeling_utils as _tmu
-
-    if model_cls is None:
-        from transformers import AutoModel
-
-        model_cls = AutoModel
-    _orig_ctx = _tmu.PreTrainedModel.get_init_context
-
-    @classmethod  # type: ignore[misc]
-    def _cpu_init_ctx(cls: Any, *a: Any, **kw: Any) -> list[Any]:
-        return [contextlib.nullcontext()]
-
-    _tmu.PreTrainedModel.get_init_context = _cpu_init_ctx
-    try:
-        model = model_cls.from_pretrained(model_path, trust_remote_code=True, **kwargs)
-        model.tie_weights()
-        return model
-    finally:
-        _tmu.PreTrainedModel.get_init_context = _orig_ctx
-
-
 def _encode_image_b64(img: Image.Image) -> str:
     buf = io.BytesIO()
     img.save(buf, format="WEBP", lossless=True)
@@ -366,13 +362,6 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "offload_only": True,
         "extra_kwargs": {"torch_dtype": "bfloat16", "token": True},
     },
-    "HunyuanImage": {
-        "pipeline_cls": "HunyuanImagePipeline",
-        "repo": "hunyuanvideo-community/HunyuanImage-2.1-Diffusers",
-        "offload": "sequential_cpu_offload",
-        "offload_only": True,
-        "extra_kwargs": {"torch_dtype": "bfloat16"},
-    },
     "GLMImage": {
         "pipeline_cls": "GlmImagePipeline",
         "repo": "zai-org/GLM-Image",
@@ -415,7 +404,9 @@ def _load_t2i_pipeline(name: str) -> None:
                 "transformer": _bnb_4bit_config(),
             }
         )
-    pipe = pipeline_cls.from_pretrained(cfg["repo"], **kwargs)
+    pipe = pipeline_cls.from_pretrained(
+        cfg["repo"], revision=_rev(cfg["repo"]), **kwargs
+    )
     getattr(pipe, f"enable_{cfg['offload']}")()
     _models[name] = pipe
     if cfg.get("offload_only"):
@@ -428,7 +419,7 @@ def _load_t2i_pipeline(name: str) -> None:
 
 
 _MOONDREAM_REPO = "vikhyatk/moondream2"
-_MOONDREAM_REV = "2025-06-21"
+_MOONDREAM_REV = _REVISIONS[_MOONDREAM_REPO]
 
 
 def _load_moondream() -> None:
@@ -473,11 +464,14 @@ def _load_pixtral() -> None:
 
     model = LlavaForConditionalGeneration.from_pretrained(
         "mistral-community/pixtral-12b",
+        revision=_rev("mistral-community/pixtral-12b"),
         torch_dtype=torch.bfloat16,
         device_map="auto",
         quantization_config=_bnb_4bit_config(),
     )
-    processor = AutoProcessor.from_pretrained("mistral-community/pixtral-12b")
+    processor = AutoProcessor.from_pretrained(
+        "mistral-community/pixtral-12b", revision=_rev("mistral-community/pixtral-12b")
+    )
     if processor.tokenizer.pad_token is None:
         processor.tokenizer.pad_token = processor.tokenizer.eos_token
     _models["Pixtral"] = {"processor": processor, "model": model}
@@ -489,28 +483,19 @@ def _load_llama32vision() -> None:
 
     model = MllamaForConditionalGeneration.from_pretrained(
         "meta-llama/Llama-3.2-11B-Vision-Instruct",
+        revision=_rev("meta-llama/Llama-3.2-11B-Vision-Instruct"),
         torch_dtype=torch.bfloat16,
         device_map="auto",
         token=True,
         quantization_config=_bnb_4bit_config(),
     )
     processor = AutoProcessor.from_pretrained(
-        "meta-llama/Llama-3.2-11B-Vision-Instruct", token=True
+        "meta-llama/Llama-3.2-11B-Vision-Instruct",
+        revision=_rev("meta-llama/Llama-3.2-11B-Vision-Instruct"),
+        token=True,
     )
     _models["LLaMA32Vision"] = {"processor": processor, "model": model}
     _models_offload_only.add("LLaMA32Vision")
-
-
-def _load_florence2() -> None:
-    from transformers import AutoProcessor, Florence2ForConditionalGeneration
-
-    model = Florence2ForConditionalGeneration.from_pretrained(
-        "florence-community/Florence-2-large-ft",
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    ).eval()
-    processor = AutoProcessor.from_pretrained("florence-community/Florence-2-large-ft")
-    _models["Florence2"] = {"processor": processor, "model": model}
 
 
 def _load_qwen25vl() -> None:
@@ -518,12 +503,15 @@ def _load_qwen25vl() -> None:
 
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         "Qwen/Qwen2.5-VL-7B-Instruct",
+        revision=_rev("Qwen/Qwen2.5-VL-7B-Instruct"),
         torch_dtype=torch.bfloat16,
         attn_implementation="sdpa",
         device_map="auto",
         quantization_config=_bnb_4bit_config(),
     )
-    processor = AutoProcessor.from_pretrained("Qwen/Qwen2.5-VL-7B-Instruct")
+    processor = AutoProcessor.from_pretrained(
+        "Qwen/Qwen2.5-VL-7B-Instruct", revision=_rev("Qwen/Qwen2.5-VL-7B-Instruct")
+    )
     _models["Qwen25VL"] = {"processor": processor, "model": model}
     _models_offload_only.add("Qwen25VL")
 
@@ -533,65 +521,22 @@ def _load_gemma3n() -> None:
 
     model = (
         Gemma3nForConditionalGeneration.from_pretrained(
-            "google/gemma-3n-E2B-it", torch_dtype=torch.bfloat16
+            "google/gemma-3n-E2B-it",
+            revision=_rev("google/gemma-3n-E2B-it"),
+            torch_dtype=torch.bfloat16,
         )
         .to("cuda")
         .eval()
     )
-    processor = AutoProcessor.from_pretrained("google/gemma-3n-E2B-it")
+    processor = AutoProcessor.from_pretrained(
+        "google/gemma-3n-E2B-it", revision=_rev("google/gemma-3n-E2B-it")
+    )
     _models["Gemma3n"] = {"processor": processor, "model": model}
 
 
 # ---------------------------------------------------------------------------
 # Model loading: embedding models
 # ---------------------------------------------------------------------------
-
-
-def _load_nomic_vision() -> None:
-    from transformers import AutoImageProcessor
-
-    processor = AutoImageProcessor.from_pretrained("nomic-ai/nomic-embed-vision-v1.5")
-    model = _load_remote_code_model(
-        "nomic-ai/nomic-embed-vision-v1.5", torch_dtype=torch.float32
-    )
-    model = model.to("cuda").eval()
-    _models["NomicVision"] = {"processor": processor, "model": model}
-
-
-def _load_jina_clip_vision() -> None:
-    m = _load_remote_code_model("jinaai/jina-clip-v2")
-    m = m.to("cuda").eval()
-    _models["JinaClipVision"] = m
-
-
-def _load_jina_clip() -> None:
-    m = _load_remote_code_model("jinaai/jina-clip-v2")
-    m = m.to("cuda").eval()
-    _models["JinaClip"] = m
-
-
-_COLNOMIC_REPO = "nomic-ai/colnomic-embed-multimodal-3b"
-
-
-def _load_colnomic_instance(key: str, mask_non_image_embeddings: bool) -> None:
-    from colpali_engine.models import ColQwen2_5, ColQwen2_5_Processor
-
-    model = ColQwen2_5.from_pretrained(
-        _COLNOMIC_REPO,
-        torch_dtype=torch.bfloat16,
-        device_map="cuda:0",
-        mask_non_image_embeddings=mask_non_image_embeddings,
-    ).eval()
-    processor = ColQwen2_5_Processor.from_pretrained(_COLNOMIC_REPO)
-    _models[key] = {"processor": processor, "model": model}
-
-
-def _load_colnomic() -> None:
-    _load_colnomic_instance("ColNomic", mask_non_image_embeddings=False)
-
-
-def _load_colnomic_vision() -> None:
-    _load_colnomic_instance("ColNomicVision", mask_non_image_embeddings=True)
 
 
 # ---------------------------------------------------------------------------
@@ -602,32 +547,22 @@ _I2T_LOADERS: dict[str, Any] = {
     "Moondream": _load_moondream,
     "Pixtral": _load_pixtral,
     "LLaMA32Vision": _load_llama32vision,
-    "Florence2": _load_florence2,
     "Qwen25VL": _load_qwen25vl,
     "Gemma3n": _load_gemma3n,
 }
 
 _EMBEDDING_LOADERS: dict[str, tuple[str, dict[str, Any]]] = {
-    "STSBMpnet": ("sentence-transformers/stsb-mpnet-base-v2", {}),
-    "STSBRoberta": ("sentence-transformers/stsb-roberta-base-v2", {}),
-    "STSBDistilRoberta": ("sentence-transformers/stsb-distilroberta-base-v2", {}),
-    "Nomic": ("nomic-ai/nomic-embed-text-v2-moe", {"trust_remote_code": True}),
     "Qwen3Embed": (
         "Qwen/Qwen3-Embedding-4B",
         {
+            "revision": _REVISIONS["Qwen/Qwen3-Embedding-4B"],
             "model_kwargs": {"attn_implementation": "sdpa"},
             "tokenizer_kwargs": {"padding_side": "left"},
         },
     ),
 }
 
-_VISION_EMBED_LOADERS: dict[str, Any] = {
-    "NomicVision": _load_nomic_vision,
-    "JinaClipVision": _load_jina_clip_vision,
-    "JinaClip": _load_jina_clip,
-    "ColNomic": _load_colnomic,
-    "ColNomicVision": _load_colnomic_vision,
-}
+_VISION_EMBED_LOADERS: dict[str, Any] = {}
 
 
 def load_model(name: str) -> None:
@@ -745,7 +680,6 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     # cannot separate them; 12 keeps the best of that band on both caption
     # cosine and pixel fidelity while cutting ~19% off the panel's dearest model.
     "Flux2Dev": {"num_inference_steps": 12, "guidance_scale": 3.5},
-    "HunyuanImage": {"num_inference_steps": 25},
     "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
     "ZImageTurbo": {"num_inference_steps": 8, "guidance_scale": 0.0},
     "Flux2Klein": {"num_inference_steps": 4, "guidance_scale": 1.0},
@@ -1006,30 +940,6 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     ]
 
 
-# --- Florence2 ---
-
-
-def _invoke_florence2(_name: str, img: Image.Image) -> str:
-    florence = _models["Florence2"]
-    task_prompt = "<MORE_DETAILED_CAPTION>"
-    inputs = florence["processor"](
-        text=task_prompt, images=img, return_tensors="pt"
-    ).to(florence["model"].device, torch.bfloat16)
-    with torch.no_grad():
-        gen_ids = florence["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens(), num_beams=3
-        )
-    text = florence["processor"].batch_decode(gen_ids, skip_special_tokens=False)[0]
-    parsed = florence["processor"].post_process_generation(
-        text, task=task_prompt, image_size=img.size
-    )
-    return parsed[task_prompt]
-
-
-def _invoke_florence2_batch(_name: str, images: list[Image.Image]) -> list[str]:
-    return [_invoke_florence2(_name, img) for img in images]
-
-
 # --- Qwen25VL ---
 
 
@@ -1190,7 +1100,6 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
-    "Florence2": _invoke_florence2,
     "Qwen25VL": _invoke_qwen25vl,
     "Gemma3n": _invoke_gemma3n,
 }
@@ -1199,7 +1108,6 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
-    "Florence2": _invoke_florence2_batch,
     "Qwen25VL": _invoke_qwen25vl_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }
@@ -1212,37 +1120,13 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
 
 def embed_text(name: str, texts: list[str]) -> list[str]:
     """Embed texts. Returns list of base64-encoded float32 vectors."""
+    if name != "Qwen3Embed":
+        raise ValueError(f"Unknown text embedding model: {name}")
     with torch.no_grad():
-        if name in ("STSBMpnet", "STSBRoberta", "STSBDistilRoberta"):
-            embs = _models[name].encode(
-                texts, convert_to_numpy=True, normalize_embeddings=True
-            )
-        elif name == "Nomic":
-            embs = _models[name].encode(
-                texts,
-                convert_to_numpy=True,
-                normalize_embeddings=True,
-                prompt_name="passage",
-            )
-        elif name == "JinaClip":
-            embs = _models[name].encode_text(
-                texts, truncate_dim=EMBEDDING_DIM, task="retrieval.query"
-            )
-            return [_encode_embedding(np.array(e)) for e in embs]
-        elif name == "Qwen3Embed":
-            embs = _models[name].encode(
-                texts, convert_to_numpy=True, normalize_embeddings=True
-            )
-            return [_encode_embedding(e) for e in embs]
-        elif name == "ColNomic":
-            return _embed_colnomic_text(texts)
-        else:
-            raise ValueError(f"Unknown text embedding model: {name}")
-
-        if isinstance(embs, np.ndarray) and embs.ndim > 1:
-            return [_encode_embedding(e) for e in embs]
-        else:
-            return [_encode_embedding(np.array(e)) for e in embs]
+        embs = _models[name].encode(
+            texts, convert_to_numpy=True, normalize_embeddings=True
+        )
+    return [_encode_embedding(e) for e in embs]
 
 
 # ---------------------------------------------------------------------------
@@ -1251,103 +1135,14 @@ def embed_text(name: str, texts: list[str]) -> list[str]:
 
 
 def embed_images(name: str, b64_list: list[str]) -> list[str]:
-    """Embed images. Returns list of base64-encoded float32 vectors."""
-    images = [_decode_image_b64(b).convert("RGB") for b in b64_list]
+    """Embed images. Returns list of base64-encoded float32 vectors.
 
-    if name == "NomicVision":
-        return _embed_nomic_vision(images)
-    elif name == "JinaClipVision":
-        return _embed_jina_clip_vision(images)
-    elif name == "ColNomicVision":
-        return _embed_colnomic_images(images)
-    else:
-        raise ValueError(f"Unknown image embedding model: {name}")
-
-
-def _embed_nomic_vision(images: list[Image.Image]) -> list[str]:
-    nomic_vis = _models["NomicVision"]
-    nomic_vis["model"].float().eval()
-    embeddings: list[Any] = []
-    with torch.no_grad(), torch.amp.autocast("cuda", enabled=False):
-        for i in range(0, len(images), 32):
-            batch = images[i : i + 32]
-            inputs = nomic_vis["processor"](batch, return_tensors="pt")
-            inputs = {
-                k: v.to("cuda", dtype=torch.float32)
-                if v.is_floating_point()
-                else v.to("cuda")
-                for k, v in inputs.items()
-            }
-            outputs = nomic_vis["model"](**inputs)
-            batch_embs = outputs.last_hidden_state[:, 0]
-            norms = torch.norm(batch_embs, p=2, dim=1, keepdim=True).clamp(min=1e-12)
-            batch_embs = batch_embs / norms
-            nan_mask = torch.isnan(batch_embs).any(dim=1)
-            if nan_mask.any():
-                batch_embs[nan_mask] = 0.0
-            batch_embs = batch_embs.cpu().numpy()
-            embeddings.extend(list(batch_embs))
-    return [_encode_embedding(e) for e in embeddings]
-
-
-def _embed_jina_clip_vision(images: list[Image.Image]) -> list[str]:
-    with torch.no_grad():
-        embs = _models["JinaClipVision"].encode_image(
-            images, truncate_dim=EMBEDDING_DIM
-        )
-        return [_encode_embedding(np.array(e)) for e in embs]
-
-
-# --- ColNomic (multi-vector, mean-pooled to single dense vector) ---
-#
-# ColNomic produces per-token 128-d vectors that are already L2-normalised and
-# multiplied by the attention mask inside the forward pass (so padded positions
-# are exact zero vectors). For image inputs, the ColNomicVision instance is
-# loaded with mask_non_image_embeddings=True, which additionally zeros out the
-# "Describe the image." prompt tokens so only image-patch vectors contribute.
-# We mean-pool by treating any row with non-zero norm as a valid token.
-
-
-_COLNOMIC_BATCH_SIZE = 4
-
-
-def _colnomic_mean_pool(token_embs: torch.Tensor) -> np.ndarray:
-    valid = (token_embs.norm(dim=-1) > 0).to(token_embs.dtype).unsqueeze(-1)
-    summed = token_embs.sum(dim=1)
-    counts = valid.sum(dim=1).clamp(min=1.0)
-    pooled = summed / counts
-    nan_mask = torch.isnan(pooled).any(dim=1)
-    if nan_mask.any():
-        pooled[nan_mask] = 0.0
-    return pooled.float().cpu().numpy()
-
-
-def _embed_colnomic_text(texts: list[str]) -> list[str]:
-    bundle = _models["ColNomic"]
-    model = bundle["model"]
-    processor = bundle["processor"]
-    embeddings: list[np.ndarray] = []
-    with torch.no_grad():
-        for i in range(0, len(texts), _COLNOMIC_BATCH_SIZE):
-            batch_texts = texts[i : i + _COLNOMIC_BATCH_SIZE]
-            batch = processor.process_texts(batch_texts).to(model.device)
-            token_embs = model(**batch)
-            embeddings.extend(list(_colnomic_mean_pool(token_embs)))
-    return [_encode_embedding(e) for e in embeddings]
-
-
-def _embed_colnomic_images(images: list[Image.Image]) -> list[str]:
-    bundle = _models["ColNomicVision"]
-    model = bundle["model"]
-    processor = bundle["processor"]
-    embeddings: list[np.ndarray] = []
-    with torch.no_grad():
-        for i in range(0, len(images), _COLNOMIC_BATCH_SIZE):
-            batch_images = images[i : i + _COLNOMIC_BATCH_SIZE]
-            batch = processor.process_images(batch_images).to(model.device)
-            token_embs = model(**batch)
-            embeddings.extend(list(_colnomic_mean_pool(token_embs)))
-    return [_encode_embedding(e) for e in embeddings]
+    No real image embedding model is registered (TASK-84 removed NomicVision,
+    JinaClipVision and ColNomicVision). The embeddings stage still supports
+    image embedding and is exercised by the dummy vision models, so this is the
+    hook a future image embedder plugs into.
+    """
+    raise ValueError(f"Unknown image embedding model: {name}")
 
 
 # ---------------------------------------------------------------------------

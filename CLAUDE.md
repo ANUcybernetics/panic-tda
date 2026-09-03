@@ -59,7 +59,7 @@ embeddings → TDA → Lyapunov).
     ["FluxSchnell", "InstructBLIP"]
   ],
   "prompts": ["a red apple"],
-  "embedding_models": ["Nomic"],
+  "embedding_models": ["Qwen3Embed"],
   "max_length": 100,
   "num_runs": 1
 }
@@ -80,11 +80,15 @@ embeddings → TDA → Lyapunov).
 
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
-| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `HunyuanImage`, `GLMImage`                          |
-| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`, `Florence2`                                |
-| text embedding  | `STSBMpnet`, `STSBRoberta`, `STSBDistilRoberta`, `Nomic`, `JinaClip`, `Qwen3Embed`, `ColNomic`             |
-| image embedding | `NomicVision`, `JinaClipVision`, `ColNomicVision`                                                          |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`                                          |
+| image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`                                             |
+| text embedding  | `Qwen3Embed`                                                                                               |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
+
+Every model is pinned to an explicit upstream revision (`_REVISIONS` in
+`priv/python/panic_models.py`). No real image embedding model is registered; the
+embeddings stage still supports image embedding and the dummy vision models keep
+that path exercised.
 
 ### Approximate model run times
 
@@ -101,7 +105,6 @@ estimates.
 | ZImageTurbo            | ~8s               | ~18s       | ~6s              |
 | Flux2Klein             | ~20s              | ~20s       | ~4.1s †          |
 | Flux2Dev               | ~91s              | ~181s §    | ~57s ‡           |
-| HunyuanImage           | ~124s             | ~326s      | ~109s            |
 | GLMImage               | ~44s              | ~85s       | ~45s ‡           |
 | **Image-to-text**      |                   |            |                  |
 | Moondream              | ~4s               | ~10s       | ~0.3s †          |
@@ -109,13 +112,6 @@ estimates.
 | Gemma3n                | ~16s              | ~18s       | ~6s              |
 | Pixtral                | ~19s              | ~24s       | ~2.6s †          |
 | LLaMA32Vision          | ~17s              | ~23s       | ~8s              |
-| Florence2              | TBD               | TBD        | TBD              |
-| **Embedding**          |                   |            |                  |
-| ColNomic (text)        | ~32ms             | ~56ms      | ~19ms            |
-| ColNomicVision (image) | ~200ms            | ~650ms     | ~220ms           |
-
-ColNomic cold load is ~14s (text) / ~8s (image) on first use; the embedding rows
-above exclude that one-off cost.
 
 Values marked ‡ are warm per-item timings at `batch=4` on the RTX 6000 Ada,
 enabled by TASK-74 (Flux2Dev and GLMImage became truly batch-capable —
