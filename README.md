@@ -92,7 +92,7 @@ mise exec -- mix experiment.resume abc123
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage` |
 | image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision` |
 | text embedding  | `Qwen3Embed` |
-| dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
+| dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
 ### Approximate run times
 

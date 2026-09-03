@@ -83,12 +83,12 @@ embeddings → TDA → Lyapunov).
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`                                          |
 | image-to-text   | `Moondream`, `Qwen25VL`, `Gemma3n`, `Pixtral`, `LLaMA32Vision`                                             |
 | text embedding  | `Qwen3Embed`                                                                                               |
-| dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2`, `DummyVision`, `DummyVision2` |
+| dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
 Every model is pinned to an explicit upstream revision (`_REVISIONS` in
-`priv/python/panic_models.py`). No real image embedding model is registered; the
-embeddings stage still supports image embedding and the dummy vision models keep
-that path exercised.
+`priv/python/panic_models.py`). Only text is embedded --- image embedding was
+removed outright, since every second state in an alternating network is already
+text and a caption represents the image before it.
 
 ### Approximate model run times
 

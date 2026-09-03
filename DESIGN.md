@@ -83,9 +83,9 @@ First, some nomenclature (since many of these terms are overloaded). In the
   and following the models in a network for `max_length` steps
 - **embedding model**: an
   [embedding model](https://huggingface.co/blog/getting-started-with-embeddings)
-  (e.g. _RoBERTa_, _Nomic_) which takes text or image input and returns a vector
-  in a high (e.g. 768)-dimensional space such that inputs that are "semantically
-  similar" are close together in this space (implementations are in
+  (e.g. _Qwen3-Embedding_) which takes text and returns a vector in a
+  high-dimensional space such that inputs that are "semantically similar" are
+  close together in this space (implementations are in
   `lib/panic_tda/models/embeddings.ex`)
 - **experiment**: a specification for a batch of runs with a given network, set
   of prompts, embedding models and number of runs per prompt
@@ -116,9 +116,11 @@ The computation then proceeds through four stages:
   per step rather than once per run.
 
 - In the **embeddings stage** (`EmbeddingsStage.compute/3`) each run's text
-  invocations are embedded using all of the text embedding models specified in
-  the experiment config, and image invocations are embedded using image
-  embedding models. Each embedding is stored as a float32 binary vector.
+  invocations are embedded using every embedding model named in the experiment
+  config. Each embedding is stored as a float32 binary vector. Only text is
+  embedded: in an alternating network every second state is text anyway, and a
+  caption is itself a representation of the image before it, so the image
+  states are observed through the captioner rather than in a parallel space.
 
 - In the **persistence diagram stage** (`PdStage.compute/3`) each run's sequence
   of embeddings (under a particular embedding model) is processed by the

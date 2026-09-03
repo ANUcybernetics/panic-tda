@@ -107,16 +107,16 @@ defmodule PanicTda.DataExport do
     end
   end
 
-  # The text embedding spaces to place prompts in: the requested `--embedding-model`
-  # filter if given, else every model the experiments actually used, restricted
-  # to text models (image embedders can't embed a text prompt).
+  # The embedding spaces to place prompts in: the requested `--embedding-model`
+  # filter if given, else every model the experiments actually used. Retired
+  # embedders named by historical experiments are skipped.
   defp prompt_text_models(experiment_ids, models) do
     candidates =
       models || experiment_ids |> read_experiments() |> Enum.flat_map(& &1.embedding_models)
 
     candidates
     |> Enum.uniq()
-    |> Enum.filter(&(Embeddings.registered?(&1) and Embeddings.model_type(&1) == :text))
+    |> Enum.filter(&Embeddings.registered?/1)
   end
 
   defp prompt_invocation_row(run) do

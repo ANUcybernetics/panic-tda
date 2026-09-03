@@ -45,13 +45,6 @@ defmodule PanicTda.EngineTest do
       assert byte_size(emb2) == 256 * 4
     end
 
-    test "DummyVision generates embeddings from images", %{env: env} do
-      {:ok, image} = GenAI.invoke(env, "DummyT2I", "test")
-      {:ok, [emb]} = Embeddings.embed(env, "DummyVision", [image])
-
-      assert is_binary(emb)
-      assert byte_size(emb) == 256 * 4
-    end
   end
 
   describe "full pipeline" do
@@ -147,27 +140,6 @@ defmodule PanicTda.EngineTest do
       end)
     end
 
-    test "creates embeddings for image invocations with DummyVision" do
-      experiment =
-        PanicTda.create_experiment!(%{
-          networks: [["DummyT2I", "DummyI2T"]],
-          prompts: ["Test prompt"],
-          embedding_models: ["DummyVision"],
-          max_length: 4
-        })
-
-      {:ok, _} = Engine.perform_experiment(experiment.id)
-
-      embeddings = PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyVision"]])
-
-      assert length(embeddings) == 2
-
-      Enum.each(embeddings, fn emb ->
-        assert %Nx.Tensor{} = emb.vector
-        assert Nx.shape(emb.vector) == {256}
-      end)
-    end
-
     test "creates persistence diagrams via giotto-ph" do
       experiment =
         PanicTda.create_experiment!(%{
@@ -198,20 +170,20 @@ defmodule PanicTda.EngineTest do
         PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
           prompts: ["Test"],
-          embedding_models: ["DummyText", "DummyVision"],
+          embedding_models: ["DummyText", "DummyText2"],
           max_length: 4
         })
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
 
-      text_embeddings =
+      first =
         PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText"]])
 
-      vision_embeddings =
-        PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyVision"]])
+      second =
+        PanicTda.list_embeddings!(query: [filter: [embedding_model: "DummyText2"]])
 
-      assert length(text_embeddings) == 2
-      assert length(vision_embeddings) == 2
+      assert length(first) == 2
+      assert length(second) == 2
     end
 
     test "handles multiple runs and prompts" do

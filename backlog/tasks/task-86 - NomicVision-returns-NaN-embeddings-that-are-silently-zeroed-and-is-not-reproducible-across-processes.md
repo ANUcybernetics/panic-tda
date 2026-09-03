@@ -3,9 +3,10 @@ id: TASK-86
 title: >-
   NomicVision returns NaN embeddings that are silently zeroed, and is not
   reproducible across processes
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 00:54'
+updated_date: '2026-09-03 12:53'
 labels:
   - bug
   - embeddings
@@ -43,7 +44,19 @@ Note the overlap with TASK-84, which proposes removing NomicVision, JinaClipVisi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Silent zeroing replaced by a loud failure (raise or logged error) wherever a NaN guard is kept in the embedding paths
-- [ ] #2 Root cause of the NomicVision NaNs and cross-process variation identified, or the model removed under TASK-84 with the finding recorded
-- [ ] #3 Existing NomicVision embeddings in the database audited: how many are all-zero, and whether any published analysis depended on them
+- [x] #1 Silent zeroing replaced by a loud failure (raise or logged error) wherever a NaN guard is kept in the embedding paths
+- [x] #2 Root cause of the NomicVision NaNs and cross-process variation identified, or the model removed under TASK-84 with the finding recorded
+- [x] #3 Existing NomicVision embeddings in the database audited: how many are all-zero, and whether any published analysis depended on them
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Resolved 2026-09-03 by removal rather than repair. Ben: the vision embeddings 'never really worked' and are unnecessary, because in an alternating network every second state is already text --- and a caption is itself a representation of the image before it, so the image states are still observed, through the captioner, which is the thing under study.
+
+AC #1: the silent NaN-to-zero guard lived only in _embed_nomic_vision and is gone with it. No other embedding path in panic_models.py contains an isnan guard or writes a zero vector on failure (checked).
+AC #2: NomicVision removed under TASK-84; root cause not investigated, which is now moot. The observed behaviour is recorded here and in the TASK-83 log entry: most fresh processes returned all-zero vectors regardless of batch size, and two processes that both returned valid unit-norm vectors disagreed by up to 0.44 in cosine on identical input.
+AC #3: audit done --- there are ZERO image embeddings in any database. priv/panic_tda_dev.db holds 147,193 rows, all Qwen3Embed; the two root-level .db files are empty stubs. So no published or in-progress analysis can have depended on NomicVision output.
+
+Image embedding is now removed from the pipeline entirely, not just its models: the Elixir model lists, the model_type/1 text-vs-image split, the embeddings-stage branch, embed_images in panic_models.py, the DummyVision dummies and their tests, and the doc tables. analysis/step_sweep_imgcos.py is deleted, since it existed only to recompute the unusable column.
+<!-- SECTION:NOTES:END -->

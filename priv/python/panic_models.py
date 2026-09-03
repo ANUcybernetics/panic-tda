@@ -562,9 +562,6 @@ _EMBEDDING_LOADERS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
 }
 
-_VISION_EMBED_LOADERS: dict[str, Any] = {}
-
-
 def load_model(name: str) -> None:
     """Load a model by name into the _models registry."""
     if name in _T2I_LOADER_CONFIGS:
@@ -574,8 +571,6 @@ def load_model(name: str) -> None:
     elif name in _EMBEDDING_LOADERS:
         path, kwargs = _EMBEDDING_LOADERS[name]
         _load_sentence_transformer(name, path, **kwargs)
-    elif name in _VISION_EMBED_LOADERS:
-        _VISION_EMBED_LOADERS[name]()
     else:
         raise ValueError(f"Unknown model: {name}")
 
@@ -1128,22 +1123,6 @@ def embed_text(name: str, texts: list[str]) -> list[str]:
             texts, convert_to_numpy=True, normalize_embeddings=True
         )
     return [_encode_embedding(e) for e in embs]
-
-
-# ---------------------------------------------------------------------------
-# Embeddings: images
-# ---------------------------------------------------------------------------
-
-
-def embed_images(name: str, b64_list: list[str]) -> list[str]:
-    """Embed images. Returns list of base64-encoded float32 vectors.
-
-    No real image embedding model is registered (TASK-84 removed NomicVision,
-    JinaClipVision and ColNomicVision). The embeddings stage still supports
-    image embedding and is exercised by the dummy vision models, so this is the
-    hook a future image embedder plugs into.
-    """
-    raise ValueError(f"Unknown image embedding model: {name}")
 
 
 # ---------------------------------------------------------------------------

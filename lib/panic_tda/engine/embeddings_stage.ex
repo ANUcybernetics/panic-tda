@@ -44,26 +44,15 @@ defmodule PanicTda.Engine.EmbeddingsStage do
   def compute_for_invocations(_env, [], _embedding_model), do: :ok
 
   def compute_for_invocations(env, invocations, embedding_model) do
-    model_type = Embeddings.model_type(embedding_model)
-
     relevant_invocations =
       Enum.filter(invocations, fn inv ->
-        case model_type do
-          :text -> inv.type == :text and not is_nil(inv.output_text)
-          :image -> inv.type == :image and not is_nil(inv.output_image)
-        end
+        inv.type == :text and not is_nil(inv.output_text)
       end)
 
     if relevant_invocations == [] do
       :ok
     else
-      contents =
-        Enum.map(relevant_invocations, fn inv ->
-          case model_type do
-            :text -> inv.output_text
-            :image -> inv.output_image
-          end
-        end)
+      contents = Enum.map(relevant_invocations, & &1.output_text)
 
       started_at = DateTime.utc_now()
       {:ok, vectors} = Embeddings.embed(env, embedding_model, contents)

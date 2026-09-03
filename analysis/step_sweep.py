@@ -7,13 +7,14 @@ Run with the Snex venv interpreter while no experiment holds the GPU:
 Diffusion step-count sweep for the three T2I models running below their
 defaults (SD35Medium, Flux2Dev, GLMImage). Same seed and prompt at each step
 count; the max step count is the reference. Metrics per (model, steps):
-seconds per image, pixel MAE vs reference, NomicVision image-embedding cosine
-vs reference, and the loop-relevant one: cosine (Qwen3Embed) between the
-Gemma3n caption of this image and of the reference image.
+seconds per image, pixel MAE vs reference, and the loop-relevant one: cosine
+(Qwen3Embed) between the Gemma3n caption of this image and of the reference
+image.
 
-The NomicVision column is not trustworthy --- that model returns NaN-zeroed or
-non-reproducible embeddings depending on the process (TASK-86), so read
-caption_cos, which is the metric the step-count decision turns on anyway.
+An earlier version also reported a NomicVision image-embedding cosine. That
+column was untrustworthy (NaN-zeroed or non-reproducible depending on the
+process) and image embedding has since been removed from the project
+altogether, so caption_cos is the metric the step-count decision turns on.
 Results -> step_sweep.json; images -> step_sweep/<model>/<prompt>_<steps>.png
 """
 
@@ -90,10 +91,6 @@ for model, grid in GRID.items():
     pm.unload_model(model)
 
 # metrics
-pm.load_model("NomicVision")
-pm.swap_to_gpu("NomicVision")
-img_emb = {k: decode(pm.embed_images("NomicVision", [v])[0]) for k, v in images.items()}
-pm.unload_model("NomicVision")
 pm.load_model("Gemma3n")
 pm.swap_to_gpu("Gemma3n")
 keys = list(images)
@@ -123,9 +120,6 @@ for model, grid in GRID.items():
             rows.append(
                 {
                     "pixel_mae": float(np.abs(a - b).mean()),
-                    "img_cos": cos(
-                        img_emb[(model, steps, pi)], img_emb[(model, ref, pi)]
-                    ),
                     "caption_cos": cos(
                         cap_emb[(model, steps, pi)], cap_emb[(model, ref, pi)]
                     ),
@@ -144,7 +138,8 @@ for model, grid in GRID.items():
             }
         )
         print(
-            f"{model} steps={steps}: {timing[(model, steps)]:.1f} s/img, pixel_mae {agg['pixel_mae']:.1f}, img_cos {agg['img_cos']:.3f}, caption_cos {agg['caption_cos']:.3f}",
+            f"{model} steps={steps}: {timing[(model, steps)]:.1f} s/img, "
+            f"pixel_mae {agg['pixel_mae']:.1f}, caption_cos {agg['caption_cos']:.3f}",
             flush=True,
         )
 OUT.write_text(json.dumps(results, indent=2))
