@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 13:24'
+updated_date: '2026-09-03 13:31'
 labels:
   - models
   - experiment-design
@@ -108,4 +108,12 @@ THE PROBLEM: this puts the natural-length policy (decision-01) in direct tension
 Options: drop CapRL as incompatible with the setup (its natural output exceeds what the image models can read); or replace SD35Medium, the only hard-capped model, and raise max_sequence_length on the other three; or impose a uniform generation cap sized to 512 tokens (~380 words) as a deliberate, documented manipulation under decision-01; or accept and document SD35Medium truncation. Needs Ben's call --- it changes the experiment design.
 
 Also noted: CapRL prefixes its captions with 'Based on the provided image, here is a description:', boilerplate that would feed into the next image. JoyCaption produces dense, preamble-free captions and was the best-behaved of the three.
+
+DECIDED (Ben, 2026-09-03): CapRL is dropped as incompatible --- its natural output exceeds what four of the five text-to-image models can read, so including it would mean measuring truncation again rather than captioner behaviour.
+
+Fifth slot goes to Qwen25VL, retained rather than replaced by Mistral Small 3.2. Reasons, which make this a better outcome than CapRL would have been: Qwen2.5-VL against Qwen3-VL is a matched-FAMILY contrast that separates model generation from architecture (the same trick CapRL was meant to provide, on the era axis rather than the objective axis); it leaves one captioner in common with balanced_panel_5x5, partially restoring a cross-panel bridge that looked lost; it carries zero integration risk and is already characterised (80 words median, 0.91 s/caption); and it is the shortest of the verbose group, which is useful ballast now the 2026 models run long.
+
+FINAL v2 LINEUP (config/balanced_panel_5x5_v2.json): text-to-image unchanged (SD35Medium, ZImageTurbo, Flux2Klein, GLMImage, Flux2Dev); captioners Moondream3, Qwen25VL, Qwen3VL, Gemma4, JoyCaption; Qwen3Embed; 25 networks, 20 prompts, 50 steps, 4 runs.
+
+Still to integrate: Gemma 4 26B-A4B (51.6 GB download, needs 4-bit, and the one whose speed must be measured rather than assumed) and Moondream 3 (18.5 GB, bespoke single-file loader must be rewritten for a sharded checkpoint). Both must also be checked against the 512-token encoder ceiling, since that is now a known hazard for 2026 captioners --- Qwen3VL already sits at 466 of 512 on easy images.
 <!-- SECTION:NOTES:END -->

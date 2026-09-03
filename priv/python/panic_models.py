@@ -49,7 +49,6 @@ _REVISIONS: dict[str, str] = {
     "Qwen/Qwen3-Embedding-4B": "5cf2132abc99cad020ac570b19d031efec650f2b",
     # TASK-87 lineup
     "Qwen/Qwen3-VL-8B-Instruct": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
-    "internlm/CapRL-Qwen3VL-4B": "1db1c1dd241e2df95b59846a94cdee5300de9ef9",
     "fancyfeast/llama-joycaption-beta-one-hf-llava": "ebf414ea497a020da0f82df3913e5b6cb8e9663a",
     "google/gemma-4-26B-A4B-it": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
     "moondream/moondream3-preview": "5112966d1a723413b1c9a1e8bea272b72e647b35",
@@ -506,9 +505,9 @@ def _load_llama32vision() -> None:
 
 
 # Qwen-VL family: same chat-template and processor path, different checkpoints.
-# CapRL is a Qwen3-VL fine-tune, so it shares everything but the weights --- which
-# is the point of pairing it with Qwen3VL in the panel (TASK-87): same backbone,
-# different training objective.
+# Qwen25VL and Qwen3VL are both in the panel deliberately (TASK-87): same
+# family, one generation apart, which separates generation from architecture
+# and leaves one captioner in common with balanced_panel_5x5.
 _QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
     "Qwen25VL": {
         "repo": "Qwen/Qwen2.5-VL-7B-Instruct",
@@ -519,11 +518,6 @@ _QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
         "repo": "Qwen/Qwen3-VL-8B-Instruct",
         "cls": "Qwen3VLForConditionalGeneration",
         "quantize": True,
-    },
-    "CapRL": {
-        "repo": "internlm/CapRL-Qwen3VL-4B",
-        "cls": "Qwen3VLForConditionalGeneration",
-        "quantize": False,
     },
 }
 
@@ -600,7 +594,6 @@ _I2T_LOADERS: dict[str, Any] = {
     "LLaMA32Vision": _load_llama32vision,
     "Qwen25VL": functools.partial(_load_qwen_vl, "Qwen25VL"),
     "Qwen3VL": functools.partial(_load_qwen_vl, "Qwen3VL"),
-    "CapRL": functools.partial(_load_qwen_vl, "CapRL"),
     "JoyCaption": _load_joycaption,
     "Gemma3n": _load_gemma3n,
 }
@@ -1009,7 +1002,7 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     ]
 
 
-# --- Qwen-VL family (Qwen25VL, Qwen3VL, CapRL) ---
+# --- Qwen-VL family (Qwen25VL, Qwen3VL) ---
 
 
 def _invoke_qwen_vl(name: str, img: Image.Image) -> str:
@@ -1171,7 +1164,6 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "LLaMA32Vision": _invoke_chat_template,
     "Qwen25VL": _invoke_qwen_vl,
     "Qwen3VL": _invoke_qwen_vl,
-    "CapRL": _invoke_qwen_vl,
     "JoyCaption": _invoke_chat_template,
     "Gemma3n": _invoke_gemma3n,
 }
@@ -1182,7 +1174,6 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "LLaMA32Vision": _invoke_chat_template_batch,
     "Qwen25VL": _invoke_qwen_vl_batch,
     "Qwen3VL": _invoke_qwen_vl_batch,
-    "CapRL": _invoke_qwen_vl_batch,
     "JoyCaption": _invoke_chat_template_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }
