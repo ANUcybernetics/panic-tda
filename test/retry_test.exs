@@ -93,6 +93,79 @@ defmodule PanicTda.RetryTest do
     end
   end
 
+  describe "recovery from a real CUDA fault" do
+    # The whole retry design rests on the claim that a device-side assert
+    # poisons the process's CUDA context, so that only a fresh interpreter can
+    # recover. These tests establish that rather than assuming it. An
+    # out-of-range embedding lookup is the same failure class as the GLM-Image
+    # prior sampling an out-of-range token id, which is what motivated TASK-79.
+    @poison """
+    import torch
+    _ = torch.nn.functional.embedding(
+        torch.tensor([9999], device="cuda"), torch.zeros(8, 4, device="cuda")
+    )
+    torch.cuda.synchronize()
+    return "no assert raised"
+    """
+
+    @cuda_probe "import torch\nreturn float(torch.ones(4, device='cuda').sum().item())"
+
+    @tag :gpu
+    @tag timeout: 600_000
+    test "a device-side assert really does poison the context for the whole process" do
+      {:ok, session} = PythonSession.start()
+      on_exit(fn -> if Process.alive?(session), do: PythonSession.stop(session) end)
+      env = PythonSession.env(session)
+
+      assert {:ok, 4.0} = Snex.pyeval(env, @cuda_probe, %{}, timeout: 120_000)
+      assert {:error, _} = Snex.pyeval(env, @poison, %{}, timeout: 120_000)
+
+      # the premise: an unrelated, trivially valid CUDA op now fails too
+      assert {:error, _} = Snex.pyeval(env, @cuda_probe, %{}, timeout: 120_000)
+    end
+
+    @tag :gpu
+    @tag timeout: 600_000
+    test "restarting the session recovers a poisoned context" do
+      {:ok, session} = PythonSession.start()
+      on_exit(fn -> if Process.alive?(session), do: PythonSession.stop(session) end)
+
+      assert {:error, _} =
+               Snex.pyeval(PythonSession.env(session), @poison, %{}, timeout: 120_000)
+
+      :ok = PythonSession.restart(session)
+
+      assert {:ok, 4.0} =
+               Snex.pyeval(PythonSession.env(session), @cuda_probe, %{}, timeout: 120_000)
+    end
+
+    @tag :gpu
+    @tag timeout: 600_000
+    test "with_retry drives that recovery end to end" do
+      {:ok, session} = PythonSession.start()
+      on_exit(fn -> if Process.alive?(session), do: PythonSession.stop(session) end)
+      {:ok, counter} = Agent.start_link(fn -> 0 end)
+
+      # poison on the first call, then do ordinary CUDA work. Attempt 2 still
+      # fails on the sticky context, which is what forces the restart before
+      # attempt 3 --- the exact sequence a stochastic fault would produce.
+      fun = fn env ->
+        n = Agent.get_and_update(counter, &{&1 + 1, &1 + 1})
+        script = if n == 1, do: @poison, else: @cuda_probe
+        Snex.pyeval(env, script, %{}, timeout: 120_000)
+      end
+
+      log =
+        capture_log(fn ->
+          assert {:ok, 4.0} = Retry.with_retry("GLMImage step 24", session, fun)
+        end)
+
+      assert log =~ "restarted the Python interpreter"
+      assert log =~ "succeeded on attempt 3"
+      assert Agent.get(counter, & &1) == 3
+    end
+  end
+
   describe "session restart" do
     test "the second retry replaces the interpreter, and the step runs on the new one" do
       {:ok, session} = PythonSession.start()

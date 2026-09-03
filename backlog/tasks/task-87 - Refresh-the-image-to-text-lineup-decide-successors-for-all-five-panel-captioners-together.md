@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 09:31'
+updated_date: '2026-09-03 11:53'
 labels:
   - models
   - experiment-design
@@ -54,4 +54,16 @@ Practical constraints. _load_moondream in priv/python/panic_models.py is bespoke
 Ben, 2026-09-03: happy with the chat-tuned successors (Qwen3-VL, Gemma 4, Mistral Small 3.2, Llama 4 Scout, Moondream 3) --- those are endorsed as candidates, so the task is scoped to picking sizes/variants and validating them rather than re-litigating whether to upgrade at all.
 
 Still open: whether the caption-first models in TASK-88 (fancyfeast/llama-joycaption-beta-one-hf-llava, internlm/CapRL-Qwen3VL-4B) join the same lineup decision, either as additions to the panel or as replacements for one of the chat-tuned slots. They are not successors, so they widen the panel's objective diversity rather than modernising it --- which matters more now that decision-01 makes caption length a measured covariate.
+
+Recommendation (Claude, 2026-09-03, Ben asked for advice): keep the captioner factor at FIVE levels and spend two slots on objective diversity rather than a fifth chat-tuned model.
+
+Proposed: Moondream 3 (terse end, fastest), Qwen3-VL-8B-Instruct (chat-tuned reference), CapRL-Qwen3VL-4B (matched contrast), Gemma 4 26B-A4B (chat-tuned, different family), JoyCaption (caption-first, verbose end). Drop Mistral Small 3.2 and Llama 4 Scout.
+
+The deciding argument is that CapRL-Qwen3VL-4B is built on Qwen3-VL. Running it alongside Qwen3-VL-8B-Instruct gives a matched-backbone contrast --- same architecture family, different training objective (instruct SFT vs RL against a QA-coverage reward). That is the only clean way to separate training objective from architecture within the captioner factor, which is exactly what RQ2's style-versus-verbosity attribution needs; no unrelated model can provide it. Everything measured on 2026-09-02 supports making objective the axis of interest: caption length is almost entirely determined by captioner identity (eta-squared 0.915), and caption completeness measurably changes the loop dynamics (28% step-size difference), so five near-identical chat-tuned models would sample a narrow part of that space.
+
+Why Llama 4 Scout is the clearest drop: manually gated, custom licence, largest of the candidate set (17Bx16E), and its incumbent (Llama-3.2-Vision) was 78.3% truncated, so its natural captioning behaviour is the least characterised of the five. Most friction, least distinctive contribution. Mistral Small 3.2 is the natural sixth if six levels are wanted; it is dropped only because a fourth chat-tuned family adds less than a caption-first model does.
+
+Cost note: the panel is 5 T2I x N I2T, so holding N at 5 keeps it a clean 5x5 and avoids the ~40% run-time increase that seven captioners would bring.
+
+Caveat to state in the paper: swapping two of five captioners means the new panel is not comparable to balanced_panel_5x5 on the captioner axis --- though that comparability is already gone via decision-01 and the successor upgrades.
 <!-- SECTION:NOTES:END -->
