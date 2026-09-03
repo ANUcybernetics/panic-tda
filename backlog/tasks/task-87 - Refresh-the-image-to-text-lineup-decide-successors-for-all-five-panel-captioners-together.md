@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 11:53'
+updated_date: '2026-09-03 13:10'
 labels:
   - models
   - experiment-design
@@ -66,4 +66,16 @@ Why Llama 4 Scout is the clearest drop: manually gated, custom licence, largest 
 Cost note: the panel is 5 T2I x N I2T, so holding N at 5 keeps it a clean 5x5 and avoids the ~40% run-time increase that seven captioners would bring.
 
 Caveat to state in the paper: swapping two of five captioners means the new panel is not comparable to balanced_panel_5x5 on the captioner axis --- though that comparability is already gone via decision-01 and the successor upgrades.
+
+Constraints and costings established 2026-09-03, to be respected whenever the new lineup is run:
+
+1. RECLUSTER ONCE, AT THE END. mix cluster.recompute is destructive and global: ClusteringStage.delete_existing_clustering destroys the ClusteringResult and every EmbeddingCluster row for that embedding model before rebuilding, so reclustering after a new panel RELABELS EVERY EXISTING EXPERIMENT including 019f3645. The old labels do not survive alongside the new. Every cluster-dependent figure --- including the pilot-vs-panel occupancy and transition numbers in analysis/pilot_vs_panel.json, which were computed against the current medoids --- must be regenerated from the final clustering. Do all data collection first, cluster once, then make figures.
+
+2. VALIDATE BEFORE COMMITTING GPU. Each new model needs its loader, an explicit revision pin, a GPU smoke pass and a caption-length/terminal-punctuation characterisation before a multi-week run starts. This session alone turned up four traps that would each have quietly corrupted or broken a long run: diffusers defaulting max_sequence_length to 256; setup() suppressing the very warnings a check relied on; a PEFT patch mislabelled as ColNomic-specific that actually guards Qwen25VL; and sentence-transformers 6 renaming two APIs our code used. Assume more of the same per new model. Moondream 3 specifically needs its bespoke single-file loader rewritten, since v3 ships a sharded checkpoint.
+
+3. COST. Captioners are not the bottleneck and should not drive the choice. At natural length the current five total roughly 0.9 days against about 13.5 days of T2I over a full panel (50,000 invocations each side). Even a threefold captioner slowdown adds under 3 days. Gemma 4 26B-A4B is the one worth measuring rather than assuming. Note also a correction to an earlier claim in this session: the optimisations cut about 12% off the panel's T2I time relative to the 019f3645 run (15.3 -> 13.5 days), not half --- that run already had TASK-74 batching for most of its duration. The ~2x figure is against the pre-TASK-74 baseline.
+
+4. PROVENANCE is safe either way: experiments.networks is stored per experiment, so 019f3645 retains its real lineup whatever the config file says. config/balanced_panel_5x5_v2.json has been drafted anyway so the file that produced the published dataset stays readable; its captioner names are placeholders pending the decision below.
+
+5. TASK-81 needs rescoping or dropping once Moondream is decided --- changing its architecture removes the last thread linking to the SMC 2025 era.
 <!-- SECTION:NOTES:END -->
