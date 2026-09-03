@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 13:11'
+updated_date: '2026-09-03 13:24'
 labels:
   - models
   - experiment-design
@@ -90,4 +90,22 @@ Registry names to use, matching config/balanced_panel_5x5_v2.json: Moondream3, Q
 Order of work, cheapest and least risky first: JoyCaption and CapRL both load through standard transformers classes (LlavaForConditionalGeneration and Qwen3VLForConditionalGeneration), so they are near drop-ins. Qwen3-VL is the same family as the incumbent Qwen25VL. Gemma 4 is a 26B MoE and the one whose speed needs measuring rather than assuming. Moondream 3 is the most work: its bespoke single-file loader must be rewritten for a sharded checkpoint, and it may simplify to a standard trust_remote_code load.
 
 Licence note for the paper: Moondream 3 is BSL 1.1 (converting to Apache-2.0 two years after release); the other four are Apache-2.0. JoyCaption declares no licence in its HF metadata, so read the repo before relying on it.
+
+INTEGRATION FINDINGS 2026-09-03 (three of five done: CapRL, Qwen3VL, JoyCaption load and caption; Gemma 4 and Moondream 3 not yet downloaded).
+
+Measured on four Flux2Dev images, natural length, same 'Describe this image.' instruction as the rest of the panel:
+
+| captioner | median words | range | T5 tokens | over 512 | s/caption |
+|---|---|---|---|---|---|
+| JoyCaption | 178 | 91-178 | 131-250 | 0/4 | 2.2 |
+| Qwen3VL | 292 | 198-317 | 312-466 | 0/4 | 4.0 |
+| CapRL | 466 | 307-561 | 466-836 | 3/4 | 4.0 |
+
+For reference the CURRENT lineup at natural length is 80-154 words. The 2026 captioners are three to six times more verbose.
+
+THE PROBLEM: this puts the natural-length policy (decision-01) in direct tension with a modern captioner lineup. The text-to-image encoders take 512 tokens --- SD35Medium HARD-CAPS there (StableDiffusion3Pipeline raises above 512), while Flux2Klein, Flux2Dev and ZImageTurbo merely default to 512 with no hard cap, and GLMImage takes 2048. CapRL's natural output exceeds 512 on three of four images, so its captions would be silently truncated by four of the five T2I models --- reintroducing exactly the invisible truncation decision-01 was written to eliminate, across a two-week run. Qwen3VL is under the limit but close (466 of 512 on easy images), so harder images would breach it too.
+
+Options: drop CapRL as incompatible with the setup (its natural output exceeds what the image models can read); or replace SD35Medium, the only hard-capped model, and raise max_sequence_length on the other three; or impose a uniform generation cap sized to 512 tokens (~380 words) as a deliberate, documented manipulation under decision-01; or accept and document SD35Medium truncation. Needs Ben's call --- it changes the experiment design.
+
+Also noted: CapRL prefixes its captions with 'Based on the provided image, here is a description:', boilerplate that would feed into the next image. JoyCaption produces dense, preamble-free captions and was the best-behaved of the three.
 <!-- SECTION:NOTES:END -->

@@ -7,6 +7,7 @@ once during PythonBridge.ensure_setup/1 and then used as panic_models.*.
 from __future__ import annotations
 
 import base64
+import functools
 import gc
 import io
 import os
@@ -46,6 +47,12 @@ _REVISIONS: dict[str, str] = {
     "mistral-community/pixtral-12b": "c2756cbbb9422eba9f6c5c439a214b0392dfc998",
     "meta-llama/Llama-3.2-11B-Vision-Instruct": "9eb2daaa8597bf192a8b0e73f848f3a102794df5",
     "Qwen/Qwen3-Embedding-4B": "5cf2132abc99cad020ac570b19d031efec650f2b",
+    # TASK-87 lineup
+    "Qwen/Qwen3-VL-8B-Instruct": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
+    "internlm/CapRL-Qwen3VL-4B": "1db1c1dd241e2df95b59846a94cdee5300de9ef9",
+    "fancyfeast/llama-joycaption-beta-one-hf-llava": "ebf414ea497a020da0f82df3913e5b6cb8e9663a",
+    "google/gemma-4-26B-A4B-it": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
+    "moondream/moondream3-preview": "5112966d1a723413b1c9a1e8bea272b72e647b35",
 }
 
 
@@ -498,22 +505,66 @@ def _load_llama32vision() -> None:
     _models_offload_only.add("LLaMA32Vision")
 
 
-def _load_qwen25vl() -> None:
-    from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+# Qwen-VL family: same chat-template and processor path, different checkpoints.
+# CapRL is a Qwen3-VL fine-tune, so it shares everything but the weights --- which
+# is the point of pairing it with Qwen3VL in the panel (TASK-87): same backbone,
+# different training objective.
+_QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
+    "Qwen25VL": {
+        "repo": "Qwen/Qwen2.5-VL-7B-Instruct",
+        "cls": "Qwen2_5_VLForConditionalGeneration",
+        "quantize": True,
+    },
+    "Qwen3VL": {
+        "repo": "Qwen/Qwen3-VL-8B-Instruct",
+        "cls": "Qwen3VLForConditionalGeneration",
+        "quantize": True,
+    },
+    "CapRL": {
+        "repo": "internlm/CapRL-Qwen3VL-4B",
+        "cls": "Qwen3VLForConditionalGeneration",
+        "quantize": False,
+    },
+}
 
-    model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-        "Qwen/Qwen2.5-VL-7B-Instruct",
-        revision=_rev("Qwen/Qwen2.5-VL-7B-Instruct"),
+
+def _load_qwen_vl(name: str) -> None:
+    import transformers
+
+    cfg = _QWEN_VL_CONFIGS[name]
+    repo = cfg["repo"]
+    model_cls = getattr(transformers, cfg["cls"])
+    kwargs: dict[str, Any] = {
+        "revision": _rev(repo),
+        "torch_dtype": torch.bfloat16,
+        "attn_implementation": "sdpa",
+        "device_map": "auto",
+    }
+    if cfg["quantize"]:
+        kwargs["quantization_config"] = _bnb_4bit_config()
+
+    model = model_cls.from_pretrained(repo, **kwargs)
+    processor = transformers.AutoProcessor.from_pretrained(repo, revision=_rev(repo))
+    _models[name] = {"processor": processor, "model": model}
+    _models_offload_only.add(name)
+
+
+def _load_joycaption() -> None:
+    from transformers import AutoProcessor, LlavaForConditionalGeneration
+
+    repo = "fancyfeast/llama-joycaption-beta-one-hf-llava"
+    model = LlavaForConditionalGeneration.from_pretrained(
+        repo,
+        revision=_rev(repo),
         torch_dtype=torch.bfloat16,
-        attn_implementation="sdpa",
         device_map="auto",
         quantization_config=_bnb_4bit_config(),
     )
-    processor = AutoProcessor.from_pretrained(
-        "Qwen/Qwen2.5-VL-7B-Instruct", revision=_rev("Qwen/Qwen2.5-VL-7B-Instruct")
-    )
-    _models["Qwen25VL"] = {"processor": processor, "model": model}
-    _models_offload_only.add("Qwen25VL")
+    processor = AutoProcessor.from_pretrained(repo, revision=_rev(repo))
+    if processor.tokenizer.pad_token is None:
+        processor.tokenizer.pad_token = processor.tokenizer.eos_token
+    _models["JoyCaption"] = {"processor": processor, "model": model}
+    _models_offload_only.add("JoyCaption")
 
 
 def _load_gemma3n() -> None:
@@ -547,7 +598,10 @@ _I2T_LOADERS: dict[str, Any] = {
     "Moondream": _load_moondream,
     "Pixtral": _load_pixtral,
     "LLaMA32Vision": _load_llama32vision,
-    "Qwen25VL": _load_qwen25vl,
+    "Qwen25VL": functools.partial(_load_qwen_vl, "Qwen25VL"),
+    "Qwen3VL": functools.partial(_load_qwen_vl, "Qwen3VL"),
+    "CapRL": functools.partial(_load_qwen_vl, "CapRL"),
+    "JoyCaption": _load_joycaption,
     "Gemma3n": _load_gemma3n,
 }
 
@@ -687,7 +741,7 @@ _T2I_BATCH_CAPABLE: set[str] = {
     "Flux2Dev",
     "GLMImage",
 }
-_I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision"}
+_I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision", "JoyCaption"}
 
 
 _T2I_MAX_RETRIES = 3
@@ -856,6 +910,25 @@ _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
         "extra_generate_kwargs": {},
         "batch_images_fn": lambda img: img,
     },
+    # JoyCaption's chat template takes plain-string content, not the structured
+    # parts list the others use; the image reaches it through the processor.
+    # The instruction is deliberately identical to every other captioner's, so
+    # that captioner and prompt stay unconfounded across the panel.
+    "JoyCaption": {
+        "message_fn": lambda _img: [
+            {"role": "system", "content": "You are a helpful image captioner."},
+            {"role": "user", "content": "Describe this image."},
+        ],
+        "processor_call": lambda proc, text, img: proc(
+            text=[text], images=[img], padding=True, return_tensors="pt"
+        ),
+        "batch_processor_call": lambda proc, texts, images: proc(
+            text=texts, images=images, padding=True, return_tensors="pt"
+        ),
+        "dtype_cast": torch.bfloat16,
+        "extra_generate_kwargs": {},
+        "batch_images_fn": lambda img: img,
+    },
     "LLaMA32Vision": {
         "message_fn": lambda img: [
             {
@@ -936,13 +1009,13 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
     ]
 
 
-# --- Qwen25VL ---
+# --- Qwen-VL family (Qwen25VL, Qwen3VL, CapRL) ---
 
 
-def _invoke_qwen25vl(_name: str, img: Image.Image) -> str:
+def _invoke_qwen_vl(name: str, img: Image.Image) -> str:
     from qwen_vl_utils import process_vision_info
 
-    qwen_vl = _models["Qwen25VL"]
+    qwen_vl = _models[name]
     messages = [
         {
             "role": "user",
@@ -973,10 +1046,10 @@ def _invoke_qwen25vl(_name: str, img: Image.Image) -> str:
     )
 
 
-def _invoke_qwen25vl_batch(_name: str, images: list[Image.Image]) -> list[str]:
+def _invoke_qwen_vl_batch(name: str, images: list[Image.Image]) -> list[str]:
     from qwen_vl_utils import process_vision_info
 
-    qwen_vl = _models["Qwen25VL"]
+    qwen_vl = _models[name]
     all_texts = []
     all_images: list[Any] = []
     for img in images:
@@ -1096,7 +1169,10 @@ _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream,
     "Pixtral": _invoke_chat_template,
     "LLaMA32Vision": _invoke_chat_template,
-    "Qwen25VL": _invoke_qwen25vl,
+    "Qwen25VL": _invoke_qwen_vl,
+    "Qwen3VL": _invoke_qwen_vl,
+    "CapRL": _invoke_qwen_vl,
+    "JoyCaption": _invoke_chat_template,
     "Gemma3n": _invoke_gemma3n,
 }
 
@@ -1104,7 +1180,10 @@ _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream": _invoke_moondream_batch,
     "Pixtral": _invoke_chat_template_batch,
     "LLaMA32Vision": _invoke_chat_template_batch,
-    "Qwen25VL": _invoke_qwen25vl_batch,
+    "Qwen25VL": _invoke_qwen_vl_batch,
+    "Qwen3VL": _invoke_qwen_vl_batch,
+    "CapRL": _invoke_qwen_vl_batch,
+    "JoyCaption": _invoke_chat_template_batch,
     "Gemma3n": _invoke_gemma3n_batch,
 }
 
