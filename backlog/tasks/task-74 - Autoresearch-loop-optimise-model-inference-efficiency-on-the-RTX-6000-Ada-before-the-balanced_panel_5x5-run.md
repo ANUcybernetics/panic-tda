@@ -3,10 +3,10 @@ id: TASK-74
 title: >-
   Autoresearch loop: optimise model inference efficiency on the RTX 6000 Ada
   before the balanced_panel_5x5 run
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-07-06 05:52'
-updated_date: '2026-07-06 07:08'
+updated_date: '2026-09-03 06:31'
 labels:
   - performance
   - gpu
@@ -145,4 +145,10 @@ target them first.
 
 <!-- SECTION:NOTES:BEGIN -->
 Iteration 1 (lever A, batching slow T2I) complete — commit b7bf94a. Flux2Dev 113->71s/item (1.59x, parity 2.6); GLMImage 76->45s/item (1.67x, parity 68.7 but verified benign). Benchmark harness (mix gpu.bench) + findings log landed. AC #3 half-done: batching evaluated, torch.compile (lever B) still pending — that's the next iteration. Negative result logged: ZImageTurbo batching is slower (0.85x).
+
+Closed 2026-09-03 at Ben's direction. AC #3 is deliberately left unticked: lever A (batching the slow T2I models) was evaluated end to end and kept, but lever B (torch.compile) was never attempted. It stays on the ranked untried-levers list in backlog/docs/model-optimisation-log.md alongside channels_last, attention backend, FP8-vs-NF4, swap scheduling and the global TF32/cudnn flags, so nothing is lost by closing the loop here.
+
+Net effect of the work that did land: Flux2Dev 113 -> 71 s/item and GLMImage 76 -> 45 s/item from batching (both validated on the real balanced_panel_5x5 schedule, not just in the bench), and subsequently Flux2Dev 71 -> 57 s/item from the TASK-83 step-count cut. The benchmark harness (mix gpu.bench) and the findings log are the durable outputs.
+
+Negative result worth keeping: batching ZImageTurbo is slower (0.85x), so it stays serial.
 <!-- SECTION:NOTES:END -->

@@ -272,7 +272,7 @@ class NoSortingSentenceTransformer(SentenceTransformer):
         with torch.no_grad():
             for i in range(0, len(sentences), batch_size):
                 batch = sentences[i : i + batch_size]
-                features = self.tokenize(batch)
+                features = self.preprocess(batch)
                 features = batch_to_device(features, device)
                 out_features = self.forward(features)
                 embeddings = out_features["sentence_embedding"]
@@ -557,7 +557,7 @@ _EMBEDDING_LOADERS: dict[str, tuple[str, dict[str, Any]]] = {
         {
             "revision": _REVISIONS["Qwen/Qwen3-Embedding-4B"],
             "model_kwargs": {"attn_implementation": "sdpa"},
-            "tokenizer_kwargs": {"padding_side": "left"},
+            "processor_kwargs": {"padding_side": "left"},
         },
     ),
 }

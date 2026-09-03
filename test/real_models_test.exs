@@ -7,7 +7,7 @@ defmodule PanicTda.RealModelsTest do
   require Ash.Query
 
   alias PanicTda.Engine
-  alias PanicTda.Models.{GenAI, Embeddings, PythonBridge, PythonInterpreter}
+  alias PanicTda.Models.{GenAI, PythonBridge, PythonInterpreter}
 
   setup_all do
     {:ok, interpreter} = PythonInterpreter.start_link()
@@ -49,15 +49,6 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "real Embedding models" do
-    defp assert_unit_norm(binary) do
-      f32_count = div(byte_size(binary), 4)
-      values =
-        for <<v::float-32-little <- binary>>, do: v
-
-      assert length(values) == f32_count
-      norm = :math.sqrt(Enum.reduce(values, 0.0, fn v, acc -> acc + v * v end))
-      assert_in_delta norm, 1.0, 1.0e-4
-    end
 
   end
 

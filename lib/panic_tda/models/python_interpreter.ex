@@ -16,10 +16,12 @@ defmodule PanicTda.Models.PythonInterpreter do
       "vl-convert-python>=1.6",
       "giotto-ph>=0.2.4",
       "persim>=0.3.8",
-      "torch>=2.7",
-      "diffusers @ git+https://github.com/huggingface/diffusers.git",
-      "transformers>=5.0,<6.0",
-      "sentence-transformers>=5.0,<6.0",
+      "torch>=2.13,<3.0",
+      # 0.40 is the first release carrying the flux2/z_image/glm_image/
+      # hunyuan_image pipelines, so this no longer has to track git
+      "diffusers>=0.40,<0.41",
+      "transformers>=5.16,<6.0",
+      "sentence-transformers>=6.0,<7.0",
       "accelerate>=1.9",
       "pyvips>=2.2",
       "sentencepiece>=0.2",
@@ -31,7 +33,6 @@ defmodule PanicTda.Models.PythonInterpreter do
       "peft>=0.15",
       "bitsandbytes>=0.45",
       "backoff>=2.2",
-      "colpali-engine>=0.3.10",
       "evoc>=0.1"
     ]
     """
