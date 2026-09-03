@@ -49,7 +49,7 @@ _REVISIONS: dict[str, str] = {
     # TASK-87 lineup
     "Qwen/Qwen3-VL-8B-Instruct": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
     "fancyfeast/llama-joycaption-beta-one-hf-llava": "ebf414ea497a020da0f82df3913e5b6cb8e9663a",
-    "google/gemma-4-26B-A4B-it": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
+    "google/gemma-4-E4B-it": "ee0ef6023621cff504d758262d4e04895a5af4a2",
     "moondream/moondream3-preview": "5112966d1a723413b1c9a1e8bea272b72e647b35",
 }
 
@@ -566,19 +566,21 @@ def _load_gemma3n() -> None:
 def _load_gemma4() -> None:
     from transformers import AutoProcessor, Gemma4ForConditionalGeneration
 
-    # 26B total (A4B active). Unlike Gemma3n's 2B, this does not fit in bf16
-    # alongside a diffusion model, so it is quantised like the other large VLMs.
-    repo = "google/gemma-4-26B-A4B-it"
-    model = Gemma4ForConditionalGeneration.from_pretrained(
-        repo,
-        revision=_rev(repo),
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        quantization_config=_bnb_4bit_config(),
+    # E4B, not the 26B-A4B MoE. bitsandbytes only replaces nn.Linear, and the
+    # 26B puts most of its weight in Gemma4ClippableLinear layers it cannot
+    # touch, so "4-bit" loaded at 48.4 GB of a 50.9 GB card and left no room
+    # for a diffusion model. E4B is 16 GB in bf16, needs no quantisation, and
+    # so can also be genuinely swapped to CPU rather than pinned resident.
+    repo = "google/gemma-4-E4B-it"
+    model = (
+        Gemma4ForConditionalGeneration.from_pretrained(
+            repo, revision=_rev(repo), torch_dtype=torch.bfloat16
+        )
+        .to("cuda")
+        .eval()
     )
     processor = AutoProcessor.from_pretrained(repo, revision=_rev(repo))
     _models["Gemma4"] = {"processor": processor, "model": model}
-    _models_offload_only.add("Gemma4")
 
 
 # ---------------------------------------------------------------------------
