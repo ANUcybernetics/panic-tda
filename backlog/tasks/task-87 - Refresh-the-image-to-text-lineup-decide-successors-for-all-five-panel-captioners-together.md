@@ -3,10 +3,10 @@ id: TASK-87
 title: >-
   Refresh the image-to-text lineup: decide successors for all five panel
   captioners together
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 13:31'
+updated_date: '2026-09-03 15:53'
 labels:
   - models
   - experiment-design
@@ -40,12 +40,12 @@ Practical constraints. _load_moondream in priv/python/panic_models.py is bespoke
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Decision recorded per captioner: upgrade, replace with a differently-objective model, or keep, with the reason
-- [ ] #2 Whatever is adopted is pinned to an explicit revision in _REVISIONS alongside the rest, and loads through as standard a transformers path as the model allows
-- [ ] #3 Caption length, terminal-punctuation share and seconds-per-caption re-measured for every changed model via analysis/natural_lengths.py, and backlog/docs/caption-length-by-i2t-model.md updated
-- [ ] #4 Licence implications noted for any non-Apache model adopted (Moondream 3 is BSL 1.1; Llama 4 is gated and custom-licensed)
-- [ ] #5 Impact on TASK-81's cross-era comparison stated explicitly once the Moondream decision is made
-- [ ] #6 mix test --include gpu green for the new lineup, and CLAUDE.md model table plus run-time rows updated
+- [x] #1 Decision recorded per captioner: upgrade, replace with a differently-objective model, or keep, with the reason
+- [x] #2 Whatever is adopted is pinned to an explicit revision in _REVISIONS alongside the rest, and loads through as standard a transformers path as the model allows
+- [x] #3 Caption length, terminal-punctuation share and seconds-per-caption re-measured for every changed model via analysis/natural_lengths.py, and backlog/docs/caption-length-by-i2t-model.md updated
+- [x] #4 Licence implications noted for any non-Apache model adopted (Moondream 3 is BSL 1.1; Llama 4 is gated and custom-licensed)
+- [x] #5 Impact on TASK-81's cross-era comparison stated explicitly once the Moondream decision is made
+- [x] #6 mix test --include gpu green for the new lineup, and CLAUDE.md model table plus run-time rows updated
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -116,4 +116,28 @@ Fifth slot goes to Qwen25VL, retained rather than replaced by Mistral Small 3.2.
 FINAL v2 LINEUP (config/balanced_panel_5x5_v2.json): text-to-image unchanged (SD35Medium, ZImageTurbo, Flux2Klein, GLMImage, Flux2Dev); captioners Moondream3, Qwen25VL, Qwen3VL, Gemma4, JoyCaption; Qwen3Embed; 25 networks, 20 prompts, 50 steps, 4 runs.
 
 Still to integrate: Gemma 4 26B-A4B (51.6 GB download, needs 4-bit, and the one whose speed must be measured rather than assumed) and Moondream 3 (18.5 GB, bespoke single-file loader must be rewritten for a sharded checkpoint). Both must also be checked against the 512-token encoder ceiling, since that is now a known hazard for 2026 captioners --- Qwen3VL already sits at 466 of 512 on easy images.
+
+COMPLETE 2026-09-04. Full GPU suite green on the new lineup: 158 tests, 0 failures in 88 minutes, no warnings.
+
+Final v2 captioners, all measured on four Flux2Dev images at natural length with the same 'Describe this image.' instruction (T5 token counts matter because the text-to-image encoders read at most 512):
+
+| model | repo | median words | T5 tokens | s/caption |
+|---|---|---|---|---|
+| Moondream3 | moondream/moondream3-preview | 59 | 52-81 | 2.4 |
+| Qwen25VL | Qwen/Qwen2.5-VL-7B-Instruct | 80 | --- | 0.9 |
+| JoyCaption | fancyfeast/llama-joycaption-beta-one-hf-llava | 178 | 131-250 | 2.2 |
+| Gemma4 | google/gemma-4-E4B-it | 225 | 262-389 | 2.6 |
+| Qwen3VL | Qwen/Qwen3-VL-8B-Instruct | 292 | 312-466 | 4.0 |
+
+All pinned in _REVISIONS; text-to-image side unchanged. Roughly a fivefold length spread with overlapping distributions.
+
+Three code simplifications fell out. Moondream 3 ships a working auto_map, so the bespoke loader (fish the class out of transformers_modules, hand-build the config, prefix-strip a single safetensors) is gone. One parameterised loader now covers the whole Qwen-VL family, and one invoke path covers both Gemma models.
+
+Four traps caught by measurement, none visible in caption output --- this is the evidence that 'validate before committing GPU' is a real requirement:
+1. CapRL captions at 466 words median / up to 836 T5 tokens, exceeding the 512-token ceiling on 3 of 4 images. Dropped as incompatible.
+2. Gemma 4 26B-A4B occupied 48.4 GB of a 50.9 GB card. bitsandbytes replaces nn.Linear only and silently skipped the 189 Gemma4ClippableLinear modules holding 47.2 GB. Because a bnb model must live in _models_offload_only, where swap_to_cpu only empty_cache()s, it would have stayed resident and OOM'd every diffusion model mid-panel. Replaced with the dense E4B: 15.9 GB, no quantisation needed, and swap_to_cpu returns allocated to 0.0 GB.
+3. Loading Moondream 3 with device_map would have failed mid-panel: swap_to_cpu calls .to('cpu') on anything outside _models_offload_only, which an accelerate-hooked model cannot do --- and a swap_to_gpu-only test does not catch it.
+4. JoyCaption's chat template takes plain-string content, not the structured parts list every other model uses.
+
+Carried forward: Qwen3VL has the least headroom against the 512-token ceiling (466 of 512 on easy images), so it is the one to watch on visually complex inputs, and worth a line in the paper's methods. Gemma3n, Pixtral and LLaMA32Vision remain registered but are outside the panel --- pruning them on the TASK-84 principle is Ben's call, weighed against their being what produced balanced_panel_5x5.
 <!-- SECTION:NOTES:END -->
