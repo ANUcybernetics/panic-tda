@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:29'
-updated_date: '2026-09-03 13:10'
+updated_date: '2026-09-03 13:11'
 labels:
   - models
   - experiment-design
@@ -78,4 +78,16 @@ Constraints and costings established 2026-09-03, to be respected whenever the ne
 4. PROVENANCE is safe either way: experiments.networks is stored per experiment, so 019f3645 retains its real lineup whatever the config file says. config/balanced_panel_5x5_v2.json has been drafted anyway so the file that produced the published dataset stays readable; its captioner names are placeholders pending the decision below.
 
 5. TASK-81 needs rescoping or dropping once Moondream is decided --- changing its architecture removes the last thread linking to the SMC 2025 era.
+
+DECIDED (Ben, 2026-09-03):
+- Captioners: Moondream 3, Qwen3-VL-8B-Instruct, CapRL-Qwen3VL-4B, Gemma 4 26B-A4B, JoyCaption. Mistral Small 3.2 and Llama 4 Scout are dropped.
+- Panel stays 5x5 (25 networks), so the factorial design and analysis code carry over unchanged.
+- Text-to-image side is UNCHANGED. Four of the five are 2026 releases; SD35Medium is dated but is the cheapest and best-characterised, and changing one factor at a time keeps the comparison interpretable.
+- TASK-81 is dropped (see that task).
+
+Registry names to use, matching config/balanced_panel_5x5_v2.json: Moondream3, Qwen3VL, CapRL, Gemma4, JoyCaption. Repos and revisions to pin: moondream/moondream3-preview, Qwen/Qwen3-VL-8B-Instruct, internlm/CapRL-Qwen3VL-4B, google/gemma-4-26B-A4B-it, fancyfeast/llama-joycaption-beta-one-hf-llava.
+
+Order of work, cheapest and least risky first: JoyCaption and CapRL both load through standard transformers classes (LlavaForConditionalGeneration and Qwen3VLForConditionalGeneration), so they are near drop-ins. Qwen3-VL is the same family as the incumbent Qwen25VL. Gemma 4 is a 26B MoE and the one whose speed needs measuring rather than assuming. Moondream 3 is the most work: its bespoke single-file loader must be rewritten for a sharded checkpoint, and it may simplify to a standard trust_remote_code load.
+
+Licence note for the paper: Moondream 3 is BSL 1.1 (converting to Apache-2.0 two years after release); the other four are Apache-2.0. JoyCaption declares no licence in its HF metadata, so read the repo before relying on it.
 <!-- SECTION:NOTES:END -->

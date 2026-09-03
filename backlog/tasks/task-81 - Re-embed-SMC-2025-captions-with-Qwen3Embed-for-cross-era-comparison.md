@@ -1,10 +1,11 @@
 ---
 id: TASK-81
 title: Re-embed SMC 2025 captions with Qwen3Embed for cross-era comparison
-status: To Do
+status: Done
 assignee:
   - sungyeon-hong
 created_date: '2026-08-13'
+updated_date: '2026-09-03 13:11'
 labels:
   - analysis
   - paper
@@ -32,3 +33,11 @@ Not in scope: pooling the two eras into a single clustering, Markov state model 
 - [ ] #4 Clustering recomputed for the re-embedded data with the same algorithm and hyperparameters used for the current panel, so outlier rates are comparable across eras
 - [ ] #5 Written note on whether cross-era comparison is sound, listing the confounds that remain after the embedding space is unified (prompt set, caption length, clustering algorithm)
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Dropped 2026-09-03 (Ben). Moondream was the anchor for the cross-era comparison, and by now its weight revision, its length mode (short -> normal, decision-01) and --- under TASK-87 --- its architecture have all changed. A comparison across those eras would no longer measure era; it would measure four confounded changes at once.
+
+The underlying data is untouched and the idea remains available if a use for it appears: the SMC-2025 captions are still stored, and re-embedding them with Qwen3Embed is a small job. What is gone is the claim that the same captioner spans both eras.
+<!-- SECTION:NOTES:END -->
