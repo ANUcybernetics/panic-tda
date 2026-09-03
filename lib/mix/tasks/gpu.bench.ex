@@ -28,7 +28,11 @@ defmodule Mix.Tasks.Gpu.Bench do
   @default_n 8
   @default_seed 424_242
 
-  @bench_timeout 3_600_000
+  # The benchmark generates n images serially and then n more at every batch
+  # size, so its wall-clock scales with both. A flat ceiling silently blew up
+  # an hour into a `--n 16 --batch-sizes 4,8,16` run on Flux2Dev; budget per
+  # image instead, generously, since the slowest model is ~90 s/image serial.
+  @bench_ms_per_image 150_000
   @load_timeout 600_000
 
   @prompts [
@@ -108,7 +112,7 @@ defmodule Mix.Tasks.Gpu.Bench do
           "batch_sizes" => batch_sizes,
           "dump_dir" => dump
         },
-        timeout: @bench_timeout
+        timeout: @bench_ms_per_image * length(seeds) * (length(batch_sizes) + 1)
       )
 
     single = result["single_per_item_s"]
