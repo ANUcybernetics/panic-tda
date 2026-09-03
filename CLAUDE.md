@@ -100,7 +100,7 @@ estimates.
 | SD35Medium             | ~9s               | ~9s        | ~6.5s †          |
 | ZImageTurbo            | ~8s               | ~18s       | ~6s              |
 | Flux2Klein             | ~20s              | ~20s       | ~4.1s †          |
-| Flux2Dev               | ~100s             | ~226s      | ~71s ‡           |
+| Flux2Dev               | ~91s              | ~181s §    | ~57s ‡           |
 | HunyuanImage           | ~124s             | ~326s      | ~109s            |
 | GLMImage               | ~44s              | ~85s       | ~45s ‡           |
 | **Image-to-text**      |                   |            |                  |
@@ -122,6 +122,13 @@ enabled by TASK-74 (Flux2Dev and GLMImage became truly batch-capable —
 `_T2I_BATCH_CAPABLE`/`_T2I_MAX_BATCH` in `priv/python/panic_models.py`). Before
 that these two ran serially even inside `invoke_t2i_batch`. Benchmark and
 quality gate: `mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
+
+The Flux2Dev row is measured at its current 12 steps (TASK-83); § is the only
+cell scaled rather than measured. Captioner rows predate decision-01 and now
+understate: captions run to natural length, so a Gemma3n batch takes roughly
+two to three times longer than it did under the old 128-token ceiling. Measured
+seconds per caption at natural length are in
+`backlog/docs/caption-length-by-i2t-model.md`.
 
 ### Other experiment tasks
 
