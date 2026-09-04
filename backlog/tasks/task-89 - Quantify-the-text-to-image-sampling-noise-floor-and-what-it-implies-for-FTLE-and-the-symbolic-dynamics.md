@@ -4,7 +4,7 @@ title: Decompose each loop step into deterministic drift and generator sampling 
 status: To Do
 assignee: []
 created_date: '2026-09-03 23:29'
-updated_date: '2026-09-04 02:29'
+updated_date: '2026-09-04 06:06'
 labels:
   - analysis
   - paper
@@ -40,6 +40,7 @@ Cheap to run: no new models, no new experiments; analysis/step_sweep.py already 
 - [ ] #3 Implications written up for TASK-85's step-size result, for RQ2's response variable, and for what the core-set MSM in TASK-76 must demonstrate about its transitions
 - [ ] #4 max_sequence_length recorded as a fixed experiment parameter that perturbs generation independently of content, so it is never varied mid-programme
 - [ ] #5 Ruler calibration: the noise share is reported against Qwen3Embed's resolution for these captions (distance between seed-resamples of one caption versus captions of unrelated prompts), so a step below the ruler's resolution is not read as dynamics
+- [ ] #6 Truncation validated on our captions: a sample embedded at Qwen3Embed's native 2560 and at 256 dimensions, with rank correlation of pairwise distances and agreement of the step-size and plateau statistics reported, so the 256-d choice is a measured number in methods
 <!-- AC:END -->
 
 ## Implementation Notes
