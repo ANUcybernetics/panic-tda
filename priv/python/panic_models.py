@@ -652,13 +652,20 @@ def unload_all_models() -> None:
 # T2I invocation: config-driven
 # ---------------------------------------------------------------------------
 
-# max_sequence_length is set explicitly on every pipeline, and is a fixed
-# experiment parameter rather than a knob: it sets the conditioning tensor's
-# padding length, which perturbs generation even for identical text (TASK-89).
-# Left to their defaults the panel would be non-uniform --- diffusers gives
-# SD35Medium 256, Flux2/ZImage 512 and GLMImage 2048 --- so all five are pinned
-# to 512, SD35Medium's architectural cap and the ceiling decision-01 assumes.
-# CLIP's 77 tokens are separate and architectural.
+# max_sequence_length is set explicitly on every pipeline: it is a fixed
+# experiment parameter, not a knob. On the four models whose text encoder reads
+# the caption it sets the conditioning tensor's padding length, which perturbs
+# generation even for identical text (TASK-89), and diffusers would otherwise
+# give SD35Medium 256 and the rest 512, so all four are pinned to 512 ---
+# SD35Medium's architectural cap and the ceiling decision-01 assumes. CLIP's 77
+# tokens are separate and architectural.
+#
+# GLMImage is not the same parameter and keeps its upstream 2048. Its caption
+# goes to a vision-language encoder with no ceiling at all; max_sequence_length
+# caps only the ByT5 glyph branch, which receives the quoted substrings GLM
+# renders as text inside the image, and truncates without padding. Matching the
+# number to the others would buy no uniformity and could silently cut a long
+# glyph fragment (TASK-94).
 _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "SD35Medium": {
         "num_inference_steps": 20,
@@ -677,7 +684,7 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "GLMImage": {
         "num_inference_steps": 25,
         "guidance_scale": 7.5,
-        "max_sequence_length": 512,
+        "max_sequence_length": 2048,
     },
     "ZImageTurbo": {
         "num_inference_steps": 8,
