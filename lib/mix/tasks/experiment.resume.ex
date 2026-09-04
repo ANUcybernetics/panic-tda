@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Experiment.Resume do
   The experiment must have been started (has `started_at`) but not completed
   (no `completed_at`). The task picks up where the experiment left off:
   missing runs are created, partial runs are continued, and missing
-  embeddings, persistence diagrams and Lyapunov results are computed.
+  embeddings and persistence diagrams are computed.
   Clustering is not resumed automatically; run `mix cluster.recompute`
   separately.
 

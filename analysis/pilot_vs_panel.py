@@ -14,7 +14,7 @@ hardcoded 128-token ceiling. Same 20 prompts, 4 runs each, 50 steps, Qwen3Embed.
 Four families of comparison (TASK-85 AC #3):
 
 1. captions      -- word length, terminal-punctuation share, by step
-2. ftle          -- Lyapunov exponent per prompt, paired across the 20 prompts
+2. ftle          -- REMOVED: FTLE dropped from the analysis (TASK-73)
 3. clusters      -- occupancy and transition structure over a shared alphabet
 4. drift         -- cosine distance from the t_0 prompt, and step to step
 

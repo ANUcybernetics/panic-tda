@@ -1,11 +1,10 @@
 defmodule PanicTda.Engine do
   @moduledoc """
   Main engine for running PANIC-TDA experiments.
-  Orchestrates the four-stage pipeline:
+  Orchestrates the three-stage pipeline:
   1. Runs stage - batch execute model networks
   2. Embeddings stage - compute embeddings for outputs
   3. Persistence diagrams stage - TDA computation
-  4. Lyapunov stage - compute FTLE from multi-run trajectory divergence
 
   Clustering (global EVoC clustering of raw embeddings, pooled across
   experiments) is not part of this pipeline; run it separately via
@@ -14,7 +13,7 @@ defmodule PanicTda.Engine do
 
   require Ash.Query
 
-  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage, LyapunovStage}
+  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage}
   alias PanicTda.Models.{PythonBridge, PythonSession}
 
   def perform_experiment(experiment_id, opts \\ []) do
@@ -40,9 +39,6 @@ defmodule PanicTda.Engine do
         :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
         :ok = PdStage.compute(env, run, experiment.embedding_models)
       end)
-
-      :ok = PythonBridge.unload_all_models(env)
-      :ok = LyapunovStage.compute(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}
@@ -90,9 +86,6 @@ defmodule PanicTda.Engine do
         :ok = EmbeddingsStage.resume(env, run, experiment.embedding_models)
         :ok = PdStage.resume(env, run, experiment.embedding_models)
       end)
-
-      :ok = PythonBridge.unload_all_models(env)
-      :ok = LyapunovStage.resume(env, experiment, experiment.embedding_models)
 
       experiment = PanicTda.complete_experiment!(experiment)
       {:ok, experiment}

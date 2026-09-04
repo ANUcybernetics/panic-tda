@@ -5,7 +5,7 @@ defmodule PanicTda.DataExport do
 
   One file is written per table (`experiments`, `runs`, `invocations`,
   `embeddings`, `persistence_diagrams`, `clustering_results`,
-  `embedding_clusters`, `lyapunov_results`). Array and nested attributes
+  `embedding_clusters`). Array and nested attributes
   (`networks`, `network`, `prompts`, `embedding_models`) and the persistence
   diagram payload (`diagram_data`) are serialised to JSON strings so the output
   is portable; embedding vectors become a `list[f32]` column. Timestamps are
@@ -245,23 +245,6 @@ defmodule PanicTda.DataExport do
          {"medoid_embedding_id", & &1.medoid_embedding_id, :string},
          {"inserted_at", &iso(&1.inserted_at), :string},
          {"updated_at", &iso(&1.updated_at), :string}
-       ]},
-      {:lyapunov_results, read_lyapunov_results(experiment_ids, models),
-       [
-         {"id", & &1.id, :string},
-         {"experiment_id", & &1.experiment_id, :string},
-         {"embedding_model", & &1.embedding_model, :string},
-         {"network", &json(&1.network), :string},
-         {"prompt", & &1.prompt, :string},
-         {"exponent", &lyapunov_field(&1, :exponent), {:f, 64}},
-         {"r_squared", &lyapunov_field(&1, :r_squared), {:f, 64}},
-         {"num_pairs", &lyapunov_field(&1, :num_pairs), {:s, 64}},
-         {"num_timesteps", &lyapunov_field(&1, :num_timesteps), {:s, 64}},
-         {"divergence_curve", &lyapunov_field(&1, :divergence_curve), {:list, {:f, 64}}},
-         {"started_at", &iso(&1.started_at), :string},
-         {"completed_at", &iso(&1.completed_at), :string},
-         {"inserted_at", &iso(&1.inserted_at), :string},
-         {"updated_at", &iso(&1.updated_at), :string}
        ]}
     ]
   end
@@ -329,13 +312,6 @@ defmodule PanicTda.DataExport do
     |> Ash.read!()
   end
 
-  defp read_lyapunov_results(experiment_ids, models) do
-    PanicTda.LyapunovResult
-    |> Ash.Query.filter(experiment_id in ^experiment_ids)
-    |> filter_models(models)
-    |> Ash.read!()
-  end
-
   defp exported_embedding_models(experiment_ids) do
     experiment_ids
     |> read_experiments()
@@ -374,7 +350,4 @@ defmodule PanicTda.DataExport do
 
   defp vector_to_list(nil), do: nil
   defp vector_to_list(%Nx.Tensor{} = tensor), do: Nx.to_flat_list(tensor)
-
-  defp lyapunov_field(%{lyapunov_data: nil}, _key), do: nil
-  defp lyapunov_field(%{lyapunov_data: data}, key), do: Map.get(data, key)
 end

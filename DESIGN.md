@@ -106,7 +106,7 @@ For a given experiment config, the engine first creates all runs --- one for
 each combination of prompt and run number (from `0` to `num_runs - 1`). Each run
 shares the experiment's network and `max_length`.
 
-The computation then proceeds through four stages:
+The computation then proceeds through three stages:
 
 - In the **runs stage** (`RunExecutor.execute_batch/2`) all runs advance through
   the network in lockstep. At each sequence step, the current model is invoked
@@ -127,11 +127,6 @@ The computation then proceeds through four stages:
   [giotto-ph](https://giotto-ai.github.io/giotto-ph/) library to compute a
   [persistence diagram](https://en.wikipedia.org/wiki/Persistent_homology).
   There is one persistence diagram per run per embedding model.
-
-- In the **Lyapunov stage** (`LyapunovStage.compute/3`) runs are grouped by
-  (network, prompt) and finite-time Lyapunov exponents are estimated from the
-  pairwise divergence of the group's embedding trajectories over time (requires
-  `num_runs >= 2`). There is one Lyapunov result per group per embedding model.
 
 Clustering is deliberately not part of the per-experiment pipeline. The
 `mix cluster.recompute` task (`ClusteringStage.recompute/2`) clusters all raw

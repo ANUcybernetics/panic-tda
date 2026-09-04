@@ -44,7 +44,6 @@ defmodule PanicTda.DataExportTest do
              :embeddings,
              :experiments,
              :invocations,
-             :lyapunov_results,
              :persistence_diagrams,
              :runs
            ]
@@ -126,9 +125,8 @@ defmodule PanicTda.DataExportTest do
     assert is_list(vector) and vector != []
   end
 
-  test "exports cluster assignments and lyapunov results" do
-    # enough runs for a Lyapunov exponent (>= 2 per network/prompt) and enough
-    # embeddings for EVoC to cluster at all (>= 16)
+  test "exports cluster assignments" do
+    # enough embeddings for EVoC to cluster at all (>= 16)
     experiment =
       run_experiment(%{num_runs: 3, prompts: ["Alpha", "Beta", "Gamma"], max_length: 6})
 
@@ -169,19 +167,6 @@ defmodule PanicTda.DataExportTest do
     # at least some rows are non-outliers, i.e. clustering did something
     assert Enum.any?(clusters, &(&1["medoid_embedding_id"] != nil))
 
-    # one FTLE per network × prompt × embedding model
-    assert {_, 3} = tables[:lyapunov_results]
-
-    [lyapunov | _] =
-      elem(tables[:lyapunov_results], 0)
-      |> Explorer.DataFrame.from_parquet!()
-      |> Explorer.DataFrame.to_rows()
-
-    assert lyapunov["experiment_id"] == experiment.id
-    assert lyapunov["embedding_model"] == "DummyText"
-    assert Jason.decode!(lyapunov["network"]) == ["DummyT2I", "DummyI2T"]
-    assert is_float(lyapunov["exponent"])
-    assert is_list(lyapunov["divergence_curve"]) and lyapunov["divergence_curve"] != []
   end
 
   test "exports multiple experiments into combined files" do

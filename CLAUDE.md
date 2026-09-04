@@ -7,13 +7,11 @@ It systematically explores how information flows through networks of generative
 AI models by feeding outputs recursively back as inputs, creating "trajectories"
 through semantic space.
 
-The project implements a four-stage computational pipeline:
+The project implements a three-stage computational pipeline:
 
 1. **Runs stage**: execute networks of genAI models where outputs become inputs
 2. **Embeddings stage**: embed text outputs into high-dimensional semantic space
 3. **TDA stage**: compute persistence diagrams via topological data analysis
-4. **Lyapunov stage**: estimate finite-time Lyapunov exponents (FTLE) from
-   pairwise divergence between runs sharing a network and prompt
 
 Clustering is a separate manual step, not part of the pipeline:
 `mise exec -- mix cluster.recompute` runs global EVoC clustering over all raw
@@ -47,8 +45,8 @@ Experiments are configured via JSON files in `config/` and run with:
 mise exec -- mix experiment.run config/my_experiment.json
 ```
 
-The task handles database setup and runs the full four-stage pipeline (runs →
-embeddings → TDA → Lyapunov).
+The task handles database setup and runs the full three-stage pipeline (runs →
+embeddings → TDA).
 
 ### Configuration format
 
@@ -138,7 +136,7 @@ seconds per caption at natural length are in
   and progress
 - `mise exec -- mix experiment.resume <id-prefix>` --- resume an interrupted
   experiment (picks up where it left off: skips completed runs, computes missing
-  embeddings/PDs, recomputes Lyapunov results; does not recluster)
+  embeddings/PDs; does not recluster)
 - `mise exec -- mix experiment.export <id-prefix> [--output path.mp4] [--fps 10] [--resolution hd|4k]`
   --- export mosaic video of an experiment
 - `mise exec -- mix experiment.export --image <invocation-id> [--output image.png]`
