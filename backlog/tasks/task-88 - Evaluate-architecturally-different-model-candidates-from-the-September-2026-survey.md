@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:30'
-updated_date: '2026-09-04 07:59'
+updated_date: '2026-09-04 08:15'
 labels:
   - models
   - research
@@ -54,7 +54,11 @@ Adoption signal worth weighing: BAGEL (935 downloads) and Emu3.5 (380) have very
 <!-- SECTION:NOTES:BEGIN -->
 Un-deferred 2026-09-04: the lineup came back into question when GLMImage was removed (TASK-94), which is the condition this task named for itself.
 
-The text-to-image half is now TASK-95 (SANA 1.5 4.8B, with CogView4-6B as the fallback). SANA was not in the survey table above --- it was found by enumerating the first-class pipelines in the installed diffusers rather than by searching releases, which is the cheaper filter for this project, since a model without a diffusers pipeline needs a spike before it can even be measured.
+The text-to-image half is settled and moved to TASK-95 (CogView4-6B, with Chroma1-HD as fallback). The method and the full screen of sixteen candidates are in backlog/docs/text-to-image-model-screen.md. What remains here is the captioner and embedder candidates.
 
-Sizes verified against the HF API 2026-09-04, which rules several survey candidates out on the no-quantisation constraint that GLMImage's removal established (48 GB, bfloat16, no 4-bit): NextStep-1.1 55.7 GB, Qwen-Image 53.7 GB, HiDream-I1-Full 43.9 GB. Emu3.5 at 34B is out for the same reason. What remains of this task is the captioner and embedder candidates.
+Two lessons from that screen worth carrying into the remaining evaluations:
+
+Enumerate first-class diffusers pipelines rather than searching for notable releases. A model without one cannot be measured without a spike, and the pipeline's own __call__ signature answers the context-length and prompt-rewriting screens for free, before any download. None of NextStep-1.1, BAGEL, Janus-Pro, Emu3.5 or Infinity-8B --- the generation candidates in the survey table above --- would survive that screen, and the first four are also ruled out by size at bfloat16 (NextStep-1.1 55.7 GB, Qwen-Image 53.7, HiDream-I1-Full 43.9, Emu3.5 34B).
+
+Read the call signature for prompt-modifying defaults. Five of the sixteen text-to-image candidates rewrite or augment the prompt by default, so GLM-Image's glyph branch was a genre convention, not a one-off. Any captioner candidate deserves the same check for a default system prompt or instruction template.
 <!-- SECTION:NOTES:END -->
