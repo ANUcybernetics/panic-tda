@@ -56,10 +56,9 @@ defmodule PanicTda.Embedding do
       accept([:embedding_model, :vector, :started_at, :completed_at, :invocation_id])
     end
 
-    # Non-atomic on purpose: the atomic builder wraps the primary key as
-    # `CAST(id AS TEXT) = CAST(? AS TEXT)`, which SQLite cannot answer from the
-    # index, so every update full-scans the table. 72ms/row against 2ms.
     update :update do
+      # Non-atomic: the atomic builder's CAST on the primary key defeats the
+      # index and full-scans the table (test/query_plan_test.exs).
       require_atomic?(false)
       accept([:vector, :completed_at])
     end

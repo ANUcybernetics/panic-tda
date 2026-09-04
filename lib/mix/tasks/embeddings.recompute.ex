@@ -2,35 +2,22 @@ defmodule Mix.Tasks.Embeddings.Recompute do
   @shortdoc "Recompute stored embedding vectors in place"
 
   @moduledoc """
-  Re-embeds every stored embedding's invocation text and writes the new vector
-  over the old one.
+  Recomputes stored embedding vectors in place. See
+  `PanicTda.Embeddings.Recompute` for what it does and why.
 
       $ mix embeddings.recompute
       $ mix embeddings.recompute --model Qwen3Embed --experiment 01a060b4
       $ mix embeddings.recompute --dry-run
       $ mix embeddings.recompute --after 019f3645-0000-7000-8000-000000000000
 
-  Vectors are updated in place rather than destroyed and recreated, so
-  embedding ids survive and `embedding_clusters` rows are not orphaned. The
-  clustering is still computed from the vectors, so run `mix cluster.recompute`
-  afterwards.
-
-  Needed whenever the embedding path changes underneath stored data: every
-  vector written before 2026-09-03 was mean-pooled, which Qwen3-Embedding's
-  last-token pooling makes wrong (TASK-96).
-
   The run prints the last id of each page. `--after ID` resumes from there,
-  which is how you pick a run back up after a crash without re-embedding
-  everything that already landed.
+  which is how you pick a crashed run back up without re-embedding everything
+  that already landed.
   """
 
   use Mix.Task
 
-  require Ash.Query
-
-  alias PanicTda.Models.Embeddings
-
-  @batch 64
+  alias PanicTda.Embeddings.Recompute
 
   @impl Mix.Task
   def run(args) do
@@ -49,113 +36,44 @@ defmodule Mix.Tasks.Embeddings.Recompute do
     Mix.Task.run("ecto.migrate", ["--quiet"])
     Mix.Task.run("app.start")
 
-    batch = Keyword.get(opts, :batch, @batch)
-    dry_run? = Keyword.get(opts, :dry_run, false)
-    after_id = Keyword.get(opts, :after)
-    experiments = Keyword.get_values(opts, :experiment)
-
-    models =
-      case Keyword.get_values(opts, :model) do
-        [] -> Embeddings.list_models()
-        requested -> requested
-      end
-
     {:ok, interpreter} = PanicTda.Models.PythonInterpreter.start_link()
     {:ok, env} = Snex.make_env(interpreter)
+    started = System.monotonic_time(:millisecond)
+
+    recompute_opts =
+      [
+        experiments: Keyword.get_values(opts, :experiment),
+        dry_run: Keyword.get(opts, :dry_run, false),
+        on_progress: &report(&1, started)
+      ]
+      |> put_if(:models, Keyword.get_values(opts, :model))
+      |> put_if(:batch, Keyword.get(opts, :batch))
+      |> put_if(:after, Keyword.get(opts, :after))
 
     try do
-      Enum.each(models, &recompute_model(env, &1, experiments, batch, dry_run?, after_id))
+      Recompute.run(env, recompute_opts)
     after
       GenServer.stop(interpreter)
     end
   end
 
-  defp recompute_model(env, model, experiments, batch, dry_run?, after_id) do
-    total = base_query(model, experiments, after_id) |> Ash.count!()
+  defp put_if(opts, _key, nil), do: opts
+  defp put_if(opts, _key, []), do: opts
+  defp put_if(opts, key, value), do: Keyword.put(opts, key, value)
 
-    if total == 0 do
-      Mix.shell().info("#{model}: nothing to do")
-    else
-      Mix.shell().info("#{model}: #{total} embeddings#{if dry_run?, do: " (dry run)", else: ""}")
-      started = System.monotonic_time(:millisecond)
-      page(env, model, experiments, batch, dry_run?, after_id, 0, total, started)
-    end
-  end
+  defp report(%{done: 0, total: 0, model: model}, _started),
+    do: Mix.shell().info("#{model}: nothing to do")
 
-  # Paged rather than read in one go: loading :invocation for thousands of rows
-  # at once builds a query SQLite rejects at its 1000-deep expression limit.
-  #
-  # Keyset, not offset: `OFFSET n` makes SQLite walk and discard n rows of a
-  # table whose every row carries a vector blob, so page cost grows with the
-  # offset until the read outlives the connection timeout. Seeking on `id >`
-  # keeps every page the same cost.
-  defp page(env, model, experiments, batch, dry_run?, after_id, done, total, started) do
-    chunk =
-      base_query(model, experiments, after_id)
-      |> Ash.Query.sort(id: :asc)
-      |> Ash.Query.limit(batch)
-      |> Ash.Query.load(:invocation)
-      |> Ash.read!()
+  defp report(%{done: 0, total: total, model: model, dry_run: dry_run?}, _started),
+    do: Mix.shell().info("#{model}: #{total} embeddings#{if dry_run?, do: " (dry run)", else: ""}")
 
-    if chunk == [] do
-      :ok
-    else
-      last_id = chunk |> List.last() |> Map.fetch!(:id)
+  defp report(%{done: done, total: total, after: after_id}, started) do
+    elapsed = System.monotonic_time(:millisecond) - started
+    rate = done * 1000 / max(elapsed, 1)
 
-      chunk
-      |> Enum.filter(&(&1.invocation && &1.invocation.output_text))
-      |> then(&recompute_chunk(env, model, &1, dry_run?))
-
-      done = done + length(chunk)
-      elapsed = System.monotonic_time(:millisecond) - started
-      rate = done * 1000 / max(elapsed, 1)
-
-      Mix.shell().info(
-        "  #{done}/#{total}  #{Float.round(rate, 1)}/s  " <>
-          "eta #{div(round((total - done) / max(rate, 0.001)), 60)}m  after #{last_id}"
-      )
-
-      page(env, model, experiments, batch, dry_run?, last_id, done, total, started)
-    end
-  end
-
-  defp base_query(model, experiments, after_id) do
-    PanicTda.Embedding
-    |> Ash.Query.filter(embedding_model == ^model)
-    |> then(fn q ->
-      if after_id, do: Ash.Query.filter(q, id > ^after_id), else: q
-    end)
-    |> then(fn q ->
-      Enum.reduce(experiments, q, fn prefix, acc ->
-        Ash.Query.filter(acc, like(invocation.run.experiment_id, ^"#{prefix}%"))
-      end)
-    end)
-  end
-
-  defp recompute_chunk(_env, _model, [], _dry_run?), do: :ok
-
-  defp recompute_chunk(env, model, chunk, dry_run?) do
-    texts = Enum.map(chunk, & &1.invocation.output_text)
-    {:ok, vectors} = Embeddings.embed(env, model, texts)
-    completed_at = DateTime.utc_now()
-
-    # One transaction per chunk: a separate one per row makes SQLite fsync
-    # thousands of times and halves throughput.
-    unless dry_run? do
-      PanicTda.Repo.transaction(
-        fn ->
-          chunk
-          |> Enum.zip(vectors)
-          |> Enum.each(fn {embedding, vector} ->
-            embedding
-            |> Ash.Changeset.for_update(:update, %{vector: vector, completed_at: completed_at})
-            |> Ash.update!()
-          end)
-        end,
-        timeout: :infinity
-      )
-    end
-
-    :ok
+    Mix.shell().info(
+      "  #{done}/#{total}  #{Float.round(rate, 1)}/s  " <>
+        "eta #{div(round((total - done) / max(rate, 0.001)), 60)}m  after #{after_id}"
+    )
   end
 end

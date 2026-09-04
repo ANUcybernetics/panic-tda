@@ -46,6 +46,9 @@ defmodule PanicTda.EmbeddingCluster do
     end
 
     update :update do
+      # Non-atomic: the atomic builder's CAST on the primary key defeats the
+      # index and full-scans the table (test/query_plan_test.exs).
+      require_atomic?(false)
       accept([:medoid_embedding_id])
     end
   end

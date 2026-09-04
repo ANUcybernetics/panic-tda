@@ -52,6 +52,9 @@ defmodule PanicTda.PersistenceDiagram do
     end
 
     update :update do
+      # Non-atomic: the atomic builder's CAST on the primary key defeats the
+      # index and full-scans the table (test/query_plan_test.exs).
+      require_atomic?(false)
       accept([:diagram_data, :completed_at])
     end
   end
