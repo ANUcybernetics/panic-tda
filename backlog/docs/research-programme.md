@@ -13,11 +13,18 @@ so the loop is a fixed map and this is an _inference-time_ dynamical system ---
 explicitly not training-time model collapse, which is a different mechanism with
 superficially similar phenomenology.
 
-The text-to-image step is stochastic (a fresh diffusion seed per invocation) and
-the captioner is greedy, so the loop is a **Markov chain on captions**, not a
-deterministic map. That fixes the vocabulary: the long-run objects are a
-stationary distribution, metastable regions of it, and the escape times between
-them. "Fixed point" is the wrong word for this system and is not used.
+The text-to-image step is stochastic (a fresh diffusion seed per invocation), so
+the loop is a **Markov chain on captions**, not a deterministic map. That fixes
+the vocabulary: the long-run objects are a stationary distribution, metastable
+regions of it, and the escape times between them. "Fixed point" is the wrong
+word for this system and is not used.
+
+Whether the captioner adds a second source of randomness is currently open.
+Three of the five panel captioners decode stochastically (TASK-92), and their
+sampling noise alone is the size of the whole stationary step or larger, so
+either they are forced greedy --- leaving the diffusion seed as the only noise
+--- or the chain carries a three-way decomposition throughout. Settle it before
+TASK-90.
 
 Two research questions, from the paper skeleton:
 
@@ -134,12 +141,16 @@ cheaper lever than horizon once past the plateau, and TASK-90 settles the count.
 | TASK-77 TDA keep/kill             | **gate**              | Results III, which exists only if this passes                |
 | TASK-91 prior-matching test       | candidate             | a sharper RQ2 (whose prior does the chain sample?); after 76 |
 | TASK-88 new model candidates      | instrument            | nothing yet; deferrable until the lineup is in question      |
+| TASK-92 captioner decoding        | **gate**              | whether the chain has one noise source or two                |
+| TASK-93 seed recording            | **gate**              | attributable within-condition variation; RQ2 rests on it     |
 
 Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
 comes first because it decides how much of each step is deterministic drift and
 how much is generator sampling noise: if the stationary step size is mostly
 noise, metastable-region identity is the whole kinetic result and the
-transitions the Markov model fits must be shown to exceed the noise.
+transitions the Markov model fits must be shown to exceed the noise. TASK-92 and
+TASK-93 gate TASK-90 rather than the analysis chain: both change what a recorded
+step means, and neither can be applied to a run after the fact.
 
 ## What is instrument, and why it took so long
 
@@ -174,10 +185,12 @@ long-horizon run rather than an achievement in itself.
   (Patterns 2025) is the motivating paper: every result should read as a direct
   answer to something they claimed or left open, and the goal is clear,
   interesting results rather than coverage.
-- **Seeds are random and recorded.** Every text-to-image invocation draws its
-  own seed and stores it, so within-condition variation is attributable and any
-  step can be regenerated. Fixing the seed would turn the chain into one seed's
-  deterministic map and change what RQ1 means.
+- **Seeds are random and must be recorded.** Fixing the seed would turn the
+  chain into one seed's deterministic map and change what RQ1 means, so every
+  text-to-image invocation draws its own. Storing it is what makes
+  within-condition variation attributable and any step regenerable --- and the
+  code does not yet do it (TASK-93). A run cannot be given seeds afterwards, so
+  this lands before TASK-90.
 - **Recluster once, at the end.** `mix cluster.recompute` is destructive and
   global: it relabels every experiment. Collect all data, cluster once, then
   make every cluster-dependent figure from that clustering. Any interim check
