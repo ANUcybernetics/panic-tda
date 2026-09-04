@@ -595,27 +595,33 @@ def swap_to_cpu(name: str) -> None:
         torch.cuda.empty_cache()
 
 
+def _release_parameters(v: Any) -> None:
+    """Point every parameter and buffer at an empty tensor, freeing its storage."""
+    if hasattr(v, "parameters"):
+        for p in v.parameters():
+            p.data = torch.empty(0)
+        for b in v.buffers():
+            b.data = torch.empty(0)
+    elif hasattr(v, "cpu"):
+        try:
+            v.cpu()
+        except ValueError:
+            pass
+
+
 def _force_free_model(obj: Any) -> None:
+    # Dropping the handle is not enough for a diffusers pipeline: it is not an
+    # nn.Module, and accelerate's offload hooks leave a bound-method reference to
+    # each submodule behind, so the weights outlive the pipeline. Release every
+    # component's storage explicitly instead.
     if hasattr(obj, "remove_all_hooks"):
         obj.remove_all_hooks()
     if isinstance(obj, dict):
-        for v in obj.values():
-            if hasattr(v, "parameters"):
-                for p in v.parameters():
-                    p.data = torch.empty(0)
-                for b in v.buffers():
-                    b.data = torch.empty(0)
-            elif hasattr(v, "cpu"):
-                try:
-                    v.cpu()
-                except ValueError:
-                    pass
-            del v
-    elif hasattr(obj, "cpu"):
-        try:
-            obj.to("cpu")
-        except ValueError:
-            pass
+        parts = list(obj.values())
+    else:
+        parts = list(getattr(obj, "components", {}).values()) or [obj]
+    for v in parts:
+        _release_parameters(v)
     del obj
 
 
