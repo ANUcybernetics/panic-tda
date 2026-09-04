@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-04 12:07'
+updated_date: '2026-09-04 12:25'
 labels:
   - analysis
   - instrument
@@ -46,10 +47,36 @@ It also explains why TASK-89's measured step of 0.062-0.083 looked five times to
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Determined which embedding path is correct for Qwen3-Embedding-4B --- last-token pooling over a left-padded batch, with the instruction convention the model expects --- with evidence rather than by assuming the newer library is right
-- [ ] #2 Cause identified, or explicitly recorded as not identified, including why the three experiments are compressed by different amounts
+- [x] #1 Determined which embedding path is correct for Qwen3-Embedding-4B --- last-token pooling over a left-padded batch, with the instruction convention the model expects --- with evidence rather than by assuming the newer library is right
+- [x] #2 Cause identified, or explicitly recorded as not identified, including why the three experiments are compressed by different amounts
 - [ ] #3 Every experiment re-embedded with the correct path, so the database holds one scale, and a spot check confirms re-embedding a caption now reproduces its stored vector
 - [ ] #4 Clustering recomputed after re-embedding, since EVoC ran on the old vectors
 - [ ] #5 Every number in the programme, the caption-length doc and the analysis scripts that came from the old scale either recomputed or marked as old-scale, in particular the plateau range and TASK-85's 28%
 - [ ] #6 A regression test that re-embeds a known text and asserts it reproduces a stored reference vector, so a library upgrade cannot silently move the scale again
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+DIAGNOSED 2026-09-04, both questions answered exactly.
+
+THE CORRECT PATH IS THE CURRENT ONE. Implementing Qwen3-Embedding's documented usage in raw transformers --- AutoModel, left-padded batch, last hidden state at the final position, L2 normalised --- reproduces what panic_models.embed_text returns today to cosine 1.0000 on all six test captions. The model's own config_sentence_transformers.json confirms the intent: pooling_mode_lasttoken true, default_prompt_name null, so no instruction prefix. The current code is right and needs no change.
+
+THE STORED VECTORS WERE MEAN-POOLED. Running the same reference over the pooling and padding variants:
+
+  pad     pool    cos(stored, .)   own spread
+  left    last        0.400          0.3413
+  left    first       0.198          0.3630
+  left    mean        1.0000         0.0637
+  right   last        0.433          0.3551
+  right   mean        1.0000         0.0636
+                                     stored: 0.0634
+
+Mean pooling reproduces the stored vectors exactly, cosine 1.0000 on every caption, with a matching spread. Qwen3-Embedding is a decoder and requires last-token pooling; mean pooling over a causal model's hidden states gives the compressed, anisotropic space observed, which is why captions of unrelated prompts sat at 0.056-0.218 rather than 0.65.
+
+This also answers the question about the three experiments being compressed by different amounts: they are not different code paths. Mean pooling masks padding, so padding side is irrelevant --- both variants match stored at 1.0000 --- and the remaining difference between experiments is caption content and length, not embedding behaviour.
+
+The cause is consistent with commit 659c1d9 (2026-09-03), which moved the venv to sentence-transformers 6. Every experiment in the database was embedded before that date under sentence-transformers 5, which evidently did not honour the model's 1_Pooling/config.json; version 6 does. The instruction prompt is not involved: prefixing the documented query instruction does not reproduce the stored vectors either (cosine 0.39-0.47).
+
+CONSEQUENCE: all 147,193 stored embeddings, across 12 experiments, are mean-pooled and must be recomputed. The clustering that ran on them must be recomputed too.
+<!-- SECTION:NOTES:END -->
