@@ -83,6 +83,11 @@ embeddings → TDA).
 | text embedding  | `Qwen3Embed`                                                                |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
+Every text-to-image invocation draws its own seed, stores it on the invocation
+and hands it to the pipeline, so any step can be regenerated and
+within-condition variation is attributable. Batched steps use per-item
+generators, so an image depends only on its own seed.
+
 Every model is pinned to an explicit upstream revision (`_REVISIONS` in
 `priv/python/panic_models.py`). Only text is embedded --- image embedding was
 removed outright, since every second state in an alternating network is already

@@ -26,44 +26,60 @@ defmodule PanicTda.Models.GenAI do
   def output_type(model_name) when model_name in @i2t_models, do: :text
   def output_type(model_name), do: raise("Unknown model: #{model_name}")
 
-  def invoke(env, model_name, input) when model_name in @dummy_t2i_models do
+  @doc """
+  Draw a seed for one text-to-image invocation.
+
+  Text-to-image steps are the loop's only source of randomness, so the seed is
+  drawn here, recorded on the invocation, and handed to the pipeline; fixing it
+  would turn the chain into one seed's deterministic map (TASK-93).
+  """
+  def draw_seed, do: :rand.uniform(4_294_967_296) - 1
+
+  @doc "Whether this model needs a seed --- text-to-image models do."
+  def seeded?(model_name), do: model_name in @t2i_models
+
+  def invoke(env, model_name, input, seed \\ nil)
+
+  def invoke(env, model_name, input, _seed) when model_name in @dummy_t2i_models do
     invoke_dummy_t2i(env, model_name, input)
   end
 
-  def invoke(env, model_name, input) when model_name in @dummy_i2t_models do
+  def invoke(env, model_name, input, _seed) when model_name in @dummy_i2t_models do
     invoke_dummy_i2t(env, model_name, input)
   end
 
-  def invoke(env, model_name, input) when model_name in @real_t2i_models do
-    invoke_real_t2i(env, model_name, input)
+  def invoke(env, model_name, input, seed) when model_name in @real_t2i_models do
+    invoke_real_t2i(env, model_name, input, seed)
   end
 
-  def invoke(env, model_name, input) when model_name in @real_i2t_models do
+  def invoke(env, model_name, input, _seed) when model_name in @real_i2t_models do
     invoke_real_i2t(env, model_name, input)
   end
 
-  def invoke_batch(env, model_name, inputs) when model_name in @dummy_t2i_models do
+  def invoke_batch(env, model_name, inputs, seeds \\ nil)
+
+  def invoke_batch(env, model_name, inputs, _seeds) when model_name in @dummy_t2i_models do
     invoke_batch_dummy_t2i(env, model_name, inputs)
   end
 
-  def invoke_batch(env, model_name, inputs) when model_name in @dummy_i2t_models do
+  def invoke_batch(env, model_name, inputs, _seeds) when model_name in @dummy_i2t_models do
     invoke_batch_dummy_i2t(env, model_name, inputs)
   end
 
-  def invoke_batch(env, model_name, inputs) when model_name in @real_t2i_models do
-    invoke_batch_real_t2i(env, model_name, inputs)
+  def invoke_batch(env, model_name, inputs, seeds) when model_name in @real_t2i_models do
+    invoke_batch_real_t2i(env, model_name, inputs, seeds)
   end
 
-  def invoke_batch(env, model_name, inputs) when model_name in @real_i2t_models do
+  def invoke_batch(env, model_name, inputs, _seeds) when model_name in @real_i2t_models do
     invoke_batch_real_i2t(env, model_name, inputs)
   end
 
-  defp invoke_real_t2i(env, model_name, prompt) when is_binary(prompt) do
+  defp invoke_real_t2i(env, model_name, prompt, seed) when is_binary(prompt) do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "return panic_models.invoke_t2i(model_name, prompt)",
-             %{"model_name" => model_name, "prompt" => prompt},
+             "return panic_models.invoke_t2i(model_name, prompt, seed)",
+             %{"model_name" => model_name, "prompt" => prompt, "seed" => seed},
              timeout: @t2i_timeout
            ) do
         {:ok, base64_data} -> {:ok, base64_data |> Base.decode64!() |> ImageConverter.to_avif!()}
@@ -88,12 +104,12 @@ defmodule PanicTda.Models.GenAI do
     end
   end
 
-  defp invoke_batch_real_t2i(env, model_name, prompts) do
+  defp invoke_batch_real_t2i(env, model_name, prompts, seeds) do
     with :ok <- PythonBridge.swap_model_to_gpu(env, model_name) do
       case Snex.pyeval(
              env,
-             "return panic_models.invoke_t2i_batch(model_name, prompts)",
-             %{"model_name" => model_name, "prompts" => prompts},
+             "return panic_models.invoke_t2i_batch(model_name, prompts, seeds)",
+             %{"model_name" => model_name, "prompts" => prompts, "seeds" => seeds},
              timeout: @t2i_timeout * length(prompts)
            ) do
         {:ok, base64_list} ->

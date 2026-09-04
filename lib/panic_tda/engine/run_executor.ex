@@ -115,12 +115,18 @@ defmodule PanicTda.Engine.RunExecutor do
     output_type = GenAI.output_type(model_name)
     inputs = Enum.map(states, & &1.input)
 
+    seeds = if GenAI.seeded?(model_name), do: Enum.map(inputs, fn _ -> GenAI.draw_seed() end)
+
     started_at = DateTime.utc_now()
 
     {:ok, outputs} =
-      Retry.with_retry("#{model_name} step #{seq} (batch of #{length(inputs)})", session, fn env ->
-        GenAI.invoke_batch(env, model_name, inputs)
-      end)
+      Retry.with_retry(
+        "#{model_name} step #{seq} (batch of #{length(inputs)})",
+        session,
+        fn env ->
+          GenAI.invoke_batch(env, model_name, inputs, seeds)
+        end
+      )
 
     completed_at = DateTime.utc_now()
 
@@ -132,12 +138,13 @@ defmodule PanicTda.Engine.RunExecutor do
     end
 
     new_states =
-      Enum.zip([states, outputs])
-      |> Enum.map(fn {state, output} ->
+      Enum.zip([states, outputs, seeds || Enum.map(states, fn _ -> nil end)])
+      |> Enum.map(fn {state, output, seed} ->
         attrs = %{
           model: model_name,
           type: output_type,
           sequence_number: seq,
+          seed: seed,
           started_at: started_at,
           completed_at: completed_at,
           run_id: state.run.id,
@@ -166,11 +173,13 @@ defmodule PanicTda.Engine.RunExecutor do
     model_name = Enum.at(run.network, rem(seq, length(run.network)))
     output_type = GenAI.output_type(model_name)
 
+    seed = if GenAI.seeded?(model_name), do: GenAI.draw_seed()
+
     started_at = DateTime.utc_now()
 
     {:ok, output} =
       Retry.with_retry("#{model_name} step #{seq}", session, fn env ->
-        GenAI.invoke(env, model_name, input)
+        GenAI.invoke(env, model_name, input, seed)
       end)
 
     completed_at = DateTime.utc_now()
@@ -186,6 +195,7 @@ defmodule PanicTda.Engine.RunExecutor do
       model: model_name,
       type: output_type,
       sequence_number: seq,
+      seed: seed,
       started_at: started_at,
       completed_at: completed_at,
       run_id: run.id,

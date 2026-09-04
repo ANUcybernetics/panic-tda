@@ -76,7 +76,7 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
       {:ok, images} =
         Snex.pyeval(
           env,
-          "return panic_models.invoke_t2i_batch(name, prompts)",
+          "return panic_models.invoke_t2i_batch(name, prompts, list(range(len(prompts))))",
           %{"name" => "SD35Medium", "prompts" => batch},
           timeout: @probe_timeout
         )

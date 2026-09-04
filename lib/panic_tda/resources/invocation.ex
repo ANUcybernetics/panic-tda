@@ -35,6 +35,14 @@ defmodule PanicTda.Invocation do
       public?(true)
     end
 
+    # The random seed handed to the text-to-image pipeline, so the step can be
+    # regenerated and within-condition variation is attributable (TASK-93).
+    # Nil on image-to-text steps, and on every invocation recorded before this
+    # existed.
+    attribute :seed, :integer do
+      public?(true)
+    end
+
     attribute :started_at, :utc_datetime_usec do
       allow_nil?(false)
       public?(true)
@@ -78,6 +86,7 @@ defmodule PanicTda.Invocation do
         :sequence_number,
         :output_text,
         :output_image,
+        :seed,
         :started_at,
         :completed_at,
         :run_id,

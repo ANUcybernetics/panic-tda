@@ -30,6 +30,44 @@ defmodule PanicTda.RealModelsTest do
     :ok
   end
 
+  describe "embedding geometry" do
+    # Qwen3-Embedding is a decoder and needs last-token pooling. Under the mean
+    # pooling that produced every vector written before 2026-09-03 (TASK-96) the
+    # space collapses: unrelated sentences sat about 0.06 apart rather than 0.67.
+    # This asserts the separation a library upgrade must not silently undo.
+    @unrelated_a "A black bicycle leans against a red brick wall."
+    @unrelated_b "The stock market closed lower after a volatile trading session."
+    @paraphrase_a "A dark-coloured bicycle is propped up against a wall of red bricks."
+
+    test "unrelated text is far apart and paraphrases are close", %{env: env} do
+      {:ok, [a, b, c]} =
+        PanicTda.Models.Embeddings.embed(env, "Qwen3Embed", [
+          @unrelated_a,
+          @unrelated_b,
+          @paraphrase_a
+        ])
+
+      unrelated = cosine_distance(a, b)
+      paraphrase = cosine_distance(a, c)
+
+      assert unrelated > 0.3,
+             "unrelated sentences #{Float.round(unrelated, 4)} apart --- mean pooling gives ~0.06"
+
+      assert paraphrase < 0.2,
+             "paraphrases should stay close, got #{Float.round(paraphrase, 4)}"
+
+      assert unrelated > paraphrase * 3
+    end
+
+    defp cosine_distance(a, b) do
+      va = for <<x::float-32-little <- a>>, do: x
+      vb = for <<x::float-32-little <- b>>, do: x
+
+      dot = Enum.zip(va, vb) |> Enum.map(fn {x, y} -> x * y end) |> Enum.sum()
+      1.0 - dot
+    end
+  end
+
   describe "real GenAI models" do
     test "SD35Medium generates valid AVIF image", %{env: env} do
       {:ok, image} = GenAI.invoke(env, "SD35Medium", "A cat sitting on a mat")

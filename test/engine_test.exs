@@ -44,7 +44,6 @@ defmodule PanicTda.EngineTest do
       assert byte_size(emb1) == 256 * 4
       assert byte_size(emb2) == 256 * 4
     end
-
   end
 
   describe "full pipeline" do
@@ -83,6 +82,32 @@ defmodule PanicTda.EngineTest do
 
       assert inv3.type == :text
       assert inv3.model == "DummyI2T"
+    end
+
+    test "records a seed on every text-to-image invocation and none on captions" do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I", "DummyI2T"]],
+          prompts: ["A beautiful sunset", "A quiet harbour"],
+          embedding_models: ["DummyText"],
+          max_length: 4,
+          num_runs: 2
+        })
+
+      {:ok, completed} = Engine.perform_experiment(experiment.id)
+      completed = Ash.load!(completed, runs: [:invocations])
+      invocations = Enum.flat_map(completed.runs, & &1.invocations)
+
+      {images, texts} = Enum.split_with(invocations, &(&1.type == :image))
+
+      assert images != []
+      assert Enum.all?(images, &is_integer(&1.seed)), "every T2I step must record its seed"
+      assert Enum.all?(texts, &is_nil(&1.seed)), "I2T steps have no seed"
+
+      # Seeds are drawn per invocation, not once per run or per step, so a
+      # batch of runs at the same step must not share one.
+      seeds = Enum.map(images, & &1.seed)
+      assert length(Enum.uniq(seeds)) == length(seeds)
     end
 
     test "applies i2t_max_new_tokens to the Python model registry" do

@@ -676,7 +676,16 @@ _T2I_MAX_BATCH: dict[str, int] = {
 }
 
 
-def _invoke_t2i_single(name: str, prompt: str) -> str:
+# Seeds come from Elixir, which records them on the invocation, so a step can be
+# regenerated and within-condition variation is attributable (TASK-93). Passing a
+# list of per-item generators makes the i-th image depend only on seeds[i], so a
+# batch reproduces the same images as N single calls at the same seeds.
+def _generators(seeds: list[int]) -> list:
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return [torch.Generator(device=device).manual_seed(int(s)) for s in seeds]
+
+
+def _invoke_t2i_single(name: str, prompt: str, seed: int) -> str:
     cfg = _T2I_INVOKE_CONFIGS[name]
     size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
     for attempt in range(_T2I_MAX_RETRIES):
@@ -685,7 +694,7 @@ def _invoke_t2i_single(name: str, prompt: str) -> str:
                 prompt=prompt,
                 height=size,
                 width=size,
-                generator=None,
+                generator=_generators([seed])[0],
                 **cfg,
             ).images[0]
             return _encode_image_b64(img)
@@ -696,35 +705,29 @@ def _invoke_t2i_single(name: str, prompt: str) -> str:
     raise RuntimeError("unreachable")
 
 
-def invoke_t2i(name: str, prompt: str) -> str:
-    """Run a single T2I inference. Returns base64-encoded WEBP."""
-    return _invoke_t2i_single(name, prompt)
+def invoke_t2i(name: str, prompt: str, seed: int) -> str:
+    """Run a single T2I inference at `seed`. Returns base64-encoded WEBP."""
+    return _invoke_t2i_single(name, prompt, seed)
 
 
-def invoke_t2i_batch(name: str, prompts: list[str]) -> list[str]:
-    """Run batch T2I inference. Returns list of base64-encoded WEBP."""
+def invoke_t2i_batch(name: str, prompts: list[str], seeds: list[int]) -> list[str]:
+    """Run batch T2I inference at matched per-item `seeds`."""
+    if len(seeds) != len(prompts):
+        raise ValueError(f"{len(prompts)} prompts but {len(seeds)} seeds")
     cfg = _T2I_INVOKE_CONFIGS[name]
     size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
     if name not in _T2I_BATCH_CAPABLE:
-        return [_invoke_t2i_single(name, p) for p in prompts]
+        return [_invoke_t2i_single(name, p, s) for p, s in zip(prompts, seeds)]
     max_batch = _T2I_MAX_BATCH[name]
-    if len(prompts) <= max_batch:
-        imgs = _models[name](
-            prompt=prompts,
-            height=size,
-            width=size,
-            generator=None,
-            **cfg,
-        ).images
-        return [_encode_image_b64(img) for img in imgs]
     results: list[str] = []
     for i in range(0, len(prompts), max_batch):
         chunk = prompts[i : i + max_batch]
+        gens = _generators(seeds[i : i + max_batch])
         imgs = _models[name](
             prompt=chunk,
             height=size,
             width=size,
-            generator=None,
+            generator=gens if len(gens) > 1 else gens[0],
             **cfg,
         ).images
         results.extend(_encode_image_b64(img) for img in imgs)
@@ -1117,7 +1120,7 @@ def probe_max_batch(
         gc.collect()
         try:
             if name in _T2I_BATCH_CAPABLE:
-                invoke_t2i_batch(name, batch)
+                invoke_t2i_batch(name, batch, list(range(len(batch))))
             elif name in _I2T_BATCH_CAPABLE:
                 invoke_i2t_batch(name, batch)
             else:
@@ -1138,24 +1141,17 @@ def probe_max_batch(
 
 
 # ---------------------------------------------------------------------------
-# Benchmark harness (TASK-74): seeded T2I generation + per-item timing/parity.
-# Benchmark-only — does NOT touch the production invoke_t2i* path, which uses
-# generator=None (random). Seeds exist solely so batched-vs-serial output can be
-# compared at matched noise to prove batching introduces no systematic change.
+# Benchmark harness (TASK-74): seeded T2I generation + per-item timing/parity,
+# used to compare batched against serial output at matched noise and show that
+# batching introduces no systematic change.
 # ---------------------------------------------------------------------------
 
 
 def _t2i_generate_seeded(name: str, prompts: list[str], seeds: list[int]) -> list:
-    """Generate images for `prompts` with matched per-item `seeds`.
-
-    Returns a list of PIL images. Passing a list of per-item generators makes the
-    i-th image depend only on seeds[i], so a batch of N reproduces N single calls
-    at the same seeds up to GPU kernel nondeterminism.
-    """
+    """Generate images for `prompts` with matched per-item `seeds`, as PIL images."""
     cfg = _T2I_INVOKE_CONFIGS[name]
     size = _T2I_IMAGE_SIZES.get(name, IMAGE_SIZE)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    gens = [torch.Generator(device=device).manual_seed(int(s)) for s in seeds]
+    gens = _generators(seeds)
     return _models[name](
         prompt=list(prompts),
         height=size,
