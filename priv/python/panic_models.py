@@ -646,11 +646,14 @@ def unload_all_models() -> None:
 # T2I invocation: config-driven
 # ---------------------------------------------------------------------------
 
+# max_sequence_length is set explicitly on every pipeline, and is a fixed
+# experiment parameter rather than a knob: it sets the conditioning tensor's
+# padding length, which perturbs generation even for identical text (TASK-89).
+# Left to their defaults the panel would be non-uniform --- diffusers gives
+# SD35Medium 256, Flux2/ZImage 512 and GLMImage 2048 --- so all five are pinned
+# to 512, SD35Medium's architectural cap and the ceiling decision-01 assumes.
+# CLIP's 77 tokens are separate and architectural.
 _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
-    # max_sequence_length is the T5 branch's ceiling and defaults to 256 in
-    # diffusers; 512 is the pipeline maximum and what decision-01 calls for,
-    # since natural captions reach ~300 words. CLIP's 77 tokens are separate
-    # and architectural.
     "SD35Medium": {
         "num_inference_steps": 20,
         "guidance_scale": 5.0,
@@ -660,10 +663,26 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     # flat and non-monotone across 8-15 steps over 12 prompts, so the metric
     # cannot separate them; 12 keeps the best of that band on both caption
     # cosine and pixel fidelity while cutting ~19% off the panel's dearest model.
-    "Flux2Dev": {"num_inference_steps": 12, "guidance_scale": 3.5},
-    "GLMImage": {"num_inference_steps": 25, "guidance_scale": 7.5},
-    "ZImageTurbo": {"num_inference_steps": 8, "guidance_scale": 0.0},
-    "Flux2Klein": {"num_inference_steps": 4, "guidance_scale": 1.0},
+    "Flux2Dev": {
+        "num_inference_steps": 12,
+        "guidance_scale": 3.5,
+        "max_sequence_length": 512,
+    },
+    "GLMImage": {
+        "num_inference_steps": 25,
+        "guidance_scale": 7.5,
+        "max_sequence_length": 512,
+    },
+    "ZImageTurbo": {
+        "num_inference_steps": 8,
+        "guidance_scale": 0.0,
+        "max_sequence_length": 512,
+    },
+    "Flux2Klein": {
+        "num_inference_steps": 4,
+        "guidance_scale": 1.0,
+        "max_sequence_length": 512,
+    },
 }
 
 _T2I_BATCH_CAPABLE: set[str] = {
@@ -778,6 +797,23 @@ def _i2t_max_new_tokens() -> int:
     return _I2T_MAX_NEW_TOKENS_OVERRIDE
 
 
+# Qwen25VL, Qwen3VL and JoyCaption ship generation configs with do_sample=True,
+# so they decode stochastically unless told otherwise; Moondream3 (temperature
+# 0.0) and Gemma4 (do_sample=False below) are greedy already. Forcing greedy
+# leaves the text-to-image seed as the loop's only source of randomness, which
+# is what the drift/noise decomposition assumes (TASK-89, TASK-92).
+_I2T_FORCE_GREEDY: bool = False
+
+
+def set_i2t_greedy(value: bool) -> None:
+    global _I2T_FORCE_GREEDY
+    _I2T_FORCE_GREEDY = value
+
+
+def _i2t_decode_kwargs() -> dict[str, Any]:
+    return {"do_sample": False} if _I2T_FORCE_GREEDY else {}
+
+
 def invoke_i2t_batch(name: str, b64_list: list[str]) -> list[str]:
     """Run batch I2T inference. Returns list of caption texts."""
     if len(b64_list) <= _I2T_MAX_BATCH:
@@ -862,6 +898,7 @@ def _invoke_chat_template(name: str, img: Image.Image) -> str:
             **inputs,
             max_new_tokens=_i2t_max_new_tokens(),
             **cfg["extra_generate_kwargs"],
+            **_i2t_decode_kwargs(),
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return (
@@ -895,6 +932,7 @@ def _invoke_chat_template_batch(name: str, images: list[Image.Image]) -> list[st
             **inputs,
             max_new_tokens=_i2t_max_new_tokens(),
             **cfg["extra_generate_kwargs"],
+            **_i2t_decode_kwargs(),
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return [
@@ -932,7 +970,7 @@ def _invoke_qwen_vl(name: str, img: Image.Image) -> str:
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
         gen_ids = qwen_vl["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens()
+            **inputs, max_new_tokens=_i2t_max_new_tokens(), **_i2t_decode_kwargs()
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return (
@@ -971,7 +1009,7 @@ def _invoke_qwen_vl_batch(name: str, images: list[Image.Image]) -> list[str]:
     ).to(qwen_vl["model"].device)
     with torch.no_grad():
         gen_ids = qwen_vl["model"].generate(
-            **inputs, max_new_tokens=_i2t_max_new_tokens()
+            **inputs, max_new_tokens=_i2t_max_new_tokens(), **_i2t_decode_kwargs()
         )
         gen_ids = gen_ids[:, inputs["input_ids"].shape[1] :]
     return [
