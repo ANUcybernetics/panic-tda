@@ -1,0 +1,1058 @@
+{
+  "dims": {
+    "256": {
+      "models": {
+        "Flux2Klein": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.0570172443985939,
+              "drift_cosdist": 0.0260249562561512,
+              "noise_cosdist_biased": 0.030992284417152405,
+              "noise_cosdist": 0.03305843671162923,
+              "noise_share": 0.5435598430624385,
+              "drift_cosdist_bias_corrected": 0.02395880768696467,
+              "mdc_euclidean": 0.7127335840870551,
+              "drift_euclidean": 0.22814451158046722,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.030879367142915726,
+              "drift_cosdist": 0.01589181274175644,
+              "noise_cosdist_biased": 0.014987549744546413,
+              "noise_cosdist": 0.015986719727516176,
+              "noise_share": 0.4853580604544489,
+              "drift_cosdist_bias_corrected": 0.01489264741539955,
+              "mdc_euclidean": 0.495639314442372,
+              "drift_euclidean": 0.17827963829040527,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07991208136081696,
+              "drift_cosdist": 0.04343682900071144,
+              "noise_cosdist_biased": 0.03647525608539581,
+              "noise_cosdist": 0.0389069398244222,
+              "noise_share": 0.45644232341670193,
+              "drift_cosdist_bias_corrected": 0.04100514153639476,
+              "mdc_euclidean": 0.7732138126792624,
+              "drift_euclidean": 0.2947433590888977,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05869917571544647,
+              "drift_cosdist": 0.035793498158454895,
+              "noise_cosdist_biased": 0.022905675694346428,
+              "noise_cosdist": 0.02443272074063619,
+              "noise_share": 0.3902214198949796,
+              "drift_cosdist_bias_corrected": 0.03426645497481028,
+              "mdc_euclidean": 0.6127340042701335,
+              "drift_euclidean": 0.2675574719905853,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09634186327457428,
+              "drift_cosdist": 0.05771277844905853,
+              "noise_cosdist_biased": 0.03862908482551575,
+              "noise_cosdist": 0.0412043571472168,
+              "noise_share": 0.4009584568177062,
+              "drift_cosdist_bias_corrected": 0.05513750612735748,
+              "mdc_euclidean": 0.7957151711931802,
+              "drift_euclidean": 0.33974337577819824,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07893838733434677,
+              "drift_cosdist": 0.03237280994653702,
+              "noise_cosdist_biased": 0.04656557738780975,
+              "noise_cosdist": 0.04966994921366374,
+              "noise_share": 0.5898977539353489,
+              "drift_cosdist_bias_corrected": 0.029268438120683034,
+              "mdc_euclidean": 0.8736408344376094,
+              "drift_euclidean": 0.25445160269737244,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05187942087650299,
+              "drift_cosdist": 0.033423054963350296,
+              "noise_cosdist_biased": 0.018456364050507545,
+              "noise_cosdist": 0.019686788320541382,
+              "noise_share": 0.35575501304153384,
+              "drift_cosdist_bias_corrected": 0.03219263255596161,
+              "mdc_euclidean": 0.5500136944192999,
+              "drift_euclidean": 0.2585461437702179,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.04424407333135605,
+              "drift_cosdist": 0.019682016223669052,
+              "noise_cosdist_biased": 0.024562058970332146,
+              "noise_cosdist": 0.02619952956835429,
+              "noise_share": 0.555149133452974,
+              "drift_cosdist_bias_corrected": 0.01804454376300176,
+              "mdc_euclidean": 0.6345017345596143,
+              "drift_euclidean": 0.1984037160873413,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.06223895167931914,
+          "mean_drift_cosdist": 0.03304221946746111,
+          "mean_noise_cosdist": 0.031143180156747496,
+          "mean_noise_share": 0.4721677505095165,
+          "mean_drift_cosdist_bias_corrected": 0.031095771522571647,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "ZImageTurbo": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.06548378616571426,
+              "drift_cosdist": 0.034766651690006256,
+              "noise_cosdist_biased": 0.03071713261306286,
+              "noise_cosdist": 0.032764941453933716,
+              "noise_share": 0.4690799724886038,
+              "drift_cosdist_bias_corrected": 0.03271884471178055,
+              "mdc_euclidean": 0.7095626796539732,
+              "drift_euclidean": 0.2636916935443878,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.03467510640621185,
+              "drift_cosdist": 0.01744886487722397,
+              "noise_cosdist_biased": 0.017226245254278183,
+              "noise_cosdist": 0.018374661604563396,
+              "noise_share": 0.49678997527725527,
+              "drift_cosdist_bias_corrected": 0.016300444801648457,
+              "mdc_euclidean": 0.5313684221708729,
+              "drift_euclidean": 0.18680934607982635,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07587059587240219,
+              "drift_cosdist": 0.0408778116106987,
+              "noise_cosdist_biased": 0.03499278798699379,
+              "noise_cosdist": 0.037325640519460045,
+              "noise_share": 0.4612167280964029,
+              "drift_cosdist_bias_corrected": 0.03854495535294215,
+              "mdc_euclidean": 0.7573379182889437,
+              "drift_euclidean": 0.285929411649704,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.06164748966693878,
+              "drift_cosdist": 0.04045489430427551,
+              "noise_cosdist_biased": 0.021192599087953568,
+              "noise_cosdist": 0.02260543902715047,
+              "noise_share": 0.3437706742391336,
+              "drift_cosdist_bias_corrected": 0.039042050639788314,
+              "mdc_euclidean": 0.589376126312226,
+              "drift_euclidean": 0.28444644808769226,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.11516919732093811,
+              "drift_cosdist": 0.07830262184143066,
+              "noise_cosdist_biased": 0.03686657175421715,
+              "noise_cosdist": 0.03932434320449829,
+              "noise_share": 0.3201079161078315,
+              "drift_cosdist_bias_corrected": 0.07584485411643982,
+              "mdc_euclidean": 0.7773503633610795,
+              "drift_euclidean": 0.3957338035106659,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.0783148854970932,
+              "drift_cosdist": 0.04276460409164429,
+              "noise_cosdist_biased": 0.035550281405448914,
+              "noise_cosdist": 0.037920300165812174,
+              "noise_share": 0.45394028452954105,
+              "drift_cosdist_bias_corrected": 0.04039458533128103,
+              "mdc_euclidean": 0.7633469070271629,
+              "drift_euclidean": 0.292453795671463,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05280012637376785,
+              "drift_cosdist": 0.034030914306640625,
+              "noise_cosdist_biased": 0.01876920834183693,
+              "noise_cosdist": 0.02002048889795939,
+              "noise_share": 0.35547657990382847,
+              "drift_cosdist_bias_corrected": 0.03277963747580846,
+              "mdc_euclidean": 0.5546556053999664,
+              "drift_euclidean": 0.26088663935661316,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.06313621252775192,
+              "drift_cosdist": 0.02864978462457657,
+              "noise_cosdist_biased": 0.034486427903175354,
+              "noise_cosdist": 0.036785523096720375,
+              "noise_share": 0.5462226275929464,
+              "drift_cosdist_bias_corrected": 0.026350689431031547,
+              "mdc_euclidean": 0.7518384547982657,
+              "drift_euclidean": 0.23937328159809113,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.06838717497885227,
+          "mean_drift_cosdist": 0.03966201841831207,
+          "mean_noise_cosdist": 0.030640167246262232,
+          "mean_noise_share": 0.4308255947794429,
+          "mean_drift_cosdist_bias_corrected": 0.03774700773259004,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "SD35Medium": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.06373540312051773,
+              "drift_cosdist": 0.026385843753814697,
+              "noise_cosdist_biased": 0.03734956309199333,
+              "noise_cosdist": 0.03983953396479289,
+              "noise_share": 0.5860096785042495,
+              "drift_cosdist_bias_corrected": 0.023895869155724843,
+              "mdc_euclidean": 0.7824258525359405,
+              "drift_euclidean": 0.22972089052200317,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05333443731069565,
+              "drift_cosdist": 0.021426457911729813,
+              "noise_cosdist_biased": 0.03190797567367554,
+              "noise_cosdist": 0.03403517405192057,
+              "noise_share": 0.5982621601086384,
+              "drift_cosdist_bias_corrected": 0.019299263258775075,
+              "mdc_euclidean": 0.7231860746387697,
+              "drift_euclidean": 0.2070094645023346,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09595774859189987,
+              "drift_cosdist": 0.043932318687438965,
+              "noise_cosdist_biased": 0.05202542990446091,
+              "noise_cosdist": 0.055493791898091636,
+              "noise_share": 0.5421701808128141,
+              "drift_cosdist_bias_corrected": 0.040463956693808235,
+              "mdc_euclidean": 0.9234391175507107,
+              "drift_euclidean": 0.2964197099208832,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07939167320728302,
+              "drift_cosdist": 0.04731949418783188,
+              "noise_cosdist_biased": 0.03207217901945114,
+              "noise_cosdist": 0.03421032428741455,
+              "noise_share": 0.40397409103237025,
+              "drift_cosdist_bias_corrected": 0.04518134891986847,
+              "mdc_euclidean": 0.7250445001033571,
+              "drift_euclidean": 0.30763450264930725,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.11141370236873627,
+              "drift_cosdist": 0.06310465931892395,
+              "noise_cosdist_biased": 0.04830904304981232,
+              "noise_cosdist": 0.051529645919799805,
+              "noise_share": 0.4336005538163346,
+              "drift_cosdist_bias_corrected": 0.05988405644893646,
+              "mdc_euclidean": 0.8898455770874021,
+              "drift_euclidean": 0.355259507894516,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.11697795987129211,
+              "drift_cosdist": 0.05960075929760933,
+              "noise_cosdist_biased": 0.05737719684839249,
+              "noise_cosdist": 0.06120234330495199,
+              "noise_share": 0.49049579007467015,
+              "drift_cosdist_bias_corrected": 0.05577561656634013,
+              "mdc_euclidean": 0.9697730085753131,
+              "drift_euclidean": 0.3452557325363159,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.0661400556564331,
+              "drift_cosdist": 0.040833730250597,
+              "noise_cosdist_biased": 0.02530631795525551,
+              "noise_cosdist": 0.02699340581893921,
+              "noise_share": 0.3826171251912772,
+              "drift_cosdist_bias_corrected": 0.0391466498374939,
+              "mdc_euclidean": 0.6440430662433588,
+              "drift_euclidean": 0.28577521443367004,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07848569750785828,
+              "drift_cosdist": 0.028194628655910492,
+              "noise_cosdist_biased": 0.050291065126657486,
+              "noise_cosdist": 0.05364380280176798,
+              "noise_share": 0.6407672572652127,
+              "drift_cosdist_bias_corrected": 0.024841894706090294,
+              "mdc_euclidean": 0.9079163680499914,
+              "drift_euclidean": 0.23746421933174133,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.0831795847043395,
+          "mean_drift_cosdist": 0.041349736507982016,
+          "mean_noise_cosdist": 0.04461850275595983,
+          "mean_noise_share": 0.5097371046006959,
+          "mean_drift_cosdist_bias_corrected": 0.03856108194837968,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "Flux2Dev": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.0568414069712162,
+              "drift_cosdist": 0.02425934374332428,
+              "noise_cosdist_biased": 0.032582059502601624,
+              "noise_cosdist": 0.03475419680277506,
+              "noise_share": 0.5732099404066613,
+              "drift_cosdist_bias_corrected": 0.02208721016844114,
+              "mdc_euclidean": 0.7307851187251713,
+              "drift_euclidean": 0.220269575715065,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.040750015527009964,
+              "drift_cosdist": 0.020699400454759598,
+              "noise_cosdist_biased": 0.020050613209605217,
+              "noise_cosdist": 0.021387320756912232,
+              "noise_share": 0.49203940048354705,
+              "drift_cosdist_bias_corrected": 0.019362694770097732,
+              "mdc_euclidean": 0.5732766571900657,
+              "drift_euclidean": 0.20346695184707642,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.0775519460439682,
+              "drift_cosdist": 0.046452198177576065,
+              "noise_cosdist_biased": 0.031099744141101837,
+              "noise_cosdist": 0.03317306041717529,
+              "noise_share": 0.4010182300708455,
+              "drift_cosdist_bias_corrected": 0.04437888562679291,
+              "mdc_euclidean": 0.7139681474649148,
+              "drift_euclidean": 0.3048022389411926,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.059999018907547,
+              "drift_cosdist": 0.03092731535434723,
+              "noise_cosdist_biased": 0.029071703553199768,
+              "noise_cosdist": 0.031009817123413087,
+              "noise_share": 0.48453631546870135,
+              "drift_cosdist_bias_corrected": 0.02898920178413391,
+              "mdc_euclidean": 0.690296497054139,
+              "drift_euclidean": 0.2487059086561203,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09799334406852722,
+              "drift_cosdist": 0.05757176876068115,
+              "noise_cosdist_biased": 0.04042157530784607,
+              "noise_cosdist": 0.04311634699503581,
+              "noise_share": 0.4124930697290937,
+              "drift_cosdist_bias_corrected": 0.05487699707349141,
+              "mdc_euclidean": 0.8139674652371053,
+              "drift_euclidean": 0.3393280804157257,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.08732283115386963,
+              "drift_cosdist": 0.04152217507362366,
+              "noise_cosdist_biased": 0.04580065608024597,
+              "noise_cosdist": 0.04885403315226237,
+              "noise_share": 0.5244980662564828,
+              "drift_cosdist_bias_corrected": 0.03846879800160726,
+              "mdc_euclidean": 0.866435580427607,
+              "drift_euclidean": 0.2881741523742676,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05341046303510666,
+              "drift_cosdist": 0.03141544759273529,
+              "noise_cosdist_biased": 0.02199501357972622,
+              "noise_cosdist": 0.023461347818374632,
+              "noise_share": 0.41181095107280596,
+              "drift_cosdist_bias_corrected": 0.029949115216732027,
+              "mdc_euclidean": 0.6004302250189208,
+              "drift_euclidean": 0.2506609261035919,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.048747096210718155,
+              "drift_cosdist": 0.014184320345520973,
+              "noise_cosdist_biased": 0.03456277772784233,
+              "noise_cosdist": 0.036866962909698486,
+              "noise_share": 0.7090222888033877,
+              "drift_cosdist_bias_corrected": 0.011880133301019669,
+              "mdc_euclidean": 0.7526702457621072,
+              "drift_euclidean": 0.1684299260377884,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.06532701523974538,
+          "mean_drift_cosdist": 0.03337899618782103,
+          "mean_noise_cosdist": 0.034077885746955874,
+          "mean_noise_share": 0.5010785327864407,
+          "mean_drift_cosdist_bias_corrected": 0.031249129492789508,
+          "captions_drift_exceeds_mdc": 0
+        }
+      },
+      "ruler": {
+        "unrelated_caption_cosdist_mean": 0.5754118775948882,
+        "unrelated_caption_cosdist_p10_p90": [
+          0.21384578943252563,
+          0.7445940703153611
+        ],
+        "seed_resample_cosdist_mean": 0.07023986795296272
+      }
+    },
+    "2560": {
+      "models": {
+        "Flux2Klein": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.06445835530757904,
+              "drift_cosdist": 0.030785825103521347,
+              "noise_cosdist_biased": 0.03367253392934799,
+              "noise_cosdist": 0.03591736952463786,
+              "noise_share": 0.5223920742108783,
+              "drift_cosdist_bias_corrected": 0.028540985782941182,
+              "mdc_euclidean": 0.7429136336502348,
+              "drift_euclidean": 0.24813634157180786,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.033406853675842285,
+              "drift_cosdist": 0.017074842005968094,
+              "noise_cosdist_biased": 0.01633201166987419,
+              "noise_cosdist": 0.017420812447865804,
+              "noise_share": 0.4888820667863273,
+              "drift_cosdist_bias_corrected": 0.01598604122797648,
+              "mdc_euclidean": 0.5173926675155777,
+              "drift_euclidean": 0.18479633331298828,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09426666796207428,
+              "drift_cosdist": 0.0497768297791481,
+              "noise_cosdist_biased": 0.04448983818292618,
+              "noise_cosdist": 0.047455827395121254,
+              "noise_share": 0.47195725853835735,
+              "drift_cosdist_bias_corrected": 0.046810840566953026,
+              "mdc_euclidean": 0.8539468520255762,
+              "drift_euclidean": 0.3155212700366974,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07190494239330292,
+              "drift_cosdist": 0.042426697909832,
+              "noise_cosdist_biased": 0.029478242620825768,
+              "noise_cosdist": 0.03144345879554748,
+              "noise_share": 0.40996128554817274,
+              "drift_cosdist_bias_corrected": 0.040461483597755435,
+              "mdc_euclidean": 0.6951062977961722,
+              "drift_euclidean": 0.2912960648536682,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.10142521560192108,
+              "drift_cosdist": 0.05698239430785179,
+              "noise_cosdist_biased": 0.04444282501935959,
+              "noise_cosdist": 0.04740568002065023,
+              "noise_share": 0.4381831949343946,
+              "drift_cosdist_bias_corrected": 0.05401953558127085,
+              "mdc_euclidean": 0.853495542735473,
+              "drift_euclidean": 0.3375867009162903,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.10116895288228989,
+              "drift_cosdist": 0.04431877285242081,
+              "noise_cosdist_biased": 0.05685017257928848,
+              "noise_cosdist": 0.06064018408457438,
+              "noise_share": 0.5619329938645671,
+              "drift_cosdist_bias_corrected": 0.040528768797715505,
+              "mdc_euclidean": 0.9653089270887345,
+              "drift_euclidean": 0.2977205812931061,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.06030486151576042,
+              "drift_cosdist": 0.03697875514626503,
+              "noise_cosdist_biased": 0.023326102644205093,
+              "noise_cosdist": 0.024881176153818765,
+              "noise_share": 0.3868030214796018,
+              "drift_cosdist_bias_corrected": 0.035423685361941654,
+              "mdc_euclidean": 0.618331711341122,
+              "drift_euclidean": 0.2719513177871704,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.05192700773477554,
+              "drift_cosdist": 0.024008482694625854,
+              "noise_cosdist_biased": 0.02791852131485939,
+              "noise_cosdist": 0.02977975606918335,
+              "noise_share": 0.5376493376521355,
+              "drift_cosdist_bias_corrected": 0.022147251665592192,
+              "mdc_euclidean": 0.6764670307276616,
+              "drift_euclidean": 0.21912774443626404,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.07235785713419318,
+          "mean_drift_cosdist": 0.03779407497495413,
+          "mean_noise_cosdist": 0.03686803306142489,
+          "mean_noise_share": 0.4772201541268043,
+          "mean_drift_cosdist_bias_corrected": 0.035489824072768295,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "ZImageTurbo": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.07631538808345795,
+              "drift_cosdist": 0.04073924571275711,
+              "noise_cosdist_biased": 0.035576142370700836,
+              "noise_cosdist": 0.03794788519541423,
+              "noise_share": 0.4661725932887222,
+              "drift_cosdist_bias_corrected": 0.03836750288804372,
+              "mdc_euclidean": 0.7636245039722162,
+              "drift_euclidean": 0.28544437885284424,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.037705034017562866,
+              "drift_cosdist": 0.019196629524230957,
+              "noise_cosdist_biased": 0.01850840263068676,
+              "noise_cosdist": 0.01974229613939921,
+              "noise_share": 0.49087351630728177,
+              "drift_cosdist_bias_corrected": 0.017962737878163656,
+              "mdc_euclidean": 0.5507885432690699,
+              "drift_euclidean": 0.1959419846534729,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09090013802051544,
+              "drift_cosdist": 0.048481497913599014,
+              "noise_cosdist_biased": 0.04241864010691643,
+              "noise_cosdist": 0.04524654944737752,
+              "noise_share": 0.46665099779433644,
+              "drift_cosdist_bias_corrected": 0.04565358857313792,
+              "mdc_euclidean": 0.833832463644935,
+              "drift_euclidean": 0.3113888204097748,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07373321056365967,
+              "drift_cosdist": 0.046479951590299606,
+              "noise_cosdist_biased": 0.02725326456129551,
+              "noise_cosdist": 0.029070148865381878,
+              "noise_share": 0.3696199358871757,
+              "drift_cosdist_bias_corrected": 0.04466306169827779,
+              "mdc_euclidean": 0.6683588373957542,
+              "drift_euclidean": 0.30489325523376465,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.12242558598518372,
+              "drift_cosdist": 0.08144500851631165,
+              "noise_cosdist_biased": 0.04098057374358177,
+              "noise_cosdist": 0.04371261199315389,
+              "noise_share": 0.3347386366485626,
+              "drift_cosdist_bias_corrected": 0.07871297399202982,
+              "mdc_euclidean": 0.8195764033521218,
+              "drift_euclidean": 0.40359634160995483,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.10843487083911896,
+              "drift_cosdist": 0.06399695575237274,
+              "noise_cosdist_biased": 0.044437915086746216,
+              "noise_cosdist": 0.047400442759195964,
+              "noise_share": 0.4098120350295543,
+              "drift_cosdist_bias_corrected": 0.061034428079922994,
+              "mdc_euclidean": 0.8534483954023869,
+              "drift_euclidean": 0.3577623963356018,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.06515097618103027,
+              "drift_cosdist": 0.042357660830020905,
+              "noise_cosdist_biased": 0.02279331535100937,
+              "noise_cosdist": 0.024312869707743327,
+              "noise_share": 0.34985378097290887,
+              "drift_cosdist_bias_corrected": 0.04083810647328695,
+              "mdc_euclidean": 0.6112293195496,
+              "drift_euclidean": 0.2910589575767517,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.08068986237049103,
+              "drift_cosdist": 0.04077598825097084,
+              "noise_cosdist_biased": 0.03991387039422989,
+              "noise_cosdist": 0.04257479508717855,
+              "noise_share": 0.4946578073335112,
+              "drift_cosdist_bias_corrected": 0.03811506728331248,
+              "mdc_euclidean": 0.8088394965798965,
+              "drift_euclidean": 0.2855730652809143,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.08191938325762749,
+          "mean_drift_cosdist": 0.04793411726132035,
+          "mean_noise_cosdist": 0.036250949899355574,
+          "mean_noise_share": 0.42279741290775663,
+          "mean_drift_cosdist_bias_corrected": 0.04566843335827192,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "SD35Medium": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.07216201722621918,
+              "drift_cosdist": 0.0308800358325243,
+              "noise_cosdist_biased": 0.04128198325634003,
+              "noise_cosdist": 0.044034115473429364,
+              "noise_share": 0.5720735761436104,
+              "drift_cosdist_bias_corrected": 0.028127901752789813,
+              "mdc_euclidean": 0.8225848479098706,
+              "drift_euclidean": 0.24851572513580322,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.062023941427469254,
+              "drift_cosdist": 0.025203309953212738,
+              "noise_cosdist_biased": 0.036820631474256516,
+              "noise_cosdist": 0.03927534023920695,
+              "noise_share": 0.5936519129038991,
+              "drift_cosdist_bias_corrected": 0.022748601188262302,
+              "mdc_euclidean": 0.7768658753296798,
+              "drift_euclidean": 0.2245141863822937,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.1206132024526596,
+              "drift_cosdist": 0.054274655878543854,
+              "noise_cosdist_biased": 0.06633855402469635,
+              "noise_cosdist": 0.07076112429300944,
+              "noise_share": 0.5500107175309774,
+              "drift_cosdist_bias_corrected": 0.04985207815965016,
+              "mdc_euclidean": 1.0427577572648885,
+              "drift_euclidean": 0.3294682204723358,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.10090725123882294,
+              "drift_cosdist": 0.06137637794017792,
+              "noise_cosdist_biased": 0.03953087702393532,
+              "noise_cosdist": 0.042166268825531004,
+              "noise_share": 0.3917545720314523,
+              "drift_cosdist_bias_corrected": 0.05874098241329193,
+              "mdc_euclidean": 0.8049495346173198,
+              "drift_euclidean": 0.3503609001636505,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.11799225211143494,
+              "drift_cosdist": 0.06673379987478256,
+              "noise_cosdist_biased": 0.05125845596194267,
+              "noise_cosdist": 0.05467568635940552,
+              "noise_share": 0.43442221878715276,
+              "drift_cosdist_bias_corrected": 0.06331656575202942,
+              "mdc_euclidean": 0.9166070405976429,
+              "drift_euclidean": 0.3653321862220764,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.14633794128894806,
+              "drift_cosdist": 0.0767948180437088,
+              "noise_cosdist_biased": 0.06954313069581985,
+              "noise_cosdist": 0.07417933940887451,
+              "noise_share": 0.47522283068411586,
+              "drift_cosdist_bias_corrected": 0.07215860188007354,
+              "mdc_euclidean": 1.0676466649095708,
+              "drift_euclidean": 0.39190512895584106,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07679034769535065,
+              "drift_cosdist": 0.045082662254571915,
+              "noise_cosdist_biased": 0.03170768916606903,
+              "noise_cosdist": 0.03382153511047363,
+              "noise_share": 0.412912431284496,
+              "drift_cosdist_bias_corrected": 0.04296881258487702,
+              "mdc_euclidean": 0.720912780523124,
+              "drift_euclidean": 0.30027541518211365,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09977111220359802,
+              "drift_cosdist": 0.04150554537773132,
+              "noise_cosdist_biased": 0.0582655593752861,
+              "noise_cosdist": 0.06214993000030518,
+              "noise_share": 0.5839922808155774,
+              "drift_cosdist_bias_corrected": 0.037621182203292844,
+              "mdc_euclidean": 0.9772515972648443,
+              "drift_euclidean": 0.288116455078125,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.09957475820556283,
+          "mean_drift_cosdist": 0.050231400644406676,
+          "mean_noise_cosdist": 0.05263291746377945,
+          "mean_noise_share": 0.5017550675226602,
+          "mean_drift_cosdist_bias_corrected": 0.04694184074178338,
+          "captions_drift_exceeds_mdc": 0
+        },
+        "Flux2Dev": {
+          "per_caption": [
+            {
+              "step_cosdist": 0.060668718069791794,
+              "drift_cosdist": 0.02358192950487137,
+              "noise_cosdist_biased": 0.037086788564920425,
+              "noise_cosdist": 0.03955924113591512,
+              "noise_share": 0.6113000199255356,
+              "drift_cosdist_bias_corrected": 0.021109476933876672,
+              "mdc_euclidean": 0.7796685981818982,
+              "drift_euclidean": 0.21717241406440735,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.04630758613348007,
+              "drift_cosdist": 0.023478984832763672,
+              "noise_cosdist_biased": 0.02282860316336155,
+              "noise_cosdist": 0.024350510040918986,
+              "noise_share": 0.49297761057030404,
+              "drift_cosdist_bias_corrected": 0.021957076092561086,
+              "mdc_euclidean": 0.6117022784760389,
+              "drift_euclidean": 0.21669788658618927,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.09569963812828064,
+              "drift_cosdist": 0.055954933166503906,
+              "noise_cosdist_biased": 0.03974471241235733,
+              "noise_cosdist": 0.04239435990651449,
+              "noise_share": 0.4153068202732544,
+              "drift_cosdist_bias_corrected": 0.05330527822176615,
+              "mdc_euclidean": 0.8071237154658908,
+              "drift_euclidean": 0.334529310464859,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.07584056258201599,
+              "drift_cosdist": 0.03870192915201187,
+              "noise_cosdist_biased": 0.03713863343000412,
+              "noise_cosdist": 0.039614542325337725,
+              "noise_share": 0.489693538201822,
+              "drift_cosdist_bias_corrected": 0.03622602025667827,
+              "mdc_euclidean": 0.7802133702956324,
+              "drift_euclidean": 0.2782154977321625,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.1102953553199768,
+              "drift_cosdist": 0.06474997103214264,
+              "noise_cosdist_biased": 0.045545388013124466,
+              "noise_cosdist": 0.04858174721399943,
+              "noise_share": 0.4129402174823516,
+              "drift_cosdist_bias_corrected": 0.061713608105977376,
+              "mdc_euclidean": 0.8640176852294176,
+              "drift_euclidean": 0.35986101627349854,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.11568322032690048,
+              "drift_cosdist": 0.05906829982995987,
+              "noise_cosdist_biased": 0.05661492794752121,
+              "noise_cosdist": 0.060389256477355956,
+              "noise_share": 0.4893961958142016,
+              "drift_cosdist_bias_corrected": 0.05529396384954453,
+              "mdc_euclidean": 0.9633096442648348,
+              "drift_euclidean": 0.3437100648880005,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.06264838576316833,
+              "drift_cosdist": 0.03603764623403549,
+              "noise_cosdist_biased": 0.02661074325442314,
+              "noise_cosdist": 0.028384792804718017,
+              "noise_share": 0.42476343053786847,
+              "drift_cosdist_bias_corrected": 0.034263592958450315,
+              "mdc_euclidean": 0.6604332518539773,
+              "drift_euclidean": 0.2684684097766876,
+              "drift_exceeds_mdc": false
+            },
+            {
+              "step_cosdist": 0.060831278562545776,
+              "drift_cosdist": 0.01868545264005661,
+              "noise_cosdist_biased": 0.04214582219719887,
+              "noise_cosdist": 0.04495554367701213,
+              "noise_share": 0.6928314379232583,
+              "drift_cosdist_bias_corrected": 0.01587573488553365,
+              "mdc_euclidean": 0.831146717708997,
+              "drift_euclidean": 0.1933155655860901,
+              "drift_exceeds_mdc": false
+            }
+          ],
+          "mean_step_cosdist": 0.07849684311076999,
+          "mean_drift_cosdist": 0.04003239329904318,
+          "mean_noise_cosdist": 0.04102874919772148,
+          "mean_noise_share": 0.5036511588410745,
+          "mean_drift_cosdist_bias_corrected": 0.037468093913048506,
+          "captions_drift_exceeds_mdc": 0
+        }
+      },
+      "ruler": {
+        "unrelated_caption_cosdist_mean": 0.6158057870343328,
+        "unrelated_caption_cosdist_p10_p90": [
+          0.23893014192581177,
+          0.7717476114630699
+        ],
+        "seed_resample_cosdist_mean": 0.0833903248111407
+      }
+    }
+  },
+  "truncation": {
+    "n_vectors": 400,
+    "native_dim": 2560,
+    "spearman_pairwise_distance": 0.9440093653390246,
+    "pearson_pairwise_distance": 0.9904372178777621
+  },
+  "config": {
+    "n_seeds": 16,
+    "seeds": {
+      "0": [
+        890000,
+        890001,
+        890002,
+        890003,
+        890004,
+        890005,
+        890006,
+        890007,
+        890008,
+        890009,
+        890010,
+        890011,
+        890012,
+        890013,
+        890014,
+        890015
+      ],
+      "1": [
+        891000,
+        891001,
+        891002,
+        891003,
+        891004,
+        891005,
+        891006,
+        891007,
+        891008,
+        891009,
+        891010,
+        891011,
+        891012,
+        891013,
+        891014,
+        891015
+      ],
+      "2": [
+        892000,
+        892001,
+        892002,
+        892003,
+        892004,
+        892005,
+        892006,
+        892007,
+        892008,
+        892009,
+        892010,
+        892011,
+        892012,
+        892013,
+        892014,
+        892015
+      ],
+      "3": [
+        893000,
+        893001,
+        893002,
+        893003,
+        893004,
+        893005,
+        893006,
+        893007,
+        893008,
+        893009,
+        893010,
+        893011,
+        893012,
+        893013,
+        893014,
+        893015
+      ],
+      "4": [
+        894000,
+        894001,
+        894002,
+        894003,
+        894004,
+        894005,
+        894006,
+        894007,
+        894008,
+        894009,
+        894010,
+        894011,
+        894012,
+        894013,
+        894014,
+        894015
+      ],
+      "5": [
+        895000,
+        895001,
+        895002,
+        895003,
+        895004,
+        895005,
+        895006,
+        895007,
+        895008,
+        895009,
+        895010,
+        895011,
+        895012,
+        895013,
+        895014,
+        895015
+      ],
+      "6": [
+        896000,
+        896001,
+        896002,
+        896003,
+        896004,
+        896005,
+        896006,
+        896007,
+        896008,
+        896009,
+        896010,
+        896011,
+        896012,
+        896013,
+        896014,
+        896015
+      ],
+      "7": [
+        897000,
+        897001,
+        897002,
+        897003,
+        897004,
+        897005,
+        897006,
+        897007,
+        897008,
+        897009,
+        897010,
+        897011,
+        897012,
+        897013,
+        897014,
+        897015
+      ]
+    },
+    "captions": [
+      {
+        "captioner": "Moondream3",
+        "source_prompt": "a bicycle leaning against a brick wall",
+        "source_image_index": 0,
+        "words": 45,
+        "text": "A black bicycle with white-rimmed tires leans against a red-brown brick wall. The bike has a black seat and handlebars, and silver pedals and chainrings are visible. The bike is positioned on a light gray concrete curb, with patches of grass growing along the edge."
+      },
+      {
+        "captioner": "Moondream3",
+        "source_prompt": "a family dinner in a small kitchen",
+        "source_image_index": 1,
+        "words": 83,
+        "text": "An older man with gray hair, wearing a light green shirt, is seated at a light wood kitchen table eating spaghetti. Two young boys, one in a gray shirt and the other in a red shirt, are seated on either side of him, eating spaghetti from white plates. A bowl of blueberries sits between them on the table. A loaf of bread rests on a cutting board near the boy on the right. A window with trees visible outside is behind the man."
+      },
+      {
+        "captioner": "Qwen25VL",
+        "source_prompt": "a train station with travellers carrying colourful luggage",
+        "source_image_index": 3,
+        "words": 92,
+        "text": "The image depicts a train station with a large, arched roof featuring a glass and metal structure that allows natural light to filter through. The station has two platforms, each with a train stopped at it. The trains are white with blue accents. There are several people walking on the platform, some carrying luggage. A sign above the platform indicates \"Krak\u00f3w G\u0142\u00f3wny,\" which is the main railway station in Krakow, Poland. The architecture of the station is grand and ornate, with intricate details and large windows that contribute to the overall aesthetic."
+      },
+      {
+        "captioner": "JoyCaption",
+        "source_prompt": "a bicycle leaning against a brick wall",
+        "source_image_index": 0,
+        "words": 145,
+        "text": "This photograph depicts a sleek, black, single-speed bicycle with a minimalist design, parked on a concrete sidewalk. The bicycle has a silver front fork and a silver chainring, with a black leather saddle and black handlebars featuring simple grips. The tires are thin and have a smooth, shiny surface. The bicycle is positioned at a slight angle, with the front wheel facing left and the rear wheel facing right. The background consists of a brick wall with a mix of red, brown, and beige bricks, creating a textured pattern. Small patches of green grass are visible at the base of the wall, where it meets the concrete sidewalk. The sunlight casts a clear shadow of the bicycle onto the concrete, indicating a bright, sunny day. The overall scene is simple and focused, highlighting the bicycle's modern and functional design against the rustic, textured brick wall."
+      },
+      {
+        "captioner": "JoyCaption",
+        "source_prompt": "a train station with travellers carrying colourful luggage",
+        "source_image_index": 3,
+        "words": 187,
+        "text": "This photograph captures a bustling train station platform with a grand, arched glass roof allowing natural light to flood the space. The roof is supported by ornate, dark metal beams and columns, adding a historical and elegant touch to the scene. Two blue and white passenger trains are stationed on either side of the platform, with their doors open and passengers disembarking. The platform is tiled in a mix of light and dark gray, with a yellow safety line running parallel to the trains. \n\nIn the center of the platform, several people are walking or standing, some carrying luggage. They are dressed in casual clothing, including jeans, jackets, and backpacks. A blue sign with white text is mounted on a pole in the middle background, providing information about the station or train schedules. The overall atmosphere is busy yet orderly, with the clear, bright light from the roof creating a welcoming and vibrant environment. The architectural style of the station is reminiscent of Victorian-era design, with intricate details and a sense of grandeur. The photograph effectively captures the essence of a modern, yet historically rich, train station."
+      },
+      {
+        "captioner": "Gemma4",
+        "source_prompt": "a train station with travellers carrying colourful luggage",
+        "source_image_index": 3,
+        "words": 222,
+        "text": "This is a photograph taken inside a large, historic train station, characterized by a grand, arched, glass and metal roof structure.\n\n**Setting and Architecture:**\nThe most striking feature is the expansive, vaulted ceiling, which is composed of numerous glass panels set within intricate metal framework, allowing a significant amount of natural light to flood the space. The roof structure is supported by massive, ornate arches and columns, giving the station a Victorian or late 19th-century architectural feel. The overall impression is one of grandeur and scale.\n\n**Foreground and Activity:**\nIn the foreground, there is a wide, light-colored tiled platform. A bright yellow safety line runs along the edge of the platform. Two long passenger trains are visible on either side of the platform, stopped at the station. The trains are predominantly white and blue.\n\nSeveral people are visible on the platform, suggesting the station is active. Some individuals are walking, while others appear to be waiting. One person near the center is holding a small piece of luggage.\n\n**Signage:**\nA blue and white sign is visible hanging from the structure above the platform, displaying text, which appears to read \"E Krak\u00f3w G\u0142\u00f3wny\" (indicating the main station in Krak\u00f3w, Poland).\n\n**Atmosphere:**\nThe lighting is bright due to the glass roof, creating a well-lit, busy, yet orderly atmosphere typical of a major transportation hub."
+      },
+      {
+        "captioner": "Gemma4",
+        "source_prompt": "a man standing in a doorway",
+        "source_image_index": 2,
+        "words": 245,
+        "text": "This is a full-length, indoor portrait of a young man standing in a brightly lit hallway.\n\n**Subject:**\nThe man is standing centered in the hallway, facing the camera with a wide, friendly smile. He appears to be in his 20s or 30s. He is dressed in a casual but smart outfit:\n*   He is wearing a dark, quilted or puffer jacket (likely black or dark navy).\n*   Underneath the jacket, he has on a dark blue polo shirt.\n*   He is wearing medium-wash blue jeans.\n*   He is wearing black dress shoes.\n\n**Setting:**\nThe setting is a long, institutional-looking hallway, possibly in an office building, hotel, or apartment complex.\n*   The walls are painted a light, neutral color (cream or beige).\n*   The floor is covered in large, light-colored (white or off-white) square tiles.\n*   The hallway is lined with doors on both sides. These doors have light brown or wood-toned frames and panels.\n*   On the walls between the doors, there are framed pieces of artwork or photographs visible on both the left and right sides, adding a touch of decoration to the otherwise functional space.\n*   The lighting is bright and even, suggesting overhead fluorescent or recessed lighting, which illuminates the entire corridor.\n\n**Composition and Mood:**\nThe composition is symmetrical, with the man positioned directly down the center line of the hallway, drawing the viewer's eye toward him. The overall mood is positive, approachable, and professional, largely due to the man's cheerful expression."
+      },
+      {
+        "captioner": "Gemma4",
+        "source_prompt": "a family dinner in a small kitchen",
+        "source_image_index": 1,
+        "words": 313,
+        "text": "This is a bright, warm, and candid photograph capturing a joyful family moment in a modern kitchen.\n\n**Scene:**\nThe setting is a well-lit, contemporary kitchen with light wood cabinetry and countertops. A large, light-colored wooden table dominates the foreground, where the family is gathered. A large window in the background lets in abundant natural light, offering a view of lush green trees outside.\n\n**People:**\nThere are three people in the image: a grandfather, and two young boys.\n\n1.  **The Grandfather:** He is seated centrally, appearing to be the patriarch. He is a mature man with gray hair, wearing a light green t-shirt. He is laughing heartily, holding a forkful of spaghetti up to his mouth, clearly enjoying the meal.\n2.  **The Older Boy (Left):** This boy, with brown hair, is seated to the grandfather's left. He is wearing a gray t-shirt with green trim and is smiling widely while looking at the food or the grandfather. He has a small portion of spaghetti on his plate.\n3.  **The Younger Boy (Right):** This boy, with lighter brown hair, is seated to the grandfather's right. He is wearing a bright red t-shirt and is also smiling broadly, looking toward the center of the table. He has a plate of spaghetti in front of him.\n\n**Action and Details:**\nThe family is sharing a meal of spaghetti. Several plates are visible on the table, each containing pasta with a red sauce. In the center of the table, there is a small white bowl filled with fresh blueberries, suggesting a side or dessert element.\n\nIn the bottom right corner, there is a rustic loaf of bread resting on a wooden cutting board, adding a cozy, homey touch to the scene.\n\n**Mood:**\nThe overall mood of the image is one of happiness, connection, and domestic warmth. The genuine laughter and shared activity suggest a loving and enjoyable family time."
+      }
+    ],
+    "t2i_token_check": {
+      "Flux2Dev": {
+        "branch": "caption",
+        "tokenizer": "TokenizersBackend",
+        "tokens_min_max": [
+          59,
+          411
+        ],
+        "over_512": 0
+      }
+    },
+    "t2i_invoke_configs": {
+      "Flux2Klein": {
+        "num_inference_steps": 4,
+        "guidance_scale": 1.0,
+        "max_sequence_length": 512
+      },
+      "ZImageTurbo": {
+        "num_inference_steps": 8,
+        "guidance_scale": 0.0,
+        "max_sequence_length": 512
+      },
+      "SD35Medium": {
+        "num_inference_steps": 20,
+        "guidance_scale": 5.0,
+        "max_sequence_length": 512
+      },
+      "Flux2Dev": {
+        "num_inference_steps": 12,
+        "guidance_scale": 3.5,
+        "max_sequence_length": 512
+      }
+    }
+  }
+}

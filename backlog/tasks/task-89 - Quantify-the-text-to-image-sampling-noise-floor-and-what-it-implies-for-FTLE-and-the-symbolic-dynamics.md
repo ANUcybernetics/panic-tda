@@ -1,11 +1,10 @@
 ---
 id: TASK-89
-title:
-  Decompose each loop step into deterministic drift and generator sampling noise
+title: Decompose each loop step into deterministic drift and generator sampling noise
 status: In Progress
 assignee: []
-created_date: "2026-09-03 23:29"
-updated_date: "2026-09-04 06:38"
+created_date: '2026-09-03 23:29'
+updated_date: '2026-09-04 12:08'
 labels:
   - analysis
   - paper
@@ -17,7 +16,6 @@ priority: high
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-
 Found 2026-09-04 while measuring what the 512-token encoder ceiling costs
 (analysis/prompt_tail.py, backlog/docs/caption-length-by-i2t-model.md).
 
@@ -69,9 +67,7 @@ helper exists in panic_models.py.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
 <!-- AC:BEGIN -->
-
 - [ ] #1 Per text-to-image model: drift, noise and step measured on a fixed
       caption set over N recorded seeds, all in caption-embedding cosine
       distance, with the noise share of the step stated
@@ -81,24 +77,22 @@ helper exists in panic_models.py.
 - [ ] #3 Implications written up for TASK-85's step-size result, for RQ2's
       response variable, and for what the core-set MSM in TASK-76 must
       demonstrate about its transitions
-- [ ] #4 max_sequence_length recorded as a fixed experiment parameter that
+- [x] #4 max_sequence_length recorded as a fixed experiment parameter that
       perturbs generation independently of content, so it is never varied
       mid-programme
 - [ ] #5 Ruler calibration: the noise share is reported against Qwen3Embed's
       resolution for these captions (distance between seed-resamples of one
       caption versus captions of unrelated prompts), so a step below the ruler's
       resolution is not read as dynamics
-- [ ] #6 Truncation validated on our captions: a sample embedded at Qwen3Embed's
+- [x] #6 Truncation validated on our captions: a sample embedded at Qwen3Embed's
       native 2560 and at 256 dimensions, with rank correlation of pairwise
       distances and agreement of the step-size and plateau statistics reported,
       so the 256-d choice is a measured number in methods
-
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-
 1. Validate the premise. The decomposition assumes a deterministic captioner;
    check each of the five and measure what sampling contributes
    (analysis/captioner_noise.py) --- DONE, three of five sample, see TASK-92.
@@ -118,37 +112,30 @@ helper exists in panic_models.py.
    from the pilot.
 6. Compare step like-for-like against the 200-step baseline and the pilot/panel
    (AC#2), and write up the implications for TASK-85, RQ2 and TASK-76 (AC#3).
-
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+SWEEP COMPLETE 2026-09-04, 512 images (4 text-to-image models x 8 captions x 16 recorded seeds), captioned by the captioner that wrote each source caption, forced greedy. Results in analysis/step_decomposition.json, truncation check in analysis/embedding_dim.json.
 
-Serves the paper's Null models section (see backlog/docs/research-programme.md):
-this IS the i.i.d.-resampling surrogate the skeleton pre-specifies. Also bears
-directly on RQ2 --- if the generator injects large step-level noise, that is
-evidence against Hintze et al.'s captioner-dominance, which the skeleton already
-flags as in tension with our SMC results. Should land BEFORE TASK-75/76, and
-before the long-horizon run (TASK-90), since it decides whether the transitions
-the Markov model would fit are signal.
+AC#2 IS BLOCKED BY TASK-96, found while doing AC#6: the database's stored embeddings do not reproduce when the same caption is re-embedded now, and sit on a scale roughly four times more compressed. So the sweep's step of 0.062-0.083 cannot be compared with the published stationary step size of 0.012-0.016 --- those are old-scale. Re-measured with the current code the pilot's own step size is 0.043, the same order as the sweep. The comparison AC#2 asks for has to wait until the database is re-embedded on one scale.
 
-Literature (2026-09-04 search). Toker et al., Padding Tone (NAACL 2025,
-arXiv:2501.06751): padding tokens are not inert in T2I text encoders and can act
-in the diffusion process itself, which is the mechanism behind the
-max_sequence_length observation; it is a genuine perturbation, not a bug. Huang
-et al. 2026 (arXiv:2606.01651): distillation FLATTENS seed sensitivity
-(seed-identification accuracy 94% for a multi-step teacher, 53-88% for distilled
-students), so the distilled models (Flux2Klein, ZImageTurbo) may be the LEAST
-seed-noisy, not the most; the direction is model-specific and must be measured.
-Decision rule for 'drift exceeds noise': Bland-Altman minimal detectable change,
-MDC = sqrt(2) x 1.96 x SEM with SEM from the seed-resample spread, so drift is
-called real only above the MDC (ISO 5725 repeatability/reproducibility is the
-same one-draw/two-draw accounting). Frank & Afli 2026, HTEB (arXiv:2605.28190):
-embedding cosine on long texts often scores paraphrase and substantive change
-alike, hence the ruler-calibration AC. Callaham et al. 2021 (Langevin
-regression): conditional mean and variance of the step are the drift and
-diffusion estimators; the Fokker-Planck finite-interval correction does not
-scale to embedding dimension and the loop is a discrete-time chain anyway, so
-use the raw conditional moments.
+WHAT SURVIVES THE SCALE PROBLEM, because it is internal to the sweep and computed entirely with the current code:
+
+Per model, cosine distance, at 256 dimensions --- step = drift + noise exactly, on the unit sphere:
+
+  model         step     drift    noise   noise share
+  Flux2Klein   0.0622   0.0330   0.0311     47.2%
+  ZImageTurbo  0.0684   0.0397   0.0306     43.1%
+  SD35Medium   0.0832   0.0413   0.0446     51.0%
+  Flux2Dev     0.0653   0.0334   0.0341     50.1%
+
+Roughly half of one step is generator sampling noise, for every model. The four are strikingly alike: SD35Medium is the noisiest and Flux2Klein the least, but the spread across models (0.031 to 0.045) is smaller than the spread across captions within a model (0.016 to 0.050 for Flux2Klein). Caption identity dominates generator identity, and the per-caption ordering is nearly the same for all four models. Note this does NOT support Huang et al.'s expectation that distilled generators are the least seed-noisy: Flux2Klein at four steps and ZImageTurbo at eight sit either side of Flux2Dev at twelve.
+
+Drift exceeds the Bland-Altman minimal detectable change for 0 of 8 captions on all four models. Comparing a single step's displacement against the seed-resample spread, no individual step is distinguishable from noise --- which is the criterion TASK-89's notes specified, and the one that matters along a trajectory, where each step is one draw. The systematic drift is nonetheless real: mean drift is about twice 1.96 x SEM of the mean over 16 seeds. Both should be reported, since together they say the drift is real but no single step can be attributed to it. That is the sharpest thing the sweep has to say to TASK-76.
+
+CAVEAT ON THE SOURCE CAPTIONS. They come from captioning pilot images with each v2 captioner, so they are not drawn from each network's own stationary regime. The noise term is unaffected --- it is the spread at a fixed caption --- but drift, and so the noise share, includes the transient of entering that network's distribution. A corrected version needs short v2 trajectories to sample in-distribution captions from, which do not exist yet.
+
+AC#6 (analysis/embedding_dim.py, 2,000 pilot captions at 2560 and 256 dimensions): Spearman 0.878 and Pearson 0.931 between pairwise distances at the two dimensions, 256-d distances 1.01x native, mean top-10 neighbour overlap 0.915 (p10 0.800, identical for 32%). Step-size and plateau statistics keep the same shape and ordering at both, with 256-d values about 12% smaller throughout. The truncation is defensible for step-size work; the neighbour overlap of 0.915 is the number to quote where clustering is concerned, since that is what EVoC depends on.
 <!-- SECTION:NOTES:END -->
