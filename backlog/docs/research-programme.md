@@ -173,6 +173,14 @@ long-horizon run rather than an achievement in itself.
 
 ## Standing constraints
 
+- **Three rules for using the literature.** The trajectory-mapping and
+  metastability work (MSM, milestoning, iterated learning, serial
+  reproduction) is old, stable and the thing to build on. Results about
+  generative models themselves date fast: cite them as context, never as a
+  foundation, and re-verify any that a design choice would rest on. Hintze
+  et al. (Patterns 2025) is the motivating paper: every result should read as
+  a direct answer to something they claimed or left open, and the goal is
+  clear, interesting results rather than coverage.
 - **Seeds are random and recorded.** Every text-to-image invocation draws its
   own seed and stores it, so within-condition variation is attributable and any
   step can be regenerated. Fixing the seed would turn the chain into one seed's
