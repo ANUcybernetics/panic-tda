@@ -19,12 +19,14 @@ the vocabulary: the long-run objects are a stationary distribution, metastable
 regions of it, and the escape times between them. "Fixed point" is the wrong
 word for this system and is not used.
 
-Whether the captioner adds a second source of randomness is currently open.
-Three of the five panel captioners decode stochastically (TASK-92), and their
-sampling noise alone is the size of the whole stationary step or larger, so
-either they are forced greedy --- leaving the diffusion seed as the only noise
---- or the chain carries a three-way decomposition throughout. Settle it before
-TASK-90.
+The captioner adds no randomness of its own: all five decode greedily
+(decision-02), so the chain is a deterministic captioner composed with a
+stochastic generator. Three of the five shipped a sampling config whose noise
+alone was worth as much as the generator's, which would have made step-level
+motion partly the captioner resampling its own prose; forcing greedy costs
+nothing measurable in caption quality and makes RQ2's captioner effect a
+statement about descriptive style rather than about each vendor's shipped
+temperature.
 
 Two research questions, from the paper skeleton:
 
@@ -144,7 +146,7 @@ settles the count.
 | TASK-77 TDA keep/kill             | **gate**              | Results III, which exists only if this passes                |
 | TASK-91 prior-matching test       | candidate             | a sharper RQ2 (whose prior does the chain sample?); after 76 |
 | TASK-88 new model candidates      | instrument            | nothing yet; deferrable until the lineup is in question      |
-| TASK-92 captioner decoding        | **gate**              | whether the chain has one noise source or two                |
+| TASK-92 captioner decoding        | closed                | why the captioner contributes no noise (decision-02)         |
 | TASK-93 seed recording            | **gate**              | attributable within-condition variation; RQ2 rests on it     |
 | TASK-94 GLMImage removed          | closed                | why the panel is 4x5                                         |
 
@@ -153,8 +155,9 @@ comes first because it decides how much of each step is deterministic drift and
 how much is generator sampling noise: if the stationary step size is mostly
 noise, metastable-region identity is the whole kinetic result and the
 transitions the Markov model fits must be shown to exceed the noise. TASK-92 and
-TASK-93 gate TASK-90 rather than the analysis chain: both change what a recorded
-step means, and neither can be applied to a run after the fact.
+TASK-93 gated TASK-90 rather than the analysis chain: both change what a
+recorded step means, and neither can be applied to a run after the fact. Both
+are now settled.
 
 ## What is instrument, and why it took so long
 
@@ -189,12 +192,16 @@ long-horizon run rather than an achievement in itself.
   (Patterns 2025) is the motivating paper: every result should read as a direct
   answer to something they claimed or left open, and the goal is clear,
   interesting results rather than coverage.
+- **Captioners decode greedily.** The diffusion seed is the loop's only source
+  of randomness (decision-02). `set_i2t_greedy/1` exists so the analysis
+  scripts can measure the shipped sampling configs; nothing that writes to the
+  database uses it.
 - **Seeds are random and must be recorded.** Fixing the seed would turn the
   chain into one seed's deterministic map and change what RQ1 means, so every
   text-to-image invocation draws its own. Storing it is what makes
-  within-condition variation attributable and any step regenerable --- and the
-  code does not yet do it (TASK-93). A run cannot be given seeds afterwards, so
-  this lands before TASK-90.
+  within-condition variation attributable and any step regenerable. A run
+  cannot be given seeds afterwards, which is why this landed before TASK-90
+  (TASK-93).
 - **Recluster once, at the end.** `mix cluster.recompute` is destructive and
   global: it relabels every experiment. Collect all data, cluster once, then
   make every cluster-dependent figure from that clustering. Any interim check

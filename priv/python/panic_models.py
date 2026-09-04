@@ -767,15 +767,21 @@ def _i2t_max_new_tokens() -> int:
     return _I2T_MAX_NEW_TOKENS_OVERRIDE
 
 
-# Qwen25VL, Qwen3VL and JoyCaption ship generation configs with do_sample=True,
-# so they decode stochastically unless told otherwise; Moondream3 (temperature
-# 0.0) and Gemma4 (do_sample=False below) are greedy already. Forcing greedy
-# leaves the text-to-image seed as the loop's only source of randomness, which
-# is what the drift/noise decomposition assumes (TASK-89, TASK-92).
-_I2T_FORCE_GREEDY: bool = False
+# Every captioner decodes greedily (decision-02), leaving the text-to-image
+# seed as the loop's only source of randomness. Qwen25VL, Qwen3VL and
+# JoyCaption ship generation configs with do_sample=True and would otherwise
+# decode stochastically; Moondream3 (temperature 0.0) and Gemma4
+# (do_sample=False below) are greedy already.
+_I2T_FORCE_GREEDY: bool = True
 
 
 def set_i2t_greedy(value: bool) -> None:
+    """Turn greedy decoding off, for measuring what the shipped configs do.
+
+    Only `analysis/captioner_noise.py` and `analysis/captioner_greedy_quality.py`
+    use this. Anything that writes to the database should leave it alone: a
+    sampling captioner puts a second, unrecorded noise source in the loop.
+    """
     global _I2T_FORCE_GREEDY
     _I2T_FORCE_GREEDY = value
 

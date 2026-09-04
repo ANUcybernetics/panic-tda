@@ -110,6 +110,21 @@ defmodule PanicTda.EngineTest do
       assert length(Enum.uniq(seeds)) == length(seeds)
     end
 
+    test "captioners decode greedily by default" do
+      # decision-02: the text-to-image seed is the loop's only source of
+      # randomness. Three captioners ship do_sample=True and would otherwise
+      # add a second, unrecorded one, worth as much as the whole step.
+      {:ok, interpreter} = PythonInterpreter.start_link()
+      {:ok, env} = Snex.make_env(interpreter)
+      on_exit(fn -> if Process.alive?(interpreter), do: GenServer.stop(interpreter) end)
+      :ok = PanicTda.Models.PythonBridge.ensure_setup(env)
+
+      assert {:ok, true} = Snex.pyeval(env, "return panic_models._I2T_FORCE_GREEDY", %{})
+
+      assert {:ok, %{"do_sample" => false}} =
+               Snex.pyeval(env, "return panic_models._i2t_decode_kwargs()", %{})
+    end
+
     test "applies i2t_max_new_tokens to the Python model registry" do
       {:ok, interpreter} = PythonInterpreter.start_link()
       {:ok, env} = Snex.make_env(interpreter)

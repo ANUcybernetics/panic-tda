@@ -1,9 +1,10 @@
 ---
 id: TASK-92
 title: Decide whether the panel's captioners decode greedily
-status: To Do
+status: Done
 assignee: []
-created_date: "2026-09-04 06:37"
+created_date: '2026-09-04 06:37'
+updated_date: '2026-09-04 23:07'
 labels:
   - analysis
   - paper
@@ -16,7 +17,6 @@ priority: high
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-
 Found 2026-09-04 while checking TASK-89's premise. The research programme
 describes the loop as a Markov chain with a random text-to-image seed and a
 GREEDY captioner, which is what makes the spread among a caption's successors
@@ -62,18 +62,48 @@ way in the paper's methods.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
 <!-- AC:BEGIN -->
-
-- [ ] #1 Decision recorded --- greedy everywhere, or sampling kept as a measured
+- [x] #1 Decision recorded --- greedy everywhere, or sampling kept as a measured
       second noise source --- with the reasoning and the numbers above
-- [ ] #2 panic_models default matches the decision, and set_i2t_greedy is either
+- [x] #2 panic_models default matches the decision, and set_i2t_greedy is either
       removed or documented as the switch
-- [ ] #3 Captioner sampling noise stated per captioner alongside TASK-89's
+- [x] #3 Captioner sampling noise stated per captioner alongside TASK-89's
       generator noise, in the same units, so the two are comparable
-- [ ] #4 If greedy: a quality check over more than four images confirms no
+- [x] #4 If greedy: a quality check over more than four images confirms no
       captioner degenerates (repetition, length, truncation) before TASK-90
-- [ ] #5 The programme's 'greedy captioner' claim and the paper's methods say
+- [x] #5 The programme's 'greedy captioner' claim and the paper's methods say
       which decoding the reported data used
-
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Greedy everywhere; recorded as decision-02.
+
+Sampling noise per captioner, against TASK-89's generator noise, in the same
+units (half the mean squared displacement about a centroid, Qwen3Embed at 256
+dims, both through the corrected last-token pooling path):
+
+  Moondream3 0.0000  Gemma4 0.0000  Qwen25VL 0.0110  Qwen3VL 0.0233  JoyCaption 0.0304
+  Flux2Klein 0.0311  ZImageTurbo 0.0306  Flux2Dev 0.0341  SD35Medium 0.0446
+
+Against a whole stationary step of 0.062-0.083, two captioners were rolling
+dice worth as much as the generator. Greedy chosen over carrying a three-way
+decomposition because shipped temperature is a packaging choice by five
+vendors, not a model property: under sampling, RQ2's captioner effect would
+confound descriptive style with whatever each release happened to ship.
+
+_I2T_FORCE_GREEDY now defaults True; set_i2t_greedy/1 kept and documented as
+the analysis-only switch. Guarded by a non-GPU test in engine_test.exs.
+
+AC#4, analysis/captioner_greedy_quality.py over 24 images (4 v2 generators, 20
+prompts, depths 8/24/48), two greedy passes plus one sampled: all five
+captioners deterministic, no stubs, no back-to-back phrase repetition anywhere,
+every caption ends on terminal punctuation so none hit the 1024-token ceiling.
+JoyCaption's greedy repeat-5-gram share (0.065 vs 0.022 sampled) is content --
+a 3x3 grid of near-identical rose bouquets enumerated row by row -- not
+degeneracy. Results in analysis/captioner_greedy_quality.json.
+
+Programme and the paper's methods note both say which decoding produced which
+data: every dataset before 2026-09-05 samples for three of the five captioners.
+<!-- SECTION:NOTES:END -->
