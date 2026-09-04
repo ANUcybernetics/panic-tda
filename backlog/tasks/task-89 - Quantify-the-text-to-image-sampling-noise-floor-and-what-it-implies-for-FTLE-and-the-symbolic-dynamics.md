@@ -4,7 +4,7 @@ title: Decompose each loop step into deterministic drift and generator sampling 
 status: To Do
 assignee: []
 created_date: '2026-09-03 23:29'
-updated_date: '2026-09-04 02:26'
+updated_date: '2026-09-04 02:29'
 labels:
   - analysis
   - paper
@@ -39,10 +39,13 @@ Cheap to run: no new models, no new experiments; analysis/step_sweep.py already 
 - [ ] #2 Step compared like-for-like against the stationary step size in the 200-step baseline and the v2 pilot/panel, and the share of stationary movement attributable to sampling stated
 - [ ] #3 Implications written up for TASK-85's step-size result, for RQ2's response variable, and for what the core-set MSM in TASK-76 must demonstrate about its transitions
 - [ ] #4 max_sequence_length recorded as a fixed experiment parameter that perturbs generation independently of content, so it is never varied mid-programme
+- [ ] #5 Ruler calibration: the noise share is reported against Qwen3Embed's resolution for these captions (distance between seed-resamples of one caption versus captions of unrelated prompts), so a step below the ruler's resolution is not read as dynamics
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Serves the paper's Null models section (see backlog/docs/research-programme.md): this IS the i.i.d.-resampling surrogate the skeleton pre-specifies. Also bears directly on RQ2 --- if the generator injects large step-level noise, that is evidence against Hintze et al.'s captioner-dominance, which the skeleton already flags as in tension with our SMC results. Should land BEFORE TASK-75/76, and before the long-horizon run (TASK-90), since it decides whether the transitions the Markov model would fit are signal.
+
+Literature (2026-09-04 search). Toker et al., Padding Tone (NAACL 2025, arXiv:2501.06751): padding tokens are not inert in T2I text encoders and can act in the diffusion process itself, which is the mechanism behind the max_sequence_length observation; it is a genuine perturbation, not a bug. Huang et al. 2026 (arXiv:2606.01651): distillation FLATTENS seed sensitivity (seed-identification accuracy 94% for a multi-step teacher, 53-88% for distilled students), so the distilled models (Flux2Klein, ZImageTurbo) may be the LEAST seed-noisy, not the most; the direction is model-specific and must be measured. Decision rule for 'drift exceeds noise': Bland-Altman minimal detectable change, MDC = sqrt(2) x 1.96 x SEM with SEM from the seed-resample spread, so drift is called real only above the MDC (ISO 5725 repeatability/reproducibility is the same one-draw/two-draw accounting). Frank & Afli 2026, HTEB (arXiv:2605.28190): embedding cosine on long texts often scores paraphrase and substantive change alike, hence the ruler-calibration AC. Callaham et al. 2021 (Langevin regression): conditional mean and variance of the step are the drift and diffusion estimators; the Fokker-Planck finite-interval correction does not scale to embedding dimension and the loop is a discrete-time chain anyway, so use the raw conditional moments.
 <!-- SECTION:NOTES:END -->

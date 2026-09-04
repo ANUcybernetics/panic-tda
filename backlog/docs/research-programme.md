@@ -68,6 +68,45 @@ stochastic regime with a persistent, nonzero step size --- consistent with
 Hintze et al., and the reason the horizon question is about slow timescales,
 not about waiting for motion to stop.
 
+## What the literature adds
+
+A 2026-09-04 search (four angles: closed-loop genAI, MSM methodology,
+iterated learning and other analogues, drift/noise measurement) changed
+three things and confirmed the rest. Citations are in the paper skeleton's
+Related work notes.
+
+- **Many short runs are the right input.** The longest resolvable implied
+  timescale scales with aggregate sampling time, not single-trajectory
+  length (Sinitskiy & Pande 2018), and core-set MSM error does not depend on
+  how the transit region is handled (Sarich, Noé & Schütte 2010). Both
+  support the uniform 250--300 step factorial and the outliers-as-transit
+  design.
+- **RQ2 has a sharper form.** In iterated learning a chain of samplers
+  converges to the learner's prior regardless of start (Griffiths & Kalish
+  2007). "Whose prior does the stationary distribution sample from?" is
+  testable by comparing it with each captioner's captions of a reference
+  image set. That is TASK-91, a cheap candidate result alongside the
+  Hintze-matched decomposition.
+- **The divergence claims are a metric confound.** Conde et al. track
+  distance from origin, which keeps growing under a stationary chain on a
+  large state space. Step-to-step distance is the stationarity diagnostic,
+  and Vats, Crandall & Goree (2026) report the same local-before-cumulative
+  plateau. Report both curves and say why they differ.
+
+- **TASK-89 has a decision rule and a caveat.** Drift is called real only
+  above the Bland--Altman minimal detectable change computed from the
+  seed-resample spread, and distilled generators may be the *least*
+  seed-noisy (distillation flattens seed sensitivity), so the noise share is
+  measured per model with no assumed direction. Padding is a genuine
+  perturbation in T2I text encoders (Toker et al. 2025), which is why
+  `max_sequence_length` is frozen.
+
+Also worth carrying: an AR(1) fit to the embedding trajectory (Xu &
+Griffiths 2010) gives a clustering-free attractor-strength statistic for
+interim checks, and compression pressure under a transmission bottleneck
+(Kirby et al. 2015) is the mechanism behind short captions repeating and long
+ones not.
+
 ## The horizon
 
 The paper does not claim a fixed 1000-iteration horizon. The horizon is chosen
@@ -100,6 +139,7 @@ count.
 | TASK-75 outliers as sparse space    | **gate**              | decides whether "time in transit" is a real observable    |
 | TASK-76 core-set MSM                | **primary formalism** | Results I, the headline kinetic result                    |
 | TASK-77 TDA keep/kill               | **gate**              | Results III, which exists only if this passes             |
+| TASK-91 prior-matching test         | candidate             | a sharper RQ2 (whose prior does the chain sample?); after 76 |
 | TASK-88 new model candidates        | instrument            | nothing yet; deferrable until the lineup is in question   |
 
 Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
@@ -140,7 +180,8 @@ long-horizon run rather than an achievement in itself.
 - **Recluster once, at the end.** `mix cluster.recompute` is destructive and
   global: it relabels every experiment. Collect all data, cluster once, then
   make every cluster-dependent figure from that clustering. Any interim check
-  uses clustering-free observables (step size, drift from origin, repetition).
+  uses clustering-free observables (step size, drift from origin, AR(1)
+  mean reversion, repetition rate).
 - **`max_sequence_length` is not a neutral knob.** It sets padding length and
   perturbs generation even with identical text, so fix it before a run.
 - **512 tokens is the binding caption constraint**, not generation length ---
