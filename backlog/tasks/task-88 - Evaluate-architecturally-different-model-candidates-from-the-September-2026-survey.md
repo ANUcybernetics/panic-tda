@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:30'
-updated_date: '2026-09-04 01:01'
+updated_date: '2026-09-04 07:59'
 labels:
   - models
   - research
@@ -52,5 +52,9 @@ Adoption signal worth weighing: BAGEL (935 downloads) and Emu3.5 (380) have very
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Instrument, not science: nothing in the paper depends on it. Deferrable until the model lineup is in question again --- the v2 lineup landed in TASK-87. See backlog/docs/research-programme.md.
+Un-deferred 2026-09-04: the lineup came back into question when GLMImage was removed (TASK-94), which is the condition this task named for itself.
+
+The text-to-image half is now TASK-95 (SANA 1.5 4.8B, with CogView4-6B as the fallback). SANA was not in the survey table above --- it was found by enumerating the first-class pipelines in the installed diffusers rather than by searching releases, which is the cheaper filter for this project, since a model without a diffusers pipeline needs a spike before it can even be measured.
+
+Sizes verified against the HF API 2026-09-04, which rules several survey candidates out on the no-quantisation constraint that GLMImage's removal established (48 GB, bfloat16, no 4-bit): NextStep-1.1 55.7 GB, Qwen-Image 53.7 GB, HiDream-I1-Full 43.9 GB. Emu3.5 at 34B is out for the same reason. What remains of this task is the captioner and embedder candidates.
 <!-- SECTION:NOTES:END -->
