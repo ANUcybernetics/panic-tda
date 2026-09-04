@@ -149,7 +149,7 @@ defmodule PanicTda.RealModelsTest do
 
   describe "per-model I2T tests" do
     # every registered captioner, one image each
-    for i2t <- ~w(Moondream3 Qwen25VL Qwen3VL Gemma3n Gemma4 Pixtral LLaMA32Vision JoyCaption) do
+    for i2t <- ~w(Moondream3 Qwen25VL Qwen3VL Gemma4 JoyCaption) do
       @tag timeout: 600_000
       test "#{i2t} single invoke", %{env: env} do
         i2t = unquote(i2t)

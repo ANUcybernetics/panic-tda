@@ -90,7 +90,7 @@ mise exec -- mix experiment.resume abc123
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage` |
-| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma3n`, `Gemma4`, `Pixtral`, `LLaMA32Vision`, `JoyCaption` |
+| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption` |
 | text embedding  | `Qwen3Embed` |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
@@ -110,9 +110,6 @@ Times include model loading/swapping overhead.
 | **Image-to-text** | | |
 | Moondream3 | — | ~2.4s |
 | Qwen25VL | ~12s | ~5s |
-| Gemma3n | ~16s | ~6s |
-| LLaMA32Vision | ~17s | ~8s |
-| Pixtral | ~19s | ~8s |
 
 The design space of different models is vast; with both fundamentally different
 architectures and many different finetunes of the same base models. This

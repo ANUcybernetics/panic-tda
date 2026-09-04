@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
   Tests the following models in priority order (largest first):
 
     - **T2I**: Flux2Klein, SD35Medium, ZImageTurbo
-    - **I2T**: Pixtral, LLaMA32Vision
+    - **I2T**: JoyCaption
 
   For I2T models, test images are first generated using SD35Medium (in batches
   of 3), then SD35Medium is unloaded before probing begins.

@@ -15,12 +15,12 @@ defmodule PanicTda.Export do
     "Moondream3" => "Moon3",
     "Qwen25VL" => "Qwen25",
     "Qwen3VL" => "Qwen3",
-    "Gemma3n" => "Gemma3n",
     "Gemma4" => "Gemma4",
     "JoyCaption" => "Joy",
+    # retired, but historical experiments still carry these model names
+    "Gemma3n" => "Gemma3n",
     "Pixtral" => "Pix",
     "LLaMA32Vision" => "LLaMA",
-    # retired, but historical experiments still carry these model names
     "Moondream" => "Moon",
     "HunyuanImage" => "Hunyuan",
     "Florence2" => "Flor2"

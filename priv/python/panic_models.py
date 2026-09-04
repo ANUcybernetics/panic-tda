@@ -42,9 +42,6 @@ _REVISIONS: dict[str, str] = {
     "black-forest-labs/FLUX.2-dev": "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
     "zai-org/GLM-Image": "2c433cc0cbc293bde2ac8ca9624f279b5d23fcf4",
     "Qwen/Qwen2.5-VL-7B-Instruct": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
-    "google/gemma-3n-E2B-it": "5e092ebca197cdcd8d8b195040accf22693501bc",
-    "mistral-community/pixtral-12b": "c2756cbbb9422eba9f6c5c439a214b0392dfc998",
-    "meta-llama/Llama-3.2-11B-Vision-Instruct": "9eb2daaa8597bf192a8b0e73f848f3a102794df5",
     "Qwen/Qwen3-Embedding-4B": "5cf2132abc99cad020ac570b19d031efec650f2b",
     # TASK-87 lineup
     "Qwen/Qwen3-VL-8B-Instruct": "0c351dd01ed87e9c1b53cbc748cba10e6187ff3b",
@@ -449,49 +446,6 @@ def _load_moondream() -> None:
     _models["Moondream3"] = model.to("cuda").eval()
 
 
-def _load_pixtral() -> None:
-    from transformers import AutoProcessor, LlavaForConditionalGeneration
-
-    model = LlavaForConditionalGeneration.from_pretrained(
-        "mistral-community/pixtral-12b",
-        revision=_rev("mistral-community/pixtral-12b"),
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        quantization_config=_bnb_4bit_config(),
-    )
-    processor = AutoProcessor.from_pretrained(
-        "mistral-community/pixtral-12b", revision=_rev("mistral-community/pixtral-12b")
-    )
-    if processor.tokenizer.pad_token is None:
-        processor.tokenizer.pad_token = processor.tokenizer.eos_token
-    _models["Pixtral"] = {"processor": processor, "model": model}
-    _models_offload_only.add("Pixtral")
-
-
-def _load_llama32vision() -> None:
-    from transformers import AutoProcessor, MllamaForConditionalGeneration
-
-    model = MllamaForConditionalGeneration.from_pretrained(
-        "meta-llama/Llama-3.2-11B-Vision-Instruct",
-        revision=_rev("meta-llama/Llama-3.2-11B-Vision-Instruct"),
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        token=True,
-        quantization_config=_bnb_4bit_config(),
-    )
-    processor = AutoProcessor.from_pretrained(
-        "meta-llama/Llama-3.2-11B-Vision-Instruct",
-        revision=_rev("meta-llama/Llama-3.2-11B-Vision-Instruct"),
-        token=True,
-    )
-    _models["LLaMA32Vision"] = {"processor": processor, "model": model}
-    _models_offload_only.add("LLaMA32Vision")
-
-
-# Qwen-VL family: same chat-template and processor path, different checkpoints.
-# Qwen25VL and Qwen3VL are both in the panel deliberately (TASK-87): same
-# family, one generation apart, which separates generation from architecture
-# and leaves one captioner in common with balanced_panel_5x5.
 _QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
     "Qwen25VL": {
         "repo": "Qwen/Qwen2.5-VL-7B-Instruct",
@@ -545,24 +499,6 @@ def _load_joycaption() -> None:
     _models_offload_only.add("JoyCaption")
 
 
-def _load_gemma3n() -> None:
-    from transformers import AutoProcessor, Gemma3nForConditionalGeneration
-
-    model = (
-        Gemma3nForConditionalGeneration.from_pretrained(
-            "google/gemma-3n-E2B-it",
-            revision=_rev("google/gemma-3n-E2B-it"),
-            torch_dtype=torch.bfloat16,
-        )
-        .to("cuda")
-        .eval()
-    )
-    processor = AutoProcessor.from_pretrained(
-        "google/gemma-3n-E2B-it", revision=_rev("google/gemma-3n-E2B-it")
-    )
-    _models["Gemma3n"] = {"processor": processor, "model": model}
-
-
 def _load_gemma4() -> None:
     from transformers import AutoProcessor, Gemma4ForConditionalGeneration
 
@@ -594,12 +530,9 @@ def _load_gemma4() -> None:
 
 _I2T_LOADERS: dict[str, Any] = {
     "Moondream3": _load_moondream,
-    "Pixtral": _load_pixtral,
-    "LLaMA32Vision": _load_llama32vision,
     "Qwen25VL": functools.partial(_load_qwen_vl, "Qwen25VL"),
     "Qwen3VL": functools.partial(_load_qwen_vl, "Qwen3VL"),
     "JoyCaption": _load_joycaption,
-    "Gemma3n": _load_gemma3n,
     "Gemma4": _load_gemma4,
 }
 
@@ -739,7 +672,7 @@ _T2I_BATCH_CAPABLE: set[str] = {
     "Flux2Dev",
     "GLMImage",
 }
-_I2T_BATCH_CAPABLE: set[str] = {"Pixtral", "LLaMA32Vision", "JoyCaption"}
+_I2T_BATCH_CAPABLE: set[str] = {"JoyCaption"}
 
 
 _T2I_MAX_RETRIES = 3
@@ -885,29 +818,9 @@ def _invoke_moondream_batch(name: str, images: list[Image.Image]) -> list[str]:
     return results
 
 
-# --- Chat-template models (Pixtral, LLaMA32Vision) ---
+# --- Chat-template models (JoyCaption) ---
 
 _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
-    "Pixtral": {
-        "message_fn": lambda img: [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "image": img},
-                    {"type": "text", "text": "Describe this image."},
-                ],
-            }
-        ],
-        "processor_call": lambda proc, text, img: proc(
-            text=[text], images=[img], padding=True, return_tensors="pt"
-        ),
-        "batch_processor_call": lambda proc, texts, images: proc(
-            text=texts, images=images, padding=True, return_tensors="pt"
-        ),
-        "dtype_cast": torch.bfloat16,
-        "extra_generate_kwargs": {},
-        "batch_images_fn": lambda img: img,
-    },
     # JoyCaption's chat template takes plain-string content, not the structured
     # parts list the others use; the image reaches it through the processor.
     # The instruction is deliberately identical to every other captioner's, so
@@ -926,24 +839,6 @@ _CHAT_TEMPLATE_CONFIGS: dict[str, dict[str, Any]] = {
         "dtype_cast": torch.bfloat16,
         "extra_generate_kwargs": {},
         "batch_images_fn": lambda img: img,
-    },
-    "LLaMA32Vision": {
-        "message_fn": lambda img: [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "image": img},
-                    {"type": "text", "text": "Describe this image."},
-                ],
-            }
-        ],
-        "processor_call": lambda proc, text, img: proc(img, text, return_tensors="pt"),
-        "batch_processor_call": lambda proc, texts, images: proc(
-            images, texts, padding=True, return_tensors="pt"
-        ),
-        "dtype_cast": None,
-        "extra_generate_kwargs": {},
-        "batch_images_fn": lambda img: [img],
     },
 }
 
@@ -1084,7 +979,7 @@ def _invoke_qwen_vl_batch(name: str, images: list[Image.Image]) -> list[str]:
     ]
 
 
-# --- Gemma family (Gemma3n, Gemma4) ---
+# --- Gemma 4 ---
 
 
 def _invoke_gemma(name: str, img: Image.Image) -> str:
@@ -1165,23 +1060,17 @@ def _invoke_gemma_batch(name: str, images: list[Image.Image]) -> list[str]:
 
 _I2T_STRATEGIES: dict[str, Any] = {
     "Moondream3": _invoke_moondream,
-    "Pixtral": _invoke_chat_template,
-    "LLaMA32Vision": _invoke_chat_template,
     "Qwen25VL": _invoke_qwen_vl,
     "Qwen3VL": _invoke_qwen_vl,
     "JoyCaption": _invoke_chat_template,
-    "Gemma3n": _invoke_gemma,
     "Gemma4": _invoke_gemma,
 }
 
 _I2T_BATCH_STRATEGIES: dict[str, Any] = {
     "Moondream3": _invoke_moondream_batch,
-    "Pixtral": _invoke_chat_template_batch,
-    "LLaMA32Vision": _invoke_chat_template_batch,
     "Qwen25VL": _invoke_qwen_vl_batch,
     "Qwen3VL": _invoke_qwen_vl_batch,
     "JoyCaption": _invoke_chat_template_batch,
-    "Gemma3n": _invoke_gemma_batch,
     "Gemma4": _invoke_gemma_batch,
 }
 

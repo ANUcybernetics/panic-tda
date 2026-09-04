@@ -79,7 +79,7 @@ embeddings → TDA).
 | Type            | Models                                                                                                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- |
 | text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`                                          |
-| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma3n`, `Gemma4`, `Pixtral`, `LLaMA32Vision`, `JoyCaption`         |
+| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption`                                                |
 | text embedding  | `Qwen3Embed`                                                                                               |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
@@ -108,11 +108,8 @@ estimates.
 | Moondream3             | —                 | —          | ~2.4s ¶          |
 | Qwen25VL               | ~12s              | ~14s       | ~0.9s †          |
 | Qwen3VL                | —                 | —          | ~4.0s ¶          |
-| Gemma3n                | ~16s              | ~18s       | ~6s              |
 | Gemma4                 | —                 | —          | ~2.6s ¶          |
 | JoyCaption             | —                 | —          | ~2.2s ¶          |
-| Pixtral                | ~19s              | ~24s       | ~2.6s †          |
-| LLaMA32Vision          | ~17s              | ~23s       | ~8s              |
 
 Values marked ‡ are warm per-item timings at `batch=4` on the RTX 6000 Ada,
 enabled by TASK-74 (Flux2Dev and GLMImage became truly batch-capable —
