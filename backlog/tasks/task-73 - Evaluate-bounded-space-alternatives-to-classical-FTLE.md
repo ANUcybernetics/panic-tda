@@ -1,11 +1,12 @@
 ---
 id: TASK-73
 title: >-
-  Evaluate bounded-space alternatives to classical FTLE for genAI
-  trajectory analysis
+  Evaluate bounded-space alternatives to classical FTLE for genAI trajectory
+  analysis
 status: To Do
 assignee: []
 created_date: '2026-04-24 10:00'
+updated_date: '2026-09-04 00:42'
 labels: []
 dependencies: []
 priority: high
@@ -133,3 +134,11 @@ of L2-normalised embeddings feeding those Euclidean distances.
 - Predecessor task: TASK-71
 - Sungyeon's original framing: PKB note 741
 <!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Ben, 2026-09-04: FTLE is being removed from the analysis outright --- it does not illuminate anything --- rather than replaced with a bounded-space alternative. That settles this task's question in the negative, so it should be closed rather than worked.
+
+Corroborating evidence from the caption pilot (TASK-85, fresh data on a network this task never looked at, Flux2Klein+Gemma3n, 2026-09-02): median r-squared 0.46 across the 20 prompts, with several exponents coming out negative. That reproduces exactly the weak-fit finding recorded above on the penguin_campfire and pilot_3cat analyses, on independent data, which is about as clean a confirmation as the original diagnosis could get. The bounded-distance explanation stands: L2-normalised embeddings live on the unit sphere, pairwise distances are capped at 2, and nothing can grow exponentially for long enough to fit.
+<!-- SECTION:NOTES:END -->
