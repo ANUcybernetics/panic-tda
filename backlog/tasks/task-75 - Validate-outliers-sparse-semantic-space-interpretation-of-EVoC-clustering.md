@@ -4,6 +4,7 @@ title: Validate 'outliers = sparse semantic space' interpretation of EVoC cluste
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:50'
+updated_date: '2026-09-04 01:01'
 labels:
   - analysis
   - paper
@@ -24,3 +25,9 @@ The ~62% outlier rate in global EVoC clustering is currently interpreted as genu
 - [ ] #3 Outliers are checked for caption length/verbosity artefacts (outlier status vs caption length and per-I2T-model verbosity)
 - [ ] #4 Written summary states whether the sparsity interpretation survives, with figures
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Gate for the paper's 'sparse-space interpretation of outliers' section (backlog/docs/research-programme.md): decides whether 'time in transit' is a real observable or an estimator artefact, which the headline kinetic claim in Results I depends on. Runs after TASK-89, before TASK-76.
+<!-- SECTION:NOTES:END -->

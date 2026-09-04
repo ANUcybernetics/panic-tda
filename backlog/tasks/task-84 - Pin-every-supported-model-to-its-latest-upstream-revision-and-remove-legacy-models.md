@@ -3,10 +3,10 @@ id: TASK-84
 title: >-
   Pin every supported model to its latest upstream revision and remove legacy
   models
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-02 06:30'
-updated_date: '2026-09-02 06:57'
+updated_date: '2026-09-04 00:49'
 labels:
   - models
   - gpu
@@ -22,12 +22,12 @@ Ben, 2026-09-02: comparability with earlier runs is already gone after decision-
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Every model in the balanced_panel_5x5 lineup plus Qwen3Embed loads from an explicit pinned revision hash equal to upstream HEAD at the time of the change, recorded in priv/python/panic_models.py
-- [ ] #2 Moondream moved from revision 2025-06-21 to the latest upstream revision, with its caption behaviour re-checked (length, terminal punctuation) on a handful of images
-- [ ] #3 Decision made and applied for each non-panel model (HunyuanImage, Florence2, STSB*, Nomic, JinaClip*, ColNomic*): keep with a pin, or remove loader, invoke/batch code, Elixir model lists, GPU tests and CLAUDE.md table entries together
-- [ ] #4 mix cleanup.phi4vision_runs removed once its cleanup has been run or judged unnecessary
-- [ ] #5 torch, transformers, diffusers bumped to current releases in the Snex venv spec (diffusers from a release rather than git if the needed pipelines have shipped), venv rebuilt
-- [ ] #6 mise exec -- mix test --include gpu passes for the retained models, and the model-optimisation-log records any per-model timing change
+- [x] #1 Every model in the balanced_panel_5x5 lineup plus Qwen3Embed loads from an explicit pinned revision hash equal to upstream HEAD at the time of the change, recorded in priv/python/panic_models.py
+- [x] #2 Moondream moved from revision 2025-06-21 to the latest upstream revision, with its caption behaviour re-checked (length, terminal punctuation) on a handful of images
+- [x] #3 Decision made and applied for each non-panel model (HunyuanImage, Florence2, STSB*, Nomic, JinaClip*, ColNomic*): keep with a pin, or remove loader, invoke/batch code, Elixir model lists, GPU tests and CLAUDE.md table entries together
+- [x] #4 mix cleanup.phi4vision_runs removed once its cleanup has been run or judged unnecessary
+- [x] #5 torch, transformers, diffusers bumped to current releases in the Snex venv spec (diffusers from a release rather than git if the needed pipelines have shipped), venv rebuilt
+- [x] #6 mise exec -- mix test --include gpu passes for the retained models, and the model-optimisation-log records any per-model timing change
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -42,4 +42,8 @@ Research done 2026-09-02, no downloads needed: every panel model's local HF cach
 diffusers 0.40.0 (released) ships flux2 (incl. pipeline_flux2_klein), z_image, glm_image and hunyuan_image pipelines, so the git dependency can become a pinned release. Installed now: torch 2.10 / transformers 5.5.3 / diffusers 0.37.0.dev0 / sentence-transformers 5.2.2; PyPI latest: torch 2.13 / transformers 5.16.1 / diffusers 0.40.0 / sentence-transformers 6.0.1.
 
 Do not rebuild the venv until analysis/natural_lengths.py and analysis/step_sweep.py have run --- they use the existing _build/dev venv.
+
+Completed 2026-09-03/04 (this was done but never formally closed). All eleven panel models plus Qwen3Embed pinned to explicit revisions in _REVISIONS; Moondream moved off its date tag; HunyuanImage, Florence2, the STSB and Nomic text embedders, JinaClip, ColNomic and all three image embedders removed with their loaders, invoke code, Elixir lists, GPU tests, config networks and doc tables; mix cleanup.phi4vision_runs deleted; venv on torch 2.14 / transformers 5.16 / diffusers 0.40 (a release, not git) / sentence-transformers 6, colpali-engine dropped. Full suite green at each step.
+
+Superseded in part by TASK-87, which replaced three of the five captioners afterwards.
 <!-- SECTION:NOTES:END -->

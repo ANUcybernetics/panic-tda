@@ -4,6 +4,7 @@ title: 'TDA keep/kill pilot: does topology add anything beyond symbolic dynamics
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:51'
+updated_date: '2026-09-04 01:01'
 labels:
   - analysis
   - paper
@@ -25,3 +26,9 @@ Decide with data whether TDA earns a place in the next paper or is dropped from 
 - [ ] #3 Documented keep/kill decision: either sliding-window PH is adopted with demonstrated added value, or TDA is dropped from headline analyses with the rationale written up for the paper's methods discussion
 - [ ] #4 If killed: PdStage moved out of the per-experiment hot path (or made opt-in) and docs updated
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Gate for Results III, which exists in the paper only if this passes: sliding-window persistence is retained only if geometric recurrence exists that symbol sequences miss. Otherwise it shrinks to a negative-result paragraph and the TDA rationale moves to discussion. See backlog/docs/research-programme.md.
+<!-- SECTION:NOTES:END -->

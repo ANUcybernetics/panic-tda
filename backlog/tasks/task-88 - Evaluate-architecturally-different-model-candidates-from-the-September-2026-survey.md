@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 09:30'
+updated_date: '2026-09-04 01:01'
 labels:
   - models
   - research
@@ -47,3 +48,9 @@ Adoption signal worth weighing: BAGEL (935 downloads) and Emu3.5 (380) have very
 - [ ] #3 Decision recorded per candidate: adopt, spike further, or reject with reason
 - [ ] #4 Any adopted model pinned in _REVISIONS, wired into the Elixir model lists and GPU tests, and its caption or generation behaviour measured the way the current lineup was
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Instrument, not science: nothing in the paper depends on it. Deferrable until the model lineup is in question again --- the v2 lineup landed in TASK-87. See backlog/docs/research-programme.md.
+<!-- SECTION:NOTES:END -->

@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:50'
+updated_date: '2026-09-04 01:01'
 labels:
   - analysis
   - paper
@@ -27,3 +28,9 @@ Adopt symbolic dynamics as the primary formalism for trajectory analysis, replac
 - [ ] #3 Per-network kinetic observables computed: dwell-time distributions (with exponential vs heavy-tailed characterisation), transition graphs, absorption times, and time-in-transit vs time-in-state balance
 - [ ] #4 Clustering used for states is frozen on a defined corpus (not the growing global pool) and its assignments shown stable under subsampling
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+The paper's primary formalism and headline result (Results I). Depends on TASK-75 for whether transit time is meaningful and on TASK-89 for whether transitions are above the sampling noise floor. See backlog/docs/research-programme.md.
+<!-- SECTION:NOTES:END -->

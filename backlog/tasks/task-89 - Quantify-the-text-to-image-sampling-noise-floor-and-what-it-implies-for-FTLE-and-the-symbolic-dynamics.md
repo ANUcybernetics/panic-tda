@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-03 23:29'
+updated_date: '2026-09-04 01:01'
 labels:
   - analysis
   - paper
@@ -43,3 +44,9 @@ Cheap to run: no new models, no new experiments, and analysis/step_sweep.py alre
 - [ ] #4 Implications written up for TASK-85's step-size result and for the core-set MSM in TASK-76
 - [ ] #5 max_sequence_length recorded as a fixed experiment parameter that perturbs generation independently of content, so it is never varied mid-programme
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Serves the paper's Null models section (see backlog/docs/research-programme.md): this IS the i.i.d.-resampling surrogate the skeleton pre-specifies. Also bears directly on RQ2 --- if the generator injects large step-level noise, that is evidence against Hintze et al.'s captioner-dominance, which the skeleton already flags as in tension with our SMC results. Should land BEFORE TASK-75/76, and before the long-horizon run (TASK-90), since it decides whether the transitions the Markov model would fit are signal.
+<!-- SECTION:NOTES:END -->

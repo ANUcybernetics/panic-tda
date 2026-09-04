@@ -3,10 +3,10 @@ id: TASK-73
 title: >-
   Evaluate bounded-space alternatives to classical FTLE for genAI trajectory
   analysis
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-04-24 10:00'
-updated_date: '2026-09-04 00:42'
+updated_date: '2026-09-04 00:49'
 labels: []
 dependencies: []
 priority: high
@@ -141,4 +141,6 @@ of L2-normalised embeddings feeding those Euclidean distances.
 Ben, 2026-09-04: FTLE is being removed from the analysis outright --- it does not illuminate anything --- rather than replaced with a bounded-space alternative. That settles this task's question in the negative, so it should be closed rather than worked.
 
 Corroborating evidence from the caption pilot (TASK-85, fresh data on a network this task never looked at, Flux2Klein+Gemma3n, 2026-09-02): median r-squared 0.46 across the 20 prompts, with several exponents coming out negative. That reproduces exactly the weak-fit finding recorded above on the penguin_campfire and pilot_3cat analyses, on independent data, which is about as clean a confirmation as the original diagnosis could get. The bounded-distance explanation stands: L2-normalised embeddings live on the unit sphere, pairwise distances are capped at 2, and nothing can grow exponentially for long enough to fit.
+
+Closed 2026-09-04: answered in the negative. Ben decided FTLE is removed from the analysis rather than replaced with a bounded-space alternative, so the evaluation this task proposed is moot. The Lyapunov stage, resource, type, Python bridge, both analyse.* tasks and the 846 stored rows are gone; the pipeline is now three stages.
 <!-- SECTION:NOTES:END -->
