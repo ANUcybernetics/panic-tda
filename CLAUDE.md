@@ -76,11 +76,11 @@ embeddings → TDA).
 
 ### Available models
 
-| Type            | Models                                                                                                     |
-| --------------- | ---------------------------------------------------------------------------------------------------------- |
-| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`                                          |
-| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption`                                                |
-| text embedding  | `Qwen3Embed`                                                                                               |
+| Type            | Models                                                                      |
+| --------------- | --------------------------------------------------------------------------- |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`           |
+| image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption`                 |
+| text embedding  | `Qwen3Embed`                                                                |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
 
 Every model is pinned to an explicit upstream revision (`_REVISIONS` in
@@ -96,20 +96,20 @@ from the `penguin_campfire` experiment (300 batches of 40 per model); embedding
 rows are warm-cache timings after cold load; other values are rough one-off
 estimates.
 
-| Model                  | Single invocation | Batch of 3 | Per-item (batch) |
-| ---------------------- | ----------------- | ---------- | ---------------- |
-| **Text-to-image**      |                   |            |                  |
-| SD35Medium             | ~9s               | ~9s        | ~6.5s †          |
-| ZImageTurbo            | ~8s               | ~18s       | ~6s              |
-| Flux2Klein             | ~20s              | ~20s       | ~4.1s †          |
-| Flux2Dev               | ~104s             | ~181s §    | ~58s ‡           |
-| GLMImage               | ~77s              | ~85s §     | ~42s ‡           |
-| **Image-to-text**      |                   |            |                  |
-| Moondream3             | —                 | —          | ~2.4s ¶          |
-| Qwen25VL               | ~12s              | ~14s       | ~0.9s †          |
-| Qwen3VL                | —                 | —          | ~4.0s ¶          |
-| Gemma4                 | —                 | —          | ~2.6s ¶          |
-| JoyCaption             | —                 | —          | ~2.2s ¶          |
+| Model             | Single invocation | Batch of 3 | Per-item (batch) |
+| ----------------- | ----------------- | ---------- | ---------------- |
+| **Text-to-image** |                   |            |                  |
+| SD35Medium        | ~9s               | ~9s        | ~6.5s †          |
+| ZImageTurbo       | ~8s               | ~18s       | ~6s              |
+| Flux2Klein        | ~20s              | ~20s       | ~4.1s †          |
+| Flux2Dev          | ~104s             | ~181s §    | ~58s ‡           |
+| GLMImage          | ~77s              | ~85s §     | ~42s ‡           |
+| **Image-to-text** |                   |            |                  |
+| Moondream3        | —                 | —          | ~2.4s ¶          |
+| Qwen25VL          | ~12s              | ~14s       | ~0.9s †          |
+| Qwen3VL           | —                 | —          | ~4.0s ¶          |
+| Gemma4            | —                 | —          | ~2.6s ¶          |
+| JoyCaption        | —                 | —          | ~2.2s ¶          |
 
 Values marked ‡ are warm per-item timings at `batch=4` on the RTX 6000 Ada,
 enabled by TASK-74 (Flux2Dev and GLMImage became truly batch-capable —
@@ -118,11 +118,11 @@ that these two ran serially even inside `invoke_t2i_batch`. Benchmark and
 quality gate: `mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
 
 The Flux2Dev row is measured at its current 12 steps (TASK-83); § is the only
-cell scaled rather than measured. ¶ marks seconds per caption at natural
-length over a batch of four (TASK-87); those models have no single-invocation
-or batch-of-three figure yet. Captioner rows predate decision-01 and now
-understate: captions run to natural length, so a Gemma3n batch takes roughly
-two to three times longer than it did under the old 128-token ceiling. Measured
+cell scaled rather than measured. ¶ marks seconds per caption at natural length
+over a batch of four (TASK-87); those models have no single-invocation or
+batch-of-three figure yet. Captioner rows predate decision-01 and now
+understate: captions run to natural length, so a Gemma3n batch takes roughly two
+to three times longer than it did under the old 128-token ceiling. Measured
 seconds per caption at natural length are in
 `backlog/docs/caption-length-by-i2t-model.md`.
 

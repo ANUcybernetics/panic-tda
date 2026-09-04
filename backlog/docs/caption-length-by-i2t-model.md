@@ -8,13 +8,13 @@ prompts excluded.
 
 Words per caption:
 
-| Image-to-text model | n | median | mean | p10–p90 | min–max |
-|---|---|---|---|---|---|
-| Moondream | 10,000 | 24 | 24.0 | 19–29 | 14–42 |
-| Gemma3n | 10,000 | 83 | 82.7 | 78–87 | 49–93 |
-| Qwen25VL | 10,000 | 90 | 89.5 | 68–109 | 41–118 |
-| Pixtral | 10,000 | 102 | 100.3 | 89–109 | 59–120 |
-| LLaMA32Vision | 10,000 | 106 | 103.9 | 94–112 | 31–120 |
+| Image-to-text model | n      | median | mean  | p10–p90 | min–max |
+| ------------------- | ------ | ------ | ----- | ------- | ------- |
+| Moondream           | 10,000 | 24     | 24.0  | 19–29   | 14–42   |
+| Gemma3n             | 10,000 | 83     | 82.7  | 78–87   | 49–93   |
+| Qwen25VL            | 10,000 | 90     | 89.5  | 68–109  | 41–118  |
+| Pixtral             | 10,000 | 102    | 100.3 | 89–109  | 59–120  |
+| LLaMA32Vision       | 10,000 | 106    | 103.9 | 94–112  | 31–120  |
 
 **Caption length is almost entirely determined by which image-to-text model
 produced it: eta-squared = 0.915.** (Eta-squared is the proportion of variance
@@ -24,14 +24,14 @@ the variation in caption length is accounted for by model identity alone.)
 Overlap of the p10–p90 ranges, where 0 means the ranges are disjoint and 1 means
 identical:
 
-| Pair | Overlap |
-|---|---|
+| Pair                                | Overlap  |
+| ----------------------------------- | -------- |
 | Moondream vs each of the other four | **0.00** |
-| Gemma3n vs Qwen25VL | 0.22 |
-| Gemma3n vs Pixtral / LLaMA32Vision | 0.00 |
-| Qwen25VL vs LLaMA32Vision | 0.37 |
-| Qwen25VL vs Pixtral | 0.49 |
-| Pixtral vs LLaMA32Vision | 0.75 |
+| Gemma3n vs Qwen25VL                 | 0.22     |
+| Gemma3n vs Pixtral / LLaMA32Vision  | 0.00     |
+| Qwen25VL vs LLaMA32Vision           | 0.37     |
+| Qwen25VL vs Pixtral                 | 0.49     |
+| Pixtral vs LLaMA32Vision            | 0.75     |
 
 **79.9% of captions exceed 50 words.**
 
@@ -41,18 +41,20 @@ Follow-up measurement, same data. A caption cut off mid-generation will not end
 in terminal punctuation, which makes truncation directly detectable:
 
 | Image-to-text model | median words | p99 | max | % not ending in terminal punctuation |
-|---|---|---|---|---|
-| Gemma3n | 83 | 90 | 93 | **89.9%** |
-| LLaMA32Vision | 106 | 115 | 120 | **78.3%** |
-| Pixtral | 102 | 113 | 120 | **64.0%** |
-| Qwen25VL | 90 | 114 | 118 | 17.6% |
-| Moondream | 24 | 34 | 42 | **0.0%** |
+| ------------------- | ------------ | --- | --- | ------------------------------------ |
+| Gemma3n             | 83           | 90  | 93  | **89.9%**                            |
+| LLaMA32Vision       | 106          | 115 | 120 | **78.3%**                            |
+| Pixtral             | 102          | 113 | 120 | **64.0%**                            |
+| Qwen25VL            | 90           | 114 | 118 | 17.6%                                |
+| Moondream           | 24           | 34  | 42  | **0.0%**                             |
 
 Examples of what the fragments look like:
 
 - Gemma3n: "... casting a subtle shadow beneath the apple. The overall"
-- LLaMA32Vision: "... appears to be a wooden surface, providing a subtle and natural contrast to"
-- Pixtral: "... has a light brown color and a smooth texture. The lighting in the"
+- LLaMA32Vision: "... appears to be a wooden surface, providing a subtle and
+  natural contrast to"
+- Pixtral: "... has a light brown color and a smooth texture. The lighting in
+  the"
 
 The cause is the hardcoded `max_new_tokens` values in
 `priv/python/panic_models.py` — 128 for some captioners, 100 for others, 1024
@@ -82,14 +84,14 @@ Decision-01 raised the ceiling to 1024 tokens. `analysis/natural_lengths.py`
 then ran every panel captioner over 16 images from the caption pilot, with
 Moondream in both its new default (`normal`) and the old `short` mode.
 
-| Image-to-text model | median | min–max | % cut off | s/caption | panel median | panel % cut off |
-|---|---|---|---|---|---|---|
-| Moondream (`short`) | 24 | 19–33 | 0.0% | 0.29 | 24 | 0.0% |
-| Qwen25VL | 80 | 61–105 | 0.0% | 0.91 | 90 | 17.6% |
-| Moondream (`normal`) | 82 | 50–121 | 0.0% | 0.68 | — | — |
-| Pixtral | 113 | 74–154 | 0.0% | 2.97 | 102 | 64.0% |
-| LLaMA32Vision | 124 | 88–198 | 0.0% | 2.13 | 106 | 78.3% |
-| Gemma3n | 154 | 97–212 | 0.0% | 1.21 | 83 | 89.9% |
+| Image-to-text model  | median | min–max | % cut off | s/caption | panel median | panel % cut off |
+| -------------------- | ------ | ------- | --------- | --------- | ------------ | --------------- |
+| Moondream (`short`)  | 24     | 19–33   | 0.0%      | 0.29      | 24           | 0.0%            |
+| Qwen25VL             | 80     | 61–105  | 0.0%      | 0.91      | 90           | 17.6%           |
+| Moondream (`normal`) | 82     | 50–121  | 0.0%      | 0.68      | —            | —               |
+| Pixtral              | 113    | 74–154  | 0.0%      | 2.97      | 102          | 64.0%           |
+| LLaMA32Vision        | 124    | 88–198  | 0.0%      | 2.13      | 106          | 78.3%           |
+| Gemma3n              | 154    | 97–212  | 0.0%      | 1.21      | 83           | 89.9%           |
 
 Every captioner now terminates on its own. The ceiling is nowhere near binding:
 the longest caption in the entire 2,000-caption pilot is 315 words, against a
@@ -106,9 +108,9 @@ and 2.4 times slower per caption, and it stops being the disjoint outlier that
 made every Moondream-versus-other comparison fully confounded with length.
 
 The verbosity ordering is largely an artefact of where each ceiling bit. Under
-truncation Gemma3n looked like the second-shortest captioner; uncapped it is
-the longest by a clear margin, and Qwen25VL --- which was barely truncated ---
-is now the shortest of the verbose four. Any captioner effect measured on
+truncation Gemma3n looked like the second-shortest captioner; uncapped it is the
+longest by a clear margin, and Qwen25VL --- which was barely truncated --- is
+now the shortest of the verbose four. Any captioner effect measured on
 `balanced_panel_5x5` is therefore partly a measure of how hard each model was
 being cut, which is what TASK-82 suspected.
 
@@ -119,11 +121,11 @@ identity stop being one variable.
 
 ## SD35Medium with the T5 encoder
 
-Loading T5 (decision-01) costs 6.5 s/image at batch 4 and 25.5 GB peak on the
-48 GB card, against roughly 6.5 s/item previously --- no measurable slowdown.
+Loading T5 (decision-01) costs 6.5 s/image at batch 4 and 25.5 GB peak on the 48
+GB card, against roughly 6.5 s/item previously --- no measurable slowdown.
 
-The check that matters is whether the caption survives the encoder. Warnings
-are useless as evidence here, because `panic_models.setup()` calls
+The check that matters is whether the caption survives the encoder. Warnings are
+useless as evidence here, because `panic_models.setup()` calls
 `diffusers.logging.set_verbosity_error()`, so diffusers' truncation warnings
 never fire and their absence proves nothing. Token counts are the evidence
 instead. The four longest pilot captions (315, 302, 276 and 262 words) come to
@@ -131,9 +133,9 @@ instead. The four longest pilot captions (315, 302, 276 and 262 words) come to
 
 That lands between the two ceilings, which is why `max_sequence_length` had to
 be set explicitly. diffusers defaults it to 256 and caps it at 512, so simply
-loading T5 would still have cut roughly 40% off every one of these captions;
-at the 512 decision-01 specifies, none are touched. The same captions are
-314–373 CLIP tokens against CLIP's fixed 77, so that branch does truncate, as
+loading T5 would still have cut roughly 40% off every one of these captions; at
+the 512 decision-01 specifies, none are touched. The same captions are 314–373
+CLIP tokens against CLIP's fixed 77, so that branch does truncate, as
 decision-01 says --- architectural, and documented rather than worked around.
 
 ## The v2 lineup, measured 2026-09-03/04
@@ -146,21 +148,21 @@ token counts matter because the text-to-image encoders read at most 512 tokens
 GLMImage takes 2048.
 
 | Image-to-text model | median | min–max | T5 tokens | % cut off | s/caption |
-|---|---|---|---|---|---|
-| Moondream3 | 59 | 36–62 | 52–81 | 0.0% | 2.4 |
-| Qwen25VL (retained) | 80 | 61–105 | — | 0.0% | 0.9 |
-| JoyCaption | 178 | 91–178 | 131–250 | 0.0% | 2.2 |
-| Gemma4 (E4B) | 225 | 180–252 | 262–389 | 0.0% | 2.6 |
-| Qwen3VL | 292 | 198–317 | 312–466 | 0.0% | 4.0 |
+| ------------------- | ------ | ------- | --------- | --------- | --------- |
+| Moondream3          | 59     | 36–62   | 52–81     | 0.0%      | 2.4       |
+| Qwen25VL (retained) | 80     | 61–105  | —         | 0.0%      | 0.9       |
+| JoyCaption          | 178    | 91–178  | 131–250   | 0.0%      | 2.2       |
+| Gemma4 (E4B)        | 225    | 180–252 | 262–389   | 0.0%      | 2.6       |
+| Qwen3VL             | 292    | 198–317 | 312–466   | 0.0%      | 4.0       |
 
 The spread is roughly fivefold with overlapping distributions, which is the
 separability condition TASK-80 actually wanted --- and a marked improvement on
 the old lineup, where Moondream sat disjoint from every other captioner. Note
-Qwen3VL has the least headroom against the 512-token ceiling (466 of 512 on
-easy images), so it is the one to watch on visually complex inputs.
+Qwen3VL has the least headroom against the 512-token ceiling (466 of 512 on easy
+images), so it is the one to watch on visually complex inputs.
 
-Two models were rejected during integration, both for reasons invisible in
-their caption output:
+Two models were rejected during integration, both for reasons invisible in their
+caption output:
 
 - **CapRL-Qwen3VL-4B** captions at 466 words median and 466--836 T5 tokens,
   exceeding the 512-token ceiling on three of four images. Its captions would
@@ -182,11 +184,11 @@ Measured 2026-09-04 (`analysis/prompt_tail.py`), prompted by the obvious
 question: the ceiling is not a decision anyone made, so what is it buying?
 
 What is possible. Flux2Klein and Flux2Dev encode text with
-`Mistral3ForConditionalGeneration`, a full LLM with a long context, and
-Z-Image has no hard cap either --- for those, 512 is merely the diffusers
-default. GLMImage already reads 2048. **SD35Medium is the sole hard
-constraint**: `StableDiffusion3Pipeline` raises above 512, and that limit is
-real, since its T5 branch was trained to 512.
+`Mistral3ForConditionalGeneration`, a full LLM with a long context, and Z-Image
+has no hard cap either --- for those, 512 is merely the diffusers default.
+GLMImage already reads 2048. **SD35Medium is the sole hard constraint**:
+`StableDiffusion3Pipeline` raises above 512, and that limit is real, since its
+T5 branch was trained to 512.
 
 What it costs. Nothing at present. The v2 lineup's captions run 382--430 T5
 tokens, so no caption is being truncated by any encoder. Raising the ceiling
@@ -199,8 +201,8 @@ moving it from 512 to 1024 still moved caption cosine to 0.896--0.988 (mean
 conditioning tensor. It must therefore be fixed before a run and held.
 
 Whether the discarded tail carries information is harder to answer than it
-looks. Holding padding fixed and cutting 126--174 tokens from the end gives
-mean caption cosine 0.920 (0.856--0.959). On the measured scale --- 1.000 for
+looks. Holding padding fixed and cutting 126--174 tokens from the end gives mean
+caption cosine 0.920 (0.856--0.959). On the measured scale --- 1.000 for
 identical images, 0.876 for unrelated ones --- that is a large change, but it is
 barely larger than the padding artefact above. Flux2Klein at four steps is
 simply very sensitive to any conditioning perturbation, so this metric cannot
@@ -236,10 +238,10 @@ captions make the loop markedly less jittery: mean step-to-step cosine distance
 falls from 0.0162 to 0.0116, a 28% reduction, holding at 29% over the second
 half of the trajectory. Trajectories are correspondingly stickier in cluster
 space, with the self-transition rate rising from 79.9% to 81.1% at the finest
-clustering layer and from 87.9% to 94.9% at the coarsest, where the pilot
-visits 1.4 distinct clusters per run against the panel's 1.9. Occupancy and
-transition structure shift accordingly (Jensen–Shannon divergence 0.23 and 0.32
-bits at layer 0, falling to 0.04 and 0.08 bits at layer 3).
+clustering layer and from 87.9% to 94.9% at the coarsest, where the pilot visits
+1.4 distinct clusters per run against the panel's 1.9. Occupancy and transition
+structure shift accordingly (Jensen–Shannon divergence 0.23 and 0.32 bits at
+layer 0, falling to 0.04 and 0.08 bits at layer 3).
 
 Distance from the initial prompt tells the same story from the other side. The
 pilot starts further out --- 0.220 versus 0.200 at step 1, since a 160-word
@@ -270,15 +272,15 @@ approximate while the comparison between conditions is not.
 1. **Model identity and caption length cannot be separated statistically.** At
    eta-squared 0.915 they are effectively one variable, so including both in a
    regression gives unstable coefficients and no attributable split between
-   them. Controlling for length after the fact is not available as an option;
-   it has to be handled in the experiment design. See TASK-80.
+   them. Controlling for length after the fact is not available as an option; it
+   has to be handled in the experiment design. See TASK-80.
 2. **Moondream is the extreme case.** Its length range does not overlap any
    other captioner, so every Moondream-versus-other comparison is fully
    confounded with length.
 3. **The four verbose captioners partially overlap.** A length-matched analysis
    restricted to Gemma3n, Qwen25VL, Pixtral and LLaMA32Vision within roughly
    78–112 words is feasible on existing data with no new runs.
-4. **Comparability with published work.** Hintze et al. (2026, *Patterns*
+4. **Comparability with published work.** Hintze et al. (2026, _Patterns_
    7:101451) capped text outputs at 50 words, citing the finding that
    embedding-based similarity is not comparable across different text lengths.
    Since 79.9% of our captions exceed that cap, our captioner effects are not
@@ -299,6 +301,6 @@ approximate while the comparison between conditions is not.
 ./analysis/pilot_vs_panel.py                     # pilot vs panel dynamics
 ```
 
-Defaults to the `balanced_panel_5x5` dump and reproduces every table above.
-Pass several dumps to pool them, which is how the truncated panel and the
+Defaults to the `balanced_panel_5x5` dump and reproduces every table above. Pass
+several dumps to pool them, which is how the truncated panel and the
 natural-length runs get compared in one table.
