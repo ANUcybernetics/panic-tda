@@ -1,9 +1,10 @@
 ---
 id: TASK-94
 title: GLM-Image renders parts of the caption as literal text in the image
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-04 07:15'
+updated_date: '2026-09-04 07:41'
 labels:
   - instrument
   - models
@@ -41,6 +42,19 @@ OPTIONS. Leave it and report it as a property of the model; strip or neutralise 
 <!-- AC:BEGIN -->
 - [ ] #1 The size of the effect measured: images from the same caption with and without the spurious glyph fragment, compared in caption-embedding space against the seed-noise floor from TASK-89
 - [ ] #2 Glyph-fragment incidence measured per captioner over real trajectory captions, so the confound with captioner style is quantified rather than assumed
-- [ ] #3 Decision recorded on whether GLMImage runs with the glyph branch as-is, neutralised, or empty --- and applied in panic_models before TASK-90
+- [x] #3 Decision recorded on whether GLMImage runs with the glyph branch as-is, neutralised, or empty --- and applied in panic_models before TASK-90
 - [ ] #4 If the glyph branch stays, the paper's methods state that GLMImage receives an extra text-rendering instruction the other four generators do not
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Resolved by removing GLMImage from the panel rather than by measuring the artefact: the glyph confound was one of four reasons, and the others were not fixable.
+
+1. It is the only quantised generator in the panel --- 4-bit NF4 against bfloat16 for the other four --- so any GLMImage-specific result confounds architecture with quantisation.
+2. The glyph branch above: possessive apostrophes hand it long runs of ordinary prose to render as literal text, and possessive frequency is captioner style, which is a panel factor.
+3. It is the model that motivated TASK-79. Its autoregressive prior samples an out-of-range token id roughly one batched call in a few thousand, a device-side assert that poisons the CUDA context; it needed a bespoke five-attempt monkeypatch in panic_models.setup() on top of the engine's step-level retry.
+4. It was 36% of the panel's text-to-image budget. Dropping it takes the 300-step four-run design from 89 GPU-days to 58.
+
+Removed from the model registry, the panel config (config/balanced_panel_4x5_v2.json, 25 networks to 20), gpu.bench defaults, the GPU smoke tests and the TASK-89 sweep. The GLM prior monkeypatch is gone with it; Engine.Retry stays, since the fault class it guards is not GLM-specific. Historical experiments that used GLMImage keep their export label.
+<!-- SECTION:NOTES:END -->

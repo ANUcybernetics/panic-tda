@@ -53,8 +53,8 @@ embeddings → TDA).
 ```json
 {
   "networks": [
-    ["SD35Medium", "Moondream"],
-    ["FluxSchnell", "InstructBLIP"]
+    ["SD35Medium", "Moondream3"],
+    ["Flux2Klein", "Gemma4"]
   ],
   "prompts": ["a red apple"],
   "embedding_models": ["Qwen3Embed"],
@@ -78,7 +78,7 @@ embeddings → TDA).
 
 | Type            | Models                                                                      |
 | --------------- | --------------------------------------------------------------------------- |
-| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`           |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`                       |
 | image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption`                 |
 | text embedding  | `Qwen3Embed`                                                                |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
@@ -103,7 +103,6 @@ estimates.
 | ZImageTurbo       | ~8s               | ~18s       | ~6s              |
 | Flux2Klein        | ~20s              | ~20s       | ~4.1s †          |
 | Flux2Dev          | ~104s             | ~181s §    | ~58s ‡           |
-| GLMImage          | ~77s              | ~85s §     | ~42s ‡           |
 | **Image-to-text** |                   |            |                  |
 | Moondream3        | —                 | —          | ~2.4s ¶          |
 | Qwen25VL          | ~12s              | ~14s       | ~0.9s †          |
@@ -112,10 +111,10 @@ estimates.
 | JoyCaption        | —                 | —          | ~2.2s ¶          |
 
 Values marked ‡ are warm per-item timings at `batch=4` on the RTX 6000 Ada,
-enabled by TASK-74 (Flux2Dev and GLMImage became truly batch-capable —
+enabled by TASK-74 (Flux2Dev became truly batch-capable —
 `_T2I_BATCH_CAPABLE`/`_T2I_MAX_BATCH` in `priv/python/panic_models.py`). Before
-that these two ran serially even inside `invoke_t2i_batch`. Benchmark and
-quality gate: `mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
+that it ran serially even inside `invoke_t2i_batch`. Benchmark and quality gate:
+`mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
 
 The Flux2Dev row is measured at its current 12 steps (TASK-83); § is the only
 cell scaled rather than measured. ¶ marks seconds per caption at natural length

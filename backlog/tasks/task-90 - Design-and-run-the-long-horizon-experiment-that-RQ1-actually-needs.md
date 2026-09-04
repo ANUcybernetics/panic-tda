@@ -4,7 +4,7 @@ title: Design and run the uniform 250-300 step factorial that both RQs need
 status: To Do
 assignee: []
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-04 02:26'
+updated_date: '2026-09-04 07:41'
 labels:
   - experiment
   - paper
@@ -35,3 +35,11 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 - [ ] #4 Config committed as a versioned file and a short pilot at the chosen horizon on one fast network confirms per-step cost and that nothing degrades over the trajectory
 - [ ] #5 Run launched detached with a resumable config, and the expected completion date recorded
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+COST REVISED 2026-09-04. The panel is 4x5, not 5x5 --- GLMImage was removed (TASK-94). Same per-item model with it dropped: 250 steps at 4 runs/prompt is 48 GPU-days, 300 steps is 58, 300 steps at 2 runs/prompt is 29. Flux2Dev is now 78% of text-to-image time. The figures in the description above are the superseded 5x5 ones.
+
+Three gates now sit in front of this run, all found 2026-09-04 while validating TASK-89's premise, and none of them can be applied to a run after the fact: TASK-92 (three of five captioners decode stochastically), TASK-93 (no text-to-image seed is recorded anywhere), TASK-94 (GLMImage removed).
+<!-- SECTION:NOTES:END -->

@@ -27,7 +27,6 @@ EMBEDDING_DIM = 256
 _T2I_IMAGE_SIZES: dict[str, int] = {
     "SD35Medium": 1024,
     "Flux2Dev": 1024,
-    "GLMImage": 1024,
     "ZImageTurbo": 1024,
     "Flux2Klein": 1024,
 }
@@ -40,7 +39,6 @@ _REVISIONS: dict[str, str] = {
     "Tongyi-MAI/Z-Image-Turbo": "f332072aa78be7aecdf3ee76d5c247082da564a6",
     "black-forest-labs/FLUX.2-klein-9B": "92196c8e11f7b6cf2b7493e037d8c5345c559216",
     "black-forest-labs/FLUX.2-dev": "26afe3a78bb242c0a8bb181dcc8937bb16e5c66c",
-    "zai-org/GLM-Image": "2c433cc0cbc293bde2ac8ca9624f279b5d23fcf4",
     "Qwen/Qwen2.5-VL-7B-Instruct": "cc594898137f460bfe9f0759e9844b3ce807cfb5",
     "Qwen/Qwen3-Embedding-4B": "5cf2132abc99cad020ac570b19d031efec650f2b",
     # TASK-87 lineup
@@ -181,27 +179,6 @@ def setup() -> None:
 
         diffusers.logging.set_verbosity_error()
 
-        from diffusers.pipelines.glm_image.pipeline_glm_image import GlmImagePipeline
-
-        _orig_generate_prior = GlmImagePipeline.generate_prior_tokens
-
-        _GLM_PRIOR_MAX_RETRIES = 5
-
-        def _retrying_generate_prior_tokens(self, *args, **kwargs):
-            for attempt in range(_GLM_PRIOR_MAX_RETRIES):
-                try:
-                    return _orig_generate_prior(self, *args, **kwargs)
-                except RuntimeError as e:
-                    if "invalid for input of size" not in str(e):
-                        raise
-                    if attempt == _GLM_PRIOR_MAX_RETRIES - 1:
-                        raise
-                    print(
-                        f"[panic_models] GLM prior token count mismatch "
-                        f"(attempt {attempt + 1}), regenerating"
-                    )
-
-        GlmImagePipeline.generate_prior_tokens = _retrying_generate_prior_tokens
     except Exception:
         pass
 
@@ -363,14 +340,6 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "offload": "sequential_cpu_offload",
         "offload_only": True,
         "extra_kwargs": {"torch_dtype": "bfloat16", "token": True},
-    },
-    "GLMImage": {
-        "pipeline_cls": "GlmImagePipeline",
-        "repo": "zai-org/GLM-Image",
-        "offload": "model_cpu_offload",
-        "offload_only": True,
-        "quantize": True,
-        "extra_kwargs": {"torch_dtype": "bfloat16"},
     },
     "ZImageTurbo": {
         "pipeline_cls": "ZImagePipeline",
@@ -653,19 +622,12 @@ def unload_all_models() -> None:
 # ---------------------------------------------------------------------------
 
 # max_sequence_length is set explicitly on every pipeline: it is a fixed
-# experiment parameter, not a knob. On the four models whose text encoder reads
-# the caption it sets the conditioning tensor's padding length, which perturbs
-# generation even for identical text (TASK-89), and diffusers would otherwise
-# give SD35Medium 256 and the rest 512, so all four are pinned to 512 ---
-# SD35Medium's architectural cap and the ceiling decision-01 assumes. CLIP's 77
-# tokens are separate and architectural.
-#
-# GLMImage is not the same parameter and keeps its upstream 2048. Its caption
-# goes to a vision-language encoder with no ceiling at all; max_sequence_length
-# caps only the ByT5 glyph branch, which receives the quoted substrings GLM
-# renders as text inside the image, and truncates without padding. Matching the
-# number to the others would buy no uniformity and could silently cut a long
-# glyph fragment (TASK-94).
+# experiment parameter, not a knob. It sets the conditioning tensor's padding
+# length, which perturbs generation even for identical text (TASK-89), and
+# diffusers would otherwise give SD35Medium 256 and the rest 512, so all four
+# are pinned to 512 --- SD35Medium's architectural cap and the ceiling
+# decision-01 assumes. CLIP's 77 tokens are separate and architectural.
+
 _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
     "SD35Medium": {
         "num_inference_steps": 20,
@@ -680,11 +642,6 @@ _T2I_INVOKE_CONFIGS: dict[str, dict[str, Any]] = {
         "num_inference_steps": 12,
         "guidance_scale": 3.5,
         "max_sequence_length": 512,
-    },
-    "GLMImage": {
-        "num_inference_steps": 25,
-        "guidance_scale": 7.5,
-        "max_sequence_length": 2048,
     },
     "ZImageTurbo": {
         "num_inference_steps": 8,
@@ -703,7 +660,6 @@ _T2I_BATCH_CAPABLE: set[str] = {
     "ZImageTurbo",
     "Flux2Klein",
     "Flux2Dev",
-    "GLMImage",
 }
 _I2T_BATCH_CAPABLE: set[str] = {"JoyCaption"}
 
@@ -711,14 +667,12 @@ _I2T_BATCH_CAPABLE: set[str] = {"JoyCaption"}
 _T2I_MAX_RETRIES = 3
 # Batch caps tuned on the RTX 6000 Ada (48 GB). Probed at 4/8/16 in TASK-78:
 # Flux2Dev is flat from 4 to 16 (57.7 / 58.4 / 57.8 s/item), so it is already
-# compute-saturated and stays at 4. GLMImage gains 7.3% at 8 (45.8 -> 42.4)
-# and OOMs at 16, so 8 is its knee.
+# compute-saturated and stays at 4.
 _T2I_MAX_BATCH: dict[str, int] = {
     "SD35Medium": 4,
     "ZImageTurbo": 4,
     "Flux2Klein": 2,
     "Flux2Dev": 4,
-    "GLMImage": 8,
 }
 
 

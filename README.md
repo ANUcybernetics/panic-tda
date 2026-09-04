@@ -89,7 +89,7 @@ mise exec -- mix experiment.resume abc123
 
 | Type            | Models                                                                      |
 | --------------- | --------------------------------------------------------------------------- |
-| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`, `GLMImage`           |
+| text-to-image   | `SD35Medium`, `Flux2Klein`, `Flux2Dev`, `ZImageTurbo`                       |
 | image-to-text   | `Moondream3`, `Qwen25VL`, `Qwen3VL`, `Gemma4`, `JoyCaption`                 |
 | text embedding  | `Qwen3Embed`                                                                |
 | dummy (testing) | `DummyT2I`, `DummyI2T`, `DummyT2I2`, `DummyI2T2`, `DummyText`, `DummyText2` |
@@ -105,7 +105,6 @@ Times include model loading/swapping overhead.
 | SD35Medium        | ~9s    | ~3s                    |
 | ZImageTurbo       | ~8s    | ~6s                    |
 | Flux2Klein        | ~20s   | ~7s                    |
-| GLMImage          | ~44s   | ~28s                   |
 | Flux2Dev          | ~100s  | ~75s                   |
 | **Image-to-text** |        |                        |
 | Moondream3        | —      | ~2.4s                  |

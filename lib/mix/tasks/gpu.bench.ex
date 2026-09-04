@@ -9,7 +9,7 @@ defmodule Mix.Tasks.Gpu.Bench do
   batched output and the seed-matched serial reference (the deterministic
   quality-parity metric).
 
-      $ mix gpu.bench Flux2Dev GLMImage --batch-sizes 1,2,4,8 --n 8
+      $ mix gpu.bench Flux2Dev Flux2Klein --batch-sizes 1,2,4,8 --n 8
 
   Options:
 
@@ -18,12 +18,12 @@ defmodule Mix.Tasks.Gpu.Bench do
     - `--seed` base seed; item i uses `seed + i` (default 424242)
 
   With no model arguments, benchmarks the full panel T2I set
-  (SD35Medium, ZImageTurbo, Flux2Klein, GLMImage, Flux2Dev).
+  (SD35Medium, ZImageTurbo, Flux2Klein, Flux2Dev).
   """
 
   use Mix.Task
 
-  @default_models ["SD35Medium", "ZImageTurbo", "Flux2Klein", "GLMImage", "Flux2Dev"]
+  @default_models ["SD35Medium", "ZImageTurbo", "Flux2Klein", "Flux2Dev"]
   @default_batch_sizes [1, 2, 4, 8]
   @default_n 8
   @default_seed 424_242

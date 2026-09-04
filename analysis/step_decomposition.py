@@ -57,7 +57,7 @@ HERE = pathlib.Path(__file__).parent
 IMGDIR = HERE / "step_decomposition"
 OUT = HERE / "step_decomposition.json"
 CAPTIONS_CKPT = IMGDIR / "captions.json"
-T2I_MODELS = ["Flux2Klein", "ZImageTurbo", "SD35Medium", "GLMImage", "Flux2Dev"]
+T2I_MODELS = ["Flux2Klein", "ZImageTurbo", "SD35Medium", "Flux2Dev"]
 N_SEEDS = 16
 SEED_BASE = 890_000
 
@@ -72,38 +72,27 @@ def img_path(model: str, k: int, seed: int) -> pathlib.Path:
 
 
 def token_check(model: str, captions: list[str]) -> dict:
-    """How close do these captions run to the model's conditioning ceiling?
+    """How close do these captions run to the 512-token conditioning ceiling?
 
-    GLMImage is a different question from the other four: its caption goes to a
-    vision-language encoder with no ceiling, and its ByT5 tokenizer sees only the
-    quoted substrings GLM renders as text in the image. Measuring the whole
-    caption through that tokenizer would report a truncation that never happens.
+    Diagnostic only, so it never raises: some pipelines expose a multimodal
+    processor where a plain tokenizer is expected, and a metadata probe must not
+    take a multi-hour run down with it.
     """
-    pipe = pm._models[model]
-    if model == "GLMImage":
-        frags = [f for c in captions for f in pipe.get_glyph_texts(c)[0]]
-        n = [
-            len(pipe.tokenizer(f, padding=False, truncation=False).input_ids)
-            for f in frags
-        ]
+    try:
+        pipe = pm._models[model]
+        tok = getattr(pipe, "tokenizer_3", None) or getattr(pipe, "tokenizer", None)
+        tok = getattr(tok, "tokenizer", tok)  # unwrap a processor
+        if tok is None:
+            return {"tokenizer": None}
+        n = [len(tok(c, padding=False, truncation=False).input_ids) for c in captions]
         return {
-            "branch": "glyph (ByT5); the caption itself is encoded uncapped",
-            "captions_with_glyph_text": sum(
-                bool(pipe.get_glyph_texts(c)[0]) for c in captions
-            ),
-            "glyph_tokens_min_max": [min(n), max(n)] if n else None,
-            "ceiling": pm._T2I_INVOKE_CONFIGS[model]["max_sequence_length"],
+            "branch": "caption",
+            "tokenizer": type(tok).__name__,
+            "tokens_min_max": [min(n), max(n)],
+            "over_512": sum(t > 512 for t in n),
         }
-    tok = getattr(pipe, "tokenizer_3", None) or getattr(pipe, "tokenizer", None)
-    if tok is None:
-        return {"tokenizer": None}
-    n = [len(tok(c, padding=False, truncation=False).input_ids) for c in captions]
-    return {
-        "branch": "caption",
-        "tokenizer": type(tok).__name__,
-        "tokens_min_max": [min(n), max(n)],
-        "over_512": sum(t > 512 for t in n),
-    }
+    except Exception as e:  # noqa: BLE001 --- metadata, not the measurement
+        return {"error": f"{type(e).__name__}: {e}"[:200]}
 
 
 def generate(captions: list[str]) -> dict:

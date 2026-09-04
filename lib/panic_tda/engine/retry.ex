@@ -2,10 +2,10 @@ defmodule PanicTda.Engine.Retry do
   @moduledoc """
   Bounded retry around a single model-invocation step.
 
-  A stochastic CUDA fault — GLM-Image's AR prior sampling an out-of-range
-  token id, roughly one batched call in a few thousand — used to kill a
-  multi-week experiment outright, because the Snex error propagated all the
-  way out of the mix task and the GPU then idled until someone noticed.
+  A stochastic CUDA fault — a model's autoregressive prior sampling an
+  out-of-range token id, roughly one batched call in a few thousand — used to
+  kill a multi-week experiment outright, because the Snex error propagated all
+  the way out of the mix task and the GPU then idled until someone noticed.
   Retrying the step is enough to survive it: the failed step wrote nothing, so
   the run picks up exactly where it was, with fresh noise.
 
@@ -31,7 +31,7 @@ defmodule PanicTda.Engine.Retry do
 
   `fun` takes an env and returns `{:ok, result}` or `{:error, reason}`; raised
   exceptions and exits (a Snex call timing out, say) are treated as failures
-  too. `label` identifies the step in the logs, e.g. `"GLMImage step 24"`.
+  too. `label` identifies the step in the logs, e.g. `"Flux2Dev step 24"`.
 
   Returns `{:ok, result}`, or `{:error, reason}` once the attempts are spent.
   """

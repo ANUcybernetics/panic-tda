@@ -120,15 +120,18 @@ is **one uniform factorial at 250--300 steps**, not a few very long runs.
 Measured per-item times (the model predicts 14.9 days for the panel that
 actually took ~17):
 
-| scenario                                         | GPU-days |
-| ------------------------------------------------ | -------- |
-| current panel: 5x5, 20 prompts, 4 runs, 50 steps | 14.9     |
-| 250 steps, full 5x5, 20 prompts, 4 runs          | 74       |
-| 300 steps, full 5x5, 20 prompts, 4 runs          | 89       |
-| 300 steps, full 5x5, 20 prompts, 2 runs          | 45       |
+| scenario                                | GPU-days |
+| --------------------------------------- | -------- |
+| a 50-step 4x5 panel, 20 prompts, 4 runs | 9.8      |
+| 250 steps, full 4x5, 20 prompts, 4 runs | 48       |
+| 300 steps, full 4x5, 20 prompts, 4 runs | 58       |
+| 300 steps, full 4x5, 20 prompts, 2 runs | 29       |
 
-Flux2Dev and GLMImage are 86% of all text-to-image time. Runs per prompt is the
-cheaper lever than horizon once past the plateau, and TASK-90 settles the count.
+The panel is 4x5, not 5x5: GLMImage was removed (TASK-94). Dropping it takes the
+300-step four-run design from 89 GPU-days to 58, which is what makes the horizon
+affordable at all. Flux2Dev is now 78% of all text-to-image time. Runs per
+prompt is the cheaper lever than horizon once past the plateau, and TASK-90
+settles the count.
 
 ## What each open task is for
 
@@ -143,6 +146,7 @@ cheaper lever than horizon once past the plateau, and TASK-90 settles the count.
 | TASK-88 new model candidates      | instrument            | nothing yet; deferrable until the lineup is in question      |
 | TASK-92 captioner decoding        | **gate**              | whether the chain has one noise source or two                |
 | TASK-93 seed recording            | **gate**              | attributable within-condition variation; RQ2 rests on it     |
+| TASK-94 GLMImage removed          | closed                | why the panel is 4x5                                         |
 
 Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
 comes first because it decides how much of each step is deterministic drift and

@@ -49,7 +49,6 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "real Embedding models" do
-
   end
 
   describe "end-to-end pipeline with real models" do
@@ -109,7 +108,7 @@ defmodule PanicTda.RealModelsTest do
   end
 
   describe "per-model T2I tests" do
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev GLMImage) do
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev) do
       @tag timeout: 600_000
       test "#{t2i} single invoke", %{env: env} do
         t2i = unquote(t2i)
@@ -219,7 +218,7 @@ defmodule PanicTda.RealModelsTest do
 
     # the balanced_panel_5x5_v2 lineup: the combinations we will actually run.
     # Captioners outside it are covered by the per-model tests above.
-    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev GLMImage),
+    for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev),
         i2t <- ~w(Moondream3 Qwen25VL Qwen3VL Gemma4 JoyCaption) do
       @tag timeout: 900_000
       test "pipeline: #{t2i} + #{i2t} with all text embedding models", %{env: env} do
@@ -256,6 +255,5 @@ defmodule PanicTda.RealModelsTest do
         assert length(pds) == length(@real_text_embedding_models)
       end
     end
-
   end
 end

@@ -35,10 +35,10 @@ defmodule PanicTda.RetryTest do
 
       log =
         capture_log(fn ->
-          assert {:ok, "image 2"} = Retry.with_retry("GLMImage step 24", session, fun)
+          assert {:ok, "image 2"} = Retry.with_retry("Flux2Dev step 24", session, fun)
         end)
 
-      assert log =~ "GLMImage step 24: attempt 1 of 3 failed"
+      assert log =~ "Flux2Dev step 24: attempt 1 of 3 failed"
       assert log =~ "cuda_device_side_assert"
       assert log =~ "succeeded on attempt 2"
     end
@@ -97,7 +97,7 @@ defmodule PanicTda.RetryTest do
     # The whole retry design rests on the claim that a device-side assert
     # poisons the process's CUDA context, so that only a fresh interpreter can
     # recover. These tests establish that rather than assuming it. An
-    # out-of-range embedding lookup is the same failure class as the GLM-Image
+    # out-of-range embedding lookup is the same failure class as the device-side
     # prior sampling an out-of-range token id, which is what motivated TASK-79.
     @poison """
     import torch
@@ -157,7 +157,7 @@ defmodule PanicTda.RetryTest do
 
       log =
         capture_log(fn ->
-          assert {:ok, 4.0} = Retry.with_retry("GLMImage step 24", session, fun)
+          assert {:ok, 4.0} = Retry.with_retry("Flux2Dev step 24", session, fun)
         end)
 
       assert log =~ "restarted the Python interpreter"
