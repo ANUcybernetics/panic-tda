@@ -14,16 +14,27 @@ frozen, so the loop is a fixed map and this is an *inference-time* dynamical
 system --- explicitly not training-time model collapse, which is a different
 mechanism with superficially similar phenomenology.
 
+The text-to-image step is stochastic (a fresh diffusion seed per invocation)
+and the captioner is greedy, so the loop is a **Markov chain on captions**, not
+a deterministic map. That fixes the vocabulary: the long-run objects are a
+stationary distribution, metastable regions of it, and the escape times between
+them. "Fixed point" is the wrong word for this system and is not used.
+
 Two research questions, from the paper skeleton:
 
-- **RQ1, kinetics.** At long horizons, do these loops reach fixed points,
-  metastable states, or cycles? Hintze et al. (Patterns 2025) report
-  convergence, but define attractors by k-means on *endpoint* embeddings at
-  t=100 --- which assumes convergence rather than demonstrating it. The gap is
-  the horizon.
+- **RQ1, kinetics.** Does the chain reach a stationary regime, how many
+  metastable regions does it have per network, and what are the escape times
+  between them? Hintze et al. (Patterns 2025) report convergence, but define
+  attractors by k-means on *endpoint* embeddings at t=100 --- which assumes
+  convergence rather than demonstrating it. The gap is a trajectory-based
+  definition validated over a horizon long enough to resolve the slow
+  timescales.
 - **RQ2, attribution.** They find the captioner explains 13.6% of drift
-  variance against the generator's 0.2%. Does that replicate at current model
-  scale? Our own SMC-era results are in tension with it.
+  variance against the generator's 0.2%. Does that hold in a current-generation
+  panel? With five levels per factor the answer describes this panel rather
+  than the model class, and step-to-step drift is the response variable most
+  contaminated by generator sampling noise (TASK-89), so the decomposition is
+  reported with both caveats and alongside stationary-regime responses.
 
 ## Where the science is written
 
@@ -34,51 +45,68 @@ instrument and the data; the paper follows the repo, not the other way round.
 
 The superseded SMC 2025 version is `typst/semantic-topologies-2025`.
 
-## The gap at the centre
+## What the existing data already says
 
-The paper's first stated contribution is 1000-iteration trajectories, and RQ1
-is framed as answering the prior work "at 10x the horizon".
+`analysis/long_horizon_baseline.py` reads the four 200-step experiments from
+February and March (old lineup, truncated captions, Moondream in `short` mode;
+design evidence, not paper data). Two results shape everything below.
 
-**The longest trajectory in the database is 200 steps. The panel configs are
-50.** The headline dataset does not exist yet, and until 2026-09-04 nothing in
-the backlog represented building it. That is TASK-90.
+**Exact caption repetition is not absorption.** Runs whose caption repeats on
+consecutive steps leave that string immediately: afterwards about 2% of steps
+sit at it, no run ever stays, and around fifty distinct strings follow.
+Repetition tracks caption length and nothing else --- 38 of 40 runs for a
+23-word captioner, 0 of 32 for a 100-word one. Under random seeds a repeat is a
+coincidence of a low-entropy captioner, and decision-01 makes every captioner
+three to seven times more verbose, so the "clustering-free ground-truth layer"
+the skeleton once proposed would be empty in new data. Repetition is a
+descriptive statistic, not a state definition.
 
-It is not a matter of just setting `max_length` higher. Measured per-item
-times give:
+**Step size and drift plateau by step 100--150.** Median step-to-step distance
+falls from roughly 0.015--0.03 to 0.009--0.02 and stays there; distance from
+the initial caption stops growing in the same window. That is a stationary
+stochastic regime with a persistent, nonzero step size --- consistent with
+Hintze et al., and the reason the horizon question is about slow timescales,
+not about waiting for motion to stop.
 
-| scenario | GPU-days |
-|---|---|
-| current panel: 5x5, 20 prompts, 4 runs, 50 steps | 14.9 |
-| the same at 1000 steps | **298** |
-| 1000 steps, 5 prompts, 2 runs | 37 |
-| 250 steps, full 5x5 | 74 |
-| 1000 steps, fast T2I only (3x5), 5 prompts, 4 runs | 13.8 |
+## The horizon
 
-(The model predicts 14.9 days for the panel that actually took ~17, so it is
-about right.)
+The paper does not claim a fixed 1000-iteration horizon. The horizon is chosen
+so that the Markov state model's implied timescales converge with lag time,
+which is the validation the model needs anyway; a cell whose slowest timescale
+does not converge within the trajectory length is reported as unresolved. Many
+independent trajectories past burn-in are the standard MSM input, so the design
+is **one uniform factorial at 250--300 steps**, not a few very long runs.
 
-**Flux2Dev and GLMImage account for 86% of all text-to-image time.** Dropping
-them buys roughly seven times the horizon for the same budget. So the full
-model factorial and the long horizon are mutually exclusive at any sane cost
---- which is precisely the RQ1/RQ2 tension, since RQ2 wants the factorial and
-RQ1 wants the horizon. Resolving it is a design decision, not an optimisation.
+Measured per-item times (the model predicts 14.9 days for the panel that
+actually took ~17):
+
+| scenario                                        | GPU-days |
+| ----------------------------------------------- | -------- |
+| current panel: 5x5, 20 prompts, 4 runs, 50 steps | 14.9     |
+| 250 steps, full 5x5, 20 prompts, 4 runs          | 74       |
+| 300 steps, full 5x5, 20 prompts, 4 runs          | 89       |
+| 300 steps, full 5x5, 20 prompts, 2 runs          | 45       |
+
+Flux2Dev and GLMImage are 86% of all text-to-image time. Runs per prompt is
+the cheaper lever than horizon once past the plateau, and TASK-90 settles the
+count.
 
 ## What each open task is for
 
-| task | kind | serves |
-|---|---|---|
-| TASK-90 | **the experiment** | the dataset both RQs need |
-| TASK-89 sampling noise floor | **null model** | paper's Null models section; bears directly on RQ2 |
-| TASK-75 outliers as sparse space | **gate** | decides whether "time in transit" is a real observable |
-| TASK-76 core-set MSM | **primary formalism** | Results I, the headline kinetic result |
-| TASK-77 TDA keep/kill | **gate** | Results III, which exists only if this passes |
-| TASK-88 new model candidates | instrument | nothing yet; deferrable until the lineup is in question again |
+| task                                | kind                  | serves                                                    |
+| ----------------------------------- | --------------------- | --------------------------------------------------------- |
+| TASK-90                             | **the experiment**    | the dataset both RQs need                                 |
+| TASK-89 drift/noise decomposition   | **null model**        | paper's Null models section; bears directly on RQ2        |
+| TASK-75 outliers as sparse space    | **gate**              | decides whether "time in transit" is a real observable    |
+| TASK-76 core-set MSM                | **primary formalism** | Results I, the headline kinetic result                    |
+| TASK-77 TDA keep/kill               | **gate**              | Results III, which exists only if this passes             |
+| TASK-88 new model candidates        | instrument            | nothing yet; deferrable until the lineup is in question   |
 
-Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. The noise
-floor comes first because it decides whether the transitions the Markov model
-would fit are signal at all. TASK-89 is not a curiosity: it is the
-i.i.d.-resampling surrogate the paper's Null models section already
-pre-specifies.
+Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
+comes first because it decides how much of each step is deterministic drift
+and how much is generator sampling noise: if the stationary step size is
+mostly noise, metastable-region identity is the whole kinetic result and the
+transitions the Markov model fits must be shown to exceed the noise.
 
 ## What is instrument, and why it took so long
 
@@ -105,9 +133,14 @@ long-horizon run rather than an achievement in itself.
 
 ## Standing constraints
 
+- **Seeds are random and recorded.** Every text-to-image invocation draws its
+  own seed and stores it, so within-condition variation is attributable and any
+  step can be regenerated. Fixing the seed would turn the chain into one seed's
+  deterministic map and change what RQ1 means.
 - **Recluster once, at the end.** `mix cluster.recompute` is destructive and
   global: it relabels every experiment. Collect all data, cluster once, then
-  make every cluster-dependent figure from that clustering.
+  make every cluster-dependent figure from that clustering. Any interim check
+  uses clustering-free observables (step size, drift from origin, repetition).
 - **`max_sequence_length` is not a neutral knob.** It sets padding length and
   perturbs generation even with identical text, so fix it before a run.
 - **512 tokens is the binding caption constraint**, not generation length ---

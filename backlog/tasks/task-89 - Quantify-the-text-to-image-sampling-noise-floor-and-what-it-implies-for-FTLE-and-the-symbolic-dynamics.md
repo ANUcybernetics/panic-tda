@@ -1,12 +1,10 @@
 ---
 id: TASK-89
-title: >-
-  Quantify the text-to-image sampling noise floor, and what it implies for the
-  symbolic dynamics
+title: Decompose each loop step into deterministic drift and generator sampling noise
 status: To Do
 assignee: []
 created_date: '2026-09-03 23:29'
-updated_date: '2026-09-04 01:01'
+updated_date: '2026-09-04 02:26'
 labels:
   - analysis
   - paper
@@ -20,29 +18,27 @@ priority: high
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Found 2026-09-04 while measuring what the 512-token encoder ceiling costs (analysis/prompt_tail.py, backlog/docs/caption-length-by-i2t-model.md).
 
-THE OBSERVATION. With an IDENTICAL, untruncated prompt at a FIXED seed, changing Flux2Klein's max_sequence_length from 512 to 1024 --- which alters only the padding of the conditioning tensor and carries no semantic information whatsoever --- moved the caption-space cosine between the two images to 0.896-0.988, mean 0.943. On the measured scale for that metric (1.000 for identical images, 0.876 for images of unrelated prompts), a zero-information perturbation produced images nearly as different as unrelated ones.
+THE OBSERVATION. With an IDENTICAL, untruncated prompt at a FIXED seed, changing Flux2Klein's max_sequence_length from 512 to 1024 --- which alters only the padding of the conditioning tensor and carries no semantic information --- moved the caption-space cosine between the two images to 0.896-0.988, mean 0.943. On the measured scale for that metric (1.000 for identical images, 0.876 for images of unrelated prompts), a zero-information perturbation produced images nearly as different as unrelated ones.
 
-WHY IT MATTERS. The whole project measures how information flows through a recursive loop, and several headline quantities are differences in caption-embedding space. If a single text-to-image sampling step injects variation of that magnitude regardless of caption content, then we need a noise floor before any of those differences can be interpreted:
+WHY IT MATTERS. The loop is a Markov chain on captions (random seed per text-to-image step, greedy captioner), and the 200-step baseline (analysis/long_horizon_baseline.py) shows it settles into a stationary regime with a persistent step-to-step distance of about 0.01-0.02. The question is what that step is made of. If it is mostly generator sampling noise, then the core-set Markov state model (TASK-76) must show its transitions exceed the noise, metastable-region identity becomes the whole kinetic result, and TASK-85's 28% step-size reduction is a statement about noise as a function of caption length rather than about semantics. RQ2's variance decomposition uses step-to-step drift as its response and inherits the same caveat. Establishing the decomposition first is what makes those claims defensible.
 
-- The pilot's central result. Complete captions gave 28% lower step-to-step distance than truncated ones (TASK-85). If sampling noise dominates the step, that finding is about how much noise the text-to-image step injects as a function of caption length, not about semantic dynamics --- a materially different claim for the paper.
-- Symbolic dynamics (TASK-76), which is now the PRIMARY formalism. A core-set Markov state model over cluster labels is modelling transitions between semantic regions; if a large share of each transition is text-to-image resampling noise rather than semantic movement, the model is fitting noise, and the metastability and time-in-transit claims that follow from it inherit that. Establishing the floor first is what makes those claims defensible.
+WHAT NOT TO COMPARE. Consecutive trajectory states differ by ONE draw of generator noise; two resamples of the same caption differ by TWO independent draws, so their distance is expected to be roughly double even with no dynamics at all. The earlier 'paradox' (consecutive cosine ~0.985 versus resample cosine ~0.943) compared these unlike quantities, and the 0.943 came from a padding perturbation rather than a seed change. The measurement below compares like with like.
 
-(FTLE is deliberately absent from the above: it is being dropped, see TASK-73. This task is not an argument for keeping it. The one incidental contribution is that the pilot's weak fits corroborate TASK-73's case, noted there.)
+THE MEASUREMENT. Per text-to-image model, take a fixed set of captions spanning the panel's length range. For each caption c, generate N images at N recorded seeds and caption each with one captioner, giving N next-captions. Embed everything. Then:
+- drift: the displacement from c to the centroid of the N next-captions
+- noise: the spread of the N next-captions around their centroid
+- step: the mean distance from c to each next-caption, which is the quantity the trajectories measure
+Report all three per model in the same units, and the noise/step share. Compare the step against the stationary step size in the 200-step baseline and the v2 pilot/panel. Note Flux2Klein runs at four distilled steps and may be the noisiest; the model dependence is itself a result since network identity is a panel factor.
 
-THE APPARENT PARADOX WORTH CHASING. Observed step-to-step cosine within real trajectories is about 0.988 (pilot) and 0.984 (panel) --- i.e. CONSECUTIVE states are more similar than two independent samples from the same caption appear to be (0.943). Either the loop has genuine attractor-like structure that keeps it more stable than naive resampling would suggest, which is a positive and publishable finding, or the two measurements are not comparable (different models, six captions, one four-step distilled model). Resolving that is the point of this task.
-
-PROPOSED MEASUREMENT. (1) Per text-to-image model, take a fixed set of captions and generate N images each at N different seeds; caption them all with one captioner and compute the pairwise cosine distribution. That is the per-step sampling noise floor, per model. (2) Compare it against the observed step-to-step distances in the pilot and panel trajectories. (3) Report the ratio: what share of observed trajectory movement is attributable to sampling noise. Note Flux2Klein runs at four distilled steps and may be the noisiest of the five --- the floor is likely model-dependent, and that dependence is itself a result, since network identity is a panel factor.
-
-Cheap to run: no new models, no new experiments, and analysis/step_sweep.py already contains the generate-caption-embed-compare machinery.
+Cheap to run: no new models, no new experiments; analysis/step_sweep.py already contains the generate-caption-embed-compare machinery and the seeded generation helper exists in panic_models.py.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Per-model sampling noise floor measured: distribution of pairwise caption-space cosine over N seeds from a fixed caption set, for all five panel text-to-image models
-- [ ] #2 Noise floor compared against observed step-to-step distances in the pilot (01a060b4) and panel (019f3645), with the share of trajectory movement attributable to sampling stated
-- [ ] #3 The apparent paradox resolved: whether consecutive trajectory states really are more stable than independent resampling, or the two measurements are not comparable
-- [ ] #4 Implications written up for TASK-85's step-size result and for the core-set MSM in TASK-76
-- [ ] #5 max_sequence_length recorded as a fixed experiment parameter that perturbs generation independently of content, so it is never varied mid-programme
+- [ ] #1 Per text-to-image model: drift, noise and step measured on a fixed caption set over N recorded seeds, all in caption-embedding cosine distance, with the noise share of the step stated
+- [ ] #2 Step compared like-for-like against the stationary step size in the 200-step baseline and the v2 pilot/panel, and the share of stationary movement attributable to sampling stated
+- [ ] #3 Implications written up for TASK-85's step-size result, for RQ2's response variable, and for what the core-set MSM in TASK-76 must demonstrate about its transitions
+- [ ] #4 max_sequence_length recorded as a fixed experiment parameter that perturbs generation independently of content, so it is never varied mid-programme
 <!-- AC:END -->
 
 ## Implementation Notes

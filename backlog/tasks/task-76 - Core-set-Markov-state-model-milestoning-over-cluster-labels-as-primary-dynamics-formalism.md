@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:50'
-updated_date: '2026-09-04 01:01'
+updated_date: '2026-09-04 02:26'
 labels:
   - analysis
   - paper
@@ -23,10 +23,11 @@ Adopt symbolic dynamics as the primary formalism for trajectory analysis, replac
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Exact-caption fixed-point detection implemented (string equality), yielding per-run absorption status and time-to-absorption without any clustering dependency
-- [ ] #2 Core-set state assignment with milestoning produces a total symbol sequence for every run (no unassigned timesteps)
-- [ ] #3 Per-network kinetic observables computed: dwell-time distributions (with exponential vs heavy-tailed characterisation), transition graphs, absorption times, and time-in-transit vs time-in-state balance
-- [ ] #4 Clustering used for states is frozen on a defined corpus (not the growing global pool) and its assignments shown stable under subsampling
+- [ ] #1 Core-set state assignment with milestoning produces a total symbol sequence for every run (no unassigned timesteps)
+- [ ] #2 Per-network kinetic observables computed: dwell-time distributions (with exponential vs heavy-tailed characterisation), transition graphs, absorption times, and time-in-transit vs time-in-state balance
+- [ ] #3 Clustering used for states is frozen on a defined corpus (not the growing global pool) and its assignments shown stable under subsampling
+- [ ] #4 Implied timescales computed as a function of lag time per network; convergence used to justify the horizon, and any cell whose slowest timescale does not converge within the trajectory length reported as unresolved
+- [ ] #5 Exact caption repetition reported as a descriptive statistic (rate and dependence on caption length), not used as a state or absorption definition
 <!-- AC:END -->
 
 ## Implementation Notes

@@ -1,9 +1,10 @@
 ---
 id: TASK-90
-title: Design and run the long-horizon experiment that RQ1 actually needs
+title: Design and run the uniform 250-300 step factorial that both RQs need
 status: To Do
 assignee: []
 created_date: '2026-09-04 01:00'
+updated_date: '2026-09-04 02:26'
 labels:
   - experiment
   - paper
@@ -15,38 +16,22 @@ priority: high
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-The paper skeleton's first stated contribution is 1000-iteration trajectories, and RQ1 is framed as answering Hintze et al. 'at 10x the horizon' --- their attractors are k-means on ENDPOINT embeddings at t=100, which assumes convergence rather than demonstrating it. The horizon is the gap.
+RQ1 asks whether the loop reaches a stationary regime, how many metastable regions it has, and what the escape times between them are. Hintze et al. define attractors by k-means on ENDPOINT embeddings at t=100, which assumes convergence rather than demonstrating it. The gap is a trajectory-based definition over a horizon that resolves the slow timescales. See backlog/docs/research-programme.md.
 
-The longest trajectory in the database is 200 steps and every panel config is max_length 50, so the headline dataset does not exist. Nothing in the backlog represented building it until now. See backlog/docs/research-programme.md.
+WHAT THE EXISTING DATA SAYS (analysis/long_horizon_baseline.py, four 200-step experiments from Feb/Mar, old lineup, truncated captions, so design evidence only). Step-to-step distance and drift from the initial caption both plateau by step 100-150 to a persistent nonzero level. Exact caption repetition is not absorption: runs leave the repeated string immediately, and repetition tracks caption length (38/40 runs for a 23-word captioner, 0/32 for a 100-word one). So the loop is a Markov chain with a stationary regime, and the horizon question is whether there are metastable regions with escape times longer than the trajectories, not whether motion stops.
 
-THE CONSTRAINT. This is not a matter of raising max_length. Using measured per-item times (the model predicts 14.9 days for the panel that actually took ~17, so it is about right):
+THE DESIGN. One uniform factorial (the v2 5x5 panel), 250-300 steps, 20 prompts, random recorded seed per text-to-image invocation, greedy captioner. Many independent trajectories past burn-in are the standard MSM input. The horizon is justified by implied-timescale convergence with lag time, which TASK-76 needs anyway; cells whose slowest timescale does not converge within the trajectory are reported as unresolved rather than extrapolated. No claim of a fixed 1000-iteration horizon.
 
-| scenario | GPU-days |
-|---|---|
-| current panel: 5x5, 20 prompts, 4 runs, 50 steps | 14.9 |
-| the same at 1000 steps | 298 |
-| 1000 steps, 5 prompts, 2 runs | 37 |
-| 250 steps, full 5x5, 20 prompts, 4 runs | 74 |
-| 1000 steps, fast T2I only (3x5), 20 prompts, 4 runs | 55 |
-| 1000 steps, fast T2I only, 5 prompts, 4 runs | 13.8 |
-| 1000 steps, fast T2I only, 10 prompts, 2 runs | 13.8 |
+COST. Measured per-item times (the model predicted 14.9 days for the panel that took ~17): 250 steps at 4 runs/prompt is 74 GPU-days, 300 steps is 89, 300 steps at 2 runs/prompt is 45. Flux2Dev and GLMImage are 86% of text-to-image time. Runs per prompt is the cheaper lever than horizon once past the plateau.
 
-Flux2Dev and GLMImage are 86% of all text-to-image time (57.7 and 42.4 s/item against 4.1-6.5 for SD35Medium, ZImageTurbo and Flux2Klein). Dropping those two buys roughly seven times the horizon for the same budget.
-
-So the full model factorial and the long horizon are mutually exclusive at any sane cost, and that is exactly the RQ1/RQ2 tension: RQ2's attribution wants the factorial, RQ1's kinetics wants the horizon. The design must choose, and the choice should be made deliberately and stated in the paper rather than falling out of what happened to be affordable.
-
-Options worth costing properly, not an exhaustive list: one long-horizon run on the fast three text-to-image models with fewer prompts, plus the existing or a repeated 50-step 5x5 for RQ2; or a single compromise horizon (250-400) across the full factorial; or a staged design where a cheap wide run identifies which cells are still moving at t=50 and only those go long.
-
-Also settle the DECISION markers in the paper skeleton that gate a new run: per-invocation T2I seeding (recorded, so within-condition variation is attributable and runs reproducible) and captioner sampling policy (greedy, which is current behaviour and gives a deterministic captioner composed with a stochastic generator, versus temperature as a design factor for comparability with Hintze et al.).
-
-Prerequisites already met: the v2 lineup is integrated, pinned and GPU-green (TASK-87); step counts are measured (TASK-83); step-level CUDA retry means a stochastic fault no longer kills a multi-week run (TASK-79). Prerequisite NOT met: TASK-89, the sampling noise floor, should land first --- if a single generation step injects variation comparable to the trajectory movement being measured, the horizon needed to see real kinetics changes.
+PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migration), the seed passed through to the Python invoke path (currently generator=None), and a test that a stored seed regenerates the image. TASK-89 must land first, so the chosen horizon can be checked against the drift/noise decomposition. Already met: v2 lineup pinned and GPU-green (TASK-87), step counts measured (TASK-83), step-level CUDA retry (TASK-79).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Horizon, network set, prompt count and runs-per-condition chosen, with the GPU-day cost stated and the RQ1-versus-RQ2 trade-off explicitly justified in a form that can go into the paper's methods
-- [ ] #2 T2I seeding policy and captioner sampling policy decided and recorded, resolving those DECISION markers in the paper skeleton
-- [ ] #3 Config committed (a versioned file, not an edit to an existing one) and a short pilot run at the chosen horizon on one network to confirm per-step cost and that nothing degrades over a long trajectory
-- [ ] #4 Run launched detached with a resumable config, and the expected completion date recorded
-- [ ] #5 TASK-89 landed first, and its noise floor used to sanity-check that the chosen horizon can resolve the kinetics being claimed
+- [ ] #1 Per-invocation text-to-image seed generated, stored on Invocation and passed to the generator, with a test that a stored seed regenerates the image; captioner stays greedy and both policies are recorded in the paper's methods
+- [ ] #2 TASK-89 landed first, and its noise share used to sanity-check that the stationary step size at the chosen horizon is resolvable
+- [ ] #3 Horizon (250-300), runs per prompt and prompt count chosen, with the GPU-day cost and the implied-timescale justification written in a form that can go into methods
+- [ ] #4 Config committed as a versioned file and a short pilot at the chosen horizon on one fast network confirms per-step cost and that nothing degrades over the trajectory
+- [ ] #5 Run launched detached with a resumable config, and the expected completion date recorded
 <!-- AC:END -->

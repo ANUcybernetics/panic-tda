@@ -1,0 +1,258 @@
+{
+  "repetition": {
+    "[\"Flux2Klein\",\"LLaMA32Vision\"]": {
+      "runs": 32,
+      "runs_with_consecutive_repeat": 0,
+      "mean_first_repeat_step": null,
+      "mean_frac_after_at_string": null,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": null,
+      "mean_caption_words": 102.03125
+    },
+    "[\"QwenImage\",\"LLaMA32Vision\"]": {
+      "runs": 32,
+      "runs_with_consecutive_repeat": 0,
+      "mean_first_repeat_step": null,
+      "mean_frac_after_at_string": null,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": null,
+      "mean_caption_words": 96.321875
+    },
+    "[\"SD35Medium\",\"Moondream\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 26,
+      "mean_first_repeat_step": 84.92307692307692,
+      "mean_frac_after_at_string": 0.013614625084243524,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 50.69230769230769,
+      "mean_caption_words": 24.83575
+    },
+    "[\"SD35Medium\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 4,
+      "mean_first_repeat_step": 94.5,
+      "mean_frac_after_at_string": 0.01271905031091012,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 51.75,
+      "mean_caption_words": 75.40675
+    },
+    "[\"SD35Medium\",\"Pixtral\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 1,
+      "mean_first_repeat_step": 139.0,
+      "mean_frac_after_at_string": 0.0,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 30.0,
+      "mean_caption_words": 92.75075
+    },
+    "[\"Flux2Klein\",\"Moondream\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 38,
+      "mean_first_repeat_step": 58.1578947368421,
+      "mean_frac_after_at_string": 0.02372834801733475,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 52.68421052631579,
+      "mean_caption_words": 23.06825
+    },
+    "[\"Flux2Klein\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 17,
+      "mean_first_repeat_step": 130.05882352941177,
+      "mean_frac_after_at_string": 0.017776953438718143,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 31.647058823529413,
+      "mean_caption_words": 80.2975
+    },
+    "[\"Flux2Klein\",\"Pixtral\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 2,
+      "mean_first_repeat_step": 167.0,
+      "mean_frac_after_at_string": 0.0,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 15.0,
+      "mean_caption_words": 98.2875
+    },
+    "[\"GLMImage\",\"Moondream\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 36,
+      "mean_first_repeat_step": 69.61111111111111,
+      "mean_frac_after_at_string": 0.022065491036739698,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 55.916666666666664,
+      "mean_caption_words": 23.41525
+    },
+    "[\"GLMImage\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 2,
+      "mean_first_repeat_step": 96.0,
+      "mean_frac_after_at_string": 0.0,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 51.0,
+      "mean_caption_words": 91.995
+    },
+    "[\"GLMImage\",\"Pixtral\"]": {
+      "runs": 40,
+      "runs_with_consecutive_repeat": 1,
+      "mean_first_repeat_step": 177.0,
+      "mean_frac_after_at_string": 0.0,
+      "runs_never_leaving": 0,
+      "mean_distinct_strings_after": 11.0,
+      "mean_caption_words": 97.68825
+    }
+  },
+  "plateau": {
+    "[\"Flux2Klein\",\"Moondream\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.03249272704124451,
+        "20-50": 0.02457481622695923,
+        "50-100": 0.016691774129867554,
+        "100-150": 0.012696057558059692,
+        "150-200": 0.010741710662841797
+      },
+      "median_distance_from_first": {
+        "0-20": 0.05240681767463684,
+        "20-50": 0.08076182007789612,
+        "50-100": 0.0975293219089508,
+        "100-150": 0.10733523964881897,
+        "150-200": 0.10676848888397217
+      }
+    },
+    "[\"Flux2Klein\",\"Pixtral\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.011642396450042725,
+        "20-50": 0.010208725929260254,
+        "50-100": 0.009534180164337158,
+        "100-150": 0.00900295376777649,
+        "150-200": 0.008900761604309082
+      },
+      "median_distance_from_first": {
+        "0-20": 0.02617374062538147,
+        "20-50": 0.048382461071014404,
+        "50-100": 0.05895605683326721,
+        "100-150": 0.0697794258594513,
+        "150-200": 0.0790863037109375
+      }
+    },
+    "[\"Flux2Klein\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.014708131551742554,
+        "20-50": 0.011415630578994751,
+        "50-100": 0.009556055068969727,
+        "100-150": 0.008881032466888428,
+        "150-200": 0.008506327867507935
+      },
+      "median_distance_from_first": {
+        "0-20": 0.031701475381851196,
+        "20-50": 0.047696828842163086,
+        "50-100": 0.057302236557006836,
+        "100-150": 0.06216233968734741,
+        "150-200": 0.062096983194351196
+      }
+    },
+    "[\"GLMImage\",\"Moondream\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.030262380838394165,
+        "20-50": 0.02579289674758911,
+        "50-100": 0.021105796098709106,
+        "100-150": 0.019357264041900635,
+        "150-200": 0.019318342208862305
+      },
+      "median_distance_from_first": {
+        "0-20": 0.06068199872970581,
+        "20-50": 0.10548952221870422,
+        "50-100": 0.13770487904548645,
+        "100-150": 0.1490316390991211,
+        "150-200": 0.16061243414878845
+      }
+    },
+    "[\"GLMImage\",\"Pixtral\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.016783982515335083,
+        "20-50": 0.012380927801132202,
+        "50-100": 0.011724770069122314,
+        "100-150": 0.011136233806610107,
+        "150-200": 0.01111900806427002
+      },
+      "median_distance_from_first": {
+        "0-20": 0.0356634259223938,
+        "20-50": 0.062394022941589355,
+        "50-100": 0.07922464609146118,
+        "100-150": 0.08686843514442444,
+        "150-200": 0.09187129139900208
+      }
+    },
+    "[\"GLMImage\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.016462504863739014,
+        "20-50": 0.012797653675079346,
+        "50-100": 0.011309146881103516,
+        "100-150": 0.010674983263015747,
+        "150-200": 0.011141359806060791
+      },
+      "median_distance_from_first": {
+        "0-20": 0.028398960828781128,
+        "20-50": 0.05121418833732605,
+        "50-100": 0.06417649984359741,
+        "100-150": 0.07443457841873169,
+        "150-200": 0.08192071318626404
+      }
+    },
+    "[\"SD35Medium\",\"Moondream\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.031655848026275635,
+        "20-50": 0.01780804991722107,
+        "50-100": 0.014471381902694702,
+        "100-150": 0.013810575008392334,
+        "150-200": 0.014551788568496704
+      },
+      "median_distance_from_first": {
+        "0-20": 0.06544053554534912,
+        "20-50": 0.10336959362030029,
+        "50-100": 0.10751461982727051,
+        "100-150": 0.11033710837364197,
+        "150-200": 0.11023780703544617
+      }
+    },
+    "[\"SD35Medium\",\"Pixtral\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.014758795499801636,
+        "20-50": 0.014272421598434448,
+        "50-100": 0.013119876384735107,
+        "100-150": 0.012093782424926758,
+        "150-200": 0.011891782283782959
+      },
+      "median_distance_from_first": {
+        "0-20": 0.02332073450088501,
+        "20-50": 0.050663650035858154,
+        "50-100": 0.06909382343292236,
+        "100-150": 0.07588788866996765,
+        "150-200": 0.0781814455986023
+      }
+    },
+    "[\"SD35Medium\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "median_step_distance": {
+        "0-20": 0.017539024353027344,
+        "20-50": 0.015596210956573486,
+        "50-100": 0.0126534104347229,
+        "100-150": 0.012007564306259155,
+        "150-200": 0.011586219072341919
+      },
+      "median_distance_from_first": {
+        "0-20": 0.02945736050605774,
+        "20-50": 0.0520232617855072,
+        "50-100": 0.08652558922767639,
+        "100-150": 0.10161387920379639,
+        "150-200": 0.11922416090965271
+      }
+    }
+  }
+}
