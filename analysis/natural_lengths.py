@@ -124,7 +124,9 @@ results["SD35Medium+T5"] = {
     "secs_per_image": secs / len(caps),
     "prompt_words": [len(c.split()) for c in caps],
     "t5_tokens": _t5_tokens,
-    "t5_max_sequence_length": pm._T2I_INVOKE_CONFIGS["SD35Medium"]["max_sequence_length"],
+    "t5_max_sequence_length": pm._T2I_INVOKE_CONFIGS["SD35Medium"][
+        "max_sequence_length"
+    ],
     "t5_truncated": [n for n in _t5_tokens if n > 512],
     "clip_tokens": _clip_tokens,
     "clip_truncated_expected": [n for n in _clip_tokens if n > 77],

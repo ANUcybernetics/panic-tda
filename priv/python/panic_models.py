@@ -547,6 +547,7 @@ _EMBEDDING_LOADERS: dict[str, tuple[str, dict[str, Any]]] = {
     ),
 }
 
+
 def load_model(name: str) -> None:
     """Load a model by name into the _models registry."""
     if name in _T2I_LOADER_CONFIGS:
