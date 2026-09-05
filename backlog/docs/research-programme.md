@@ -145,7 +145,7 @@ settles the count.
 | task                              | kind                  | serves                                                       |
 | --------------------------------- | --------------------- | ------------------------------------------------------------ |
 | TASK-90                           | **the experiment**    | the dataset both RQs need                                    |
-| TASK-89 drift/noise decomposition | **null model**        | paper's Null models section; bears directly on RQ2           |
+| TASK-89 drift/noise decomposition | closed                | the noise floor is most of the step; Null models, and RQ2    |
 | TASK-75 outliers as sparse space  | **gate**              | decides whether "time in transit" is a real observable       |
 | TASK-76 core-set MSM              | **primary formalism** | Results I, the headline kinetic result                       |
 | TASK-77 TDA keep/kill             | **gate**              | Results III, which exists only if this passes                |
@@ -156,10 +156,15 @@ settles the count.
 | TASK-94 GLMImage removed          | closed                | why the panel is 4x5                                         |
 
 Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
-comes first because it decides how much of each step is deterministic drift and
-how much is generator sampling noise: if the stationary step size is mostly
-noise, metastable-region identity is the whole kinetic result and the
-transitions the Markov model fits must be shown to exceed the noise. TASK-92 and
+came first because it decides how much of each step is deterministic drift and
+how much is generator sampling noise, and it has now answered: in the settled
+part of a 200-step run the generator's own sampling accounts for essentially the
+whole step (89--107% of it, matched by generator), falling to 53--62% in the
+50-step arms where the chain is still drifting. So metastable-region identity
+is the kinetic result, and the transitions the Markov model fits must be shown
+to exceed the noise floor. The figures are indicative rather than exact --- the
+noise term travels through a captioner and the lineups do not match --- so
+TASK-90 re-measures the floor from its own trajectories. TASK-92 and
 TASK-93 gated TASK-90 rather than the analysis chain: both change what a
 recorded step means, and neither can be applied to a run after the fact. Both
 are now settled.

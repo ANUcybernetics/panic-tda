@@ -1,0 +1,117 @@
+{
+  "late_bin": "150-200",
+  "ruler": {
+    "unrelated_caption_cosdist_mean": 0.5754118775948882,
+    "unrelated_caption_cosdist_p10_p90": [
+      0.21384578943252563,
+      0.7445940703153611
+    ],
+    "seed_resample_cosdist_mean": 0.07023986795296272
+  },
+  "sweep": {
+    "Flux2Klein": {
+      "mean_step_cosdist": 0.06223895167931914,
+      "mean_drift_cosdist": 0.03304221946746111,
+      "mean_noise_cosdist": 0.031143180156747496,
+      "mean_noise_share": 0.4721677505095165
+    },
+    "ZImageTurbo": {
+      "mean_step_cosdist": 0.06838717497885227,
+      "mean_drift_cosdist": 0.03966201841831207,
+      "mean_noise_cosdist": 0.030640167246262232,
+      "mean_noise_share": 0.4308255947794429
+    },
+    "SD35Medium": {
+      "mean_step_cosdist": 0.0831795847043395,
+      "mean_drift_cosdist": 0.041349736507982016,
+      "mean_noise_cosdist": 0.04461850275595983,
+      "mean_noise_share": 0.5097371046006959
+    },
+    "Flux2Dev": {
+      "mean_step_cosdist": 0.06532701523974538,
+      "mean_drift_cosdist": 0.03337899618782103,
+      "mean_noise_cosdist": 0.034077885746955874,
+      "mean_noise_share": 0.5010785327864407
+    }
+  },
+  "rows": [
+    {
+      "trajectory": "200-step [\"Flux2Klein\",\"Moondream\"]",
+      "generator": "Flux2Klein",
+      "stationary_step": 0.029589295387268066,
+      "sweep_step": 0.06223895167931914,
+      "sweep_noise": 0.031143180156747496,
+      "noise_share_of_stationary_step": 1.0525150987592644
+    },
+    {
+      "trajectory": "200-step [\"Flux2Klein\",\"Pixtral\"]",
+      "generator": "Flux2Klein",
+      "stationary_step": 0.033611834049224854,
+      "sweep_step": 0.06223895167931914,
+      "sweep_noise": 0.031143180156747496,
+      "noise_share_of_stationary_step": 0.9265540259165272
+    },
+    {
+      "trajectory": "200-step [\"Flux2Klein\",\"Qwen25VL\"]",
+      "generator": "Flux2Klein",
+      "stationary_step": 0.03144988417625427,
+      "sweep_step": 0.06223895167931914,
+      "sweep_noise": 0.031143180156747496,
+      "noise_share_of_stationary_step": 0.9902478489972198
+    },
+    {
+      "trajectory": "200-step [\"SD35Medium\",\"Moondream\"]",
+      "generator": "SD35Medium",
+      "stationary_step": 0.0493679940700531,
+      "sweep_step": 0.0831795847043395,
+      "sweep_noise": 0.04461850275595983,
+      "noise_share_of_stationary_step": 0.9037941199848275
+    },
+    {
+      "trajectory": "200-step [\"SD35Medium\",\"Pixtral\"]",
+      "generator": "SD35Medium",
+      "stationary_step": 0.0502547025680542,
+      "sweep_step": 0.0831795847043395,
+      "sweep_noise": 0.04461850275595983,
+      "noise_share_of_stationary_step": 0.887847315294287
+    },
+    {
+      "trajectory": "200-step [\"SD35Medium\",\"Qwen25VL\"]",
+      "generator": "SD35Medium",
+      "stationary_step": 0.04169550538063049,
+      "sweep_step": 0.0831795847043395,
+      "sweep_noise": 0.04461850275595983,
+      "noise_share_of_stationary_step": 1.0701034163909475
+    },
+    {
+      "trajectory": "50-step panel arm",
+      "generator": "Flux2Klein",
+      "stationary_step": 0.05912673582251255,
+      "sweep_step": 0.06223895167931914,
+      "sweep_noise": 0.031143180156747496,
+      "noise_share_of_stationary_step": 0.5267190844127354
+    },
+    {
+      "trajectory": "50-step pilot",
+      "generator": "Flux2Klein",
+      "stationary_step": 0.050207265982261065,
+      "sweep_step": 0.06223895167931914,
+      "sweep_noise": 0.031143180156747496,
+      "noise_share_of_stationary_step": 0.6202922933057303
+    }
+  ],
+  "noise_share_of_stationary_step": {
+    "min": 0.5267190844127354,
+    "max": 1.0701034163909475,
+    "median": 0.9151740729506774
+  },
+  "caveat": "noise is measured through the v2 captioners, greedy; these trajectories used the old lineup at truncating ceilings, and the sweep's source captions are not from each network's stationary regime. Ratios near or above 100% mean 'the same size', not 'larger'.",
+  "ruler_check": {
+    "seed_resample_cosdist": 0.07023986795296272,
+    "unrelated_caption_cosdist": 0.5754118775948882,
+    "stationary_step_range": [
+      0.029589295387268066,
+      0.0502547025680542
+    ]
+  }
+}

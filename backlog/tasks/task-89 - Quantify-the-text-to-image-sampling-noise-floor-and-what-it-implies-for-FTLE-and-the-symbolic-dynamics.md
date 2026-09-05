@@ -1,10 +1,10 @@
 ---
 id: TASK-89
 title: Decompose each loop step into deterministic drift and generator sampling noise
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-03 23:29'
-updated_date: '2026-09-04 12:08'
+updated_date: '2026-09-05 05:05'
 labels:
   - analysis
   - paper
@@ -68,19 +68,19 @@ helper exists in panic_models.py.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Per text-to-image model: drift, noise and step measured on a fixed
+- [x] #1 Per text-to-image model: drift, noise and step measured on a fixed
       caption set over N recorded seeds, all in caption-embedding cosine
       distance, with the noise share of the step stated
-- [ ] #2 Step compared like-for-like against the stationary step size in the
+- [x] #2 Step compared like-for-like against the stationary step size in the
       200-step baseline and the v2 pilot/panel, and the share of stationary
       movement attributable to sampling stated
-- [ ] #3 Implications written up for TASK-85's step-size result, for RQ2's
+- [x] #3 Implications written up for TASK-85's step-size result, for RQ2's
       response variable, and for what the core-set MSM in TASK-76 must
       demonstrate about its transitions
 - [x] #4 max_sequence_length recorded as a fixed experiment parameter that
       perturbs generation independently of content, so it is never varied
       mid-programme
-- [ ] #5 Ruler calibration: the noise share is reported against Qwen3Embed's
+- [x] #5 Ruler calibration: the noise share is reported against Qwen3Embed's
       resolution for these captions (distance between seed-resamples of one
       caption versus captions of unrelated prompts), so a step below the ruler's
       resolution is not read as dynamics
@@ -117,25 +117,71 @@ helper exists in panic_models.py.
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-SWEEP COMPLETE 2026-09-04, 512 images (4 text-to-image models x 8 captions x 16 recorded seeds), captioned by the captioner that wrote each source caption, forced greedy. Results in analysis/step_decomposition.json, truncation check in analysis/embedding_dim.json.
+AC#2 UNBLOCKED AND DONE 2026-09-05, once TASK-96 put the database and the sweep
+on one embedding scale. analysis/step_vs_stationary.py joins the three
+measurements; results in analysis/step_vs_stationary.json.
 
-AC#2 IS BLOCKED BY TASK-96, found while doing AC#6: the database's stored embeddings do not reproduce when the same caption is re-embedded now, and sit on a scale roughly four times more compressed. So the sweep's step of 0.062-0.083 cannot be compared with the published stationary step size of 0.012-0.016 --- those are old-scale. Re-measured with the current code the pilot's own step size is 0.043, the same order as the sweep. The comparison AC#2 asks for has to wait until the database is re-embedded on one scale.
+The sweep's step of 0.062-0.083 is the same order as the settled step an actual
+run shows (200-step late window 0.030-0.050, 50-step arms 0.050-0.059), which is
+what the old-scale comparison could not establish --- against the published
+0.012-0.016 the sweep looked five times too large, and it was the baseline that
+was wrong.
 
-WHAT SURVIVES THE SCALE PROBLEM, because it is internal to the sweep and computed entirely with the current code:
+SHARE OF STATIONARY MOVEMENT ATTRIBUTABLE TO SAMPLING, matching each trajectory
+to the generator it used:
 
-Per model, cosine distance, at 256 dimensions --- step = drift + noise exactly, on the unit sphere:
+  200-step Flux2Klein networks   settled 0.030-0.034   noise 0.0311   93-105%
+  200-step SD35Medium networks   settled 0.042-0.050   noise 0.0446   89-107%
+  50-step panel arm (Flux2Klein) settled 0.0591        noise 0.0311   53%
+  50-step pilot     (Flux2Klein) settled 0.0502        noise 0.0311   62%
 
-  model         step     drift    noise   noise share
-  Flux2Klein   0.0622   0.0330   0.0311     47.2%
-  ZImageTurbo  0.0684   0.0397   0.0306     43.1%
-  SD35Medium   0.0832   0.0413   0.0446     51.0%
-  Flux2Dev     0.0653   0.0334   0.0341     50.1%
+In the settled 200-step runs the generator's own sampling accounts for
+essentially the whole step. In the 50-step arms it is half to two thirds, which
+fits: at 50 steps the chain is still drifting, and by 200 the directed component
+has gone and what remains is close to pure resampling.
 
-Roughly half of one step is generator sampling noise, for every model. The four are strikingly alike: SD35Medium is the noisiest and Flux2Klein the least, but the spread across models (0.031 to 0.045) is smaller than the spread across captions within a model (0.016 to 0.050 for Flux2Klein). Caption identity dominates generator identity, and the per-caption ordering is nearly the same for all four models. Note this does NOT support Huang et al.'s expectation that distilled generators are the least seed-noisy: Flux2Klein at four steps and ZImageTurbo at eight sit either side of Flux2Dev at twelve.
+Two mismatches keep this indicative. The noise term travels through a captioner
+--- it is the spread of the CAPTIONS of N images --- and the sweep used the v2
+lineup greedy while these trajectories used the old lineup at truncating
+ceilings, where caption length moves step size on its own (TASK-85). The
+sweep's source captions are also not drawn from each network's stationary
+regime. So a ratio at or just above 100% means 'the same size', not 'larger'.
+TASK-90 must re-measure the noise floor from its own trajectories.
 
-Drift exceeds the Bland-Altman minimal detectable change for 0 of 8 captions on all four models. Comparing a single step's displacement against the seed-resample spread, no individual step is distinguishable from noise --- which is the criterion TASK-89's notes specified, and the one that matters along a trajectory, where each step is one draw. The systematic drift is nonetheless real: mean drift is about twice 1.96 x SEM of the mean over 16 seeds. Both should be reported, since together they say the drift is real but no single step can be attributed to it. That is the sharpest thing the sweep has to say to TASK-76.
+AC#5 RULER: two seed resamples of one caption sit 0.0702 apart; captions of
+unrelated prompts sit 0.5754 apart (p10-p90 0.214-0.745). The settled step of
+0.030-0.050 is therefore well inside the seed-resample band and about a
+fifteenth of the distance between unrelated captions. Step-to-step motion in a
+settled run is not resolvable as semantic travel.
 
-CAVEAT ON THE SOURCE CAPTIONS. They come from captioning pilot images with each v2 captioner, so they are not drawn from each network's own stationary regime. The noise term is unaffected --- it is the spread at a fixed caption --- but drift, and so the noise share, includes the transient of entering that network's distribution. A corrected version needs short v2 trajectories to sample in-distribution captions from, which do not exist yet.
+AC#3 IMPLICATIONS.
 
-AC#6 (analysis/embedding_dim.py, 2,000 pilot captions at 2560 and 256 dimensions): Spearman 0.878 and Pearson 0.931 between pairwise distances at the two dimensions, 256-d distances 1.01x native, mean top-10 neighbour overlap 0.915 (p10 0.800, identical for 32%). Step-size and plateau statistics keep the same shape and ordering at both, with 256-d values about 12% smaller throughout. The truncation is defensible for step-size work; the neighbour overlap of 0.915 is the number to quote where clustering is concerned, since that is what EVoC depends on.
+For TASK-85: its step-size result is a statement about noise as much as about
+semantics. The 13% reduction (28% before the rescale) is real and holds late in
+the trajectory, but since the noise floor is most of the step, 'complete
+captions make the loop less jittery' is better read as complete captions making
+the generator's own sampling less dispersive, not as the trajectory travelling
+less far. Distance from t_0 supports that: total travel is 0.104 against 0.111,
+essentially equal.
+
+For RQ2: step-to-step drift is the wrong response variable on its own. Most of
+its variance is a noise floor that differs by generator (0.031 to 0.045), so a
+decomposition over that response will attribute to the generator factor
+something that is sampling dispersion rather than an effect on the dynamics.
+Report the decomposition over stationary-regime responses --- occupancy,
+metastable-region identity, escape times --- alongside it, and report the noise
+share with it.
+
+For TASK-76: this is the sharpest thing the sweep has to say. The core-set MSM
+cannot treat every observed step as a transition, because a step the size of the
+noise floor is what one seed draw produces with no dynamics at all. Its
+transitions have to be shown to exceed that floor, which is the argument for
+core sets with a transit region rather than a hard partition: assignments near a
+boundary will flip on seed noise alone. Metastable-region identity, not
+step-level motion, is where the kinetic result lives.
+
+Drift exceeds the Bland-Altman minimal detectable change for 0 of 8 captions on
+all four generators, so no individual step is distinguishable from noise, while
+mean drift is about twice 1.96 x SEM over 16 seeds. Both belong in the paper:
+the drift is real in aggregate and unattributable step by step.
 <!-- SECTION:NOTES:END -->
