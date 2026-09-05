@@ -104,7 +104,9 @@ defmodule PanicTda.Embeddings.Recompute do
     completed_at = DateTime.utc_now()
 
     # One transaction per chunk: a separate one per row makes SQLite fsync
-    # thousands of times and halves throughput.
+    # thousands of times and halves throughput. Raw Ecto because
+    # `Ash.transaction` is a no-op on AshSqlite (`can?(_, :transact)` is
+    # false).
     unless dry_run? do
       PanicTda.Repo.transaction(
         fn ->

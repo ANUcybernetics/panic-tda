@@ -11,6 +11,8 @@ defmodule PanicTda.Engine.ClusteringStage do
   require Ash.Query
   alias PanicTda.Models.Clustering
 
+  # Raw Ecto because AshSqlite cannot do `Ash.Query.distinct` (`can?(_,
+  # :distinct)` is false) and the alternative is reading every embedding row.
   def all_embedding_models do
     import Ecto.Query
 
