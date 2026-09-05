@@ -58,16 +58,20 @@ defmodule PanicTda.Engine.EmbeddingsStage do
       {:ok, vectors} = Embeddings.embed(env, embedding_model, contents)
       completed_at = DateTime.utc_now()
 
-      Enum.zip(relevant_invocations, vectors)
-      |> Enum.each(fn {inv, vector_binary} ->
-        PanicTda.create_embedding!(%{
+      relevant_invocations
+      |> Enum.zip_with(vectors, fn inv, vector_binary ->
+        %{
           embedding_model: embedding_model,
           vector: vector_binary,
           started_at: started_at,
           completed_at: completed_at,
           invocation_id: inv.id
-        })
+        }
       end)
+      |> Ash.bulk_create!(PanicTda.Embedding, :create,
+        return_errors?: true,
+        stop_on_error?: true
+      )
 
       :ok
     end
