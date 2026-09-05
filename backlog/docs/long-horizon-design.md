@@ -66,6 +66,36 @@ cost and still gives 40 trajectories per cell, which is the MSM's input.
 
 One fast network (Flux2Klein + Moondream3), four prompts, one run each, 300
 steps, run before launch to confirm per-step cost against the table and that
-nothing degrades along the trajectory: caption length, exact repeats, step
-distance and drift from the first caption by 25--50 step bins. Results are
-appended below once the pilot completes.
+nothing degrades along the trajectory. Experiment 01a0708e, run 2026-09-05,
+results in `analysis/long_horizon_pilot.json`.
+
+**Cost.** Wall clock 2 h 05 min for four runs. Median per-item time 4.7 s for
+Flux2Klein (table: 4.1) and 2.3 s for Moondream3 (table: 2.4), so the per-item
+model holds. The other half of the wall clock, 11 s per step (0.91 h in
+total), is the swap between the two models on every step. That is a
+small-batch artefact: a panel cell runs its 20 prompts times R runs as one
+batch, so at R = 4 the swap is 3% of a step and at R = 2 about 5%, within
+the overhead the table already carries. Embedding and persistence diagrams
+for 600 captions took 42 s.
+
+**Nothing degrades.** By step bin over the four runs:
+
+| steps   | words | exact repeats | step distance | drift from t0 |
+| ------- | ----- | ------------- | ------------- | ------------- |
+| 0--25   | 44.5  | 0             | 0.038         | 0.12          |
+| 25--50  | 47.5  | 0             | 0.051         | 0.17          |
+| 50--100 | 47.0  | 0             | 0.044         | 0.20          |
+| 100--150 | 46.5 | 0             | 0.038         | 0.21          |
+| 150--200 | 44.0 | 0             | 0.044         | 0.22          |
+| 200--250 | 48.0 | 0             | 0.032         | 0.28          |
+| 250--300 | 48.0 | 0             | 0.038         | 0.34          |
+
+Caption length is flat at Moondream3's natural length, there is not one exact
+repeat in 600 captions (the old 23-word Moondream repeated in 38 of 40 runs;
+at 46 words it does not, as the length dependence predicted), and the step
+distance sits at 0.03--0.05 with no trend, matching the settled step for
+Flux2Klein networks in the 200-step baseline. Drift from the initial caption
+keeps growing through step 300 while the step size does not, which is the
+signature of a stationary chain on a large state space (the Conde et al.
+confound in the programme) rather than of continued directed motion; with
+four runs it is indicative, and the panel reports both curves.

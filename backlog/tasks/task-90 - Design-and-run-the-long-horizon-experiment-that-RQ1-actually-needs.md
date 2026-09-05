@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-05 08:04'
+updated_date: '2026-09-05 09:59'
 labels:
   - experiment
   - paper
@@ -32,8 +32,8 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 <!-- AC:BEGIN -->
 - [x] #1 Per-invocation text-to-image seed generated, stored on Invocation and passed to the generator, with a test that a stored seed regenerates the image; captioner stays greedy and both policies are recorded in the paper's methods
 - [x] #2 TASK-89 landed first, and its noise share used to sanity-check that the stationary step size at the chosen horizon is resolvable
-- [ ] #3 Horizon (250-300), runs per prompt and prompt count chosen, with the GPU-day cost and the implied-timescale justification written in a form that can go into methods
-- [ ] #4 Config committed as a versioned file and a short pilot at the chosen horizon on one fast network confirms per-step cost and that nothing degrades over the trajectory
+- [x] #3 Horizon (250-300), runs per prompt and prompt count chosen, with the GPU-day cost and the implied-timescale justification written in a form that can go into methods
+- [x] #4 Config committed as a versioned file and a short pilot at the chosen horizon on one fast network confirms per-step cost and that nothing degrades over the trajectory
 - [ ] #5 Run launched detached with a resumable config, and the expected completion date recorded
 <!-- AC:END -->
 
@@ -50,7 +50,7 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-COST REVISED 2026-09-04. The panel is 4x5, not 5x5 --- GLMImage was removed (TASK-94). Same per-item model with it dropped: 250 steps at 4 runs/prompt is 48 GPU-days, 300 steps is 58, 300 steps at 2 runs/prompt is 29. Flux2Dev is now 78% of text-to-image time. The figures in the description above are the superseded 5x5 ones.
+PILOT DONE 2026-09-05 (AC#4): experiment 01a0708e, Flux2Klein + Moondream3, 4 prompts x 1 run x 300 steps, 2 h 05 min wall clock. Per-item times match the cost table (Flux2Klein 4.7 s vs 4.1, Moondream3 2.3 s vs 2.4); the rest of the wall clock is the 11 s model swap on every step, which a full panel cell amortises over 40-80 items (3-5%). Nothing degrades over 300 steps: caption length flat at 44-48 words, zero exact repeats in 600 captions, step distance 0.03-0.05 with no trend; drift from t0 keeps growing while step size does not, the stationary-chain-on-a-large-space signature. Details and table in backlog/docs/long-horizon-design.md, numbers in analysis/long_horizon_pilot.json.
 
-Three gates now sit in front of this run, all found 2026-09-04 while validating TASK-89's premise, and none of them can be applied to a run after the fact: TASK-92 (three of five captioners decode stochastically), TASK-93 (no text-to-image seed is recorded anywhere), TASK-94 (GLMImage removed).
+AC#3: 300 steps, 20 prompts, 20 cells; cost by runs per prompt (with the 17/14.9 overhead): 1 run 16.7 GPU-days, 2 runs 33.4, 3 runs 50.1, 4 runs 66.8. Config committed at num_runs 4 (config/long_horizon_panel_4x5_300.json); the runs-per-prompt choice and the launch (AC#5) are Ben's call.
 <!-- SECTION:NOTES:END -->

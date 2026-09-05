@@ -1,4 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy>=2.0"]
+# ///
 """Did the 300-step pilot behave? Per-step cost and nothing degrading (TASK-90).
 
 Reads one experiment from the dev database and reports, over its trajectory:
