@@ -47,22 +47,31 @@ carrying TASK-89's indicative figures.
 
 ## Runs per prompt and cost
 
-Measured warm per-item times (CLAUDE.md), 150 image and 150 caption steps
-per run, 20 prompts, 20 cells. The model predicted 14.9 days for the panel
-that took 17, so the second column carries that overhead.
+Measured warm per-item times, 150 image and 150 caption steps per run, 20
+prompts, 20 cells. Generators are `mix gpu.bench` at batch 4 on 2026-09-06
+(SD35Medium 5.5 s, ZImageTurbo 5.2, Flux2Klein 3.5, Flux2Dev 43.4);
+captioners are the CLAUDE.md per-caption figures scaled by the measured
+speedup of the batch cap going from 8 to 40 (Qwen25VL 0.64, Qwen3VL 0.52,
+Gemma4 0.37, JoyCaption 0.40, Moondream3 unchanged). The old model predicted
+14.9 days for the panel that took 17, so the second column carries that
+overhead, conservatively, since part of it was the image-encoding cost that
+has since been removed.
 
 | runs per prompt | trajectories | GPU-days (model) | GPU-days (with overhead) |
 | --------------- | ------------ | ---------------- | ------------------------ |
-| 1               | 400          | 14.6             | 16.7                     |
-| 2               | 800          | 29.3             | 33.4                     |
-| 3               | 1,200        | 43.9             | 50.1                     |
-| 4               | 1,600        | 58.5             | 66.8                     |
+| 1               | 400          | 11.0             | 12.5                     |
+| 2               | 800          | 21.9             | 25.0                     |
+| 3               | 1,200        | 32.9             | 37.5                     |
+| 4               | 1,600        | 43.9             | 50.0                     |
 
 Flux2Dev is 69% of the total at every setting. The config is committed at
-two runs per prompt (decided 2026-09-05): 40 trajectories per cell is the
-MSM's input, it finishes in five weeks rather than ten, and runs per prompt
-is the lever past the plateau, so a second batch can be added if implied
-timescales do not converge.
+two runs per prompt (decided 2026-09-05 on the pre-fix figures of 29.3 and
+33.4 GPU-days; the wall-clock review in TASK-90's notes then removed the
+`expandable_segments` allocator flag that had cost Flux2Dev a quarter of its
+time, raised the captioner batch cap and cheapened the image hop): 40
+trajectories per cell is the MSM's input, it finishes in under four weeks
+rather than eight, and runs per prompt is the lever past the plateau, so a
+second batch can be added if implied timescales do not converge.
 
 ## Launch
 

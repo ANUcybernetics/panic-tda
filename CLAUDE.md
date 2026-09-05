@@ -107,7 +107,7 @@ estimates.
 | SD35Medium        | ~9s               | ~9s        | ~6.5s †          |
 | ZImageTurbo       | ~8s               | ~18s       | ~6s              |
 | Flux2Klein        | ~20s              | ~20s       | ~4.1s †          |
-| Flux2Dev          | ~104s             | ~181s §    | ~58s ‡           |
+| Flux2Dev          | ~69s              | —          | ~43s ‡           |
 | **Image-to-text** |                   |            |                  |
 | Moondream3        | —                 | —          | ~2.4s ¶          |
 | Qwen25VL          | ~12s              | ~14s       | ~0.9s †          |
@@ -121,13 +121,16 @@ enabled by TASK-74 (Flux2Dev became truly batch-capable —
 that it ran serially even inside `invoke_t2i_batch`. Benchmark and quality gate:
 `mix gpu.bench`; see `backlog/docs/model-optimisation-log.md`.
 
-The Flux2Dev row is measured at its current 12 steps (TASK-83); § is the only
-cell scaled rather than measured. ¶ marks seconds per caption at natural length
-over a batch of four (TASK-87); those models have no single-invocation or
-batch-of-three figure yet. Captioner rows predate decision-01 and now
-understate: captions run to natural length, so a Gemma3n batch takes roughly two
-to three times longer than it did under the old 128-token ceiling. Measured
-seconds per caption at natural length are in
+The Flux2Dev row is `mix gpu.bench` at its current 12 steps (TASK-83) without
+the `expandable_segments` allocator flag, which had cost it a quarter of its
+time (optimisation log, iteration 4). ¶ marks seconds per caption at natural
+length over a batch of four (TASK-87); those models have no single-invocation or
+batch-of-three figure yet, and the captioner batch cap is now 40
+(`_I2T_MAX_BATCH`), which measured 1.6--2.7x faster per caption for every
+captioner except Moondream3, which captions serially. Captioner rows predate
+decision-01 and now understate: captions run to natural length, so a Gemma3n
+batch takes roughly two to three times longer than it did under the old
+128-token ceiling. Measured seconds per caption at natural length are in
 `backlog/docs/caption-length-by-i2t-model.md`.
 
 ### Other experiment tasks

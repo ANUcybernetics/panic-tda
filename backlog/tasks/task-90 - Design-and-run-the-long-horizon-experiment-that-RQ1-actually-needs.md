@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-05 13:13'
+updated_date: '2026-09-05 15:14'
 labels:
   - experiment
   - paper
@@ -66,4 +66,6 @@ PRE-LAUNCH ENGINEERING REVIEW 2026-09-05 (wall clock). Where the time goes: the 
 3. Image transport. Python returns each image as lossless WEBP (335 ms per 1024 px image) and Elixir re-encodes to AVIF serially (156 ms); about 0.5 s per image inside the measured invocation time, 20 s per 40-image step, roughly 0.7 GPU-days over the panel. PNG at compress_level=1 is 36 ms for the hop and the AVIF encodes parallelise cleanly (8 in 363 ms). Lossless, mechanical.
 
 Measured and rejected as not worth the fragility: diffusers group offloading for Flux2Dev (54.7 s/item vs 57.7, with a GPU memory warning); keeping half the transformer resident via a device map (41.5 vs 43.6 s/item at the same allocator setting, at 39.5 GiB peak); Moondream3 compile() (no-op through the HF wrapper, would break under per-step CPU/GPU swapping anyway); keeping both models resident to skip swaps (about 0.5 GPU-days at most, needs a memory heuristic). Scripts and logs in the session scratchpad only; the numbers above are the record.
+
+FIXES LANDED 2026-09-06 (all three from the review above): allocator flag removed, _I2T_MAX_BATCH 40, PNG transport with parallel AVIF encoding. mix gpu.bench without the flag: Flux2Dev 43.4 s/item at batch 4 (was 57.6), SD35Medium 5.5, ZImageTurbo 5.2, Flux2Klein 3.5, parity unchanged. Cost table in backlog/docs/long-horizon-design.md recomputed: 2 runs per prompt is now 21.9 GPU-days model, 25.0 with the old overhead factor (was 29.3 / 33.4). Details per lever in backlog/docs/model-optimisation-log.md iterations 4-6.
 <!-- SECTION:NOTES:END -->
