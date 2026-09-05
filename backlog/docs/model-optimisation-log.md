@@ -207,6 +207,12 @@ next step. Its scale had to be established first: Gemma3n is deterministic, so
 the same image gives byte-identical captions and cosine 1.000, while images
 from different prompts sit near 0.876.
 
+That 0.876 floor, and every caption cosine in this document, is on the
+mean-pooled scale TASK-96 replaced: unrelated captions actually sit near 0.425.
+The step-count decisions below rest on comparisons between arms measured the
+same way, so they stand, but the absolute cosines do not transfer to anything
+computed after 2026-09-05.
+
 | Model | steps | s/image (serial) | caption cos | pixel MAE |
 | --- | --- | --- | --- | --- |
 | SD35Medium | 10 / 15 / **20** / 28 / 40 | 3.3 / 4.6 / **6.1** / 8.5 / 12.0 | .985 / .984 / **.989** / .989 / ref | 41 / 33 / 26 / 16 / 0 |

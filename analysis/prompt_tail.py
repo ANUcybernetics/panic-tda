@@ -21,8 +21,11 @@ changes the shape of the conditioning tensor. Comparing 512 against 1024
 therefore conflates padding with content, which the first version of this
 script did.
 
-Scale for reading the numbers, measured previously: Gemma3n is deterministic,
-so identical images give cosine 1.000, and unrelated images sit near 0.876.
+Scale for reading the numbers: Gemma3n is deterministic, so identical images
+give cosine 1.000. The 0.876 once quoted here for unrelated images came from
+mean-pooled embeddings (TASK-96) and understated every distance; on the
+corrected scale unrelated captions sit near 0.425. The results in
+prompt_tail.json predate the fix and are on the old scale.
 
     _build/dev/snex/projects/Elixir.PanicTda.Models.PythonInterpreter/venv/bin/python analysis/prompt_tail.py
 """

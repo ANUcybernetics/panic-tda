@@ -69,9 +69,14 @@ three to seven times more verbose, so the "clustering-free ground-truth layer"
 the skeleton once proposed would be empty in new data. Repetition is a
 descriptive statistic, not a state definition.
 
+Every number in this section was recomputed on 2026-09-05 after TASK-96 found
+the stored vectors had been mean-pooled. The repetition results are unaffected,
+being string comparisons; the distances are about three times larger on the
+corrected scale, and the plateau keeps its shape.
+
 **Step size and drift plateau by step 100--150.** Median step-to-step distance
-falls from roughly 0.015--0.03 to 0.009--0.02 and stays there; distance from the
-initial caption stops growing in the same window. That is a stationary
+falls from roughly 0.051--0.082 to 0.030--0.050 and stays there; distance from
+the initial caption stops growing in the same window. That is a stationary
 stochastic regime with a persistent, nonzero step size --- consistent with
 Hintze et al., and the reason the horizon question is about slow timescales, not
 about waiting for motion to stop.
@@ -167,7 +172,7 @@ results matter, but none of it is a paper claim:
 
 - caption truncation was silently cutting four of five captioners
   (TASK-80/82/85, decision-01) --- and it changed the dynamics, not just the
-  captions: step-to-step distance fell 28% once captions were complete
+  captions: step-to-step distance fell 13% once captions were complete
 - diffusion step counts were never measured against a quality metric (TASK-83);
   Flux2Dev went 15 to 12 steps
 - models floated to whatever was cached; all are now pinned (TASK-84)

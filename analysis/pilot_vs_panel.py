@@ -14,7 +14,7 @@ hardcoded 128-token ceiling. Same 20 prompts, 4 runs each, 50 steps, Qwen3Embed.
 Four families of comparison (TASK-85 AC #3):
 
 1. captions      -- word length, terminal-punctuation share, by step
-2. ftle          -- REMOVED: FTLE dropped from the analysis (TASK-73)
+2. (FTLE was dropped from the analysis in TASK-73 and is not reported)
 3. clusters      -- occupancy and transition structure over a shared alphabet
 4. drift         -- cosine distance from the t_0 prompt, and step to step
 
@@ -52,7 +52,7 @@ PILOT_DIR = pathlib.Path(
     sys.argv[2] if len(sys.argv) > 2 else ROOT / "01a060b4_parquet"
 )
 
-# `network` is stored as a JSON string in both the runs and lyapunov tables
+# `network` is stored as a JSON string in the runs table
 NETWORK = '["Flux2Klein","Gemma3n"]'
 TERMINAL = re.compile(r'[.!?]["\')\]]*\s*$')
 
@@ -143,30 +143,6 @@ report["captions"] = {
 # 2. FTLE, paired over the 20 prompts
 
 
-def ftle(export_dir: pathlib.Path, network: str | None) -> pl.DataFrame:
-    ly = pl.read_parquet(export_dir / "lyapunov_results.parquet")
-    if network is not None:
-        ly = ly.filter(pl.col("network") == network)
-    return ly.select("prompt", "exponent", "r_squared", "num_pairs", "num_timesteps")
-
-
-panel_ftle = ftle(PANEL_DIR, NETWORK)
-pilot_ftle = ftle(PILOT_DIR, None)
-paired = panel_ftle.join(pilot_ftle, on="prompt", suffix="_pilot")
-a, b = paired["exponent"].to_numpy(), paired["exponent_pilot"].to_numpy()
-report["ftle"] = {
-    "n_prompts": int(paired.height),
-    "panel_mean": float(a.mean()),
-    "pilot_mean": float(b.mean()),
-    "panel_median": float(np.median(a)),
-    "pilot_median": float(np.median(b)),
-    "mean_diff": float((b - a).mean()),
-    "wilcoxon_p": float(stats.wilcoxon(a, b).pvalue) if paired.height > 5 else None,
-    "spearman_r": float(stats.spearmanr(a, b).statistic),
-    "panel_r2_median": float(np.median(paired["r_squared"].to_numpy())),
-    "pilot_r2_median": float(np.median(paired["r_squared_pilot"].to_numpy())),
-    "per_prompt": paired.select("prompt", "exponent", "exponent_pilot").to_dicts(),
-}
 
 # --------------------------------------------------------------------------
 # 3. cluster occupancy and transitions over the panel's medoid alphabet
@@ -323,12 +299,6 @@ for key in ("panel", "pilot"):
         f"p10-p90 {s['words_p10']:.0f}-{s['words_p90']:.0f}  max {s['words_max']:4d}  "
         f"complete {s['complete_share']:.1%}"
     )
-f = report["ftle"]
-print("\n== FTLE (paired over 20 prompts)")
-print(
-    f"  panel mean {f['panel_mean']:.5f}   pilot mean {f['pilot_mean']:.5f}   "
-    f"diff {f['mean_diff']:+.5f}   wilcoxon p={f['wilcoxon_p']}   spearman r={f['spearman_r']:.3f}"
-)
 print("\n== clusters (panel medoid alphabet)")
 for name, layer in report["clusters"].items():
     print(

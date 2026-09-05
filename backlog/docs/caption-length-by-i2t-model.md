@@ -202,9 +202,12 @@ conditioning tensor. It must therefore be fixed before a run and held.
 
 Whether the discarded tail carries information is harder to answer than it
 looks. Holding padding fixed and cutting 126--174 tokens from the end gives mean
-caption cosine 0.920 (0.856--0.959). On the measured scale --- 1.000 for
-identical images, 0.876 for unrelated ones --- that is a large change, but it is
-barely larger than the padding artefact above. Flux2Klein at four steps is
+caption cosine 0.920 (0.856--0.959). That was read against a ruler --- 1.000 for
+identical images, 0.876 for unrelated ones --- which came from the mean-pooled
+embeddings and understated every distance. On the corrected scale unrelated
+captions sit at cosine 0.425, so the ruler is wrong and the cosines above are
+old-scale too; the comparison against the padding artefact still holds, because
+both arms were measured the same way. Flux2Klein at four steps is
 simply very sensitive to any conditioning perturbation, so this metric cannot
 cleanly separate "the tail carries content" from "any change reshuffles the
 image". Six captions, one model: treat it as inconclusive on the mechanism and
@@ -227,27 +230,31 @@ same 20 prompts × 4 runs × 50 steps as the corresponding arm of
 The captions differ exactly as intended: median 83 words and 9.1% complete
 sentences in the panel, against median 160 and 100% complete in the pilot.
 
-Finite-time Lyapunov exponents are statistically indistinguishable --- panel
-mean 0.0119, pilot 0.0109, Wilcoxon p = 0.96 over the 20 paired prompts. The
-per-prompt ordering does not survive (Spearman 0.20), but the fits are weak in
-both conditions (median r² 0.46) and some pilot exponents come out negative, so
-that is better read as estimator noise than as a real reshuffle.
+Everything that measures step size moves consistently. Complete captions make
+the loop less jittery: mean step-to-step cosine distance falls from 0.0631 to
+0.0551, a 13% reduction, holding at 15% over the second half of the trajectory.
+Trajectories are correspondingly stickier in cluster space, with the
+self-transition rate rising from 85.1% to 88.1% at the finest clustering layer
+and from 95.4% to 97.2% at layer 3, where the pilot visits 1.2 distinct clusters
+per run against the panel's 1.5. Occupancy and transition structure shift
+accordingly (Jensen–Shannon divergence 0.19 and 0.25 bits at layer 0, falling to
+0.02 and 0.04 bits at layer 3).
 
-Everything that measures step size, however, moves consistently. Complete
-captions make the loop markedly less jittery: mean step-to-step cosine distance
-falls from 0.0162 to 0.0116, a 28% reduction, holding at 29% over the second
-half of the trajectory. Trajectories are correspondingly stickier in cluster
-space, with the self-transition rate rising from 79.9% to 81.1% at the finest
-clustering layer and from 87.9% to 94.9% at the coarsest, where the pilot visits
-1.4 distinct clusters per run against the panel's 1.9. Occupancy and transition
-structure shift accordingly (Jensen–Shannon divergence 0.23 and 0.32 bits at
-layer 0, falling to 0.04 and 0.08 bits at layer 3).
+Distance from the initial prompt is less clear cut. The pilot starts further out
+--- 0.354 versus 0.323 at step 1, since a 160-word caption departs from a short
+prompt faster than an 83-word fragment --- and stays further out, ending at
+0.458 versus 0.434. Total travel is nearly identical: the panel gains 0.111 over
+the trajectory, the pilot 0.104. Whatever complete captions do to the step size,
+they do not visibly shorten the journey.
 
-Distance from the initial prompt tells the same story from the other side. The
-pilot starts further out --- 0.220 versus 0.200 at step 1, since a 160-word
-caption departs from a short prompt faster than an 83-word fragment --- but
-travels less thereafter, ending at 0.244 versus 0.238. The panel gains 0.038
-over the trajectory, the pilot 0.023.
+These figures were recomputed on 2026-09-05 after TASK-96: every vector in the
+database had been mean-pooled, and the numbers first reported here were on that
+collapsed scale. The direction of every result survived; the sizes did not. The
+step-size reduction was reported as 28% and is 13%, and what looked like the
+pilot travelling much less than the panel (0.023 against 0.038) is a difference
+that mostly disappears. Finite-time Lyapunov exponents were also reported here;
+they are gone rather than recomputed, since TASK-73 dropped FTLE from the
+analysis entirely.
 
 So the answer is that truncation changed the dynamics, not merely the captions.
 A mid-sentence fragment is a noisier input than a complete description, and the

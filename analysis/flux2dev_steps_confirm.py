@@ -9,7 +9,10 @@ the three step counts that matter: the current setting, the cheapest tested
 value, and one in between.
 
 Scale for reading the numbers, measured separately: Gemma3n is deterministic,
-so the same image gives cosine 1.000, and unrelated images sit near 0.876.
+so the same image gives cosine 1.000. The 0.876 for unrelated images is
+old-scale: it came from the mean-pooled embeddings TASK-96 replaced, and on the
+corrected scale unrelated captions sit near 0.425. This script's stored results
+predate the fix.
 
     _build/dev/snex/projects/Elixir.PanicTda.Models.PythonInterpreter/venv/bin/python analysis/flux2dev_steps_confirm.py
 """
