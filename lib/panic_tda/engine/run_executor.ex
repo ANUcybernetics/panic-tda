@@ -52,12 +52,16 @@ defmodule PanicTda.Engine.RunExecutor do
 
     states =
       Enum.map(runs, fn run ->
-        %{run: run, input: run.initial_prompt, prev_invocation_id: nil}
+        %{run: run, input: run.initial_prompt, prev_invocation_id: nil, next_seq: 0}
       end)
 
     execute_batch_loop(session, network, max_length, states, 0)
   end
 
+  # Invocations within a batch step are created one at a time, so a crash can
+  # leave the runs at different sequence numbers. Each state carries its own
+  # `next_seq`; the loop starts at the lowest and a run only takes part in a
+  # step once the loop reaches the step it needs.
   def resume_batch(session, runs) do
     states =
       Enum.map(runs, fn run ->
@@ -70,7 +74,7 @@ defmodule PanicTda.Engine.RunExecutor do
 
         case invocations do
           [] ->
-            %{run: run, input: run.initial_prompt, prev_invocation_id: nil, completed_seq: -1}
+            %{run: run, input: run.initial_prompt, prev_invocation_id: nil, next_seq: 0}
 
           [last] ->
             output =
@@ -83,27 +87,17 @@ defmodule PanicTda.Engine.RunExecutor do
               run: run,
               input: output,
               prev_invocation_id: last.id,
-              completed_seq: last.sequence_number
+              next_seq: last.sequence_number + 1
             }
         end
       end)
 
-    min_completed = states |> Enum.map(& &1.completed_seq) |> Enum.min()
-    start_seq = min_completed + 1
+    start_seq = states |> Enum.map(& &1.next_seq) |> Enum.min()
 
     network = hd(runs).network
     max_length = hd(runs).max_length
 
-    if start_seq >= max_length do
-      :ok
-    else
-      resume_states =
-        Enum.map(states, fn state ->
-          Map.drop(state, [:completed_seq])
-        end)
-
-      execute_batch_loop(session, network, max_length, resume_states, start_seq)
-    end
+    execute_batch_loop(session, network, max_length, states, start_seq)
   end
 
   defp execute_batch_loop(_session, _network, max_length, _states, seq) when seq >= max_length do
@@ -111,6 +105,17 @@ defmodule PanicTda.Engine.RunExecutor do
   end
 
   defp execute_batch_loop(session, network, max_length, states, seq) do
+    {active, waiting} = Enum.split_with(states, &(&1.next_seq == seq))
+
+    if active == [] do
+      execute_batch_loop(session, network, max_length, states, seq + 1)
+    else
+      new_states = execute_batch_step(session, network, max_length, active, seq)
+      execute_batch_loop(session, network, max_length, new_states ++ waiting, seq + 1)
+    end
+  end
+
+  defp execute_batch_step(session, network, max_length, states, seq) do
     model_name = Enum.at(network, rem(seq, length(network)))
     output_type = GenAI.output_type(model_name)
     inputs = Enum.map(states, & &1.input)
@@ -137,32 +142,29 @@ defmodule PanicTda.Engine.RunExecutor do
       :ok = PythonBridge.swap_model_to_cpu(PythonSession.env(session), model_name)
     end
 
-    new_states =
-      Enum.zip([states, outputs, seeds || Enum.map(states, fn _ -> nil end)])
-      |> Enum.map(fn {state, output, seed} ->
-        attrs = %{
-          model: model_name,
-          type: output_type,
-          sequence_number: seq,
-          seed: seed,
-          started_at: started_at,
-          completed_at: completed_at,
-          run_id: state.run.id,
-          input_invocation_id: state.prev_invocation_id
-        }
+    Enum.zip([states, outputs, seeds || Enum.map(states, fn _ -> nil end)])
+    |> Enum.map(fn {state, output, seed} ->
+      attrs = %{
+        model: model_name,
+        type: output_type,
+        sequence_number: seq,
+        seed: seed,
+        started_at: started_at,
+        completed_at: completed_at,
+        run_id: state.run.id,
+        input_invocation_id: state.prev_invocation_id
+      }
 
-        attrs =
-          case output_type do
-            :text -> Map.put(attrs, :output_text, output)
-            :image -> Map.put(attrs, :output_image, output)
-          end
+      attrs =
+        case output_type do
+          :text -> Map.put(attrs, :output_text, output)
+          :image -> Map.put(attrs, :output_image, output)
+        end
 
-        invocation = PanicTda.create_invocation!(attrs)
+      invocation = PanicTda.create_invocation!(attrs)
 
-        %{state | input: output, prev_invocation_id: invocation.id}
-      end)
-
-    execute_batch_loop(session, network, max_length, new_states, next_seq)
+      %{state | input: output, prev_invocation_id: invocation.id, next_seq: next_seq}
+    end)
   end
 
   defp execute_loop(_session, run, _input, seq, _prev_id) when seq >= run.max_length do

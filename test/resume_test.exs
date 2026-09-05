@@ -130,6 +130,63 @@ defmodule PanicTda.ResumeTest do
     end
   end
 
+  describe "ragged batch resume" do
+    setup :with_python
+
+    test "each run continues from its own last step", %{session: session} do
+      # Invocations within a batch step are created one at a time, so a crash
+      # mid-step leaves the runs at different sequence numbers.
+      experiment = create_started_experiment(%{max_length: 6, num_runs: 3})
+      [ahead, behind, untouched] = Engine.init_runs(experiment)
+
+      RunExecutor.execute(session, %{ahead | max_length: 4})
+      RunExecutor.execute(session, %{behind | max_length: 1})
+
+      last_before =
+        Map.new([ahead, behind], fn run -> {run.id, last_invocation(run)} end)
+
+      :ok = RunExecutor.resume_batch(session, [ahead, behind, untouched])
+
+      for run <- [ahead, behind, untouched] do
+        invocations =
+          PanicTda.Invocation
+          |> Ash.Query.filter(run_id == ^run.id)
+          |> Ash.Query.sort(sequence_number: :asc)
+          |> Ash.read!()
+
+        assert Enum.map(invocations, & &1.sequence_number) == Enum.to_list(0..5)
+
+        # Every step's input is the previous step of the same run, including
+        # the first resumed step.
+        invocations
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.each(fn [prev, next] ->
+          assert next.input_invocation_id == prev.id
+        end)
+      end
+
+      # The runs that had already progressed were not re-run from the minimum.
+      for run <- [ahead, behind] do
+        %{id: id, sequence_number: seq} = last_before[run.id]
+        assert %{id: ^id} = invocation_at(run, seq)
+      end
+    end
+  end
+
+  defp last_invocation(run) do
+    PanicTda.Invocation
+    |> Ash.Query.filter(run_id == ^run.id)
+    |> Ash.Query.sort(sequence_number: :desc)
+    |> Ash.Query.limit(1)
+    |> Ash.read_one!()
+  end
+
+  defp invocation_at(run, seq) do
+    PanicTda.Invocation
+    |> Ash.Query.filter(run_id == ^run.id and sequence_number == ^seq)
+    |> Ash.read_one!()
+  end
+
   describe "find_or_create_runs/1" do
     test "returns existing runs without creating duplicates" do
       experiment = create_started_experiment()
