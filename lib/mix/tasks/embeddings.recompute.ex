@@ -53,7 +53,7 @@ defmodule Mix.Tasks.Embeddings.Recompute do
     try do
       Recompute.run(env, recompute_opts)
     after
-      GenServer.stop(interpreter)
+      PanicTda.Models.PythonInterpreter.stop_or_kill(interpreter)
     end
   end
 

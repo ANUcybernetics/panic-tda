@@ -48,7 +48,7 @@ defmodule Mix.Tasks.Cluster.Recompute do
 
       Mix.shell().info("Done.")
     after
-      GenServer.stop(interpreter)
+      PanicTda.Models.PythonInterpreter.stop_or_kill(interpreter)
     end
   end
 end

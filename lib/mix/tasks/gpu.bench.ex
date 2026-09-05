@@ -88,7 +88,7 @@ defmodule Mix.Tasks.Gpu.Bench do
 
     print_summary(results)
 
-    GenServer.stop(interpreter)
+    PanicTda.Models.PythonInterpreter.stop_or_kill(interpreter)
   end
 
   defp bench_model(env, model, prompts, seeds, batch_sizes, dump) do

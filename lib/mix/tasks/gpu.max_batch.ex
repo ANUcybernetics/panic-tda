@@ -64,7 +64,7 @@ defmodule Mix.Tasks.Gpu.MaxBatch do
 
     print_summary(results)
 
-    GenServer.stop(interpreter)
+    PanicTda.Models.PythonInterpreter.stop_or_kill(interpreter)
   end
 
   defp generate_test_images(env, prompts) do
