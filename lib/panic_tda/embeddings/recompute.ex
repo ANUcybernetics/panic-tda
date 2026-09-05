@@ -14,6 +14,7 @@ defmodule PanicTda.Embeddings.Recompute do
   """
 
   require Ash.Query
+  require Ash.Sort
 
   alias PanicTda.Models.Embeddings
 
@@ -62,7 +63,7 @@ defmodule PanicTda.Embeddings.Recompute do
     chunk =
       model
       |> base_query(experiments, after_id)
-      |> Ash.Query.sort(id: :asc)
+      |> Ash.Query.sort([{keyset_order(), :asc}])
       |> Ash.Query.limit(batch)
       |> Ash.Query.load(:invocation)
       |> Ash.read!()
@@ -82,6 +83,14 @@ defmodule PanicTda.Embeddings.Recompute do
       page(env, model, experiments, batch, dry_run?, last_id, done, total, progress)
     end
   end
+
+  # ash_sql renders the seek as `CAST(id AS TEXT) > CAST(? AS TEXT)`, which
+  # the expression index on `CAST(id AS TEXT)` answers --- but only if the
+  # ORDER BY is the same expression, otherwise the planner walks the primary
+  # key in order and re-evaluates the cast from the first row every page.
+  # `fragment("?", id)` renders as exactly that cast
+  # (backlog/docs/ash-sql-cast-issue.md).
+  defp keyset_order, do: Ash.Sort.expr_sort(fragment("?", id), :string)
 
   defp base_query(model, experiments, after_id) do
     PanicTda.Embedding
