@@ -79,7 +79,9 @@ def setup() -> None:
 
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+    # Do not set PYTORCH_CUDA_ALLOC_CONF=expandable_segments here: under
+    # Flux2Dev's sequential CPU offload it made every image a third slower
+    # (57.6 vs 43.4 s/item at batch 4, mix gpu.bench, 2026-09-05).
 
     try:
         import transformers
@@ -290,9 +292,12 @@ def _load_sentence_transformer(name: str, model_path: str, **kwargs: Any) -> Non
     _models[name] = m
 
 
+# Transport only: Elixir re-encodes every image to AVIF for storage, so this
+# just needs to be lossless and cheap. Lossless WEBP took 335 ms per 1024 px
+# image; PNG at the lowest compression level takes 36 ms.
 def _encode_image_b64(img: Image.Image) -> str:
     buf = io.BytesIO()
-    img.save(buf, format="WEBP", lossless=True)
+    img.save(buf, format="PNG", compress_level=1)
     return base64.b64encode(buf.getvalue()).decode("ascii")
 
 
@@ -706,7 +711,7 @@ def _invoke_t2i_single(name: str, prompt: str, seed: int) -> str:
 
 
 def invoke_t2i(name: str, prompt: str, seed: int) -> str:
-    """Run a single T2I inference at `seed`. Returns base64-encoded WEBP."""
+    """Run a single T2I inference at `seed`. Returns base64-encoded PNG."""
     return _invoke_t2i_single(name, prompt, seed)
 
 
@@ -745,7 +750,12 @@ def invoke_i2t(name: str, image_b64: str) -> str:
     return _I2T_STRATEGIES[name](name, img)
 
 
-_I2T_MAX_BATCH = 8
+# A panel cell captions 40 images per step. Measured on 40 pilot images
+# (2026-09-05), seconds per caption at a cap of 8 / 40: Qwen3VL 1.99 / 1.03,
+# Gemma4 1.01 / 0.37, JoyCaption 1.14 / 0.46, Qwen25VL 0.84 / 0.54, at 13-19 GiB
+# peak. Greedy captions change with batch composition, so the cap is part of
+# the captioner's effective definition and must not change mid-experiment.
+_I2T_MAX_BATCH = 40
 
 # Generation ceiling for every captioner. The default is deliberately far
 # above any natural caption length so models terminate on their own (the

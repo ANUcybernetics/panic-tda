@@ -295,12 +295,118 @@ with the ordering scrambled, so the metric genuinely cannot separate 8 from 15.
   `--n 16 --batch-sizes 4,8,16` died an hour in having done most of the work.
   The budget now scales per image.
 
+### 4. Drop the `expandable_segments` allocator flag — KEEP
+
+- **Date:** 2026-09-05
+- **Files touched:** `priv/python/panic_models.py` (`setup`)
+- **Change:** stop setting `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.
+  It came in with the February OOM-fix commit (494ab2b) alongside serial
+  generation and CPU offload, and was never measured on its own. Found by
+  noticing that a bare Python process ran the same Flux2Dev pipeline call in
+  43.6 s/item while the project's process took 57.7; the flag was the only
+  difference that mattered.
+- **Before → after (per-item wall-clock, `mix gpu.bench --batch-sizes 4 --n 4`,
+  12 steps, 1024 px):**
+
+  | Model       | batch=4 with flag | batch=4 without | batch=1 without |
+  | ----------- | ----------------- | --------------- | --------------- |
+  | Flux2Dev    | 57.6 s            | **43.4 s**      | 69.5 s          |
+  | SD35Medium  | —                 | 5.5 s           | 5.2 s           |
+  | ZImageTurbo | —                 | 5.2 s           | 4.7 s           |
+  | Flux2Klein  | —                 | 3.5 s           | 3.3 s           |
+
+  Sequential CPU offload allocates and frees every layer's weights on each
+  forward pass, and expandable segments make each fresh mapping dearer; the
+  resident generators show no such cost, and their figures are in line with the
+  table in CLAUDE.md.
+
+- **Quality parity:** deterministic lever. Batched-vs-serial parity is
+  identical with and without the flag (Flux2Dev mean 5.78 / max 12.58).
+- **Gate:** non-GPU suite 115 tests / 0 failures; GPU batch-invoke, swap and
+  end-to-end tests (`real_models_test.exs:261,304,331,123 --include gpu`).
+- **Decision + rationale:** KEEP. About 4.9 GPU-days off the 25-day long-horizon
+  panel for a one-line deletion. The flag guards against fragmentation; the
+  panel's batch shapes are fixed within a cell, every cell starts from
+  `unload_all_models`, and `Retry` restarts the interpreter on a sticky CUDA
+  error, so the safety net it duplicated is already there.
+
+### Negative results: Flux2Dev offload strategies — no clean win
+
+- **Date:** 2026-09-05, standalone script, batch of 4, 12 steps, measured with
+  the allocator flag still set (so against a 57.7 s/item baseline) unless noted.
+- diffusers `enable_group_offload` on the transformer (block level, CUDA
+  stream, pinned host memory): 54.7 s/item, and it logged a CUDA allocation
+  failure and a "layers not executed" prefetch warning on the way. Not worth
+  the fragility for 5%.
+- Half the transformer resident via an accelerate device map (32 GiB budget,
+  39.5 GiB peak): 41.5 s/item against 43.6 for sequential offload in the same
+  process without the flag. 5% for a hand-tuned memory budget that would have
+  to coexist with a resident captioner. Rejected.
+- Together these say Flux2Dev is compute-bound at batch 4 once the allocator
+  flag is gone; weight streaming is not where the time is.
+
+### 5. Captioner batch cap 8 → 40 — KEEP
+
+- **Date:** 2026-09-05
+- **Files touched:** `priv/python/panic_models.py` (`_I2T_MAX_BATCH`)
+- **Change:** a panel cell captions 40 images per step, so chunks of 8 meant
+  five decode loops per step. Measured on 40 pilot images through the production
+  `invoke_i2t_batch` path, seconds per caption (peak VRAM at 40):
+
+  | Model      | cap=8  | cap=20 | cap=40             |
+  | ---------- | ------ | ------ | ------------------ |
+  | Qwen3VL    | 1.99 s | 1.26 s | **1.03 s** (19 GiB)  |
+  | Gemma4     | 1.01 s | 0.53 s | **0.37 s** (18 GiB)  |
+  | JoyCaption | 1.14 s | 0.62 s | **0.46 s** (13 GiB)  |
+  | Qwen25VL   | 0.84 s | 0.62 s | **0.54 s** (18 GiB)  |
+  | Moondream3 | 1.6 s  | —      | unchanged (serial) |
+
+- **Quality parity:** not a deterministic lever. Greedy captions change with
+  batch composition (identical between cap 8 and cap 40 for 1, 5, 4 and 18 of
+  40 respectively, in the order above; short captions survive, long ones
+  diverge at the first flipped token). That was already true at 8, so the cap
+  is part of the captioner's effective definition and must stay fixed for the
+  whole of an experiment.
+- **Decision + rationale:** KEEP at 40. About 0.7 GPU-days on the long-horizon
+  panel, one constant, memory headroom confirmed. Moondream3's remote code
+  captions one image at a time and its `compile()` is a no-op through the HF
+  wrapper (and would not survive per-step CPU/GPU swapping anyway), so it stays
+  as it is.
+
+### 6. Image hop: PNG transport and parallel AVIF — KEEP
+
+- **Date:** 2026-09-05
+- **Files touched:** `priv/python/panic_models.py` (`_encode_image_b64`),
+  `lib/panic_tda/models/image_converter.ex` (`to_avif_many!`),
+  `lib/panic_tda/models/genai.ex`
+- **Change:** Python returned each image as lossless WEBP (335 ms per 1024 px
+  image) and Elixir re-encoded it to AVIF serially (156 ms), inside the timed
+  invocation, so a 40-image step spent about 20 s with the GPU idle. The hop is
+  transport only (AVIF is the stored format), so it is now PNG at
+  `compress_level=1` (36 ms) and the AVIF encodes run under `Task.async_stream`
+  (8 in 363 ms).
+- **Quality parity:** lossless on both sides; stored AVIFs are byte-identical
+  for the same pixels.
+- **Decision + rationale:** KEEP. About 0.7 GPU-days on the panel, mechanical.
+
+### Swap scheduling (lever F) — not worth doing
+
+The July `balanced_panel_5x5` database timeline puts 390.7 of its 419.3 wall-
+clock hours inside model calls; the gaps between steps (swap to CPU plus the
+inserts) were 1--4 s each, about 1 h in total, with the remaining 27.6 h a
+GLMImage anomaly that is no longer in the lineup. Keeping both models resident
+would save at most half a GPU-day on the long-horizon panel and needs a memory
+heuristic; the swap costs the pilot noticed were a small-batch artefact.
+
 ### Untried / future levers (ranked)
 
 - Batch `HunyuanImage` (sequential offload like Flux2Dev — likely benefits; not
   in the panel, unbenchmarked).
 - `torch.compile` (lever B), `channels_last` (C), attention backend (D), FP8 vs
-  NF4 (E, lossy-gated), swap-scheduling (F), global TF32/cudnn flags (G).
+  NF4 (E, lossy-gated), global TF32/cudnn flags (G).
+- The three resident generators are 7--10% faster per item at batch 1 than at
+  batch 4 (iteration 4 table); their `_T2I_MAX_BATCH` could drop to 1 for a
+  small, measured gain.
 
 <!-- Append one block per lever. Template:
 
