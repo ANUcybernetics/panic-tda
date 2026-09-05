@@ -62,11 +62,17 @@ defmodule PanicTda.Experiment do
     has_many :runs, PanicTda.Run do
       destination_attribute(:experiment_id)
     end
-
   end
 
   actions do
     defaults([:read, :destroy])
+
+    # The Mix tasks take an id prefix; `get?: true` on the code interface
+    # makes an ambiguous prefix an error rather than a silent first match.
+    read :by_id_prefix do
+      argument(:prefix, :string, allow_nil?: false)
+      filter(expr(like(id, ^arg(:prefix) <> "%")))
+    end
 
     create :create do
       accept([
@@ -88,22 +94,17 @@ defmodule PanicTda.Experiment do
         :max_length,
         :i2t_max_new_tokens
       ])
-
-      require_atomic?(false)
     end
 
     update :start do
-      require_atomic?(false)
       change(set_attribute(:started_at, &DateTime.utc_now/0))
     end
 
     update :complete do
-      require_atomic?(false)
       change(set_attribute(:completed_at, &DateTime.utc_now/0))
     end
 
     update :reopen do
-      require_atomic?(false)
       change(set_attribute(:completed_at, nil))
     end
   end

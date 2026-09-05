@@ -89,10 +89,10 @@ defmodule Mix.Tasks.Experiment.Status do
   end
 
   defp find_experiment(id_prefix) do
-    experiments = PanicTda.list_experiments!()
-
-    Enum.find(experiments, fn e -> String.starts_with?(e.id, id_prefix) end) ||
-      Mix.raise("No experiment found matching '#{id_prefix}'")
+    case PanicTda.find_experiment(id_prefix) do
+      {:ok, experiment} -> experiment
+      {:error, _} -> Mix.raise("No experiment found matching '#{id_prefix}'")
+    end
   end
 
   defp experiment_counts(experiment) do

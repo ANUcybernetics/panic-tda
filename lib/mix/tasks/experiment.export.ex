@@ -97,10 +97,10 @@ defmodule Mix.Tasks.Experiment.Export do
   end
 
   defp find_experiment(id_prefix) do
-    experiments = PanicTda.list_experiments!()
-
-    Enum.find(experiments, fn e -> String.starts_with?(e.id, id_prefix) end) ||
-      Mix.raise("No experiment found matching '#{id_prefix}'")
+    case PanicTda.find_experiment(id_prefix) do
+      {:ok, experiment} -> experiment
+      {:error, _} -> Mix.raise("No experiment found matching '#{id_prefix}'")
+    end
   end
 
   defp short_id(id), do: String.slice(id, 0, 8)

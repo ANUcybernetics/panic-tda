@@ -5,6 +5,7 @@ defmodule PanicTda do
     resource PanicTda.Experiment do
       define :create_experiment, action: :create
       define :get_experiment, action: :read, get_by: [:id]
+      define :find_experiment, action: :by_id_prefix, args: [:prefix], get?: true
       define :list_experiments, action: :read
       define :start_experiment, action: :start
       define :complete_experiment, action: :complete
@@ -44,6 +45,5 @@ defmodule PanicTda do
       define :destroy_embedding_cluster, action: :destroy
       define :list_embedding_clusters, action: :read
     end
-
   end
 end
