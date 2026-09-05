@@ -107,5 +107,5 @@
     "Qwen3Embed"
   ],
   "max_length": 300,
-  "num_runs": 4
+  "num_runs": 2
 }
