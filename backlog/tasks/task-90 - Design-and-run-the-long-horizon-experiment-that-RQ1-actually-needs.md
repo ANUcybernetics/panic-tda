@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-05 09:59'
+updated_date: '2026-09-05 11:59'
 labels:
   - experiment
   - paper
@@ -52,5 +52,5 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 <!-- SECTION:NOTES:BEGIN -->
 PILOT DONE 2026-09-05 (AC#4): experiment 01a0708e, Flux2Klein + Moondream3, 4 prompts x 1 run x 300 steps, 2 h 05 min wall clock. Per-item times match the cost table (Flux2Klein 4.7 s vs 4.1, Moondream3 2.3 s vs 2.4); the rest of the wall clock is the 11 s model swap on every step, which a full panel cell amortises over 40-80 items (3-5%). Nothing degrades over 300 steps: caption length flat at 44-48 words, zero exact repeats in 600 captions, step distance 0.03-0.05 with no trend; drift from t0 keeps growing while step size does not, the stationary-chain-on-a-large-space signature. Details and table in backlog/docs/long-horizon-design.md, numbers in analysis/long_horizon_pilot.json.
 
-AC#3: 300 steps, 20 prompts, 20 cells; cost by runs per prompt (with the 17/14.9 overhead): 1 run 16.7 GPU-days, 2 runs 33.4, 3 runs 50.1, 4 runs 66.8. Config committed at num_runs 4 (config/long_horizon_panel_4x5_300.json); the runs-per-prompt choice and the launch (AC#5) are Ben's call.
+AC#3: 300 steps, 20 prompts, 20 cells; cost by runs per prompt (with the 17/14.9 overhead): 1 run 16.7 GPU-days, 2 runs 33.4, 3 runs 50.1, 4 runs 66.8. Runs per prompt settled at 2 on 2026-09-05 (33.4 GPU-days); config/long_horizon_panel_4x5_300.json has num_runs 2. Only the launch (AC#5) remains.
 <!-- SECTION:NOTES:END -->
