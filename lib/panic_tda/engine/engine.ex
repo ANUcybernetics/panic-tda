@@ -26,18 +26,11 @@ defmodule PanicTda.Engine do
       runs = init_runs(experiment)
 
       runs
-      |> Enum.group_by(& &1.network)
-      |> Enum.each(fn {_network, group} ->
+      |> cells_in_config_order(experiment)
+      |> Enum.each(fn cell ->
         :ok = PythonBridge.unload_all_models(PythonSession.env(session))
-        :ok = RunExecutor.execute_batch(session, group)
-      end)
-
-      env = PythonSession.env(session)
-      :ok = PythonBridge.unload_all_models(env)
-
-      Enum.each(runs, fn run ->
-        :ok = EmbeddingsStage.compute(env, run, experiment.embedding_models)
-        :ok = PdStage.compute(env, run, experiment.embedding_models)
+        :ok = RunExecutor.execute_batch(session, cell)
+        finish_cell(session, cell, experiment, &EmbeddingsStage.compute/3, &PdStage.compute/3)
       end)
 
       experiment = PanicTda.complete_experiment!(experiment)
@@ -73,18 +66,11 @@ defmodule PanicTda.Engine do
       runs = find_or_create_runs(experiment)
 
       runs
-      |> Enum.group_by(& &1.network)
-      |> Enum.each(fn {_network, group} ->
+      |> cells_in_config_order(experiment)
+      |> Enum.each(fn cell ->
         :ok = PythonBridge.unload_all_models(PythonSession.env(session))
-        :ok = RunExecutor.resume_batch(session, group)
-      end)
-
-      env = PythonSession.env(session)
-      :ok = PythonBridge.unload_all_models(env)
-
-      Enum.each(runs, fn run ->
-        :ok = EmbeddingsStage.resume(env, run, experiment.embedding_models)
-        :ok = PdStage.resume(env, run, experiment.embedding_models)
+        :ok = RunExecutor.resume_batch(session, cell)
+        finish_cell(session, cell, experiment, &EmbeddingsStage.resume/3, &PdStage.resume/3)
       end)
 
       experiment = PanicTda.complete_experiment!(experiment)
@@ -92,6 +78,26 @@ defmodule PanicTda.Engine do
     after
       PythonSession.stop(session)
     end
+  end
+
+  # A cell is one network's runs, executed in lockstep. Cells run in the order
+  # the config lists them (map iteration would put them in term order), so the
+  # fast generators can go first and their cells be analysed while the slow
+  # ones run; each cell is embedded and given its persistence diagrams as soon
+  # as its runs finish, for the same reason.
+  defp cells_in_config_order(runs, experiment) do
+    by_network = Enum.group_by(runs, & &1.network)
+    Enum.map(experiment.networks, &Map.fetch!(by_network, &1))
+  end
+
+  defp finish_cell(session, cell, experiment, embed, pd) do
+    env = PythonSession.env(session)
+    :ok = PythonBridge.unload_all_models(env)
+
+    Enum.each(cell, fn run ->
+      :ok = embed.(env, run, experiment.embedding_models)
+      :ok = pd.(env, run, experiment.embedding_models)
+    end)
   end
 
   def init_runs(experiment) do

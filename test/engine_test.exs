@@ -1,6 +1,8 @@
 defmodule PanicTda.EngineTest do
   use ExUnit.Case
 
+  require Ash.Query
+
   alias PanicTda.Engine
   alias PanicTda.Models.{GenAI, Embeddings, PythonInterpreter}
 
@@ -47,6 +49,50 @@ defmodule PanicTda.EngineTest do
   end
 
   describe "full pipeline" do
+    test "runs cells in config order and finishes each before the next starts" do
+      # Term order would put DummyT2I before DummyT2I2; the config lists them
+      # the other way round. Each cell's embeddings must also land before the
+      # next cell's first invocation, so a long run can be analysed cell by cell.
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["DummyT2I2", "DummyI2T2"], ["DummyT2I", "DummyI2T"]],
+          prompts: ["A beautiful sunset"],
+          embedding_models: ["DummyText"],
+          max_length: 2
+        })
+
+      {:ok, _} = Engine.perform_experiment(experiment.id)
+
+      invocations_of = fn network ->
+        PanicTda.Invocation
+        |> Ash.Query.filter(run.experiment_id == ^experiment.id and run.network == ^network)
+        |> Ash.read!()
+      end
+
+      first = invocations_of.(["DummyT2I2", "DummyI2T2"])
+      second = invocations_of.(["DummyT2I", "DummyI2T"])
+      second_started = second |> Enum.map(& &1.started_at) |> Enum.min(DateTime)
+
+      assert first != [] and second != []
+
+      assert Enum.all?(first, &(DateTime.compare(&1.completed_at, second_started) != :gt)),
+             "the first-listed cell must finish before the second starts"
+
+      first_embeddings =
+        PanicTda.Embedding
+        |> Ash.Query.filter(invocation.run.experiment_id == ^experiment.id)
+        |> Ash.Query.filter(invocation.run.network == ^["DummyT2I2", "DummyI2T2"])
+        |> Ash.read!()
+
+      assert first_embeddings != []
+
+      assert Enum.all?(
+               first_embeddings,
+               &(DateTime.compare(&1.completed_at, second_started) != :gt)
+             ),
+             "the first cell must be embedded before the second cell starts"
+    end
+
     test "executes a simple T2I -> I2T trajectory" do
       experiment =
         PanicTda.create_experiment!(%{
