@@ -151,6 +151,14 @@ seconds per caption at natural length are in
   run's initial prompt as a synthetic `sequence_number == -1` row (`t_0`)
 - `mise exec -- mix experiment.delete <id-prefix> [--force]` --- delete an
   experiment and all its data
+- `bin/long-run config/x.json` --- run an experiment to completion across
+  crashes and reboots; the header comment covers the systemd unit
+  (`bin/panic-experiment.service`) that keeps it alive
+
+Cells (one network's runs, batched in lockstep) execute in the order the config
+lists them, and each cell is embedded and given its persistence diagrams as soon
+as its runs finish, so put the slow generators last and analyse the fast cells
+while they run.
 
 <!-- usage-rules-start -->
 <!-- ash-start -->

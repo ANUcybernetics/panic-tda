@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Run a PANIC-TDA experiment to completion, surviving crashes and reboots.
+#
+#   bin/long-run config/some_experiment.json
+#
+# The first invocation creates and runs the experiment; its id is written to
+# logs/long-run.id. Every later invocation (the systemd unit restarts this
+# script on failure and after a reboot) resumes that id until the experiment
+# has completed_at set, then exits 0. Output goes to logs/long-run.log.
+#
+# Install as a user service so it outlives logouts and reboots:
+#   cp bin/panic-experiment.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user start panic-experiment      # (linger is already enabled)
+#   journalctl --user -u panic-experiment -f      # or tail logs/long-run.log
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+config="${1:?usage: bin/long-run <config.json>}"
+id_file=logs/long-run.id
+log=logs/long-run.log
+db=priv/panic_tda_dev.db
+mise=/home/ben/.local/bin/mise
+mkdir -p logs
+
+completed() {
+  [ "$(sqlite3 "$db" "select completed_at is not null from experiments where id like '$1%'")" = "1" ]
+}
+
+if [ ! -s "$id_file" ]; then
+  echo "$(date -Is) creating and running $config" >> "$log"
+  # tee so the id line is on disk before the run gets anywhere
+  "$mise" exec -- mix experiment.run "$config" 2>&1 | tee -a "$log" \
+    | grep --line-buffered -o 'Created experiment [0-9a-f]*' | awk '{print $3}' > "$id_file" || true
+fi
+
+id="$(cat "$id_file")"
+[ -n "$id" ] || { echo "$(date -Is) no experiment id recorded; refusing to guess" >> "$log"; exit 1; }
+
+while ! completed "$id"; do
+  echo "$(date -Is) resuming $id" >> "$log"
+  "$mise" exec -- mix experiment.resume "$id" >> "$log" 2>&1 || {
+    echo "$(date -Is) resume exited $?; retrying in 60s" >> "$log"
+    sleep 60
+  }
+done
+
+echo "$(date -Is) experiment $id completed" >> "$log"

@@ -59,8 +59,19 @@ that took 17, so the second column carries that overhead.
 | 4               | 1,600        | 58.5             | 66.8                     |
 
 Flux2Dev is 69% of the total at every setting. The config is committed at
-four runs per prompt, the count the programme carried; two runs halves the
-cost and still gives 40 trajectories per cell, which is the MSM's input.
+two runs per prompt (decided 2026-09-05): 40 trajectories per cell is the
+MSM's input, it finishes in five weeks rather than ten, and runs per prompt
+is the lever past the plateau, so a second batch can be added if implied
+timescales do not converge.
+
+## Launch
+
+`bin/long-run` under the `panic-experiment` systemd user unit
+(`bin/panic-experiment.service`), so the run survives crashes and the
+fortnightly reboots this machine gets. Cells execute in config order with
+Flux2Dev last, and each cell is embedded and given its persistence diagrams
+as soon as it finishes, so the fifteen fast cells (31% of the GPU time,
+about ten days) are analysable while Flux2Dev runs.
 
 ## Pilot
 
