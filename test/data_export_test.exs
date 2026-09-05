@@ -166,7 +166,6 @@ defmodule PanicTda.DataExportTest do
     assert Enum.all?(clusters, &MapSet.member?(embedding_ids, &1["embedding_id"]))
     # at least some rows are non-outliers, i.e. clustering did something
     assert Enum.any?(clusters, &(&1["medoid_embedding_id"] != nil))
-
   end
 
   test "exports multiple experiments into combined files" do

@@ -65,7 +65,8 @@ defmodule Mix.Tasks.Embeddings.Recompute do
     do: Mix.shell().info("#{model}: nothing to do")
 
   defp report(%{done: 0, total: total, model: model, dry_run: dry_run?}, _started),
-    do: Mix.shell().info("#{model}: #{total} embeddings#{if dry_run?, do: " (dry run)", else: ""}")
+    do:
+      Mix.shell().info("#{model}: #{total} embeddings#{if dry_run?, do: " (dry run)", else: ""}")
 
   defp report(%{done: done, total: total, after: after_id}, started) do
     elapsed = System.monotonic_time(:millisecond) - started

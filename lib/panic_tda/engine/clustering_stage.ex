@@ -15,7 +15,11 @@ defmodule PanicTda.Engine.ClusteringStage do
     import Ecto.Query
 
     PanicTda.Repo.all(
-      from e in "embeddings", distinct: true, select: e.embedding_model, order_by: e.embedding_model
+      from(e in "embeddings",
+        distinct: true,
+        select: e.embedding_model,
+        order_by: e.embedding_model
+      )
     )
   end
 

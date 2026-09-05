@@ -86,5 +86,4 @@ defmodule PanicTda.Models.Embeddings do
       error -> error
     end
   end
-
 end
