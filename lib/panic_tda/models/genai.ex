@@ -48,8 +48,11 @@ defmodule PanicTda.Models.GenAI do
     invoke_dummy_i2t(env, model_name, input)
   end
 
+  # The pipeline always passes the seed it recorded; a caller that passes none
+  # (a test, an ad-hoc probe) gets one drawn here, so the Python side never
+  # sees an unseeded call.
   def invoke(env, model_name, input, seed) when model_name in @real_t2i_models do
-    invoke_real_t2i(env, model_name, input, seed)
+    invoke_real_t2i(env, model_name, input, seed || draw_seed())
   end
 
   def invoke(env, model_name, input, _seed) when model_name in @real_i2t_models do
@@ -67,6 +70,7 @@ defmodule PanicTda.Models.GenAI do
   end
 
   def invoke_batch(env, model_name, inputs, seeds) when model_name in @real_t2i_models do
+    seeds = seeds || Enum.map(inputs, fn _ -> draw_seed() end)
     invoke_batch_real_t2i(env, model_name, inputs, seeds)
   end
 

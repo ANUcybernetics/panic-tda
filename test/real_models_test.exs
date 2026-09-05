@@ -175,6 +175,71 @@ defmodule PanicTda.RealModelsTest do
     end
   end
 
+  describe "seed regeneration" do
+    # TASK-93: the recorded seed is what makes any step regenerable. Same
+    # seed, same input, same path gives the same bytes; a batch reproduces a
+    # single call at the same seed only to within batched-kernel noise, so
+    # the batch check is against the distance a different seed produces.
+    test "a stored seed regenerates the invocation's image exactly", %{env: env} do
+      experiment =
+        PanicTda.create_experiment!(%{
+          networks: [["SD35Medium", "Moondream3"]],
+          prompts: ["a red apple on a wooden table"],
+          embedding_models: ["Qwen3Embed"],
+          max_length: 1
+        })
+
+      experiment = PanicTda.start_experiment!(experiment)
+      [run] = Engine.init_runs(experiment)
+      {:ok, session} = PanicTda.Models.PythonSession.wrap(env)
+      :ok = PanicTda.Engine.RunExecutor.execute(session, run)
+
+      [invocation] =
+        PanicTda.Invocation
+        |> Ash.Query.filter(run_id == ^run.id)
+        |> Ash.read!()
+
+      assert is_integer(invocation.seed)
+
+      {:ok, regenerated} = GenAI.invoke(env, "SD35Medium", run.initial_prompt, invocation.seed)
+      assert regenerated == invocation.output_image
+
+      {:ok, other} = GenAI.invoke(env, "SD35Medium", run.initial_prompt, invocation.seed + 1)
+      assert mean_pixel_difference(other, invocation.output_image) > 10
+    end
+
+    test "a batched item's image depends only on its own seed", %{env: env} do
+      prompt = "a red apple on a wooden table"
+      seed = GenAI.draw_seed()
+
+      {:ok, [alone]} = GenAI.invoke_batch(env, "SD35Medium", [prompt], [seed])
+
+      {:ok, [_, with_partners]} =
+        GenAI.invoke_batch(env, "SD35Medium", ["a blue bicycle", prompt], [
+          GenAI.draw_seed(),
+          seed
+        ])
+
+      {:ok, [_, other_seed]} =
+        GenAI.invoke_batch(env, "SD35Medium", ["a blue bicycle", prompt], [
+          GenAI.draw_seed(),
+          seed + 1
+        ])
+
+      assert mean_pixel_difference(alone, with_partners) < 5
+      assert mean_pixel_difference(alone, other_seed) > 10
+    end
+
+    defp mean_pixel_difference(avif_a, avif_b) do
+      {:ok, a} = Vix.Vips.Image.new_from_buffer(avif_a)
+      {:ok, b} = Vix.Vips.Image.new_from_buffer(avif_b)
+      {:ok, diff} = Vix.Vips.Operation.subtract(a, b)
+      {:ok, abs} = Vix.Vips.Operation.abs(diff)
+      {:ok, mean} = Vix.Vips.Operation.avg(abs)
+      mean
+    end
+  end
+
   describe "per-model T2I tests" do
     for t2i <- ~w(SD35Medium ZImageTurbo Flux2Klein Flux2Dev) do
       @tag timeout: 600_000

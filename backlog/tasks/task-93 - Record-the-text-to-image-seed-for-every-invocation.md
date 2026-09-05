@@ -1,10 +1,10 @@
 ---
 id: TASK-93
 title: Record the text-to-image seed for every invocation
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-04 06:38'
-updated_date: '2026-09-04 12:56'
+updated_date: '2026-09-05 07:52'
 labels:
   - instrument
   - engine
@@ -46,27 +46,25 @@ afterwards.
 <!-- AC:BEGIN -->
 - [x] #1 Every text-to-image invocation draws its own seed, passes it to the
       pipeline, and stores it on the invocation
-- [ ] #2 Batched invocations get per-item seeds, so an item's image depends only
+- [x] #2 Batched invocations get per-item seeds, so an item's image depends only
       on its own seed
-- [ ] #3 Regenerating an invocation from its stored seed and input text
+- [x] #3 Regenerating an invocation from its stored seed and input text
       reproduces the stored image, verified on at least one model per pipeline
       family
-- [ ] #4 Resume behaviour under seeds is correct and stated: a resumed run draws fresh seeds for the steps it has yet to do, and completed steps keep the seeds they were run with
+- [x] #4 Resume behaviour under seeds is correct and stated: a resumed run draws fresh seeds for the steps it has yet to do, and completed steps keep the seeds they were run with
       it redoes
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-IMPLEMENTED 2026-09-04, apart from the GPU verification in AC#3, which waits for the embedding recompute to release the card.
+GPU VERIFICATION DONE 2026-09-05 (AC#2, AC#3), test/real_models_test.exs 'seed regeneration'.
 
-Elixir draws the seed and Python consumes it, so recording is by construction rather than by reporting: GenAI.draw_seed/0 draws one per text-to-image invocation, RunExecutor stores it on the invocation and hands it down, and panic_models.invoke_t2i/invoke_t2i_batch now REQUIRE a seed --- there is no unseeded path left to fall back to. Batches pass a list of per-item generators, so image i depends only on seeds[i], and the chunking and retry behaviour is unchanged. The retry path regenerates at the same seed, which is what it should do.
+AC#3: a run executed through RunExecutor on SD35Medium, then GenAI.invoke at the invocation's stored seed and initial prompt, reproduces the stored AVIF byte for byte; the same prompt at seed+1 differs by a mean of >10 per pixel. A direct Python probe over Flux2Klein, SD35Medium and ZImageTurbo agreed: same seed is bit-exact on all three, a different seed moves the image by a mean of 46-95 (of 255).
 
-Invocation gains a nullable `seed` integer (migration 20260904124059). Nullable because image-to-text steps have none and every invocation recorded before this does not either.
+AC#2: a batched item at seed s with different batch-mates lands within numerical noise of the same item generated alone (mean pixel difference 0.4-1.8 across the three models, max under 5 asserted), against 46-95 for a different seed. So an item depends on its own seed only, but a batch is NOT bit-exact against a single call at the same seed; regeneration must use the same path (single or batch) to reproduce bytes.
 
-Covered by a non-GPU test over the dummy models: every text-to-image invocation carries an integer seed, captions carry none, and seeds within a batched step are all distinct --- which is the property that would break if a seed were drawn per step or per run rather than per invocation.
+AC#4: resume runs only the steps that were never completed, drawing a fresh seed for each; completed invocations keep the seed they were run with. Batched resume behaves the same since TASK-97 (each run rejoins at its own next step).
 
-ON AC#4, WHICH WAS WRONG AS WRITTEN. Resume starts at last_invocation.sequence_number + 1, so it only runs steps that were never completed; there is no stored seed to reuse, because the invocation does not exist. Replaced with the property that is actually true and worth asserting.
-
-SEPARATE BUG FOUND WHILE READING RESUME --- see TASK-97. resume_batch/2 takes the MINIMUM completed sequence across the batch and restarts every run there, so any run that got further would be re-run at a sequence number it already has, violating the unique index on (run_id, sequence_number). Reachable whenever a crash lands mid-batch-write, which over a multi-week run is likely.
+ALSO FIXED: GenAI.invoke/invoke_batch with no seed on a real text-to-image model handed None to Python, which now requires an int, so every existing GPU test that calls invoke without a seed was broken. A seedless caller now gets a seed drawn on the Elixir side; the pipeline path is unchanged.
 <!-- SECTION:NOTES:END -->
