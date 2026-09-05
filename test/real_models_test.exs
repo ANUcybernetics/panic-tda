@@ -59,6 +59,36 @@ defmodule PanicTda.RealModelsTest do
       assert unrelated > paraphrase * 3
     end
 
+    # The geometry test above catches a collapse. This catches any movement at
+    # all: sentence-transformers 6 changed the pooling under us once already
+    # (TASK-96) and every vector in the database had to be recomputed.
+    # Regenerate the fixture with analysis/embedding_reference.py, and only
+    # when the embedding path is deliberately changed.
+    test "reproduces the stored reference vectors exactly", %{env: env} do
+      %{"dimension" => dimension, "vectors" => reference} =
+        "test/fixtures/qwen3embed_reference.json" |> File.read!() |> Jason.decode!()
+
+      texts = Enum.map(reference, & &1["text"])
+      {:ok, fresh} = PanicTda.Models.Embeddings.embed(env, "Qwen3Embed", texts)
+
+      for {%{"text" => text, "vector_b64" => b64}, actual} <- Enum.zip(reference, fresh) do
+        expected = Base.decode64!(b64)
+
+        assert byte_size(actual) == dimension * 4,
+               "expected #{dimension} float32s, got #{byte_size(actual) / 4}"
+
+        distance = cosine_distance(expected, actual)
+
+        assert distance < 1.0e-4,
+               """
+               the embedding path has moved: #{Float.round(distance, 6)} from the reference.
+
+               text: #{String.slice(text, 0, 60)}
+               Every stored vector is now on a different scale from fresh ones.
+               """
+      end
+    end
+
     defp cosine_distance(a, b) do
       va = for <<x::float-32-little <- a>>, do: x
       vb = for <<x::float-32-little <- b>>, do: x
