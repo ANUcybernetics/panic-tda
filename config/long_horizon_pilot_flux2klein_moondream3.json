@@ -1,0 +1,12 @@
+{
+  "networks": [["Flux2Klein", "Moondream3"]],
+  "prompts": [
+    "a red apple on a wooden table",
+    "a bicycle leaning against a brick wall",
+    "a bustling Tokyo street at night",
+    "the feeling of nostalgia"
+  ],
+  "embedding_models": ["Qwen3Embed"],
+  "max_length": 300,
+  "num_runs": 1
+}

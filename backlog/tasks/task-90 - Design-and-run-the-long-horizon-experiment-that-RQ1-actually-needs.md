@@ -1,10 +1,11 @@
 ---
 id: TASK-90
 title: Design and run the uniform 250-300 step factorial that both RQs need
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-04 07:41'
+updated_date: '2026-09-05 08:04'
 labels:
   - experiment
   - paper
@@ -29,12 +30,22 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Per-invocation text-to-image seed generated, stored on Invocation and passed to the generator, with a test that a stored seed regenerates the image; captioner stays greedy and both policies are recorded in the paper's methods
-- [ ] #2 TASK-89 landed first, and its noise share used to sanity-check that the stationary step size at the chosen horizon is resolvable
+- [x] #1 Per-invocation text-to-image seed generated, stored on Invocation and passed to the generator, with a test that a stored seed regenerates the image; captioner stays greedy and both policies are recorded in the paper's methods
+- [x] #2 TASK-89 landed first, and its noise share used to sanity-check that the stationary step size at the chosen horizon is resolvable
 - [ ] #3 Horizon (250-300), runs per prompt and prompt count chosen, with the GPU-day cost and the implied-timescale justification written in a form that can go into methods
 - [ ] #4 Config committed as a versioned file and a short pilot at the chosen horizon on one fast network confirms per-step cost and that nothing degrades over the trajectory
 - [ ] #5 Run launched detached with a resumable config, and the expected completion date recorded
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. AC#1: seed recording landed and GPU-verified (TASK-93); greedy captioner enforced (decision-02); both recorded in body.typ methods notes (2026-09-04/05 entries).
+2. AC#2: TASK-89 landed; the settled step is at the noise floor at any horizon past the plateau, so the horizon is justified by state-level kinetics, not step size. Written into backlog/docs/long-horizon-design.md.
+3. AC#3: 300 steps, 20 prompts, runs per prompt with the cost table in the design doc; config committed as config/long_horizon_panel_4x5_300.json at num_runs 4.
+4. AC#4: pilot config/long_horizon_pilot_flux2klein_moondream3.json (4 prompts x 1 run x 300 steps) launched 2026-09-05 as experiment 01a0708e; checked by analysis/long_horizon_pilot.py.
+5. AC#5: launch after Ben chooses runs per prompt (2 = 33 GPU-days, 4 = 67).
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
