@@ -6,6 +6,13 @@ defmodule PanicTda.Run do
   sqlite do
     table("runs")
     repo(PanicTda.Repo)
+
+    # Expression indexes for the CAST predicates ash_sql emits on uuid columns
+    # (backlog/docs/ash-sql-cast-issue.md); drop them with TASK-99.
+    custom_indexes do
+      index(["CAST(id AS TEXT)"], name: "runs_id_text_index")
+      index(["CAST(experiment_id AS TEXT)"], name: "runs_experiment_id_text_index")
+    end
   end
 
   attributes do

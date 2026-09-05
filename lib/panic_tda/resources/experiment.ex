@@ -6,6 +6,12 @@ defmodule PanicTda.Experiment do
   sqlite do
     table("experiments")
     repo(PanicTda.Repo)
+
+    # Expression indexes for the CAST predicates ash_sql emits on uuid columns
+    # (backlog/docs/ash-sql-cast-issue.md); drop them with TASK-99.
+    custom_indexes do
+      index(["CAST(id AS TEXT)"], name: "experiments_id_text_index")
+    end
   end
 
   attributes do
@@ -96,6 +102,9 @@ defmodule PanicTda.Experiment do
       ])
     end
 
+    # Function captures, not `expr(now())`: AshSqlite never runs these
+    # atomically (no expr_error support), and on the non-atomic path
+    # set_attribute does not evaluate expressions.
     update :start do
       change(set_attribute(:started_at, &DateTime.utc_now/0))
     end

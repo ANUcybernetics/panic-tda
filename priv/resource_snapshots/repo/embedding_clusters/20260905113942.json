@@ -1,0 +1,171 @@
+{
+  "attributes": [
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "id",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": true,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "inserted_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "updated_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "embedding_id",
+      "references": {
+        "name": "embedding_clusters_embedding_id_fkey",
+        "table": "embeddings",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "clustering_result_id",
+      "references": {
+        "name": "embedding_clusters_clustering_result_id_fkey",
+        "table": "clustering_results",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "medoid_embedding_id",
+      "references": {
+        "name": "embedding_clusters_medoid_embedding_id_fkey",
+        "table": "embeddings",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": true,
+      "primary_key?": false,
+      "generated?": false
+    }
+  ],
+  "table": "embedding_clusters",
+  "hash": "9AF6C999E4EC140F91471723BC4EED5A51DC635C6E12AE7C9328C8637002B925",
+  "repo": "Elixir.PanicTda.Repo",
+  "strict?": false,
+  "custom_indexes": [
+    {
+      "message": null,
+      "name": "embedding_clusters_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    },
+    {
+      "message": null,
+      "name": "embedding_clusters_embedding_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(embedding_id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    },
+    {
+      "message": null,
+      "name": "embedding_clusters_clustering_result_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(clustering_result_id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    }
+  ],
+  "identities": [
+    {
+      "name": "unique_embedding_clustering",
+      "keys": [
+        "embedding_id",
+        "clustering_result_id"
+      ],
+      "base_filter": null,
+      "nils_distinct?": true,
+      "index_name": "embedding_clusters_unique_embedding_clustering_index"
+    }
+  ],
+  "multitenancy": {
+    "global": null,
+    "attribute": null,
+    "strategy": null
+  },
+  "base_filter": null,
+  "custom_statements": [],
+  "has_create_action": true
+}

@@ -1,0 +1,150 @@
+{
+  "attributes": [
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "id",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": true,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "text",
+      "source": "embedding_model",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "binary",
+      "source": "diagram_data",
+      "references": null,
+      "allow_nil?": true,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "started_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "completed_at",
+      "references": null,
+      "allow_nil?": true,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "inserted_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "updated_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "run_id",
+      "references": {
+        "name": "persistence_diagrams_run_id_fkey",
+        "table": "runs",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    }
+  ],
+  "table": "persistence_diagrams",
+  "hash": "71E9FCC36DAA6081B050C644E5627CFC95ACAE9A076E750B1C02B8DE753ED9B2",
+  "repo": "Elixir.PanicTda.Repo",
+  "strict?": false,
+  "custom_indexes": [
+    {
+      "message": null,
+      "name": "persistence_diagrams_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    },
+    {
+      "message": null,
+      "name": "persistence_diagrams_run_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(run_id AS TEXT)",
+        "embedding_model"
+      ],
+      "unique": false,
+      "using": null
+    }
+  ],
+  "identities": [
+    {
+      "name": "unique_run_model",
+      "keys": [
+        "run_id",
+        "embedding_model"
+      ],
+      "base_filter": null,
+      "nils_distinct?": true,
+      "index_name": "persistence_diagrams_unique_run_model_index"
+    }
+  ],
+  "multitenancy": {
+    "global": null,
+    "attribute": null,
+    "strategy": null
+  },
+  "base_filter": null,
+  "custom_statements": [],
+  "has_create_action": true
+}

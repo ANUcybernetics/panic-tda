@@ -1,0 +1,154 @@
+{
+  "attributes": [
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "id",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": true,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": [
+        "array",
+        "text"
+      ],
+      "source": "network",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "bigint",
+      "source": "run_number",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "bigint",
+      "source": "max_length",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "text",
+      "source": "initial_prompt",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "inserted_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "updated_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "experiment_id",
+      "references": {
+        "name": "runs_experiment_id_fkey",
+        "table": "experiments",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    }
+  ],
+  "table": "runs",
+  "hash": "0FBD85A1CFAB9367FF14F560D32C9F114E209B7251939BE74E19772DA5F75AB7",
+  "repo": "Elixir.PanicTda.Repo",
+  "strict?": false,
+  "custom_indexes": [
+    {
+      "message": null,
+      "name": "runs_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    },
+    {
+      "message": null,
+      "name": "runs_experiment_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(experiment_id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    }
+  ],
+  "identities": [
+    {
+      "name": "unique_experiment_run",
+      "keys": [
+        "experiment_id",
+        "network",
+        "initial_prompt",
+        "run_number"
+      ],
+      "base_filter": null,
+      "nils_distinct?": true,
+      "index_name": "runs_unique_experiment_run_index"
+    }
+  ],
+  "multitenancy": {
+    "global": null,
+    "attribute": null,
+    "strategy": null
+  },
+  "base_filter": null,
+  "custom_statements": [],
+  "has_create_action": true
+}

@@ -1,0 +1,150 @@
+{
+  "attributes": [
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "id",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": true,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "text",
+      "source": "embedding_model",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "binary",
+      "source": "vector",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "started_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "completed_at",
+      "references": null,
+      "allow_nil?": true,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "inserted_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "utc_datetime_usec",
+      "source": "updated_at",
+      "references": null,
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    },
+    {
+      "default": "nil",
+      "size": null,
+      "type": "uuid",
+      "source": "invocation_id",
+      "references": {
+        "name": "embeddings_invocation_id_fkey",
+        "table": "invocations",
+        "destination_attribute": "id",
+        "primary_key?": true,
+        "multitenancy": {
+          "global": null,
+          "attribute": null,
+          "strategy": null
+        },
+        "on_delete": null,
+        "on_update": null,
+        "deferrable": false,
+        "destination_attribute_default": null,
+        "destination_attribute_generated": null
+      },
+      "allow_nil?": false,
+      "primary_key?": false,
+      "generated?": false
+    }
+  ],
+  "table": "embeddings",
+  "hash": "4C7A056BEC520007C83CA9FEE7F12AC1B3E418AB7E973504B41AB527D890AE38",
+  "repo": "Elixir.PanicTda.Repo",
+  "strict?": false,
+  "custom_indexes": [
+    {
+      "message": null,
+      "name": "embeddings_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(id AS TEXT)"
+      ],
+      "unique": false,
+      "using": null
+    },
+    {
+      "message": null,
+      "name": "embeddings_invocation_id_text_index",
+      "table": null,
+      "include": null,
+      "where": null,
+      "fields": [
+        "CAST(invocation_id AS TEXT)",
+        "embedding_model"
+      ],
+      "unique": false,
+      "using": null
+    }
+  ],
+  "identities": [
+    {
+      "name": "unique_invocation_model",
+      "keys": [
+        "invocation_id",
+        "embedding_model"
+      ],
+      "base_filter": null,
+      "nils_distinct?": true,
+      "index_name": "embeddings_unique_invocation_model_index"
+    }
+  ],
+  "multitenancy": {
+    "global": null,
+    "attribute": null,
+    "strategy": null
+  },
+  "base_filter": null,
+  "custom_statements": [],
+  "has_create_action": true
+}

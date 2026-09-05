@@ -6,6 +6,12 @@ defmodule PanicTda.ClusteringResult do
   sqlite do
     table("clustering_results")
     repo(PanicTda.Repo)
+
+    # Expression indexes for the CAST predicates ash_sql emits on uuid columns
+    # (backlog/docs/ash-sql-cast-issue.md); drop them with TASK-99.
+    custom_indexes do
+      index(["CAST(id AS TEXT)"], name: "clustering_results_id_text_index")
+    end
   end
 
   attributes do
@@ -66,9 +72,8 @@ defmodule PanicTda.ClusteringResult do
     end
 
     update :update do
-      # Non-atomic until the ash_sql cast fix ships
-      # (backlog/docs/ash-sql-cast-issue.md): the atomic path's CAST on the
-      # primary key defeats the index (test/query_plan_test.exs).
+      # Non-atomic: AshSqlite's atomic update binds the `:map` attribute
+      # unencoded and exqlite rejects it ("unsupported type") --- TASK-99.
       require_atomic?(false)
       accept([:parameters, :completed_at])
     end

@@ -117,14 +117,36 @@ this project's full test suite passes. The patch does not touch `LIKE`:
 `like(experiment_id, ^prefix)` still casts, because the ref is a uuid and
 the target type is string, which is the intended behaviour.
 
+## A second AshSqlite bug found on the same path
+
+An atomic update of a `:map` attribute hands the map to exqlite unencoded:
+
+```
+** (Exqlite.Error) unsupported type: %{"k" => 3}
+UPDATE "clustering_results" AS c0 SET ..., "parameters" = ? WHERE ...
+```
+
+The non-atomic path encodes it as JSON. `PanicTda.ClusteringResult.update`
+keeps `require_atomic?(false)` for this reason alone; worth a separate
+ash_sqlite issue when the cast report goes up.
+
 ## What this project does meanwhile
 
-The five resources whose update actions can be made atomic keep
-`require_atomic?(false)` (see the comment on each), which routes them
-through the indexed non-atomic path; `test/query_plan_test.exs` asserts
-the plan. Read-side filters cannot be routed around, so the per-run reads in
-the embeddings and persistence-diagram stages each pay one table scan per
-run until the fix ships. That is about 0.2 s per run today, growing with the
-table, against minutes of GPU time per run, so it does not gate the
-long-horizon panel (TASK-90); it does slow `mix embeddings.recompute`,
-`experiment.export` and the analysis paths that read through Ash.
+Every uuid column that a query filters on carries an expression index on
+`CAST(col AS TEXT)`, declared through `custom_indexes` on the resource and
+generated into `priv/repo/migrations/*_add_cast_indexes.exs` (13 indexes,
+138 MB and 6.6 s on the 7.5 GB dev database). SQLite matches the index
+against the predicate ash_sql emits, so reads and atomic updates plan as
+`SEARCH`; `test/query_plan_test.exs` asserts this for the engine's real
+queries, and on the dev database they run in 0-11 ms where they took about
+175 ms.
+
+The one query that needs more is the recompute's keyset page: with
+`ORDER BY id` the planner prefers an ordered walk of the primary key and
+re-evaluates the cast from the first row every page, so
+`PanicTda.Embeddings.Recompute` sorts by `expr_sort(fragment("?", id))`,
+which renders as the same `CAST(id AS TEXT)` the index is built on and turns
+the page into a seek.
+
+The indexes encode an ash_sql quirk in the schema, so TASK-99 drops them
+once a release contains the fix.

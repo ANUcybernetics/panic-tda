@@ -6,6 +6,17 @@ defmodule PanicTda.EmbeddingCluster do
   sqlite do
     table("embedding_clusters")
     repo(PanicTda.Repo)
+
+    # Expression indexes for the CAST predicates ash_sql emits on uuid columns
+    # (backlog/docs/ash-sql-cast-issue.md); drop them with TASK-99.
+    custom_indexes do
+      index(["CAST(id AS TEXT)"], name: "embedding_clusters_id_text_index")
+      index(["CAST(embedding_id AS TEXT)"], name: "embedding_clusters_embedding_id_text_index")
+
+      index(["CAST(clustering_result_id AS TEXT)"],
+        name: "embedding_clusters_clustering_result_id_text_index"
+      )
+    end
   end
 
   attributes do
@@ -46,10 +57,6 @@ defmodule PanicTda.EmbeddingCluster do
     end
 
     update :update do
-      # Non-atomic until the ash_sql cast fix ships
-      # (backlog/docs/ash-sql-cast-issue.md): the atomic path's CAST on the
-      # primary key defeats the index (test/query_plan_test.exs).
-      require_atomic?(false)
       accept([:medoid_embedding_id])
     end
   end

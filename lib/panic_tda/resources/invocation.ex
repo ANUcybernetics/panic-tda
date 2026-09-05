@@ -6,6 +6,13 @@ defmodule PanicTda.Invocation do
   sqlite do
     table("invocations")
     repo(PanicTda.Repo)
+
+    # Expression indexes for the CAST predicates ash_sql emits on uuid columns
+    # (backlog/docs/ash-sql-cast-issue.md); drop them with TASK-99.
+    custom_indexes do
+      index(["CAST(id AS TEXT)"], name: "invocations_id_text_index")
+      index(["CAST(run_id AS TEXT)", :sequence_number], name: "invocations_run_id_text_index")
+    end
   end
 
   attributes do
@@ -95,10 +102,6 @@ defmodule PanicTda.Invocation do
     end
 
     update :update do
-      # Non-atomic until the ash_sql cast fix ships
-      # (backlog/docs/ash-sql-cast-issue.md): the atomic path's CAST on the
-      # primary key defeats the index (test/query_plan_test.exs).
-      require_atomic?(false)
       accept([:output_text, :output_image, :completed_at])
     end
   end
