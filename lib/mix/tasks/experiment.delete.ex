@@ -52,6 +52,10 @@ defmodule Mix.Tasks.Experiment.Delete do
     Mix.shell().yes?("Delete experiment #{short_id(experiment.id)} (#{experiment.id})? [yn]")
   end
 
+  # Spelled out rather than `cascade_destroy` on the resources: that change
+  # needs keyset pagination on every primary read action, and it could not
+  # honour the newest-first order that `input_invocation_id` (a foreign key
+  # onto the same table) forces on invocations.
   defp delete_experiment(experiment) do
     PanicTda.EmbeddingCluster
     |> Ash.Query.filter(embedding.invocation.run.experiment_id == ^experiment.id)
