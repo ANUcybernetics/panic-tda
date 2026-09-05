@@ -66,8 +66,9 @@ defmodule PanicTda.ClusteringResult do
     end
 
     update :update do
-      # Non-atomic: the atomic builder's CAST on the primary key defeats the
-      # index and full-scans the table (test/query_plan_test.exs).
+      # Non-atomic until the ash_sql cast fix ships
+      # (backlog/docs/ash-sql-cast-issue.md): the atomic path's CAST on the
+      # primary key defeats the index (test/query_plan_test.exs).
       require_atomic?(false)
       accept([:parameters, :completed_at])
     end
@@ -84,12 +85,6 @@ defmodule PanicTda.ClusteringResult do
   end
 
   calculations do
-    calculate(
-      :cluster_count,
-      :integer,
-      expr(count(embedding_clusters, query: [filter: expr(not is_nil(medoid_embedding_id))]))
-    )
-
     calculate(
       :duration,
       :float,

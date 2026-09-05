@@ -69,10 +69,6 @@ defmodule PanicTda.Run do
     end
   end
 
-  calculations do
-    calculate(:invocation_count, :integer, expr(count(invocations)))
-  end
-
   validations do
     validate compare(:max_length, greater_than: 0) do
       message("must be greater than 0")

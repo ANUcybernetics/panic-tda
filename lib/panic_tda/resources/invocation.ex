@@ -95,8 +95,9 @@ defmodule PanicTda.Invocation do
     end
 
     update :update do
-      # Non-atomic: the atomic builder's CAST on the primary key defeats the
-      # index and full-scans the table (test/query_plan_test.exs).
+      # Non-atomic until the ash_sql cast fix ships
+      # (backlog/docs/ash-sql-cast-issue.md): the atomic path's CAST on the
+      # primary key defeats the index (test/query_plan_test.exs).
       require_atomic?(false)
       accept([:output_text, :output_image, :completed_at])
     end
