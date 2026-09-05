@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-05 11:59'
+updated_date: '2026-09-05 13:13'
 labels:
   - experiment
   - paper
@@ -53,4 +53,17 @@ PREREQUISITES. Seed recording needs a seed attribute on Invocation (Ash migratio
 PILOT DONE 2026-09-05 (AC#4): experiment 01a0708e, Flux2Klein + Moondream3, 4 prompts x 1 run x 300 steps, 2 h 05 min wall clock. Per-item times match the cost table (Flux2Klein 4.7 s vs 4.1, Moondream3 2.3 s vs 2.4); the rest of the wall clock is the 11 s model swap on every step, which a full panel cell amortises over 40-80 items (3-5%). Nothing degrades over 300 steps: caption length flat at 44-48 words, zero exact repeats in 600 captions, step distance 0.03-0.05 with no trend; drift from t0 keeps growing while step size does not, the stationary-chain-on-a-large-space signature. Details and table in backlog/docs/long-horizon-design.md, numbers in analysis/long_horizon_pilot.json.
 
 AC#3: 300 steps, 20 prompts, 20 cells; cost by runs per prompt (with the 17/14.9 overhead): 1 run 16.7 GPU-days, 2 runs 33.4, 3 runs 50.1, 4 runs 66.8. Runs per prompt settled at 2 on 2026-09-05 (33.4 GPU-days); config/long_horizon_panel_4x5_300.json has num_runs 2. Only the launch (AC#5) remains.
+
+PRE-LAUNCH ENGINEERING REVIEW 2026-09-05 (wall clock). Where the time goes: the July panel's database timeline puts 390.7 of 419.3 wall-clock hours inside model calls; swaps and inserts between steps were 1-4 s per step (about 1 h in total; the other 27.6 h was a GLMImage anomaly, no longer in the lineup). So the only levers that matter are inside the invocations, and Flux2Dev is 69% of them.
+
+1. Allocator flag (the headline). setup() sets PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True, inherited from the Feb 2026 OOM-fix commit (494ab2b) and never measured on its own. With Flux2Dev's sequential CPU offload it costs a third of the model's time. Measured today, batch of 4 at 12 steps, 1024 px, same seeds:
+   - standalone script: 43.6 s/item without the flag, 59.5 with it
+   - mix gpu.bench Flux2Dev --batch-sizes 4 --n 4: 57.6 s/item with (current code), 43.4 without; batched-vs-serial parity identical (mean 5.78, max 12.58) in both
+   Removing the line saves about 14 s per Flux2Dev image, roughly 4.9 GPU-days off the 33-day panel. Effect on the other three generators and the captioners not yet measured (they are resident, so likely smaller). Fragmentation is what the flag guards against; the panel's batch shapes are fixed within a cell, each cell starts from unload_all_models, and Retry restarts the interpreter on a sticky CUDA error, so the safety net already exists. One-line change; validate with mix gpu.bench on all four generators and a GPU smoke subset before launch.
+
+2. Captioner batch cap. _I2T_MAX_BATCH is 8; a panel cell captions 40 per step. Measured on 40 pilot images, s/caption at cap 8 / 20 / 40: Qwen3VL 1.99 / 1.26 / 1.03 (peak 19.0 GiB at 40), Gemma4 1.01 / 0.53 / 0.37 (17.8), JoyCaption 1.14 / 0.62 / 0.46 (13.4), Qwen25VL 0.84 / 0.62 / 0.54 (17.6). Moondream3 captions serially inside its batch path (1.6 s/caption) and is unaffected. Worth about 0.7 GPU-days. Caveat: greedy captions change with batch composition (8-vs-40 identical for 1, 5, 4 and 18 of 40 respectively), so the cap is part of the captioner's effective definition; it already is at 8, but whatever value launches should stay fixed for the whole panel and be recorded in methods.
+
+3. Image transport. Python returns each image as lossless WEBP (335 ms per 1024 px image) and Elixir re-encodes to AVIF serially (156 ms); about 0.5 s per image inside the measured invocation time, 20 s per 40-image step, roughly 0.7 GPU-days over the panel. PNG at compress_level=1 is 36 ms for the hop and the AVIF encodes parallelise cleanly (8 in 363 ms). Lossless, mechanical.
+
+Measured and rejected as not worth the fragility: diffusers group offloading for Flux2Dev (54.7 s/item vs 57.7, with a GPU memory warning); keeping half the transformer resident via a device map (41.5 vs 43.6 s/item at the same allocator setting, at 39.5 GiB peak); Moondream3 compile() (no-op through the HF wrapper, would break under per-step CPU/GPU swapping anyway); keeping both models resident to skip swaps (about 0.5 GPU-days at most, needs a memory heuristic). Scripts and logs in the session scratchpad only; the numbers above are the record.
 <!-- SECTION:NOTES:END -->
