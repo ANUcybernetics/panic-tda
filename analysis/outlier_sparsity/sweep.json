@@ -1,0 +1,509 @@
+{
+ "m147_n0.5": {
+  "base_min_cluster_size": 147,
+  "noise_level": 0.5,
+  "seconds": 18.413691997528076,
+  "n_layers": 5,
+  "ari_layer0_vs_stored": 1.0,
+  "layers": [
+   {
+    "n_clusters": 261,
+    "outlier_fraction": 0.4043194988892135,
+    "stored_outliers_absorbed": 0.0,
+    "median_knn_absorbed": null,
+    "median_knn_outlier": 0.09388047456741333,
+    "median_knn_clustered": 0.08205768465995789
+   },
+   {
+    "n_clusters": 238,
+    "outlier_fraction": 0.4081172338358482,
+    "stored_outliers_absorbed": 0.02399475744795255,
+    "median_knn_absorbed": 0.10160574316978455,
+    "median_knn_outlier": 0.09297394752502441,
+    "median_knn_clustered": 0.0825655460357666
+   },
+   {
+    "n_clusters": 101,
+    "outlier_fraction": 0.38019471034628005,
+    "stored_outliers_absorbed": 0.33412867776788263,
+    "median_knn_absorbed": 0.09667807817459106,
+    "median_knn_outlier": 0.08901089429855347,
+    "median_knn_clustered": 0.08560788631439209
+   },
+   {
+    "n_clusters": 31,
+    "outlier_fraction": 0.33877290360275286,
+    "stored_outliers_absorbed": 0.5594744005511401,
+    "median_knn_absorbed": 0.09472504258155823,
+    "median_knn_outlier": 0.07951313257217407,
+    "median_knn_clustered": 0.08960884809494019
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m5_n0.5": {
+  "base_min_cluster_size": 5,
+  "noise_level": 0.5,
+  "seconds": 42.08752942085266,
+  "n_layers": 7,
+  "ari_layer0_vs_stored": -0.0582608715355853,
+  "layers": [
+   {
+    "n_clusters": 6304,
+    "outlier_fraction": 0.32406432371104604,
+    "stored_outliers_absorbed": 0.751734915060575,
+    "median_knn_absorbed": 0.09150588512420654,
+    "median_knn_outlier": 0.08705618977546692,
+    "median_knn_clustered": 0.08666682243347168
+   },
+   {
+    "n_clusters": 3200,
+    "outlier_fraction": 0.262458133199269,
+    "stored_outliers_absorbed": 0.7664039789625796,
+    "median_knn_absorbed": 0.08725297451019287,
+    "median_knn_outlier": 0.1004648208618164,
+    "median_knn_clustered": 0.082156240940094
+   },
+   {
+    "n_clusters": 1224,
+    "outlier_fraction": 0.3397308295910811,
+    "stored_outliers_absorbed": 0.5011510090232386,
+    "median_knn_absorbed": 0.08348435163497925,
+    "median_knn_outlier": 0.10293766856193542,
+    "median_knn_clustered": 0.0792531967163086
+   },
+   {
+    "n_clusters": 501,
+    "outlier_fraction": 0.4044281997105841,
+    "stored_outliers_absorbed": 0.20659351738275672,
+    "median_knn_absorbed": 0.08327323198318481,
+    "median_knn_outlier": 0.0957682728767395,
+    "median_knn_clustered": 0.08057031035423279
+   },
+   {
+    "n_clusters": 101,
+    "outlier_fraction": 0.38019471034628005,
+    "stored_outliers_absorbed": 0.33412867776788263,
+    "median_knn_absorbed": 0.09667807817459106,
+    "median_knn_outlier": 0.08901089429855347,
+    "median_knn_clustered": 0.08560788631439209
+   },
+   {
+    "n_clusters": 31,
+    "outlier_fraction": 0.33877290360275286,
+    "stored_outliers_absorbed": 0.5594744005511401,
+    "median_knn_absorbed": 0.09472504258155823,
+    "median_knn_outlier": 0.07951313257217407,
+    "median_knn_clustered": 0.08960884809494019
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m15_n0.5": {
+  "base_min_cluster_size": 15,
+  "noise_level": 0.5,
+  "seconds": 13.665640115737915,
+  "n_layers": 6,
+  "ari_layer0_vs_stored": -0.0242483151805277,
+  "layers": [
+   {
+    "n_clusters": 3369,
+    "outlier_fraction": 0.2623630199805697,
+    "stored_outliers_absorbed": 0.7734444575134845,
+    "median_knn_absorbed": 0.08733928203582764,
+    "median_knn_outlier": 0.09913349151611328,
+    "median_knn_clustered": 0.08249646425247192
+   },
+   {
+    "n_clusters": 1189,
+    "outlier_fraction": 0.3421018662572269,
+    "stored_outliers_absorbed": 0.4933375901063633,
+    "median_knn_absorbed": 0.0832194983959198,
+    "median_knn_outlier": 0.10303670167922974,
+    "median_knn_clustered": 0.07910078763961792
+   },
+   {
+    "n_clusters": 460,
+    "outlier_fraction": 0.4060858872364854,
+    "stored_outliers_absorbed": 0.18039756019693176,
+    "median_knn_absorbed": 0.08293944597244263,
+    "median_knn_outlier": 0.09539061784744263,
+    "median_knn_clustered": 0.08070164918899536
+   },
+   {
+    "n_clusters": 101,
+    "outlier_fraction": 0.38019471034628005,
+    "stored_outliers_absorbed": 0.33412867776788263,
+    "median_knn_absorbed": 0.09667807817459106,
+    "median_knn_outlier": 0.08901089429855347,
+    "median_knn_clustered": 0.08560788631439209
+   },
+   {
+    "n_clusters": 31,
+    "outlier_fraction": 0.33877290360275286,
+    "stored_outliers_absorbed": 0.5594744005511401,
+    "median_knn_absorbed": 0.09472504258155823,
+    "median_knn_outlier": 0.07951313257217407,
+    "median_knn_clustered": 0.08960884809494019
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m50_n0.5": {
+  "base_min_cluster_size": 50,
+  "noise_level": 0.5,
+  "seconds": 18.568326711654663,
+  "n_layers": 5,
+  "ari_layer0_vs_stored": 0.28407388367480724,
+  "layers": [
+   {
+    "n_clusters": 904,
+    "outlier_fraction": 0.374318072190933,
+    "stored_outliers_absorbed": 0.39786265185757735,
+    "median_knn_absorbed": 0.08191242814064026,
+    "median_knn_outlier": 0.10063433647155762,
+    "median_knn_clustered": 0.07893246412277222
+   },
+   {
+    "n_clusters": 319,
+    "outlier_fraction": 0.40364011875564737,
+    "stored_outliers_absorbed": 0.06968225429738041,
+    "median_knn_absorbed": 0.08701455593109131,
+    "median_knn_outlier": 0.0948520302772522,
+    "median_knn_clustered": 0.08128237724304199
+   },
+   {
+    "n_clusters": 101,
+    "outlier_fraction": 0.38019471034628005,
+    "stored_outliers_absorbed": 0.33412867776788263,
+    "median_knn_absorbed": 0.09667807817459106,
+    "median_knn_outlier": 0.08901089429855347,
+    "median_knn_clustered": 0.08560788631439209
+   },
+   {
+    "n_clusters": 31,
+    "outlier_fraction": 0.33877290360275286,
+    "stored_outliers_absorbed": 0.5594744005511401,
+    "median_knn_absorbed": 0.09472504258155823,
+    "median_knn_outlier": 0.07951313257217407,
+    "median_knn_clustered": 0.08960884809494019
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m300_n0.5": {
+  "base_min_cluster_size": 300,
+  "noise_level": 0.5,
+  "seconds": 18.717129945755005,
+  "n_layers": 4,
+  "ari_layer0_vs_stored": 0.4823604613079243,
+  "layers": [
+   {
+    "n_clusters": 126,
+    "outlier_fraction": 0.39198874946498813,
+    "stored_outliers_absorbed": 0.26229563288693225,
+    "median_knn_absorbed": 0.0989246666431427,
+    "median_knn_outlier": 0.08930778503417969,
+    "median_knn_clustered": 0.08542299270629883
+   },
+   {
+    "n_clusters": 77,
+    "outlier_fraction": 0.416045599994565,
+    "stored_outliers_absorbed": 0.35857711760455696,
+    "median_knn_absorbed": 0.09767401218414307,
+    "median_knn_outlier": 0.08698678016662598,
+    "median_knn_clustered": 0.08672618865966797
+   },
+   {
+    "n_clusters": 31,
+    "outlier_fraction": 0.33877290360275286,
+    "stored_outliers_absorbed": 0.5594744005511401,
+    "median_knn_absorbed": 0.09472504258155823,
+    "median_knn_outlier": 0.07951313257217407,
+    "median_knn_clustered": 0.08960884809494019
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m600_n0.5": {
+  "base_min_cluster_size": 600,
+  "noise_level": 0.5,
+  "seconds": 7.200289726257324,
+  "n_layers": 3,
+  "ari_layer0_vs_stored": 0.22908646520627424,
+  "layers": [
+   {
+    "n_clusters": 63,
+    "outlier_fraction": 0.45349303295673027,
+    "stored_outliers_absorbed": 0.3578881924957572,
+    "median_knn_absorbed": 0.0967974066734314,
+    "median_knn_outlier": 0.08627593517303467,
+    "median_knn_clustered": 0.08710473775863647
+   },
+   {
+    "n_clusters": 50,
+    "outlier_fraction": 0.4234236682450932,
+    "stored_outliers_absorbed": 0.42152134827684706,
+    "median_knn_absorbed": 0.0985269546508789,
+    "median_knn_outlier": 0.08161628246307373,
+    "median_knn_clustered": 0.08998596668243408
+   },
+   {
+    "n_clusters": 20,
+    "outlier_fraction": 0.33271962661267857,
+    "stored_outliers_absorbed": 0.59319812477946,
+    "median_knn_absorbed": 0.09385895729064941,
+    "median_knn_outlier": 0.082996666431427,
+    "median_knn_clustered": 0.08825641870498657
+   }
+  ]
+ },
+ "m147_n0.25": {
+  "base_min_cluster_size": 147,
+  "noise_level": 0.25,
+  "seconds": 9.454848051071167,
+  "n_layers": 5,
+  "ari_layer0_vs_stored": 0.5483367985291642,
+  "layers": [
+   {
+    "n_clusters": 255,
+    "outlier_fraction": 0.4084229548959529,
+    "stored_outliers_absorbed": 0.20765210962310757,
+    "median_knn_absorbed": 0.10177576541900635,
+    "median_knn_outlier": 0.09124898910522461,
+    "median_knn_clustered": 0.08359906077384949
+   },
+   {
+    "n_clusters": 201,
+    "outlier_fraction": 0.40624214466720565,
+    "stored_outliers_absorbed": 0.2196830944499521,
+    "median_knn_absorbed": 0.10211101174354553,
+    "median_knn_outlier": 0.09091755747795105,
+    "median_knn_clustered": 0.0841476321220398
+   },
+   {
+    "n_clusters": 93,
+    "outlier_fraction": 0.36232021903215506,
+    "stored_outliers_absorbed": 0.4118091845479139,
+    "median_knn_absorbed": 0.1008991003036499,
+    "median_knn_outlier": 0.08719843626022339,
+    "median_knn_clustered": 0.08661848306655884
+   },
+   {
+    "n_clusters": 32,
+    "outlier_fraction": 0.3329234406527484,
+    "stored_outliers_absorbed": 0.5686656696856149,
+    "median_knn_absorbed": 0.09368938207626343,
+    "median_knn_outlier": 0.08427354693412781,
+    "median_knn_clustered": 0.08775591850280762
+   },
+   {
+    "n_clusters": 2,
+    "outlier_fraction": 0.13437459661804568,
+    "stored_outliers_absorbed": 0.8431939240166014,
+    "median_knn_absorbed": 0.09907513856887817,
+    "median_knn_outlier": 0.060765862464904785,
+    "median_knn_clustered": 0.09147763252258301
+   }
+  ]
+ },
+ "m147_n0.75": {
+  "base_min_cluster_size": 147,
+  "noise_level": 0.75,
+  "seconds": 9.065932035446167,
+  "n_layers": 4,
+  "ari_layer0_vs_stored": 0.5795083797722776,
+  "layers": [
+   {
+    "n_clusters": 248,
+    "outlier_fraction": 0.4104814767006583,
+    "stored_outliers_absorbed": 0.18900072253121167,
+    "median_knn_absorbed": 0.09594732522964478,
+    "median_knn_outlier": 0.09250861406326294,
+    "median_knn_clustered": 0.0828353762626648
+   },
+   {
+    "n_clusters": 93,
+    "outlier_fraction": 0.36891700012908224,
+    "stored_outliers_absorbed": 0.40068556449851295,
+    "median_knn_absorbed": 0.09700590372085571,
+    "median_knn_outlier": 0.08746150135993958,
+    "median_knn_clustered": 0.08651691675186157
+   },
+   {
+    "n_clusters": 35,
+    "outlier_fraction": 0.45935608350940604,
+    "stored_outliers_absorbed": 0.43360274225799406,
+    "median_knn_absorbed": 0.0983814001083374,
+    "median_knn_outlier": 0.07871952652931213,
+    "median_knn_clustered": 0.0931503176689148
+   },
+   {
+    "n_clusters": 16,
+    "outlier_fraction": 0.3618378591373231,
+    "stored_outliers_absorbed": 0.5990119805756725,
+    "median_knn_absorbed": 0.0925644040107727,
+    "median_knn_outlier": 0.08794218301773071,
+    "median_knn_clustered": 0.08628582954406738
+   }
+  ]
+ },
+ "m1500_n0.5": {
+  "base_min_cluster_size": 1500,
+  "noise_level": 0.5,
+  "seconds": 2.4545745849609375,
+  "n_layers": 2,
+  "ari_layer0_vs_stored": 0.10924786634305651,
+  "layers": [
+   {
+    "n_clusters": 30,
+    "outlier_fraction": 0.3384875639466551,
+    "stored_outliers_absorbed": 0.560180128711374,
+    "median_knn_absorbed": 0.09479543566703796,
+    "median_knn_outlier": 0.0794304609298706,
+    "median_knn_clustered": 0.089633047580719
+   },
+   {
+    "n_clusters": 10,
+    "outlier_fraction": 0.39694143063868526,
+    "stored_outliers_absorbed": 0.5655066960159965,
+    "median_knn_absorbed": 0.09200817346572876,
+    "median_knn_outlier": 0.08964276313781738,
+    "median_knn_clustered": 0.08513778448104858
+   }
+  ]
+ },
+ "m147_n0.1": {
+  "base_min_cluster_size": 147,
+  "noise_level": 0.1,
+  "seconds": 2.527794599533081,
+  "n_layers": 5,
+  "ari_layer0_vs_stored": 0.5247125456060996,
+  "layers": [
+   {
+    "n_clusters": 259,
+    "outlier_fraction": 0.42631782761408493,
+    "stored_outliers_absorbed": 0.2004436005578613,
+    "median_knn_absorbed": 0.09390568733215332,
+    "median_knn_outlier": 0.09476155042648315,
+    "median_knn_clustered": 0.0811677873134613
+   },
+   {
+    "n_clusters": 204,
+    "outlier_fraction": 0.4004538259292222,
+    "stored_outliers_absorbed": 0.23967872565657924,
+    "median_knn_absorbed": 0.09817171096801758,
+    "median_knn_outlier": 0.09207621216773987,
+    "median_knn_clustered": 0.08343756198883057
+   },
+   {
+    "n_clusters": 95,
+    "outlier_fraction": 0.34582486938916934,
+    "stored_outliers_absorbed": 0.42530203484952867,
+    "median_knn_absorbed": 0.09832555055618286,
+    "median_knn_outlier": 0.08830845355987549,
+    "median_knn_clustered": 0.08612218499183655
+   },
+   {
+    "n_clusters": 33,
+    "outlier_fraction": 0.44676037583308986,
+    "stored_outliers_absorbed": 0.4608068825298674,
+    "median_knn_absorbed": 0.09740188717842102,
+    "median_knn_outlier": 0.08180680871009827,
+    "median_knn_clustered": 0.09035682678222656
+   },
+   {
+    "n_clusters": 12,
+    "outlier_fraction": 0.4050736108374719,
+    "stored_outliers_absorbed": 0.5505351771881773,
+    "median_knn_absorbed": 0.09425923228263855,
+    "median_knn_outlier": 0.08417606353759766,
+    "median_knn_clustered": 0.08835709095001221
+   }
+  ]
+ },
+ "m147_n0.9": {
+  "base_min_cluster_size": 147,
+  "noise_level": 0.9,
+  "seconds": 2.4276082515716553,
+  "n_layers": 5,
+  "ari_layer0_vs_stored": 0.572336768858801,
+  "layers": [
+   {
+    "n_clusters": 239,
+    "outlier_fraction": 0.43985787367605794,
+    "stored_outliers_absorbed": 0.15951136726429518,
+    "median_knn_absorbed": 0.09528207778930664,
+    "median_knn_outlier": 0.09478086233139038,
+    "median_knn_clustered": 0.08061081171035767
+   },
+   {
+    "n_clusters": 106,
+    "outlier_fraction": 0.43663761184295447,
+    "stored_outliers_absorbed": 0.29843899652176836,
+    "median_knn_absorbed": 0.09437799453735352,
+    "median_knn_outlier": 0.0916205644607544,
+    "median_knn_clustered": 0.08330219984054565
+   },
+   {
+    "n_clusters": 49,
+    "outlier_fraction": 0.4099243849911341,
+    "stored_outliers_absorbed": 0.44338211819266377,
+    "median_knn_absorbed": 0.09511709213256836,
+    "median_knn_outlier": 0.08484211564064026,
+    "median_knn_clustered": 0.08791828155517578
+   },
+   {
+    "n_clusters": 9,
+    "outlier_fraction": 0.40558993973898216,
+    "stored_outliers_absorbed": 0.5432258498143263,
+    "median_knn_absorbed": 0.09267693758010864,
+    "median_knn_outlier": 0.08672931790351868,
+    "median_knn_clustered": 0.08684647083282471
+   },
+   {
+    "n_clusters": 4,
+    "outlier_fraction": 0.27573322100915126,
+    "stored_outliers_absorbed": 0.683531329289399,
+    "median_knn_absorbed": 0.10085445642471313,
+    "median_knn_outlier": 0.06931516528129578,
+    "median_knn_clustered": 0.0941435694694519
+   }
+  ]
+ }
+}

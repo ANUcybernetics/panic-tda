@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:50'
-updated_date: '2026-09-04 02:28'
+updated_date: '2026-09-05 05:36'
 labels:
   - analysis
   - paper
@@ -33,7 +33,5 @@ Adopt symbolic dynamics as the primary formalism for trajectory analysis, replac
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-The paper's primary formalism and headline result (Results I). Depends on TASK-75 for whether transit time is meaningful and on TASK-89 for whether transitions are above the sampling noise floor. See backlog/docs/research-programme.md.
-
-Literature backing (2026-09-04 search): Sinitskiy & Pande 2018 (J. Chem. Phys. 148, 084101) --- the longest resolvable implied timescale scales with aggregate sampling time, not single-trajectory length, so many 250-300 step runs are the right input. Sarich, Noe & Schuette 2010 (Multiscale Model. Simul. 8) --- core-set MSM error depends on the spectrum restricted to the cores, not on how transit is handled, which is the warrant for milestoning outliers. Milestoning MFPTs are exact only for isocommittor milestones (Vanden-Eijnden), so escape times from density cores are approximate; say so. If density cores prove fragile, PCCA+ on a fine MSM or an HMM over embeddings (Noe & Wu 2013) assign every point and are the fallback state definitions.
+TASK-75 RESULT (2026-09-05, backlog/docs/outlier-sparsity.md): the core-plus-transit design in the description is no longer available. EVoC outliers are not sparse and outlier time is not transit: 75% of it is runs settling into the outlier region for good (median 19-step tails, plus 14% of runs never labelled), only 10% is passage between clusters, and the outlier share (26-45%) is a fixed point of the EVoC procedure rather than a data property (a second pass over the outliers leaves 39% unlabelled again). Milestoning would credit a run's destination to a core it left twenty steps earlier for nearly half of outlier time. Start instead from a state definition that assigns every point: PCCA+ on a fine partition or an HMM over embeddings (the fallbacks already named above), or EVoC forced to a complete partition via approx_n_clusters/base_n_clusters, in each case with AC#3's subsampling stability check. Dwell regions, which is what the outlier set is full of, are a candidate trajectory-aware core definition.
 <!-- SECTION:NOTES:END -->

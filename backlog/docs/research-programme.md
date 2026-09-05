@@ -81,6 +81,20 @@ stochastic regime with a persistent, nonzero step size --- consistent with
 Hintze et al., and the reason the horizon question is about slow timescales, not
 about waiting for motion to stop.
 
+**EVoC's outliers are not sparse space, and outlier time is not transit
+time.** TASK-75 (`backlog/docs/outlier-sparsity.md`) measured the reading the
+programme had assumed. Outliers have the same local density as clustered
+points; the 26--45% outlier share holds across every EVoC hyperparameter but
+the outlier set changes wholesale under it, and a second EVoC pass over the
+outliers alone leaves 39% of them unlabelled again, so the share is the
+procedure's, not the data's. Length and captioner explain nothing. Three
+quarters of outlier time is runs that end in the outlier region or never leave
+it (median 19-step tails); genuine transits between clusters are a tenth. The
+outlier region is one connected, ordinarily dense place that thousands of runs
+settle into and EVoC declines to partition. Consequence: TASK-76 cannot
+milestone outliers as transit, and needs a state definition that assigns every
+point.
+
 ## What the literature adds
 
 A 2026-09-04 search (four angles: closed-loop genAI, MSM methodology, iterated
@@ -91,7 +105,8 @@ confirmed the rest. Citations are in the paper skeleton's Related work notes.
   timescale scales with aggregate sampling time, not single-trajectory length
   (Sinitskiy & Pande 2018), and core-set MSM error does not depend on how the
   transit region is handled (Sarich, Noé & Schütte 2010). Both support the
-  uniform 250--300 step factorial and the outliers-as-transit design.
+  uniform 250--300 step factorial. The outliers-as-transit design they were
+  also meant to support did not survive TASK-75 (below).
 - **RQ2 has a sharper form.** In iterated learning a chain of samplers converges
   to the learner's prior regardless of start (Griffiths & Kalish 2007). "Whose
   prior does the stationary distribution sample from?" is testable by comparing
@@ -146,7 +161,7 @@ settles the count.
 | --------------------------------- | --------------------- | ------------------------------------------------------------ |
 | TASK-90                           | **the experiment**    | the dataset both RQs need                                    |
 | TASK-89 drift/noise decomposition | closed                | the noise floor is most of the step; Null models, and RQ2    |
-| TASK-75 outliers as sparse space  | **gate**              | decides whether "time in transit" is a real observable       |
+| TASK-75 outliers as sparse space  | closed                | failed: outliers are not sparse, transit time is not observable |
 | TASK-76 core-set MSM              | **primary formalism** | Results I, the headline kinetic result                       |
 | TASK-77 TDA keep/kill             | **gate**              | Results III, which exists only if this passes                |
 | TASK-91 prior-matching test       | candidate             | a sharper RQ2 (whose prior does the chain sample?); after 76 |
@@ -164,10 +179,13 @@ whole step (89--107% of it, matched by generator), falling to 53--62% in the
 is the kinetic result, and the transitions the Markov model fits must be shown
 to exceed the noise floor. The figures are indicative rather than exact --- the
 noise term travels through a captioner and the lineups do not match --- so
-TASK-90 re-measures the floor from its own trajectories. TASK-92 and
-TASK-93 gated TASK-90 rather than the analysis chain: both change what a
-recorded step means, and neither can be applied to a run after the fact. Both
-are now settled.
+TASK-90 re-measures the floor from its own trajectories. TASK-75 has also
+answered, negatively: the outlier share is an artefact of the clustering
+procedure and outlier time is settled time, so TASK-76 starts from a state
+definition that assigns every point rather than from EVoC cores plus transit.
+TASK-92 and TASK-93 gated TASK-90 rather than the analysis chain: both change
+what a recorded step means, and neither can be applied to a run after the
+fact. Both are now settled.
 
 ## What is instrument, and why it took so long
 

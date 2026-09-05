@@ -39,3 +39,6 @@ analysis/step_sweep/*/
 
 # TASK-89 sweep images (regenerable from recorded seeds)
 analysis/step_decomposition/
+
+# TASK-75 outlier analysis: k-NN distances and sweep labels (regenerable)
+analysis/outlier_sparsity/*.npy
