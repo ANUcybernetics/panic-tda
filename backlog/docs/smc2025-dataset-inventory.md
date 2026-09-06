@@ -1,99 +1,100 @@
 # SMC 2025 dataset inventory
 
 What survives of the dataset behind Swift & Hong (2025), "Semantic topologies in
-the recursive application of generative AI models," *IEEE SMC 2025*, 664–667
+the recursive application of generative AI models," _IEEE SMC 2025_, 664–667
 (doi:10.1109/SMC58881.2025.11342470).
 
-Inventoried 2026-08-13 by Sungyeon Hong.
+First inventoried 2026-08-13 by Sungyeon Hong from a 5.1 GB partial copy
+(`sungyeon.sqlite`, 144 runs, no longer on this machine). Re-inventoried
+2026-09-07 from the full database, which is in this repository.
 
 ## Location and contents
 
-`projects/panic-tda_SMC2025/` (outside this repository):
+`db/trajectory_data.sqlite` (124 GB; `db/backup/trajectory_data_2025_07_16.sqlite`
+is a 140 GB earlier copy of the same database). This is the complete dataset:
+the partial copy was experiment `067ed16c` alone.
 
-- `sungyeon.sqlite` — 5.1 GB
-- `persistence_diagrams.parquet` — 24 MB
+| Table               | Rows      |
+| ------------------- | --------- |
+| `experimentconfig`  | 6         |
+| `run`               | 3,092     |
+| `invocation`        | 3,092,000 |
+| `embedding`         | 6,184,000 |
+| `persistencediagram`| 12,368    |
+| `clusteringresult`  | 3         |
+| `embeddingcluster`  | 328,800   |
 
-Database contents:
+Every run is a full 1,000 invocations (500 text states), on the four SMC
+networks FluxSchnell/BLIP2, FluxSchnell/Moondream, SDXLTurbo/BLIP2 and
+SDXLTurbo/Moondream. Embedding models: Nomic, STSBRoberta, STSBMpnet, plus
+NomicVision on the images.
 
-| Table | Rows |
-|---|---|
-| `experimentconfig` | 1 |
-| `run` | 144 |
-| `invocation` | 144,000 |
-| `embedding` | 216,000 |
-| `persistencediagram` | 432 |
-| `clusteringresult` | **0** |
-| `embeddingcluster` | **0** |
+| experiment | ran           | prompts | repeats | runs  | prompt set                                      |
+| ---------- | ------------- | ------- | ------- | ----- | ----------------------------------------------- |
+| `067ed16c` | 2025-04-02/03 | 9       | 4       | 144   | fruit, vehicles, portrait photos                |
+| `067ee281` | 2025-04-03/04 | 9       | 4       | 144   | coloured circle on coloured background          |
+| `067f8931` | 2025-04-11/12 | 7       | 4       | 112   | single colour words                             |
+| `067fcc93` | 2025-04-14/15 | 8       | 8       | 256   | animals                                         |
+| `067feecb` | 2025-04-16/23 | 12      | 32      | 1,536 | picture/photo/portrait/painting of a man, woman, child |
+| `06826b10` | 2025-05-16, unfinished | 25 | 12   | 900   | re-run of the first three prompt sets           |
 
-Experiment configuration:
+The five April experiments are the paper's 45 prompts. The paper reports 720
+runs, which is four repeats per prompt per network; the animal and portrait
+experiments hold more repeats than that.
 
-- Networks: FluxSchnell/BLIP2, FluxSchnell/Moondream, SDXLTurbo/BLIP2,
-  SDXLTurbo/Moondream
-- Prompts: 9 — an apple, a pear, a banana, a car, a train, a boat, and
-  photorealistic portrait photos of a man, a woman and a child
-- 4 unseeded repeats per prompt per network, giving 36 runs per network
-- `max_length` 1000, so 500 text states per run
-- Embedding models: Nomic, STSBRoberta, STSBMpnet
-- Ran 2025-04-02 to 2025-04-03, about 15 hours
+A second database, `db/length_5000_experiment.sqlite` (26 GB, experiment
+`067efc98`, 2025-04-04), holds 128 runs of 5,000 invocations each: prompts
+"yeah" and "nah", 16 repeats, the same four networks. It was never written up
+and is the deepest trajectory data the project has, at 2,500 text states per
+run.
 
-## This is a subset
+## What the SMC runs actually were
 
-The published paper reports **720 runs over 45 prompts**; this database holds
-**144 runs over 9 prompts**, roughly a fifth. Missing in particular are the
-systematic colour and shape control prompts (for example "a yellow circle on a
-red background") that appear in the paper's figures. The paper's headline
-numbers — the ~62% outlier rate and the 21-of-180 stationary trajectories —
-cannot be reproduced from this subset.
+Checked 2026-09-07 against the code at commit `407c044` and the stored
+captions, because the fixes made since (decision-01, decision-02, TASK-96) had
+to be ruled in or out for this data.
 
-**Open question for Ben Swift: does the full 720-run database still exist?**
+- **Unseeded.** The paper's methods say four random seeds per prompt; every
+  experiment config has `seeds: [-1, ...]`, which meant `generator=None` and no
+  seed stored. The repeats are unseeded draws, so no SMC step can be
+  regenerated. The loop was a Markov chain with unrecorded noise, the regime
+  TASK-93 now records.
+- **Not truncated.** The `max_new_tokens` ceilings that cut four of five
+  captioners in `balanced_panel_5x5` arrived with the February 2026 port. Over
+  128,000 SMC captions, BLIP2 runs to at most 17 words against a 50-token
+  ceiling and Moondream (`length="short"`) is never cut. Decision-01 does not
+  affect this data; the captions are short because the models were, not
+  because they were clipped.
+- **Deterministic captioners.** BLIP2 ran beam search without sampling (its
+  `do_sample` was tied to a seed being present) and Moondream's caption API
+  decodes at temperature zero. Decision-02 does not affect this data.
+- **Embedding recipe correct.** The Nomic path used the `clustering:` prefix,
+  mean pooling, layer norm and L2 normalisation, which is the documented recipe
+  for `nomic-embed-text-v1.5`. The TASK-96 pooling bug was in the Qwen3Embed
+  path only. Note the paper names the model as Nomic Text v2; the code loaded
+  v1.5.
 
-## What is usable
+Caption lengths (words):
 
-1. **All 72,000 text outputs are present** in `invocation.output_text`, so the
-   captions can be re-embedded with the current embedding model without
-   regenerating any images. See TASK-81.
-2. **All 72,000 images are present** in `invocation.output_image_data`, so
-   image-side embeddings are also possible.
-3. **Full 1000-iteration depth on all four networks** — 500 text states per
-   run, against roughly 26 in `balanced_panel_5x5`. This is the deepest
-   trajectory data available to the project.
-4. **Clustering must be recomputed.** The `clusteringresult` and
-   `embeddingcluster` tables are empty.
+| Model     | median | p99 | max |
+| --------- | ------ | --- | --- |
+| BLIP2     | 10     | 14  | 17  |
+| Moondream | 22     | 31  | 181 |
 
-## Two caveats
+## Using it
 
-**Schema.** This database predates the Elixir/Ash port. Tables are singular
-(`run`, `invocation`, `experimentconfig`) and the `type` column uses uppercase
-values (`TEXT`, `IMAGE`). Current `mix` tasks will not read it. For analysis,
-query it directly with polars or pandas over SQL; migrate into the current
-schema only if the Elixir pipeline stages are genuinely needed.
+The schema predates the Elixir/Ash port: singular table names, uppercase
+`type` values (`TEXT`, `IMAGE`), `output_text` and `output_image_data` columns
+on `invocation`. Current `mix` tasks will not read it; query it directly with
+sqlite3 or polars. The `invocation` table carries every image blob, so filter
+by `run_id` (indexed) rather than scanning it.
 
-**Models.** FluxSchnell, SDXLTurbo and BLIP2 have all been removed from
-`priv/python/panic_models.py`, so these networks cannot currently be re-run.
+FluxSchnell, SDXLTurbo and BLIP2 have been removed from
+`priv/python/panic_models.py`, so these networks cannot be re-run. Moondream
+has since changed weights, length mode and (under TASK-87) architecture, which
+is why the cross-era comparison TASK-81 proposed was dropped: nothing spans
+both eras. Re-embedding the stored captions with Qwen3Embed remains a small
+job if a use appears.
 
-## Moondream as a cross-era anchor
-
-Moondream is the only model appearing in both this dataset and the current
-model panel. Caption lengths measured from both:
-
-| Model | SMC 2025 median (p10–p90) | Current median (p10–p90) |
-|---|---|---|
-| BLIP2 | 10 (7–12) | not in registry |
-| Moondream | 21 (17–26) | 24 (19–29) |
-
-The two Moondream distributions are close enough to suggest the same
-behavioural regime. Note the database records the model as `Moondream`; the
-paper refers to "Moondream 2", which appears to be the product version of the
-same registry entry. **Confirmation of the actual model weights is pending with
-Ben Swift.**
-
-If Moondream is unchanged, it is the only cross-era comparison that holds
-caption length roughly fixed (21 to 24 words), so holding it fixed as the
-captioner and varying only the image generator isolates the image-generator
-effect. Every other cross-era pairing confounds model generation with caption
-length — FluxSchnell/BLIP2 at 10 words against, say, Flux2Klein/Pixtral at 102
-words.
-
-Separately worth recording: captioner verbosity has grown roughly four to five
-fold in one model generation, from 10–21 words to 24–106. See
-`caption-length-by-i2t-model.md`.
+Captioner verbosity has grown four to five fold in one model generation, from
+10–22 words here to 45–290 in the v2 lineup (`caption-length-by-i2t-model.md`).
