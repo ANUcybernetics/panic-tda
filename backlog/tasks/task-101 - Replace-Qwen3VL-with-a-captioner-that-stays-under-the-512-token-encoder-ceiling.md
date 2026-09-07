@@ -3,9 +3,10 @@ id: TASK-101
 title: >-
   Replace Qwen3VL with a captioner that stays under the 512-token encoder
   ceiling
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-09-07 04:39'
+updated_date: '2026-09-07 05:42'
 labels:
   - experiment
   - gpu
@@ -29,7 +30,13 @@ IF ADOPTED. Pin in _REVISIONS, wire into panic_models.py, genai.ex, gpu.bench an
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Candidate captioner(s) screened with TASK-87's checks: pinned, bfloat16 unquantised, greedy verified deterministic, no prompt template, natural termination
-- [ ] #2 Token counts under all three encoder tokenizers measured on early-step images of the 20 panel prompts at batch cap 40, with p99 under 512 and the max recorded, or the candidate rejected
-- [ ] #3 Decision recorded: adopt (wired in, config for the extra four cells committed) or panel stays 4x4, with the reason in caption-length-by-i2t-model.md
+- [x] #1 Candidate captioner(s) screened with TASK-87's checks: pinned, bfloat16 unquantised, greedy verified deterministic, no prompt template, natural termination
+- [x] #2 Token counts under all three encoder tokenizers measured on early-step images of the 20 panel prompts at batch cap 40, with p99 under 512 and the max recorded, or the candidate rejected
+- [x] #3 Decision recorded: adopt (wired in, config for the extra four cells committed) or panel stays 4x4, with the reason in caption-length-by-i2t-model.md
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+DONE 2026-09-07. Panel stays 4x4. Both smaller Qwen3-VL Instruct variants fail the ceiling on the decisive measurement (analysis/captioner_ceiling_screen.py, 960 early-step images from all four generators, batch cap 40, production invoke path, bf16 unquantised, pinned HEAD revisions, greedy deterministic 40/40, no system prompt): the 4B is over 512 T5 tokens on 61/960 (p99 661, max 1259), the 2B on 53/960 (p99 1159, max 1311), and both fail the max criterion under every generator's encoder. Beyond the length, both answer in bold-headed markdown lists and run into 1024-token decoding loops (7 and 15 captions). The 8B on the same images overshoots on 110/960, so the set is harder than the smoke's. Nothing else in the TASK-87/88 surveys passes the non-GPU screens (Mistral Small 3.2 is 24B, Llama 4 Scout gated and 109B, CapRL already failed, the any-to-any models need custom code or exceed the card; Pixtral-12B fits but is the retired 2025 model). Full table and reasoning in backlog/docs/caption-length-by-i2t-model.md. Side finding for TASK-100: Flux2Klein tokenises with Qwen's tokenizer under a Qwen3 chat template, not Mistral3; Flux2Dev prepends a 32-token system message; ZImageTurbo an 8-token template. The screen script counts both raw and pipeline-effective tokens. Candidates were not added to panic_models.py; the script registers them itself.
+<!-- SECTION:NOTES:END -->
