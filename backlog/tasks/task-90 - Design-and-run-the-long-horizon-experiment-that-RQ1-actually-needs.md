@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-07 04:23'
+updated_date: '2026-09-07 06:32'
 labels:
   - experiment
   - paper
@@ -72,4 +72,6 @@ FIXES LANDED 2026-09-06 (all three from the review above): allocator flag remove
 PRE-LAUNCH SMOKE 2026-09-07 on the code that will run the panel (the pilot predates the 2026-09-06 fixes, and iterations 5 and 6 of the optimisation log had no test gate). One cell at the panel's batch shape, Flux2Klein + Qwen3VL, 20 prompts x 2 runs x 4 steps: completed in 8 min, no errors or retries, 80 image invocations with 80 distinct recorded seeds, 80 captions with 0% cut at the generation ceiling, embeddings and persistence diagrams written. Deleted afterwards (experiment 01a07a10). Launch script and systemd unit installed and identical to bin/, linger on, 352 GB free, no stale logs/long-run.id.
 
 One finding, now TASK-100: Qwen3VL captions of early-step images exceed the 512-token encoder ceiling for 14 of 80 under SD35Medium's T5 tokenizer (p90 563, max 744) and 2 of 80 under the Flux2 and Z-Image tokenizers, so the generator silently reads a cut caption on those steps. The other four captioners are under 512 on every measured image. Ben to decide whether to launch with this measured and disclosed post hoc (TASK-100) or swap Qwen3VL first.
+
+READY 2026-09-07 (after TASK-101). Qwen3VL and its 4B/2B variants all exceed the 512-token ceiling, so the panel launches as 4x4 from config/long_horizon_panel_4x4_300.json, 16 cells, 20 prompts x 2 runs x 300 steps, about 20 GPU-days with overhead (long-horizon-design.md recomputed). Found and fixed: bin/panic-experiment.service and the installed unit still pointed ExecStart at the 4x5 config; both now name the 4x4 config, daemon-reloaded, not started. Re-verified: no code change since the pre-launch smoke (only analysis and docs), mix test 115/0 with GPU excluded, unit identical to bin/, linger on, no logs/long-run.id, 351 GB free, GPU idle. Launch is: systemctl --user start panic-experiment; then record the experiment id from logs/long-run.id and the expected completion date here (AC#5).
 <!-- SECTION:NOTES:END -->

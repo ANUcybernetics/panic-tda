@@ -152,11 +152,14 @@ actually took ~17):
 | 300 steps, full 4x5, 20 prompts, 4 runs | 58       |
 | 300 steps, full 4x5, 20 prompts, 2 runs | 29       |
 
-The panel is 4x5, not 5x5: GLMImage was removed (TASK-94). Dropping it takes the
+The panel is 4x4, not 5x5. GLMImage was removed (TASK-94): dropping it takes the
 300-step four-run design from 89 GPU-days to 58, which is what makes the horizon
-affordable at all. Flux2Dev is now 78% of all text-to-image time. Runs per
-prompt is the cheaper lever than horizon once past the plateau, and TASK-90
-settles the count.
+affordable at all, and leaves Flux2Dev at 78% of all text-to-image time. Qwen3VL
+was removed (TASK-101): its captions of early-step images exceed the 512-token
+encoder ceiling, and so do its smaller variants'. Runs per prompt is the
+cheaper lever than horizon once past the plateau; TASK-90 settled on two, and
+the committed 4x4 design costs about 20 GPU-days
+(`backlog/docs/long-horizon-design.md`).
 
 ## What each open task is for
 
@@ -171,7 +174,8 @@ settles the count.
 | TASK-88 new model candidates      | instrument            | nothing yet; deferrable until the lineup is in question      |
 | TASK-92 captioner decoding        | closed                | why the captioner contributes no noise (decision-02)         |
 | TASK-93 seed recording            | **gate**              | attributable within-condition variation; RQ2 rests on it     |
-| TASK-94 GLMImage removed          | closed                | why the panel is 4x5                                         |
+| TASK-94 GLMImage removed          | closed                | why the text-to-image side is four                           |
+| TASK-101 Qwen3VL replacement      | closed                | why the captioner side is four: the 512-token ceiling        |
 
 Dependency order for the analysis tasks is **89 → 75 → 76 → (77)**. TASK-89
 came first because it decides how much of each step is deterministic drift and

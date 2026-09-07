@@ -2,15 +2,17 @@
 
 The design for the uniform factorial that both research questions need
 (TASK-90), written 2026-09-05 so the methods section can be lifted from it.
-Config: `config/long_horizon_panel_4x5_300.json`. Pilot:
+Config: `config/long_horizon_panel_4x4_300.json`. Pilot:
 `config/long_horizon_pilot_flux2klein_moondream3.json`, checked by
 `analysis/long_horizon_pilot.py`.
 
 ## Design
 
 One uniform factorial over the v2 panel: four text-to-image models (SD35Medium,
-ZImageTurbo, Flux2Klein, Flux2Dev) crossed with five image-to-text models
-(Moondream3, Qwen25VL, Qwen3VL, Gemma4, JoyCaption), twenty prompts spanning
+ZImageTurbo, Flux2Klein, Flux2Dev) crossed with four image-to-text models
+(Moondream3, Qwen25VL, Gemma4, JoyCaption; Qwen3VL and its smaller variants
+exceed the 512-token encoder ceiling on early-step images, see
+`caption-length-by-i2t-model.md`), twenty prompts spanning
 concrete objects, scenes, people and abstractions, 300 steps per run (150
 image and 150 caption states), and the same number of independent runs per
 prompt in every cell. Every text-to-image invocation draws and records its
@@ -48,30 +50,31 @@ carrying TASK-89's indicative figures.
 ## Runs per prompt and cost
 
 Measured warm per-item times, 150 image and 150 caption steps per run, 20
-prompts, 20 cells. Generators are `mix gpu.bench` at batch 4 on 2026-09-06
+prompts, 16 cells. Generators are `mix gpu.bench` at batch 4 on 2026-09-06
 (SD35Medium 5.5 s, ZImageTurbo 5.2, Flux2Klein 3.5, Flux2Dev 43.4);
 captioners are the CLAUDE.md per-caption figures scaled by the measured
-speedup of the batch cap going from 8 to 40 (Qwen25VL 0.64, Qwen3VL 0.52,
-Gemma4 0.37, JoyCaption 0.40, Moondream3 unchanged). The old model predicted
+speedup of the batch cap going from 8 to 40 (Qwen25VL 0.64, Gemma4 0.37,
+JoyCaption 0.40, Moondream3 unchanged). The old model predicted
 14.9 days for the panel that took 17, so the second column carries that
 overhead, conservatively, since part of it was the image-encoding cost that
 has since been removed.
 
 | runs per prompt | trajectories | GPU-days (model) | GPU-days (with overhead) |
 | --------------- | ------------ | ---------------- | ------------------------ |
-| 1               | 400          | 11.0             | 12.5                     |
-| 2               | 800          | 21.9             | 25.0                     |
-| 3               | 1,200        | 32.9             | 37.5                     |
-| 4               | 1,600        | 43.9             | 50.0                     |
+| 1               | 320          | 8.9              | 10.1                     |
+| 2               | 640          | 17.7             | 20.2                     |
+| 3               | 960          | 26.5             | 30.3                     |
+| 4               | 1,280        | 35.3             | 40.3                     |
 
-Flux2Dev is 69% of the total at every setting. The config is committed at
-two runs per prompt (decided 2026-09-05 on the pre-fix figures of 29.3 and
-33.4 GPU-days; the wall-clock review in TASK-90's notes then removed the
-`expandable_segments` allocator flag that had cost Flux2Dev a quarter of its
-time, raised the captioner batch cap and cheapened the image hop): 40
-trajectories per cell is the MSM's input, it finishes in under four weeks
-rather than eight, and runs per prompt is the lever past the plateau, so a
-second batch can be added if implied timescales do not converge.
+Flux2Dev is 71% of the total at every setting. The config is committed at
+two runs per prompt (decided 2026-09-05 on the pre-fix, five-captioner
+figures of 29.3 and 33.4 GPU-days; the wall-clock review in TASK-90's notes
+then removed the `expandable_segments` allocator flag that had cost Flux2Dev
+a quarter of its time, raised the captioner batch cap and cheapened the
+image hop, and TASK-101 removed the Qwen3VL column): 40 trajectories per
+cell is the MSM's input, it finishes in about three weeks, and runs per
+prompt is the lever past the plateau, so a second batch can be added if
+implied timescales do not converge.
 
 ## Launch
 
@@ -79,8 +82,8 @@ second batch can be added if implied timescales do not converge.
 (`bin/panic-experiment.service`), so the run survives crashes and the
 fortnightly reboots this machine gets. Cells execute in config order with
 Flux2Dev last, and each cell is embedded and given its persistence diagrams
-as soon as it finishes, so the fifteen fast cells (31% of the GPU time,
-about ten days) are analysable while Flux2Dev runs.
+as soon as it finishes, so the twelve fast cells (29% of the GPU time,
+about six days) are analysable while Flux2Dev runs.
 
 ## Pilot
 
