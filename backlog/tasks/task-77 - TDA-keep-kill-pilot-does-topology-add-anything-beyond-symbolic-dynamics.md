@@ -4,7 +4,7 @@ title: 'TDA keep/kill pilot: does topology add anything beyond symbolic dynamics
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:51'
-updated_date: '2026-09-04 01:01'
+updated_date: '2026-09-07 04:06'
 labels:
   - analysis
   - paper
@@ -23,8 +23,8 @@ Decide with data whether TDA earns a place in the next paper or is dropped from 
 <!-- AC:BEGIN -->
 - [ ] #1 Recurrence statistics on raw embedding distances (return-time distributions / recurrence plots) computed for a sample of runs and compared against symbol-sequence recurrence, establishing whether geometric recurrence exists that symbols miss
 - [ ] #2 Test of whether (normalised) persistence entropy predicts anything not already predicted by duplicate-caption count and dwell statistics (e.g. partial correlation)
-- [ ] #3 Documented keep/kill decision: either sliding-window PH is adopted with demonstrated added value, or TDA is dropped from headline analyses with the rationale written up for the paper's methods discussion
-- [ ] #4 If killed: PdStage moved out of the per-experiment hot path (or made opt-in) and docs updated
+- [ ] #3 If killed: PdStage moved out of the per-experiment hot path (or made opt-in) and docs updated
+- [ ] #4 Documented keep/kill decision: sliding-window PH is adopted only if it shows something the symbol sequences miss AND the result is interpretable in terms of the trajectories (a recurrence or cycle that can be pointed to in the captions); otherwise TDA is dropped from headline analyses with the rationale written up for the paper's methods discussion
 <!-- AC:END -->
 
 ## Implementation Notes

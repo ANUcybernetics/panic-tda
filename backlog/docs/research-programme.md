@@ -39,10 +39,13 @@ Two research questions, from the paper skeleton:
   timescales.
 - **RQ2, attribution.** They find the captioner explains 13.6% of drift variance
   against the generator's 0.2%. Does that hold in a current-generation panel?
-  With five levels per factor the answer describes this panel rather than the
-  model class, and step-to-step drift is the response variable most contaminated
-  by generator sampling noise (TASK-89), so the decomposition is reported with
-  both caveats and alongside stationary-regime responses.
+  The primary decomposition is over stationary-regime responses (which
+  metastable regions, dwell and escape times, stationary-distribution
+  distance), with the prior-matching test (TASK-91) as its sharp form. The
+  Hintze-matched decomposition over step-to-step drift is reported as one
+  comparability table, since that response is mostly generator sampling noise
+  (TASK-89). With five levels per factor either answer describes this panel
+  rather than the model class.
 
 ## Where the science is written
 
@@ -162,7 +165,7 @@ settles the count.
 | TASK-90                           | **the experiment**    | the dataset both RQs need                                    |
 | TASK-89 drift/noise decomposition | closed                | the noise floor is most of the step; Null models, and RQ2    |
 | TASK-75 outliers as sparse space  | closed                | failed: outliers are not sparse, transit time is not observable |
-| TASK-76 core-set MSM              | **primary formalism** | Results I, the headline kinetic result                       |
+| TASK-76 Markov state model        | **primary formalism** | Results I, the headline kinetic result                       |
 | TASK-77 TDA keep/kill             | **gate**              | Results III, which exists only if this passes                |
 | TASK-91 prior-matching test       | candidate             | a sharper RQ2 (whose prior does the chain sample?); after 76 |
 | TASK-88 new model candidates      | instrument            | nothing yet; deferrable until the lineup is in question      |
@@ -181,8 +184,10 @@ to exceed the noise floor. The figures are indicative rather than exact --- the
 noise term travels through a captioner and the lineups do not match --- so
 TASK-90 re-measures the floor from its own trajectories. TASK-75 has also
 answered, negatively: the outlier share is an artefact of the clustering
-procedure and outlier time is settled time, so TASK-76 starts from a state
-definition that assigns every point rather than from EVoC cores plus transit.
+procedure and outlier time is settled time. TASK-76 therefore uses the
+standard MSM pipeline (fine k-means partition, transition matrix at a lag,
+PCCA+ coarse-graining), which defines metastable regions kinetically and
+assigns every point; EVoC is kept only to name and illustrate regions.
 TASK-92 and TASK-93 gated TASK-90 rather than the analysis chain: both change
 what a recorded step means, and neither can be applied to a run after the
 fact. Both are now settled.
