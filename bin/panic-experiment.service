@@ -6,7 +6,7 @@ Documentation=file:///home/ben/projects/panic_tda/bin/long-run
 Type=simple
 WorkingDirectory=/home/ben/projects/panic_tda
 Environment=PATH=/home/ben/.local/share/mise/shims:/home/ben/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/ben/projects/panic_tda/bin/long-run config/long_horizon_panel_4x5_300.json
+ExecStart=/home/ben/projects/panic_tda/bin/long-run config/long_horizon_panel_4x4_300.json
 # bin/long-run exits 0 only once the experiment is complete; anything else
 # (crash, OOM, reboot) comes back here after a minute.
 Restart=on-failure
