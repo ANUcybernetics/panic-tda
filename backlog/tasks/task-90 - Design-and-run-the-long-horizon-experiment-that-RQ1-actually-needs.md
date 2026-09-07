@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-05 15:14'
+updated_date: '2026-09-07 04:23'
 labels:
   - experiment
   - paper
@@ -68,4 +68,8 @@ PRE-LAUNCH ENGINEERING REVIEW 2026-09-05 (wall clock). Where the time goes: the 
 Measured and rejected as not worth the fragility: diffusers group offloading for Flux2Dev (54.7 s/item vs 57.7, with a GPU memory warning); keeping half the transformer resident via a device map (41.5 vs 43.6 s/item at the same allocator setting, at 39.5 GiB peak); Moondream3 compile() (no-op through the HF wrapper, would break under per-step CPU/GPU swapping anyway); keeping both models resident to skip swaps (about 0.5 GPU-days at most, needs a memory heuristic). Scripts and logs in the session scratchpad only; the numbers above are the record.
 
 FIXES LANDED 2026-09-06 (all three from the review above): allocator flag removed, _I2T_MAX_BATCH 40, PNG transport with parallel AVIF encoding. mix gpu.bench without the flag: Flux2Dev 43.4 s/item at batch 4 (was 57.6), SD35Medium 5.5, ZImageTurbo 5.2, Flux2Klein 3.5, parity unchanged. Cost table in backlog/docs/long-horizon-design.md recomputed: 2 runs per prompt is now 21.9 GPU-days model, 25.0 with the old overhead factor (was 29.3 / 33.4). Details per lever in backlog/docs/model-optimisation-log.md iterations 4-6.
+
+PRE-LAUNCH SMOKE 2026-09-07 on the code that will run the panel (the pilot predates the 2026-09-06 fixes, and iterations 5 and 6 of the optimisation log had no test gate). One cell at the panel's batch shape, Flux2Klein + Qwen3VL, 20 prompts x 2 runs x 4 steps: completed in 8 min, no errors or retries, 80 image invocations with 80 distinct recorded seeds, 80 captions with 0% cut at the generation ceiling, embeddings and persistence diagrams written. Deleted afterwards (experiment 01a07a10). Launch script and systemd unit installed and identical to bin/, linger on, 352 GB free, no stale logs/long-run.id.
+
+One finding, now TASK-100: Qwen3VL captions of early-step images exceed the 512-token encoder ceiling for 14 of 80 under SD35Medium's T5 tokenizer (p90 563, max 744) and 2 of 80 under the Flux2 and Z-Image tokenizers, so the generator silently reads a cut caption on those steps. The other four captioners are under 512 on every measured image. Ben to decide whether to launch with this measured and disclosed post hoc (TASK-100) or swap Qwen3VL first.
 <!-- SECTION:NOTES:END -->
