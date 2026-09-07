@@ -274,6 +274,84 @@ both at once; on panel rows that assignment reproduces EVoC's own labels 72–83
 of the time depending on layer, so the absolute occupancy figures are
 approximate while the comparison between conditions is not.
 
+## The smaller Qwen3-VLs against the ceiling, measured 2026-09-07
+
+TASK-90's pre-launch smoke put Qwen3VL (the 8B) over the 512-token encoder
+ceiling on 14 of 80 captions of early-step Flux2Klein images, so it left the
+panel and the long-horizon run launches as 4x4. TASK-101 asked whether a
+smaller Qwen3-VL Instruct variant (the 4B or the 2B) could take its place
+and keep the Qwen2.5-VL versus Qwen3-VL family contrast, or failing that
+whether anything else from the TASK-87/88 surveys could. It cannot; the
+panel stays 4x4. `analysis/captioner_ceiling_screen.py` is the measurement,
+`analysis/captioner_ceiling_screen.json` the record.
+
+Method. 960 images: the first three image states (sequence 0, 2, 4) of the
+twenty panel prompts from each of the four generators, drawn from
+`balanced_panel_5x5`, four per prompt and step. They were captioned through
+the production invoke path in batches of 40 composed like a panel cell (20
+prompts x 2), since greedy captions change with batch composition. The 8B
+ran on the same images as a reference, to check the set reproduces the
+smoke's overshoot. The candidates loaded unquantised in bfloat16 at their
+pinned HEAD revisions (4B `ebb281ec`, 2B `89644892`, both Apache-2.0,
+`Qwen3VLForConditionalGeneration`) with the same rendered prompt as the 8B ---
+one user turn, the image and `Describe this image.`, no system prompt --- and
+greedy decoding reproduced all 40 captions of a repeated batch for each.
+
+Token counts are reported the way the smoke counted them (the caption alone,
+under each generator's tokenizer) and the way each pipeline actually
+truncates. That second count matters because three of the four generators do
+not tokenise the bare caption: Flux2Klein and ZImageTurbo wrap it in a Qwen3
+chat template (12 and 8 tokens), Flux2Dev prepends its Mistral3 system
+message (32 tokens), and only SD35Medium's T5 sees the text alone. The
+Flux2Klein tokenizer is Qwen's, not Mistral's; the two Flux2 models share a
+name but not a text encoder. The overheads are small enough that they change
+no verdict here, but they are what TASK-100 should count.
+
+| captioner | words median / p99 / max | T5 tokens median / p90 / p99 / max | over 512 (T5 / ZImg / Klein / Dev) | hit 1024 | s/caption | peak GB |
+| --------- | ------------------------ | ---------------------------------- | ---------------------------------- | -------- | --------- | ------- |
+| Qwen3VL2B | 204 / 721 / 885          | 285 / 450 / 1159 / 1311            | 53 / 32 / 33 / 44 of 960           | 15       | 0.76      | 13.9    |
+| Qwen3VL4B | 248 / 410 / 725          | 373 / 485 / 661 / 1259             | 61 / 21 / 22 / 34 of 960           | 7        | 0.90      | 20.8    |
+| Qwen3VL   | 272 / 437 / 703          | 407 / 523 / 689 / 1220             | 110 / 35 / 37 / 65 of 960          | 1        | 1.2       | 19.0    |
+
+The over-512 columns are the pipeline-effective counts for every caption
+under every generator's encoder, since a captioner in the panel feeds all
+four. Seconds per caption are at the batch cap of 40; the candidates are in
+bf16 and the 8B is the panel's 4-bit load, which is why the 4B is not much
+faster. The 8B row is the calibration: 11% of its captions are over the
+ceiling under T5 on these images, against 17% in the smoke's 80, so the set
+is at least as hard as the one that removed it from the panel.
+
+Neither candidate is close. Halving and quartering the model halves the
+overshoot rate (the 4B is over under T5 on 6% of captions with a p99 of 661,
+the 2B on 5.5% with a p99 of 1159) but lengthens the tail, and both fail
+the max criterion on every one of the four encoders. Smaller is not terser:
+the 2B's median is the shortest of the three and its tail the worst.
+
+Two failure modes lie behind the tails, both invisible in the medians. The
+first is that the Qwen3-VLs answer in markdown --- a prose opening, then
+bold-headed bullet lists ("**Train**: A modern passenger train...") --- and
+the longest captions of every size are lists that keep enumerating. The
+second is decoding loops, which the small variants add: 15 of the 2B's
+captions and 7 of the 4B's run to the 1024-token generation ceiling, some at
+only 150 words, which is a phrase repeating until cut, against 1 of the 8B's.
+Both would feed straight into the next image.
+
+Overshoot is not confined to one generator's pictures, which the smoke could
+not tell: the 8B's captions over 512 T5 tokens came from step-0 images most
+often (57 of 110) but from every generator (22 to 32 each) and every step,
+and the 4B's follow the same pattern (36 of 61 at step 0).
+
+Nothing else from the surveys survives the non-GPU screens. Mistral Small
+3.2 is 24B, 48 GB in bf16, and cannot load unquantised on the 48 GB card;
+Llama 4 Scout is manually gated and 109B; CapRL failed this same ceiling in
+TASK-87; BAGEL, Janus-Pro and Emu3.5 are any-to-any models with custom
+code or 34B weights. Pixtral-12B would fit (25 GB) and captioned at 113
+words, but it is the 2025 model TASK-87 retired, and putting it back would
+reintroduce the era-versus-identity confound the refresh removed. So the
+matched-family contrast that put Qwen25VL in the panel is lost with Qwen3VL,
+and the captioner factor has four levels: Moondream3, Qwen25VL, Gemma4 and
+JoyCaption, all of which stay under 512 on every image measured so far.
+
 ## Why this matters
 
 1. **Model identity and caption length cannot be separated statistically.** At
@@ -306,6 +384,7 @@ approximate while the comparison between conditions is not.
 ./analysis/caption_length.py [parquet_dir ...]   # length tables above
 ./analysis/natural_lengths.py                    # natural lengths, SD35+T5 (GPU)
 ./analysis/pilot_vs_panel.py                     # pilot vs panel dynamics
+./analysis/captioner_ceiling_screen.py           # candidates vs the 512 ceiling (GPU)
 ```
 
 Defaults to the `balanced_panel_5x5` dump and reproduces every table above. Pass
