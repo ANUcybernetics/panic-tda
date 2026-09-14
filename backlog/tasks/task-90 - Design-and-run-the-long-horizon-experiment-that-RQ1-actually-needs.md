@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-14 04:24'
+updated_date: '2026-09-14 07:00'
 labels:
   - experiment
   - paper
@@ -78,4 +78,6 @@ READY 2026-09-07 (after TASK-101). Qwen3VL and its 4B/2B variants all exceed the
 PRE-LAUNCH RESOLVABILITY CHECK 2026-09-14 (backlog/docs/escape-time-resolvability.md, analysis/escape_time_prior.py): escape times longer than a trajectory are estimable from the ensemble and are bounded by the crossings per cell, so the design's aggregate-sampling argument holds and runs per prompt stays the lever. At 40 x ~100 stationary states a cell resolves implied timescales under ~150 text states and escapes up to a few hundred to an order of magnitude; 4 runs/prompt puts an interval on them. The old 5,000-step data says a non-repeating loop's slowest timescale is ~150 text states with one dominant set and rare satellites (excursions once per thousands of states), which no affordable design resolves per cell and which is reported as a lower bound. Launch unchanged; add the second batch where the first says it is needed.
 
 LAUNCHED 2026-09-14 14:16 AEST as experiment 01a09e21 (systemctl --user enable --now panic-experiment; the unit had been installed but never enabled, so it would not have come back after a reboot). Step 0 matches the cost model: SD35Medium 40 images in 4 min 07 s including cold load, Moondream3 40 captions in 1 min 46 s. Expected completion from the long-horizon-design.md per-item times, model-only to with-overhead: SD35Medium cells by 16-17 Sep, ZImageTurbo by 18 Sep, Flux2Klein by 19-20 Sep, Flux2Dev and the panel by 2-4 Oct 2026. Found and fixed at launch: bin/long-run's awk stage (mawk) block-buffered its piped input, so logs/long-run.id stayed empty until mix exited and a reboot or stop would have created a second experiment; the running instance's id file was written by hand and the script now captures the id with grep alone.
+
+DATABASE MOVED 2026-09-14 16:57 AEST to /data/panic_tda/panic_tda_dev.db (the 3.7 T volume, 2.1 T free); priv/panic_tda_dev.db is now a symlink to it, so config and every script path are unchanged and SQLite writes its WAL beside the real file. Stopped the unit, checkpointed the WAL, copied (cmp identical, quick_check ok), restarted. The mid-cell resume worked as designed: it lost the in-progress Moondream3 step, redid it with all 40 items, and left no duplicate (run, sequence_number) pairs and no incomplete invocations.
 <!-- SECTION:NOTES:END -->
