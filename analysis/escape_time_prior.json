@@ -1,0 +1,1462 @@
+{
+  "db": "db/length_5000_experiment.sqlite",
+  "burn_in": 75,
+  "microstates": 50,
+  "sets": 3,
+  "min_crossings_for_escape": 10,
+  "synthetic": [
+    {
+      "true_mfpt": 100.0000000000006,
+      "trajectories": 40,
+      "length": 100,
+      "crossings_0_to_1": 18,
+      "true_mean_dwell_0": 50.0,
+      "censored_mean_dwell_0": 28.0,
+      "complete_residences_0": 9,
+      "estimate": 101.14042103148118,
+      "ci95": [
+        73.75937761224085,
+        138.04056435155033
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 100.0000000000006,
+      "trajectories": 40,
+      "length": 400,
+      "crossings_0_to_1": 59,
+      "true_mean_dwell_0": 50.0,
+      "censored_mean_dwell_0": 43.392405063291136,
+      "complete_residences_0": 79,
+      "estimate": 99.50612660969279,
+      "ci95": [
+        82.4142836026615,
+        114.04590463078964
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 100.0000000000006,
+      "trajectories": 160,
+      "length": 100,
+      "crossings_0_to_1": 91,
+      "true_mean_dwell_0": 50.0,
+      "censored_mean_dwell_0": 22.482758620689655,
+      "complete_residences_0": 29,
+      "estimate": 94.55905712963506,
+      "ci95": [
+        79.45675252210961,
+        110.73408372960137
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 400.0000000000033,
+      "trajectories": 40,
+      "length": 100,
+      "crossings_0_to_1": 11,
+      "true_mean_dwell_0": 200.0,
+      "censored_mean_dwell_0": NaN,
+      "complete_residences_0": 0,
+      "estimate": 291.4695140438554,
+      "ci95": [
+        201.01499072693554,
+        619.6562156048079
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 400.0000000000033,
+      "trajectories": 40,
+      "length": 400,
+      "crossings_0_to_1": 18,
+      "true_mean_dwell_0": 200.0,
+      "censored_mean_dwell_0": 40.4,
+      "complete_residences_0": 5,
+      "estimate": 336.2426681113653,
+      "ci95": [
+        264.00616864375223,
+        495.8839517388891
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 400.0000000000033,
+      "trajectories": 160,
+      "length": 100,
+      "crossings_0_to_1": 32,
+      "true_mean_dwell_0": 200.0,
+      "censored_mean_dwell_0": NaN,
+      "complete_residences_0": 0,
+      "estimate": 417.69160956570585,
+      "ci95": [
+        300.62050023627916,
+        716.0395243893851
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 1000.0000000001173,
+      "trajectories": 40,
+      "length": 100,
+      "crossings_0_to_1": 4,
+      "true_mean_dwell_0": 500.0,
+      "censored_mean_dwell_0": NaN,
+      "complete_residences_0": 0,
+      "estimate": null,
+      "status": "unavailable: zero-size array to reduction operation maximum which has no identity"
+    },
+    {
+      "true_mfpt": 1000.0000000001173,
+      "trajectories": 40,
+      "length": 400,
+      "crossings_0_to_1": 12,
+      "true_mean_dwell_0": 500.0,
+      "censored_mean_dwell_0": 93.0,
+      "complete_residences_0": 1,
+      "estimate": 729.420805060601,
+      "ci95": [
+        637.6478872290407,
+        2307.337177588164
+      ],
+      "resolved": true
+    },
+    {
+      "true_mfpt": 1000.0000000001173,
+      "trajectories": 160,
+      "length": 100,
+      "crossings_0_to_1": 16,
+      "true_mean_dwell_0": 500.0,
+      "censored_mean_dwell_0": NaN,
+      "complete_residences_0": 0,
+      "estimate": 1223.632500207242,
+      "ci95": [
+        678.1415047903542,
+        5478.104394789419
+      ],
+      "resolved": true
+    }
+  ],
+  "networks": {
+    "[\"FluxSchnell\", \"BLIP2\"]": {
+      "runs": 32,
+      "stationary_text_states_per_run": 2425,
+      "repetition": {
+        "consecutive_pairs": 79968,
+        "exact_repeats": 41940,
+        "repeat_rate_pct": 52.45,
+        "median_caption_words": 10.0
+      },
+      "implied_timescales": [
+        {
+          "lag": 1,
+          "timescales": [
+            376.43750778673285,
+            337.7743125194006,
+            309.85205264499274
+          ]
+        },
+        {
+          "lag": 2,
+          "timescales": [
+            599.0435013159879,
+            421.7210963147646,
+            411.2511642452002
+          ]
+        },
+        {
+          "lag": 5,
+          "timescales": [
+            808.6027115126661,
+            531.3103716877372,
+            526.9089516071368
+          ]
+        },
+        {
+          "lag": 10,
+          "timescales": [
+            1037.2325292385015,
+            645.480655945736,
+            581.3218432627197
+          ]
+        },
+        {
+          "lag": 20,
+          "timescales": [
+            1316.8639099947925,
+            783.912360445297,
+            706.796988125072
+          ]
+        },
+        {
+          "lag": 50,
+          "timescales": [
+            1757.0975227263982,
+            1562.593000962245,
+            975.8727553632835
+          ]
+        }
+      ],
+      "reference": {
+        "microstates_connected": 49,
+        "microstates_total": 50,
+        "sets": [
+          {
+            "set": 0,
+            "stationary_probability": 0.13793720591142067,
+            "frames": 2920,
+            "runs_visiting": 4,
+            "top_run_share": 0.4928082191780822
+          },
+          {
+            "set": 1,
+            "stationary_probability": 0.1714900363214254,
+            "frames": 4925,
+            "runs_visiting": 9,
+            "top_run_share": 0.2485279187817259
+          },
+          {
+            "set": 2,
+            "stationary_probability": 0.6905727577671542,
+            "frames": 68103,
+            "runs_visiting": 32,
+            "top_run_share": 0.03560782931735753
+          }
+        ],
+        "runs_never_leaving_set": 19,
+        "escape_times": {
+          "0->1": 3551.074051536314,
+          "0->2": 364.74866457261015,
+          "1->0": 8008.515354930652,
+          "1->2": 260.7509712399159,
+          "2->0": 7912.93754323422,
+          "2->1": 3351.0898719080187
+        }
+      },
+      "designs": [
+        {
+          "design": "40 x 100 random start",
+          "trajectories": 40,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.324,
+          "crossings_per_draw_mean": 2.5,
+          "escape_times": {
+            "0->1": {
+              "reference": 3551.074051536314,
+              "draws_with_estimate": 1,
+              "median": 2103.4272854141527,
+              "min": 2103.4272854141527,
+              "max": 2103.4272854141527,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 364.74866457261015,
+              "draws_with_estimate": 2,
+              "median": 116.75012312773487,
+              "min": 52.499989589372916,
+              "max": 181.00025666609682,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 8008.515354930652,
+              "draws_with_estimate": 1,
+              "median": 2372.627938562598,
+              "min": 2372.627938562598,
+              "max": 2372.627938562598,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 260.7509712399159,
+              "draws_with_estimate": 1,
+              "median": 87.99991261623751,
+              "min": 87.99991261623751,
+              "max": 87.99991261623751,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 7912.93754323422,
+              "draws_with_estimate": 2,
+              "median": 2449.7073467277023,
+              "min": 2404.4840732004313,
+              "max": 2494.9306202549733,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 3351.0898719080187,
+              "draws_with_estimate": 1,
+              "median": 2503.563411425249,
+              "min": 2503.563411425249,
+              "max": 2503.563411425249,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "32 x 100 first window",
+          "trajectories": 32,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.406,
+          "crossings_per_draw_mean": 0.0,
+          "escape_times": {
+            "0->1": {
+              "reference": 3551.074051536314,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 364.74866457261015,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 8008.515354930652,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 260.7509712399159,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 7912.93754323422,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 3351.0898719080187,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "40 x 25 random start",
+          "trajectories": 40,
+          "text_states": 25,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.12,
+          "crossings_per_draw_mean": 1.4,
+          "escape_times": {
+            "0->1": {
+              "reference": 3551.074051536314,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 364.74866457261015,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 8008.515354930652,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 260.7509712399159,
+              "draws_with_estimate": 1,
+              "median": 8.49999971007132,
+              "min": 8.49999971007132,
+              "max": 8.49999971007132,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 7912.93754323422,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 3351.0898719080187,
+              "draws_with_estimate": 1,
+              "median": 84.23129773485853,
+              "min": 84.23129773485853,
+              "max": 84.23129773485853,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "160 x 100 random start",
+          "trajectories": 160,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.792,
+          "crossings_per_draw_mean": 15.8,
+          "escape_times": {
+            "0->1": {
+              "reference": 3551.074051536314,
+              "draws_with_estimate": 7,
+              "median": 3783.3526086830375,
+              "min": 2011.1789277841863,
+              "max": 17804.823058465518,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 364.74866457261015,
+              "draws_with_estimate": 7,
+              "median": 483.00080570709724,
+              "min": 91.12500210565467,
+              "max": 814.9928612165186,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 8008.515354930652,
+              "draws_with_estimate": 7,
+              "median": 8890.16704908145,
+              "min": 4237.927132494478,
+              "max": 20371.593072078635,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 260.7509712399159,
+              "draws_with_estimate": 10,
+              "median": 372.0016172559161,
+              "min": 177.26337846454194,
+              "max": 2426.9560796557207,
+              "draws_resolved_by_guard": 2
+            },
+            "2->0": {
+              "reference": 7912.93754323422,
+              "draws_with_estimate": 7,
+              "median": 8432.799464760968,
+              "min": 3373.571476124916,
+              "max": 17886.768909492406,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 3351.0898719080187,
+              "draws_with_estimate": 10,
+              "median": 2940.2583094660476,
+              "min": 1849.710378557613,
+              "max": 17439.073525685795,
+              "draws_resolved_by_guard": 2
+            }
+          }
+        }
+      ]
+    },
+    "[\"FluxSchnell\", \"Moondream\"]": {
+      "runs": 32,
+      "stationary_text_states_per_run": 2425,
+      "repetition": {
+        "consecutive_pairs": 79968,
+        "exact_repeats": 23004,
+        "repeat_rate_pct": 28.77,
+        "median_caption_words": 22.0
+      },
+      "implied_timescales": [
+        {
+          "lag": 1,
+          "timescales": [
+            1409.1955239106492,
+            1186.2480471123172,
+            878.5912062019376
+          ]
+        },
+        {
+          "lag": 2,
+          "timescales": [
+            1653.4552561666756,
+            1454.8698672198593,
+            1198.4298960183187
+          ]
+        },
+        {
+          "lag": 5,
+          "timescales": [
+            4007.407875191741,
+            2990.6687701457968,
+            2581.262578604043
+          ]
+        },
+        {
+          "lag": 10,
+          "timescales": [
+            8528.590788348945,
+            6010.8470433605435,
+            5025.449314525031
+          ]
+        },
+        {
+          "lag": 20,
+          "timescales": [
+            17175.88173599775,
+            11804.048707500426,
+            8663.24424359844
+          ]
+        },
+        {
+          "lag": 50,
+          "timescales": [
+            29454.25196639267,
+            14986.687400554192,
+            6930.675148618192
+          ]
+        }
+      ],
+      "reference": {
+        "microstates_connected": 50,
+        "microstates_total": 50,
+        "sets": [
+          {
+            "set": 0,
+            "stationary_probability": 0.10510417889028305,
+            "frames": 1295,
+            "runs_visiting": 1,
+            "top_run_share": 1.0
+          },
+          {
+            "set": 1,
+            "stationary_probability": 0.11898659940464092,
+            "frames": 2428,
+            "runs_visiting": 3,
+            "top_run_share": 0.9983525535420099
+          },
+          {
+            "set": 2,
+            "stationary_probability": 0.775909221705076,
+            "frames": 73877,
+            "runs_visiting": 32,
+            "top_run_share": 0.03282483046144267
+          }
+        ],
+        "runs_never_leaving_set": 28,
+        "escape_times": {
+          "0->1": 29598.959623543255,
+          "0->2": 1293.983000563532,
+          "1->0": 46857.91758902998,
+          "1->2": 1213.4963155683117,
+          "2->0": 45404.40586464376,
+          "2->1": 28009.11824990355
+        }
+      },
+      "designs": [
+        {
+          "design": "40 x 100 random start",
+          "trajectories": 40,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.23399999999999999,
+          "crossings_per_draw_mean": 1.1,
+          "escape_times": {
+            "0->1": {
+              "reference": 29598.959623543255,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 1293.983000563532,
+              "draws_with_estimate": 1,
+              "median": 196.00037663259073,
+              "min": 196.00037663259073,
+              "max": 196.00037663259073,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 46857.91758902998,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 1213.4963155683117,
+              "draws_with_estimate": 3,
+              "median": 1.0000000000000002,
+              "min": 1.0,
+              "max": 99.99990106684953,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 45404.40586464376,
+              "draws_with_estimate": 1,
+              "median": 4902.542856896068,
+              "min": 4902.542856896068,
+              "max": 4902.542856896068,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 28009.11824990355,
+              "draws_with_estimate": 3,
+              "median": 2736.276981370393,
+              "min": 1585.6806198477889,
+              "max": 4413.476081193948,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "32 x 100 first window",
+          "trajectories": 32,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.38,
+          "crossings_per_draw_mean": 0.5,
+          "escape_times": {
+            "0->1": {
+              "reference": 29598.959623543255,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 1293.983000563532,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 46857.91758902998,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 1213.4963155683117,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 45404.40586464376,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 28009.11824990355,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "40 x 25 random start",
+          "trajectories": 40,
+          "text_states": 25,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.11400000000000002,
+          "crossings_per_draw_mean": 0.0,
+          "escape_times": {
+            "0->1": {
+              "reference": 29598.959623543255,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 1293.983000563532,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 46857.91758902998,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 1213.4963155683117,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 45404.40586464376,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 28009.11824990355,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "160 x 100 random start",
+          "trajectories": 160,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.5940000000000001,
+          "crossings_per_draw_mean": 1.9,
+          "escape_times": {
+            "0->1": {
+              "reference": 29598.959623543255,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 1293.983000563532,
+              "draws_with_estimate": 2,
+              "median": 257.0001569771142,
+              "min": 155.99998665925946,
+              "max": 358.000327294969,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 46857.91758902998,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 1213.4963155683117,
+              "draws_with_estimate": 4,
+              "median": 744.5012513732572,
+              "min": 498.0010220718653,
+              "max": 991.0092163076533,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 45404.40586464376,
+              "draws_with_estimate": 2,
+              "median": 22522.475158864567,
+              "min": 12551.156813197927,
+              "max": 32493.793504531204,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 28009.11824990355,
+              "draws_with_estimate": 4,
+              "median": 17605.760598866967,
+              "min": 13352.381796789281,
+              "max": 24699.508374343746,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        }
+      ]
+    },
+    "[\"SDXLTurbo\", \"BLIP2\"]": {
+      "runs": 32,
+      "stationary_text_states_per_run": 2425,
+      "repetition": {
+        "consecutive_pairs": 79968,
+        "exact_repeats": 24729,
+        "repeat_rate_pct": 30.92,
+        "median_caption_words": 10.0
+      },
+      "implied_timescales": [
+        {
+          "lag": 1,
+          "timescales": [
+            463.4733357926699,
+            430.9192752231317,
+            224.26634542460232
+          ]
+        },
+        {
+          "lag": 2,
+          "timescales": [
+            467.40017247265,
+            464.31176807209505,
+            354.7159024198171
+          ]
+        },
+        {
+          "lag": 5,
+          "timescales": [
+            595.6551876261834,
+            490.0249904421679,
+            465.8392979844726
+          ]
+        },
+        {
+          "lag": 10,
+          "timescales": [
+            678.8433345166258,
+            616.9256090798427,
+            467.06538003766497
+          ]
+        },
+        {
+          "lag": 20,
+          "timescales": [
+            1334.796342382941,
+            633.924468519056,
+            466.25225270101487
+          ]
+        },
+        {
+          "lag": 50,
+          "timescales": [
+            3131.782452002612,
+            647.3528851367754,
+            531.0527543008147
+          ]
+        }
+      ],
+      "reference": {
+        "microstates_connected": 50,
+        "microstates_total": 50,
+        "sets": [
+          {
+            "set": 0,
+            "stationary_probability": 0.008499839813917038,
+            "frames": 463,
+            "runs_visiting": 1,
+            "top_run_share": 1.0
+          },
+          {
+            "set": 1,
+            "stationary_probability": 0.011321123948854657,
+            "frames": 1097,
+            "runs_visiting": 2,
+            "top_run_share": 0.8094804010938924
+          },
+          {
+            "set": 2,
+            "stationary_probability": 0.9801790362372285,
+            "frames": 76040,
+            "runs_visiting": 32,
+            "top_run_share": 0.03189110994213572
+          }
+        ],
+        "runs_never_leaving_set": 29,
+        "escape_times": {
+          "0->1": 40447.70547759986,
+          "0->2": 463.00006130482734,
+          "1->0": 82008.68450682652,
+          "1->2": 414.83753205064767,
+          "2->0": 81867.63352125252,
+          "2->1": 40268.43737991421
+        }
+      },
+      "designs": [
+        {
+          "design": "40 x 100 random start",
+          "trajectories": 40,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.6380000000000001,
+          "crossings_per_draw_mean": 0.5,
+          "escape_times": {
+            "0->1": {
+              "reference": 40447.70547759986,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 463.00006130482734,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 82008.68450682652,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 414.83753205064767,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 81867.63352125252,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 40268.43737991421,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "32 x 100 first window",
+          "trajectories": 32,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.514,
+          "crossings_per_draw_mean": 0.0,
+          "escape_times": {
+            "0->1": {
+              "reference": 40447.70547759986,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 463.00006130482734,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 82008.68450682652,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 414.83753205064767,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 81867.63352125252,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 40268.43737991421,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "40 x 25 random start",
+          "trajectories": 40,
+          "text_states": 25,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.23000000000000004,
+          "crossings_per_draw_mean": 0.0,
+          "escape_times": {
+            "0->1": {
+              "reference": 40447.70547759986,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 463.00006130482734,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 82008.68450682652,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 414.83753205064767,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 81867.63352125252,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 40268.43737991421,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "160 x 100 random start",
+          "trajectories": 160,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.9199999999999999,
+          "crossings_per_draw_mean": 3.2,
+          "escape_times": {
+            "0->1": {
+              "reference": 40447.70547759986,
+              "draws_with_estimate": 1,
+              "median": 9273.82772689504,
+              "min": 9273.82772689504,
+              "max": 9273.82772689504,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 463.00006130482734,
+              "draws_with_estimate": 1,
+              "median": 132.99999733390527,
+              "min": 132.99999733390527,
+              "max": 132.99999733390527,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 82008.68450682652,
+              "draws_with_estimate": 1,
+              "median": 20765.382874185667,
+              "min": 20765.382874185667,
+              "max": 20765.382874185667,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 414.83753205064767,
+              "draws_with_estimate": 7,
+              "median": 204.99999049775468,
+              "min": 102.33332740728228,
+              "max": 356.2792145927543,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 81867.63352125252,
+              "draws_with_estimate": 1,
+              "median": 21055.904711509105,
+              "min": 21055.904711509105,
+              "max": 21055.904711509105,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 40268.43737991421,
+              "draws_with_estimate": 7,
+              "median": 8329.58977037168,
+              "min": 5086.592728576848,
+              "max": 16783.53812960011,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        }
+      ]
+    },
+    "[\"SDXLTurbo\", \"Moondream\"]": {
+      "runs": 32,
+      "stationary_text_states_per_run": 2425,
+      "repetition": {
+        "consecutive_pairs": 79968,
+        "exact_repeats": 1334,
+        "repeat_rate_pct": 1.67,
+        "median_caption_words": 22.0
+      },
+      "implied_timescales": [
+        {
+          "lag": 1,
+          "timescales": [
+            92.24860873954557,
+            66.14861299855673,
+            50.57613597476171
+          ]
+        },
+        {
+          "lag": 2,
+          "timescales": [
+            107.33679276861595,
+            89.68645978022636,
+            63.45474218007868
+          ]
+        },
+        {
+          "lag": 5,
+          "timescales": [
+            124.98469102421542,
+            118.58773280623959,
+            82.23268692902553
+          ]
+        },
+        {
+          "lag": 10,
+          "timescales": [
+            138.90318765049506,
+            126.56974417946273,
+            96.9949624531509
+          ]
+        },
+        {
+          "lag": 20,
+          "timescales": [
+            144.13949691217454,
+            130.81164695417257,
+            110.4932618303061
+          ]
+        },
+        {
+          "lag": 50,
+          "timescales": [
+            147.74980536906037,
+            123.2999108832007,
+            116.26355998243756
+          ]
+        }
+      ],
+      "reference": {
+        "microstates_connected": 50,
+        "microstates_total": 50,
+        "sets": [
+          {
+            "set": 0,
+            "stationary_probability": 0.0386373282285008,
+            "frames": 992,
+            "runs_visiting": 10,
+            "top_run_share": 0.46673387096774194
+          },
+          {
+            "set": 1,
+            "stationary_probability": 0.025960139655342947,
+            "frames": 996,
+            "runs_visiting": 9,
+            "top_run_share": 0.24497991967871485
+          },
+          {
+            "set": 2,
+            "stationary_probability": 0.9354025321161564,
+            "frames": 75612,
+            "runs_visiting": 32,
+            "top_run_share": 0.03207162884198275
+          }
+        ],
+        "runs_never_leaving_set": 16,
+        "escape_times": {
+          "0->1": 6654.941852981185,
+          "0->2": 66.13333765888909,
+          "1->0": 5698.595608288912,
+          "1->2": 90.45446524387087,
+          "2->0": 5608.563771860687,
+          "2->1": 6591.235276888327
+        }
+      },
+      "designs": [
+        {
+          "design": "40 x 100 random start",
+          "trajectories": 40,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.9160000000000001,
+          "crossings_per_draw_mean": 1.6,
+          "escape_times": {
+            "0->1": {
+              "reference": 6654.941852981185,
+              "draws_with_estimate": 1,
+              "median": 3853.2325034438213,
+              "min": 3853.2325034438213,
+              "max": 3853.2325034438213,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 66.13333765888909,
+              "draws_with_estimate": 2,
+              "median": 100.50005756914649,
+              "min": 100.00001520549354,
+              "max": 101.00009993279943,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 5698.595608288912,
+              "draws_with_estimate": 1,
+              "median": 6160.787764791645,
+              "min": 6160.787764791645,
+              "max": 6160.787764791645,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 90.45446524387087,
+              "draws_with_estimate": 3,
+              "median": 13.999998729730853,
+              "min": 1.0000000000000004,
+              "max": 202.99959072924244,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 5608.563771860687,
+              "draws_with_estimate": 2,
+              "median": 4989.816554519281,
+              "min": 4023.886163288172,
+              "max": 5955.746945750391,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 6591.235276888327,
+              "draws_with_estimate": 3,
+              "median": 3737.862315706411,
+              "min": 3507.2843053371903,
+              "max": 6108.072060357135,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "32 x 100 first window",
+          "trajectories": 32,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.9279999999999999,
+          "crossings_per_draw_mean": 6.3,
+          "escape_times": {
+            "0->1": {
+              "reference": 6654.941852981185,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 66.13333765888909,
+              "draws_with_estimate": 9,
+              "median": 50.500024303917115,
+              "min": 1.0000000000000002,
+              "max": 199.00038568550104,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 5698.595608288912,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 90.45446524387087,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 5608.563771860687,
+              "draws_with_estimate": 9,
+              "median": 1453.3895907396052,
+              "min": 753.2686079940228,
+              "max": 5784.747486740873,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 6591.235276888327,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "40 x 25 random start",
+          "trajectories": 40,
+          "text_states": 25,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.736,
+          "crossings_per_draw_mean": 0.9,
+          "escape_times": {
+            "0->1": {
+              "reference": 6654.941852981185,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 66.13333765888909,
+              "draws_with_estimate": 1,
+              "median": 1.3333333317453604,
+              "min": 1.3333333317453604,
+              "max": 1.3333333317453604,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 5698.595608288912,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 90.45446524387087,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 5608.563771860687,
+              "draws_with_estimate": 1,
+              "median": 545.400383604471,
+              "min": 545.400383604471,
+              "max": 545.400383604471,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 6591.235276888327,
+              "draws_with_estimate": 0,
+              "median": null,
+              "min": null,
+              "max": null,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        },
+        {
+          "design": "160 x 100 random start",
+          "trajectories": 160,
+          "text_states": 100,
+          "draws_fitted": 10,
+          "microstates_connected_mean": 0.986,
+          "crossings_per_draw_mean": 7.6,
+          "escape_times": {
+            "0->1": {
+              "reference": 6654.941852981185,
+              "draws_with_estimate": 5,
+              "median": 7340.3912347439555,
+              "min": 3827.3352123335867,
+              "max": 20206.20292442842,
+              "draws_resolved_by_guard": 0
+            },
+            "0->2": {
+              "reference": 66.13333765888909,
+              "draws_with_estimate": 7,
+              "median": 98.9999903770447,
+              "min": 54.50001460683934,
+              "max": 198.99960739586797,
+              "draws_resolved_by_guard": 0
+            },
+            "1->0": {
+              "reference": 5698.595608288912,
+              "draws_with_estimate": 5,
+              "median": 8221.641430010939,
+              "min": 5348.540441999115,
+              "max": 15559.88132784964,
+              "draws_resolved_by_guard": 0
+            },
+            "1->2": {
+              "reference": 90.45446524387087,
+              "draws_with_estimate": 8,
+              "median": 64.00001724495712,
+              "min": 18.99999998957041,
+              "max": 197.00038352837208,
+              "draws_resolved_by_guard": 0
+            },
+            "2->0": {
+              "reference": 5608.563771860687,
+              "draws_with_estimate": 7,
+              "median": 8219.420568713425,
+              "min": 5231.625705388951,
+              "max": 15652.40527905748,
+              "draws_resolved_by_guard": 0
+            },
+            "2->1": {
+              "reference": 6591.235276888327,
+              "draws_with_estimate": 8,
+              "median": 11738.558945746952,
+              "min": 3710.191334823242,
+              "max": 20145.22993654095,
+              "draws_resolved_by_guard": 0
+            }
+          }
+        }
+      ]
+    }
+  }
+}
