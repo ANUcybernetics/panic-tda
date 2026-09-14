@@ -1,0 +1,185 @@
+{
+  "export": "019f3645_parquet",
+  "repetition": {
+    "consecutive_pairs": 48000,
+    "exact_repeats": 517,
+    "repeat_rate_pct": 1.077,
+    "median_caption_words": 87.0
+  },
+  "networks": {
+    "[\"Flux2Dev\",\"Gemma3n\"]": {
+      "label": "[\"Flux2Dev\",\"Gemma3n\"]",
+      "corpus": {
+        "trajectories_total": 80,
+        "trajectories_contributing": 80,
+        "burn_in_text_states": 8,
+        "corpus_states": 1360,
+        "dimension": 256
+      },
+      "power": {
+        "trajectories": 80,
+        "median_text_states_per_trajectory": 25.0,
+        "frames_total": 2000,
+        "microstates": 12,
+        "frames_per_microstate": 166.7,
+        "matrix_entries": 144,
+        "transitions_per_matrix_entry_at_lag_1": 13.333
+      },
+      "partition_stability": {
+        "adjusted_rand_mean": 0.6793466221266958,
+        "adjusted_rand_min": 0.5911678932101045,
+        "subsample_fraction": 0.8,
+        "repeats": 5
+      },
+      "implied_timescales": [
+        {
+          "lag": 1,
+          "status": "ok",
+          "states_connected": 5,
+          "states_total": 12,
+          "timescales": [
+            181.2906234986768,
+            92.79660614611478,
+            30.68674688968014,
+            16.870260510615697
+          ]
+        },
+        {
+          "lag": 2,
+          "status": "ok",
+          "states_connected": 5,
+          "states_total": 12,
+          "timescales": [
+            226.46197166576584,
+            187.3943625597405,
+            83.47292364511878,
+            33.522337225516125
+          ]
+        },
+        {
+          "lag": 3,
+          "status": "ok",
+          "states_connected": 5,
+          "states_total": 12,
+          "timescales": [
+            264.05721854419227,
+            172.87288665210542,
+            74.43130280797807,
+            46.08055561185177
+          ]
+        },
+        {
+          "lag": 5,
+          "status": "ok",
+          "states_connected": 4,
+          "states_total": 12,
+          "timescales": [
+            293.21531189213727,
+            182.14133971180175,
+            71.9780992364126
+          ]
+        },
+        {
+          "lag": 8,
+          "status": "ok",
+          "states_connected": 4,
+          "states_total": 12,
+          "timescales": [
+            347.79334965091743,
+            215.767851326061,
+            85.60222421928376
+          ]
+        },
+        {
+          "lag": 12,
+          "status": "ok",
+          "states_connected": 4,
+          "states_total": 12,
+          "timescales": [
+            279.9668197316425,
+            172.88511801242274,
+            71.05176179717442
+          ]
+        },
+        {
+          "lag": 20,
+          "status": "lag exceeds trajectory length"
+        }
+      ],
+      "noise_floor": {
+        "status": "unavailable",
+        "reason": "needs seed-resampled invocation pairs; recorded seeds arrive with TASK-90's panel (TASK-93). TASK-89's figures are indicative only and are measured on a different lineup."
+      },
+      "coarse_graining": {
+        "microstates_total": 12,
+        "microstates_connected": 5,
+        "frames_total": 1360,
+        "frames_unassigned": 565,
+        "frames_unassigned_pct": 41.544,
+        "metastable_sets": 3,
+        "metastable_sets_requested": 3,
+        "lag": 1
+      },
+      "stationary_distribution": [
+        0.19830790878442997,
+        0.3771298911679268,
+        0.42456220004764317
+      ],
+      "dwell_times": {
+        "0": {
+          "n_visits": 1,
+          "median_dwell": 14.0,
+          "mean_dwell": 14.0,
+          "cv": 0.0,
+          "verdict": "unresolved: 1 visits, need 20"
+        },
+        "1": {
+          "n_visits": 3,
+          "median_dwell": 3.0,
+          "mean_dwell": 3.0,
+          "cv": 0.5443310539518174,
+          "verdict": "unresolved: 3 visits, need 20"
+        },
+        "2": {
+          "n_visits": 1,
+          "median_dwell": 13.0,
+          "mean_dwell": 13.0,
+          "cv": 0.0,
+          "verdict": "unresolved: 1 visits, need 20"
+        }
+      },
+      "escape_times": {
+        "0->1": {
+          "mfpt_text_states": 169.00024897773312,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        },
+        "0->2": {
+          "mfpt_text_states": 489.0968305739792,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        },
+        "1->0": {
+          "mfpt_text_states": 801.2972820684893,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        },
+        "1->2": {
+          "mfpt_text_states": 334.69393080902347,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        },
+        "2->0": {
+          "mfpt_text_states": 991.2591724406935,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        },
+        "2->1": {
+          "mfpt_text_states": 199.999738846842,
+          "resolved": false,
+          "note": "exceeds 50% of the 25-state trajectory: extrapolation, not measurement"
+        }
+      }
+    }
+  }
+}
