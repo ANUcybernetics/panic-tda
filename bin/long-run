@@ -32,7 +32,7 @@ if [ ! -s "$id_file" ]; then
   echo "$(date -Is) creating and running $config" >> "$log"
   # tee so the id line is on disk before the run gets anywhere
   "$mise" exec -- mix experiment.run "$config" 2>&1 | tee -a "$log" \
-    | grep --line-buffered -o 'Created experiment [0-9a-f]*' | awk '{print $3}' > "$id_file" || true
+    | grep --line-buffered -oP 'Created experiment \K[0-9a-f]+' > "$id_file" || true
 fi
 
 id="$(cat "$id_file")"
