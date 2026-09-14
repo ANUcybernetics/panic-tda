@@ -17,7 +17,7 @@ into metastable sets from the dynamics rather than from density. Every
 timestep gets a label; there is no outlier class and no transit story.
 
     ./analysis/msm_pipeline.py 019f3645_parquet --network SDXLTurbo_Moondream
-    ./analysis/msm_pipeline.py 019f3645_parquet --all --microstates 40
+    ./analysis/msm_pipeline.py 019f3645_parquet --all --microstates 40 --lag 5
 
 **This is plumbing, not a result.** The only export on hand is
 `balanced_panel_5x5` at `max_length` 50, which is about 26 text states per run
@@ -26,14 +26,25 @@ against a plateau that does not arrive until 50--75 (see
 implied timescales cannot converge and the numbers this prints are not
 interpretable as kinetics. Its embeddings also predate TASK-96, which found the
 stored vectors were mean-pooled. The script exists so that when TASK-90's panel
-lands the analysis is a data swap rather than a build, and so the sample-size
-question in `report_power` can be answered before the GPU time is spent.
+lands the analysis is a data swap rather than a build.
 
 Covers TASK-76 AC#1 (frozen corpus, subsampling stability), AC#2 (implied
 timescales against lag), AC#3 (repetition as a descriptive statistic) and AC#4
 (complete assignment). AC#5's kinetic observables are computed but the
 seed-resample noise floor they must be tested against needs TASK-90's recorded
 seeds; `noise_floor` says so rather than inventing one.
+
+Two guards keep the pipeline from returning confident numbers the data cannot
+support (see `backlog/docs/escape-time-resolvability.md` for the failure they
+catch). A dwell-time verdict needs a minimum number of complete residences, and
+an escape time is reported as resolved only when enough crossings between the
+two sets were actually observed, with a Bayesian interval alongside the point
+estimate. An escape time is not bounded by the trajectory length: it is a mean
+first passage time inferred from the transition matrix, and the ensemble of
+trajectories sees a fraction of every escape however long it is. What bounds
+it is the number of crossings the ensemble contains, which is what the guard
+counts. `analysis/escape_time_prior.py` checks both guards against known
+answers.
 
 Results -> analysis/msm_pipeline.json, tables to stdout.
 """
@@ -46,7 +57,7 @@ from itertools import pairwise
 import numpy as np
 import polars as pl
 from deeptime.markov import TransitionCountEstimator
-from deeptime.markov.msm import MaximumLikelihoodMSM
+from deeptime.markov.msm import BayesianMSM, MaximumLikelihoodMSM
 from sklearn.cluster import KMeans
 from sklearn.metrics import adjusted_rand_score
 
@@ -56,18 +67,21 @@ OUT = pathlib.Path(__file__).with_suffix(".json")
 # database grows -- the failure mode `mix cluster.recompute` has globally.
 MICROSTATES = 200
 METASTABLE_SETS = 4
+LAG = 1
 LAGS = (1, 2, 3, 5, 8, 12, 20)
 N_TIMESCALES = 5
 STABILITY_REPS = 5
 STABILITY_FRACTION = 0.8
 SEED = 0
 
-# Below this many observed residences a dwell distribution has no shape worth
-# naming, and below this fraction of the trajectory length an escape time is
-# extrapolation rather than measurement. Both guards exist because the pipeline
-# will otherwise return confident numbers from data that cannot support them.
+# Below this many complete residences a dwell distribution has no shape worth
+# naming, and below this many observed crossings between two sets their mean
+# first passage time is an extrapolation from a handful of events. Both guards
+# exist because the pipeline will otherwise return confident numbers from data
+# that cannot support them.
 MIN_VISITS_FOR_VERDICT = 20
-MAX_RESOLVABLE_FRACTION = 0.5
+MIN_CROSSINGS_FOR_ESCAPE = 10
+BAYES_SAMPLES = 100
 
 
 def load_text_trajectories(
@@ -264,18 +278,28 @@ def dwell_times(coarse: list[np.ndarray]) -> dict:
 
     Reported as median and coefficient of variation of the residence run
     lengths. A memoryless (exponential) dwell has CV ~ 1; CV well above 1 is
-    the heavy-tailed case the task asks to distinguish. Runs censored at the
-    trajectory end are excluded, since including them biases dwell downwards.
+    the heavy-tailed case the task asks to distinguish.
+
+    The first and last residence of every trajectory are censored -- the first
+    began before the estimation window, the last had not ended when it closed
+    -- and are counted rather than measured. Dropping them biases dwell short,
+    because the longest residences are the ones most likely to be cut; a
+    survival estimate over the censored residences is the fix if the verdict
+    ever matters at the margin. The visit-count guard is there because a
+    verdict from a handful of residences is noise either way.
     """
     per_set: dict[int, list[int]] = {}
+    censored: dict[int, int] = {}
     for sequence in coarse:
         valid = sequence[sequence >= 0]
         if valid.size == 0:
             continue
         boundaries = np.flatnonzero(np.diff(valid)) + 1
         segments = np.split(valid, boundaries)
-        for segment in segments[:-1]:  # drop the censored final segment
+        for segment in segments[1:-1]:
             per_set.setdefault(int(segment[0]), []).append(int(segment.size))
+        for segment in (segments[0], segments[-1]):
+            censored[int(segment[0])] = censored.get(int(segment[0]), 0) + 1
 
     def verdict(lengths: list[int]) -> str:
         if len(lengths) < MIN_VISITS_FOR_VERDICT:
@@ -292,6 +316,7 @@ def dwell_times(coarse: list[np.ndarray]) -> dict:
     return {
         str(state): {
             "n_visits": len(lengths),
+            "n_censored": censored.get(state, 0),
             "median_dwell": float(np.median(lengths)),
             "mean_dwell": float(np.mean(lengths)),
             "cv": float(np.std(lengths) / np.mean(lengths))
@@ -303,36 +328,74 @@ def dwell_times(coarse: list[np.ndarray]) -> dict:
     }
 
 
+def crossings(coarse: list[np.ndarray], lag: int, n_sets: int) -> np.ndarray:
+    """Observed lag-time transitions between metastable sets, as a matrix.
+
+    This is the number that bounds an escape-time estimate: a mean first
+    passage time from A to B rests on however many A->B crossings the ensemble
+    actually contains, not on how long any one trajectory is.
+    """
+    counts = np.zeros((n_sets, n_sets), dtype=int)
+    for sequence in coarse:
+        before, after = sequence[:-lag], sequence[lag:]
+        ok = (before >= 0) & (after >= 0) & (before != after)
+        np.add.at(counts, (before[ok], after[ok]), 1)
+    return counts
+
+
 def escape_times(
     msm: MaximumLikelihoodMSM,
+    sequences: list[np.ndarray],
     lookup: np.ndarray,
     n_sets: int,
-    trajectory_length: float,
+    lag: int,
 ) -> dict:
     """AC#5: mean first passage time between metastable sets, in text states.
 
-    These are the escape times RQ1 asks for. Any value approaching the
-    trajectory length is unresolved by construction -- an escape longer than a
-    run cannot be observed in it, however many runs there are.
+    These are the escape times RQ1 asks for. Each comes with the number of
+    crossings it rests on and a 95% interval from a Bayesian MSM sampled on
+    effective counts; it is resolved when the crossing count clears the guard.
     """
-    symbols = np.asarray(msm.count_model.state_symbols)
-    sets = {s: np.flatnonzero(lookup[symbols] == s) for s in range(n_sets)}
-    ceiling = MAX_RESOLVABLE_FRACTION * trajectory_length
+    observed = crossings([lookup[s] for s in sequences], lag, n_sets)
+
+    def sets_of(model) -> dict[int, np.ndarray]:
+        symbols = np.asarray(model.count_model.state_symbols)
+        return {s: np.flatnonzero(lookup[symbols] == s) for s in range(n_sets)}
+
+    point = sets_of(msm)
+    effective = TransitionCountEstimator(lagtime=lag, count_mode="effective").fit_fetch(
+        sequences
+    )
+    posterior = BayesianMSM(n_samples=BAYES_SAMPLES, reversible=True).fit_fetch(
+        effective.submodel_largest()
+    )
+    samples = [(m, sets_of(m)) for m in posterior.samples]
+
     out = {}
     for source in range(n_sets):
         for target in range(n_sets):
-            if source == target or not sets[source].size or not sets[target].size:
+            if source == target or not (point[source].size and point[target].size):
                 continue
-            mfpt = float(msm.mfpt(sets[source], sets[target]))
+            mfpt = float(msm.mfpt(point[source], point[target])) * lag
+            draws = [
+                float(m.mfpt(s[source], s[target])) * lag
+                for m, s in samples
+                if s[source].size and s[target].size
+            ]
+            n_cross = int(observed[source, target])
             out[f"{source}->{target}"] = {
                 "mfpt_text_states": mfpt,
-                "resolved": bool(mfpt <= ceiling),
-                "note": (
-                    ""
-                    if mfpt <= ceiling
-                    else f"exceeds {MAX_RESOLVABLE_FRACTION:.0%} of the "
-                    f"{trajectory_length:.0f}-state trajectory: extrapolation, not measurement"
-                ),
+                "ci95_text_states": [
+                    float(x) for x in np.percentile(draws, [2.5, 97.5])
+                ]
+                if draws
+                else None,
+                "crossings_observed": n_cross,
+                "resolved": n_cross >= MIN_CROSSINGS_FOR_ESCAPE,
+                "note": ""
+                if n_cross >= MIN_CROSSINGS_FOR_ESCAPE
+                else f"rests on {n_cross} observed crossings, "
+                f"need {MIN_CROSSINGS_FOR_ESCAPE}",
             }
     return out
 
@@ -365,27 +428,29 @@ def repetition_rate(export_dir: pathlib.Path) -> dict:
     }
 
 
-def report_power(trajectories: dict[tuple[str, str], np.ndarray], k: int) -> dict:
-    """Sample size per microstate, which is the question to settle before the run.
+def report_power(
+    trajectories: dict[tuple[str, str], np.ndarray], burn_in: int, k: int
+) -> dict:
+    """Frames per microstate: the budget the partition's resolution is set by.
 
-    A transition matrix over k microstates has k^2 entries to populate from
-    (states - lag) transitions per trajectory. This is the number that decides
-    whether "a few hundred microstates" is estimable at a given horizon, and it
-    scales with horizon x trajectories -- so it is an argument about the design,
-    not about the analysis.
+    A count matrix over k microstates is sparse -- each microstate exchanges
+    with a few neighbours -- so the figure that matters is the row total, the
+    stationary frames each microstate has to estimate its outgoing
+    probabilities from, not the k^2 entries. It scales with horizon times
+    trajectories, so it is an argument about the design, not the analysis, and
+    the microstate count should be chosen from it and recorded in methods.
     """
     per_run = [len(t) for t in trajectories.values()]
     frames = int(sum(per_run))
+    stationary = int(sum(max(n - burn_in, 0) for n in per_run))
     return {
         "trajectories": len(per_run),
         "median_text_states_per_trajectory": float(np.median(per_run)),
         "frames_total": frames,
+        "stationary_frames": stationary,
         "microstates": k,
         "frames_per_microstate": round(frames / k, 1),
-        "matrix_entries": k * k,
-        "transitions_per_matrix_entry_at_lag_1": round(
-            (frames - len(per_run)) / (k * k), 3
-        ),
+        "stationary_frames_per_microstate": round(stationary / k, 1),
     }
 
 
@@ -408,7 +473,11 @@ def noise_floor() -> dict:
 
 
 def analyse(
-    trajectories: dict[tuple[str, str], np.ndarray], label: str, k: int, n_sets: int
+    trajectories: dict[tuple[str, str], np.ndarray],
+    label: str,
+    k: int,
+    n_sets: int,
+    lag: int,
 ) -> dict:
     burn_in = burn_in_length(trajectories)
     corpus, provenance = frozen_corpus(trajectories, burn_in)
@@ -421,13 +490,12 @@ def analyse(
     result = {
         "label": label,
         "corpus": provenance,
-        "power": report_power(trajectories, k),
+        "power": report_power(trajectories, burn_in, k),
         "partition_stability": partition_stability(corpus, k),
         "implied_timescales": implied_timescales(estimation),
         "noise_floor": noise_floor(),
     }
 
-    lag = 1
     try:
         msm, lookup, diagnostic = coarse_grain(estimation, lag, n_sets)
         coarse = [lookup[s] for s in estimation]
@@ -436,9 +504,7 @@ def analyse(
             float(x) for x in msm.pcca(n_sets).coarse_grained_stationary_probability
         ]
         result["dwell_times"] = dwell_times(coarse)
-        result["escape_times"] = escape_times(
-            msm, lookup, n_sets, result["power"]["median_text_states_per_trajectory"]
-        )
+        result["escape_times"] = escape_times(msm, estimation, lookup, n_sets, lag)
     except (ValueError, RuntimeError) as exc:  # a shallow export cannot support this
         result["coarse_graining"] = {"status": "failed", "reason": str(exc)}
 
@@ -452,6 +518,13 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="every network separately")
     parser.add_argument("--microstates", type=int, default=MICROSTATES)
     parser.add_argument("--sets", type=int, default=METASTABLE_SETS)
+    parser.add_argument(
+        "--lag",
+        type=int,
+        default=LAG,
+        help="lag for coarse-graining, in text states; read it off the implied "
+        "timescale plateau and record why",
+    )
     args = parser.parse_args()
 
     trajectories = load_text_trajectories(args.export_dir)
@@ -468,6 +541,10 @@ def main() -> None:
 
     results = {
         "export": str(args.export_dir),
+        "args": {
+            k: str(v) if isinstance(v, pathlib.Path) else v
+            for k, v in vars(args).items()
+        },
         "repetition": repetition_rate(args.export_dir),
         "networks": {},
     }
@@ -475,15 +552,17 @@ def main() -> None:
         if network not in by_network:
             raise SystemExit(f"no such network: {network}")
         print(f"\n=== {network} ===")
-        analysis = analyse(by_network[network], network, args.microstates, args.sets)
+        analysis = analyse(
+            by_network[network], network, args.microstates, args.sets, args.lag
+        )
         results["networks"][network] = analysis
 
         power = analysis["power"]
         print(
             f"  {power['trajectories']} trajectories, "
             f"{power['median_text_states_per_trajectory']:.0f} text states each, "
-            f"{power['frames_per_microstate']} frames per microstate "
-            f"({power['microstates']} microstates)"
+            f"{power['stationary_frames_per_microstate']} stationary frames per "
+            f"microstate ({power['microstates']} microstates)"
         )
         print(
             f"  partition stability (adjusted Rand, refit on "
@@ -505,13 +584,16 @@ def main() -> None:
             print(f"  PCCA+ unavailable: {cg['reason']}")
         else:
             print(
-                f"  PCCA+ into {cg['metastable_sets']} sets, "
+                f"  PCCA+ into {cg['metastable_sets']} sets at lag {cg['lag']}, "
                 f"{cg['frames_unassigned_pct']}% of frames unassigned"
             )
             for pair, esc in analysis["escape_times"].items():
+                ci = esc["ci95_text_states"]
+                interval = f" [{ci[0]:.0f}, {ci[1]:.0f}]" if ci else ""
                 flag = "" if esc["resolved"] else "  << UNRESOLVED"
                 print(
-                    f"    escape {pair}: {esc['mfpt_text_states']:.1f} text states{flag}"
+                    f"    escape {pair}: {esc['mfpt_text_states']:.1f} text states"
+                    f"{interval}, {esc['crossings_observed']} crossings{flag}"
                 )
 
     OUT.write_text(json.dumps(results, indent=2))
