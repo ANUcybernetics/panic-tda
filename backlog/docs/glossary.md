@@ -26,6 +26,8 @@ oriented; additions welcome.
 | Invocation | A single model inference event, with its input, output and timestamps. |
 | Experiment | A batch specification: a network, prompts, embedding models and number of runs per prompt. |
 | `max_length` | Number of model invocations per run. Because networks alternate text and image, the number of *text* states is roughly half this. |
+| Cell | One combination of models in a factorial experiment — a single text-to-image model paired with a single image-to-text model — together with every run it contributes, across all prompts and all repeats. The long-horizon panel's "16 cells" are its 4 generators crossed with its 4 captioners, each holding 20 prompts × 2 runs = 40 trajectories. A cell is a *network* plus its runs within one experiment, and it is the unit in three separate senses: cells execute sequentially on the GPU, a cell is embedded and given its persistence diagrams as soon as it finishes, and the analysis fits one transition matrix per cell. |
+| Panel | A factorial experiment: every text-to-image model crossed with every image-to-text model, run over the same prompts with the same number of repeats, so that model choice can be treated as an experimental factor. Named by its shape and size — `balanced_panel_5x5`, the 4x4 long-horizon panel. |
 
 ## Analysis methods
 
@@ -44,6 +46,14 @@ oriented; additions welcome.
 | Milestoning | In a Markov state model, assigning a point that lies between defined states to the last state it visited, so every timestep has a well-defined state. |
 | Core set | The high-confidence dense interior of a cluster, used as a state in a Markov state model, as opposed to the cluster's diffuse edge. |
 | Stationary distribution | The long-run distribution of where a system spends its time, independent of where it started. |
+| Microstate | One cell of the fine partition a Markov state model is built on — here a k-means cluster on the unit sphere, a few dozen to a few hundred per analysis. Microstates are not meant to be interpretable on their own; they are the bookkeeping from which metastable regions are derived. |
+| Lag time | The fixed time gap at which transitions are counted. A transition matrix is always "at lag τ", and a model's conclusions must not depend on which τ was chosen — which is what implied timescales test. |
+| Implied timescale | A relaxation time read off the transition matrix, computed as −τ / ln λ for each eigenvalue λ at lag τ. Its use is diagnostic: a valid model's implied timescales flatten as τ grows. Timescales still climbing at the largest usable lag mean the model has not resolved the dynamics, and the cell should be reported as unresolved rather than extrapolated. |
+| PCCA+ | Perron Cluster Cluster Analysis. Groups the microstates into a handful of metastable regions using the slow eigenvectors of the transition matrix, so regions are defined *kinetically* — by how rarely the system leaves them — rather than geometrically by density. |
+| Metastable region | A group of microstates the system stays within for a long time relative to its motion inside them. The stochastic-dynamics replacement for "attractor", which is a deterministic term and is not used for this system. |
+| Escape time | How long the system takes to get from one metastable region to another, computed as a mean first passage time. RQ1's headline observable. An escape time approaching the trajectory length is unmeasurable by construction — see `escape-time-resolvability.md`. |
+| Burn-in | The initial portion of a run, before the chain reaches its stationary regime, discarded before fitting. Measured here at roughly 50–75 text states, from the step-size and drift plateau. Burn-in is paid once per trajectory, so short trajectories spend a larger fraction of their frames on it. |
+| Adjusted Rand index | A measure of agreement between two partitions of the same data, corrected so that chance agreement scores 0 and identical partitions score 1. Used to check that a clustering is a property of the data rather than of the particular sample it was fitted on. |
 | Mixing time | How long a system takes to approach its stationary distribution — a bounded-space alternative to a Lyapunov exponent. |
 | Eta-squared | The proportion of variance in one variable explained by group membership in another. Used here to show that caption length is almost entirely determined by which image-to-text model produced it. |
 | p10 / p90 | The 10th and 90th percentiles: the values below which 10% and 90% of observations fall. Useful for describing a distribution's spread without being distorted by extremes. |
