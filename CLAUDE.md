@@ -163,6 +163,16 @@ lists them, and each cell is embedded and given its persistence diagrams as soon
 as its runs finish, so put the slow generators last and analyse the fast cells
 while they run.
 
+## Analysis scripts
+
+One-off analyses live in `analysis/` as uv inline-metadata scripts
+(`#!/usr/bin/env -S uv run --script`) that write their results to a JSON file of
+the same name beside them, so the number in a doc traces back to a tracked
+script and its tracked output. Lock each script's dependencies with
+`uv lock --script analysis/x.py` and commit the `.lock`; uv honours it
+automatically, and without it the resolved versions float per machine. Scripts
+that need the GPU models run inside the Snex venv instead and carry no header.
+
 <!-- usage-rules-start -->
 <!-- ash-start -->
 
