@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-07 06:32'
+updated_date: '2026-09-14 03:49'
 labels:
   - experiment
   - paper
@@ -74,4 +74,6 @@ PRE-LAUNCH SMOKE 2026-09-07 on the code that will run the panel (the pilot preda
 One finding, now TASK-100: Qwen3VL captions of early-step images exceed the 512-token encoder ceiling for 14 of 80 under SD35Medium's T5 tokenizer (p90 563, max 744) and 2 of 80 under the Flux2 and Z-Image tokenizers, so the generator silently reads a cut caption on those steps. The other four captioners are under 512 on every measured image. Ben to decide whether to launch with this measured and disclosed post hoc (TASK-100) or swap Qwen3VL first.
 
 READY 2026-09-07 (after TASK-101). Qwen3VL and its 4B/2B variants all exceed the 512-token ceiling, so the panel launches as 4x4 from config/long_horizon_panel_4x4_300.json, 16 cells, 20 prompts x 2 runs x 300 steps, about 20 GPU-days with overhead (long-horizon-design.md recomputed). Found and fixed: bin/panic-experiment.service and the installed unit still pointed ExecStart at the 4x5 config; both now name the 4x4 config, daemon-reloaded, not started. Re-verified: no code change since the pre-launch smoke (only analysis and docs), mix test 115/0 with GPU excluded, unit identical to bin/, linger on, no logs/long-run.id, 351 GB free, GPU idle. Launch is: systemctl --user start panic-experiment; then record the experiment id from logs/long-run.id and the expected completion date here (AC#5).
+
+PRE-LAUNCH RESOLVABILITY CHECK 2026-09-14 (backlog/docs/escape-time-resolvability.md, analysis/escape_time_prior.py): escape times longer than a trajectory are estimable from the ensemble and are bounded by the crossings per cell, so the design's aggregate-sampling argument holds and runs per prompt stays the lever. At 40 x ~100 stationary states a cell resolves implied timescales under ~150 text states and escapes up to a few hundred to an order of magnitude; 4 runs/prompt puts an interval on them. The old 5,000-step data says a non-repeating loop's slowest timescale is ~150 text states with one dominant set and rare satellites (excursions once per thousands of states), which no affordable design resolves per cell and which is reported as a lower bound. Launch unchanged; add the second batch where the first says it is needed.
 <!-- SECTION:NOTES:END -->

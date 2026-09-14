@@ -1,133 +1,155 @@
 # Can a 300-invocation panel resolve the escape times RQ1 asks for?
 
-Measured 2026-09-14 by Sungyeon Hong with `analysis/msm_pipeline.py`, an
-implementation of TASK-76's pipeline, over `019f3645_parquet` (the
-`balanced_panel_5x5` export: 2,000 runs, 25 networks, 25 text states per run,
-Qwen3Embed at 256 dimensions). Numbers in `analysis/msm_pipeline.json`. Cost and
-horizon arithmetic from the tables in `long-horizon-design.md`.
+Asked 2026-09-14 by Sungyeon Hong before TASK-90's launch; measured with
+`analysis/escape_time_prior.py` (numbers in `analysis/escape_time_prior.json`)
+and `analysis/msm_pipeline.py`, the TASK-76 pipeline. Cost and horizon
+arithmetic from the tables in `long-horizon-design.md`.
 
 The question (TASK-90, TASK-76): the committed panel is 300 invocations, which
 is 150 text states, and both step size and drift from t0 plateau by invocation
-100--150. RQ1's headline observable is the escape time between metastable
-regions. This asks whether that observable is reachable at that horizon, and how
-fine a partition the horizon can support --- before the GPU time is spent rather
-than after.
-
-Nothing here disputes the horizon argument in `long-horizon-design.md`. The
-claim that the longest resolvable implied timescale scales with aggregate
-sampling time rather than single-trajectory length (Sinitskiy & Pande 2018) is
-correct, and it is the right reason to prefer many short trajectories over a few
-long ones. It governs the *statistical error* on a timescale. The two findings
-below concern what happens either side of that: what is observable at all, and
-how fine a partition the frame count supports.
+100--150. After burn-in that leaves 75--100 stationary text states per run and
+40 runs per cell. RQ1's headline observable is the escape time between
+metastable regions. This asks whether that observable is reachable at that
+budget, and how fine a partition the budget supports --- before the GPU time is
+spent rather than after.
 
 ## Verdict
 
-**An escape longer than a trajectory cannot be observed in it, and aggregate
-sampling does not change that.** More trajectories reduce the error on a
-timescale that is already visible; they do not make a 200-state escape appear in
-a 100-state window. After burn-in a 300-invocation run leaves about 75--100
-stationary text states, so escape times much beyond that are extrapolation.
+**Escape times longer than a trajectory are estimable from the ensemble, and
+what bounds them is the number of crossings the ensemble contains, not the
+length of any one run.** An escape time is a mean first passage time inferred
+from the transition matrix at the lag, and every trajectory sees a fraction of
+every escape however long it is. On a synthetic three-well chain, 40 windows of
+100 states recover a true escape of 100 states exactly (101, interval 74--138,
+from 18 observed crossings) and one of 400 states to within a factor of 1.4
+(291, interval 201--620, from 11 crossings); a 1,000-state escape leaves the
+count matrix disconnected at that budget (4 crossings), and 160 windows of 100
+recover it (1,224, interval 678--5,478). So the aggregate-sampling argument in
+`long-horizon-design.md` stands, and runs per prompt is the lever it says it
+is.
 
-**The standard pipeline does not announce this.** On 25-state trajectories it
-returned escape times of 169 to 991 text states, dwell-time verdicts from single
-observations, and implied timescales that never converged --- all without
-comment. The failure is silent and has to be tested for deliberately.
+**The per-cell budget resolves escapes up to a few hundred text states and no
+further.** Ten crossings between two sets is about the least an estimate can
+rest on, and at 4,000 stationary frames per cell that is an escape rate of one
+per 400 states. Escapes slower than that are reported as unresolved, with the
+crossing count and the interval that says so.
 
-**"A few hundred microstates" is not a budget the committed horizon supports
-per cell.** At 20 prompts x 2 runs a cell holds 40 trajectories; at 150 text
-states that is 6,000 frames, or 0.15 lag-1 transitions per entry of a 200x200
-count matrix.
+**What the old loop data says the escapes are.** The deepest trajectories the
+project has, 128 runs of 2,500 text states on the four SMC networks, split two
+ways. Three networks are repetition-stuck (29--52% of consecutive captions
+identical, 10--22-word captions), and there the slow processes are individual
+runs parked in private regions for thousands of states: implied timescales
+climb without converging out to lag 50, and the satellite sets PCCA+ finds are
+visited by one to four runs each. No affordable horizon resolves those, and
+they are the non-ergodicity finding, not a resolution failure. The one network
+with the v2 lineup's repetition rate (SDXLTurbo + old Moondream, 1.7%) has its
+slowest implied timescale converged at about 150 text states, one dominant set
+holding 94% of the stationary distribution, and satellites that runs return
+from in 66--90 states but leave for only once in about 5,600. At the panel's
+budget that return time is recovered to within a factor of two and the
+excursion rate is not; at four times the budget the return time is nailed and
+the excursion rate is still a lower bound.
 
-## What a run leaves after burn-in
+**The pipeline's silent failure is real and is now guarded.** On the 25-state
+`balanced_panel_5x5` trajectories it returned escape times of 79--382 text
+states, dwell verdicts from single residences, and implied timescales over a
+3-of-12-microstate connected set, all with the same confidence as a good fit.
+The guards below make it say so.
 
-| design                       | text states/run | burn-in | stationary states/run | trajectories/cell | stationary frames/cell |
-| ---------------------------- | --------------- | ------- | --------------------- | ----------------- | ---------------------- |
-| committed 4x4, 300 invocations | 150           | 50--75  | 75--100               | 40                | 3,000--4,000           |
-| 1,000 invocations            | 500             | 50--75  | 425--450              | 40                | 17,000--18,000         |
+## What the panel can and cannot deliver per cell
 
-Burn-in is paid once per trajectory, so the committed design spends roughly 40%
-of its frames reaching the stationary regime, against about 12% at 1,000
-invocations. That is the part of the cost that shortening the horizon does not
-save.
+| observable                                   | at 2 runs/prompt (40 x ~100)                          | at 4 runs/prompt (80 x ~100)            |
+| -------------------------------------------- | ----------------------------------------------------- | --------------------------------------- |
+| implied-timescale convergence                | yes, for timescales under ~150 text states            | same, tighter                           |
+| number and identity of metastable sets       | yes                                                   | yes                                     |
+| escape time, balanced sets, under ~400 states | order of magnitude, 10--20 crossings                  | within a factor of 1.5                  |
+| escape time, rare satellite, thousands       | lower bound only (about one excursion per cell)       | lower bound, two excursions             |
+| dwell-time shape (exponential vs heavy)      | residences under ~50 states only; longer are censored | same                                    |
 
-## The failure is silent
+Two runs per prompt is enough to answer whether a cell has metastable
+structure and to put its timescales in the right decade; four is what it takes
+to put an interval on the escape time worth printing. The design doc's second
+batch is the same aggregate as launching at four, so nothing is lost by
+launching as committed and adding the batch where the first says it is needed.
 
-Run on `balanced_panel_5x5` at 25 text states per trajectory --- a sixth of the
-committed panel's horizon --- with 80 trajectories, a 12-microstate partition
-and 3 metastable sets. The partition itself was reasonable (adjusted Rand 0.68
-against refits on 80% subsamples). Everything downstream was not:
+The non-equilibrium start matters. Every run starts at a prompt, not from the
+stationary distribution, and in the old data fitting on each run's first 100
+stationary states rather than a random window pulled the excursion rate three
+to four times low (1,453 against 5,609). Nüske et al. 2017 characterise this
+bias for short trajectories from non-equilibrium starts and give a reweighting
+correction; it is worth a line in methods and a check against the random-window
+estimate when TASK-90's data arrives.
 
-| diagnostic                                   | value                                  |
-| -------------------------------------------- | -------------------------------------- |
-| microstates in the largest connected set      | 5 of 12 at lag 1, 4 of 12 by lag 5     |
-| frames left unassigned by PCCA+               | 41.5%                                  |
-| slowest implied timescale, lag 1 -> lag 8     | 181 -> 348 text states, still climbing |
-| escape times returned                         | 169 to 991 text states                 |
-| observed residences behind each dwell verdict | 1 to 3                                 |
+## The guards in `msm_pipeline.py`
 
-Every escape time is between 7 and 40 times the trajectory length. The implied
-timescales never flatten, which is the model telling us it is invalid --- but
-that signal lives in a separate diagnostic, and the escape times and dwell
-verdicts are emitted with the same confidence either way. One metastable set was
-labelled "approximately exponential" on the strength of a single observed
-residence.
-
-`msm_pipeline.py` now refuses both: a dwell verdict needs at least 20 observed
-residences, and an escape time beyond half the trajectory length is returned
-flagged as extrapolation rather than measurement. Whatever the panel's horizon,
-those guards should stay on, because this is not a failure the numbers announce.
-
-Caveat on the demonstration: this export is shallow, predates the v2 lineup, and
-its embeddings predate TASK-96, so its vectors were mean-pooled. The figures
-above characterise the method's behaviour on short trajectories. They are not
-statements about the system.
+- **Escape times carry their crossing count and a 95% interval** from a
+  Bayesian MSM sampled on effective counts, and are marked resolved only when
+  at least ten crossings between the two sets were observed at the lag. On the
+  synthetic chain this passes the escapes that were recovered and fails the
+  one that was not. The earlier version flagged any escape beyond half the
+  trajectory length, which would have flagged the 101-state answer above.
+- **A dwell verdict needs 20 complete residences**, and the first and last
+  residence of every trajectory are censored and counted rather than measured.
+  Dropping them biases the mean dwell short (a true mean of 50 states came back
+  as 22--43 across the synthetic designs, because the long residences are the
+  ones cut), so the shape verdict is trustworthy only for residences well
+  inside the window. A survival estimate is the fix if that margin ever
+  matters.
+- **Implied timescales are computed against lag** and a cell whose slowest one
+  has not flattened by the largest usable lag is reported as unresolved, which
+  is what `long-horizon-design.md` already specifies. The lag used for
+  coarse-graining is an argument (`--lag`) and is recorded in the JSON with the
+  rest of the invocation.
 
 ## The microstate budget
 
-A transition matrix over k microstates has k^2 entries to fill from
-(frames - trajectories) lag-1 transitions per cell:
+A count matrix is sparse, so the figure that sets the partition's resolution
+is frames per microstate (the row total), not entries in the k x k matrix:
 
-| design                  | frames/cell | sqrt(N) | transitions per entry at k=200 | k for ~5 per entry |
-| ----------------------- | ----------- | ------- | ------------------------------ | ------------------ |
-| committed 4x4, 300 inv  | 6,000       | 77      | 0.15                           | 34                 |
-| 1,000 invocations       | 20,000      | 141     | 0.50                           | 63                 |
+| design                  | stationary frames/cell | frames per microstate at k=200 | k for ~50 per microstate |
+| ----------------------- | ---------------------- | ------------------------------ | ------------------------ |
+| committed 4x4, 300 inv  | 3,000--4,000           | 15--20                         | 60--80                   |
+| 1,000 invocations       | 17,000--18,000         | 85--90                         | 340--360                 |
 
-Count matrices are legitimately sparse and PCCA+ operates on the connected part,
-so neither row is fatal. But the microstate count is a per-cell budget set by the
-horizon, not a free parameter, and TASK-76's "a few hundred" is above what either
-design supports per cell. It should be chosen from the frame count and recorded
-in methods.
+TASK-76's "a few hundred microstates" is above what the committed budget
+supports per cell. The mitigation costs no horizon: fit one partition on the
+pooled stationary frames of every cell (about 64,000 at the committed design)
+and estimate each cell's transition matrix on that shared partition. It is what
+"a frozen corpus" in TASK-76 AC#1 already implies, and it makes metastable sets
+comparable across cells, which RQ2 needs anyway. Per-cell transition sparsity
+is unchanged, so the connected-set fraction per cell is the thing to watch.
 
-One mitigation costs no horizon: fit a single frozen partition on the pooled
-stationary states of every cell and estimate each cell's transition matrix on
-that shared partition. It is what "a frozen corpus" in TASK-76 AC#1 already
-implies, and it makes metastable sets comparable across cells, which RQ2 needs
-anyway. It does not change per-cell transition sparsity, so the budget question
-stands.
+## Burn-in
+
+| design                         | text states/run | burn-in | stationary states/run | trajectories/cell | stationary frames/cell |
+| ------------------------------ | --------------- | ------- | --------------------- | ----------------- | ---------------------- |
+| committed 4x4, 300 invocations | 150             | 50--75  | 75--100               | 40                | 3,000--4,000           |
+| 1,000 invocations              | 500             | 50--75  | 425--450              | 40                | 17,000--18,000         |
+
+Burn-in is paid once per trajectory, so the committed design spends roughly 40%
+of its frames reaching the stationary regime, against about 12% at 1,000
+invocations. That is the one argument for horizon over runs: 3.3 times the
+cost buys 4.25 times the stationary frames, and residences up to a few hundred
+states become observable whole. It is a ten-week panel rather than three, and
+it does not reach the thousands-of-states excursion rates the old data shows
+either.
 
 ## Also measured
 
-Exact caption repetition over the same export, as the descriptive statistic
-TASK-76 AC#3 asks for and not as a state definition: 517 repeats in 48,000
-consecutive pairs, a rate of 1.08%, at a median caption length of 87 words.
-Consistent with the length dependence in `research-programme.md` --- verbose
-captioners do not repeat.
+Exact caption repetition over the `balanced_panel_5x5` export, as the
+descriptive statistic TASK-76 AC#3 asks for and not as a state definition: 517
+repeats in 48,000 consecutive pairs, a rate of 1.08%, at a median caption
+length of 87 words. Consistent with the length dependence in
+`research-programme.md` and with the 1.7% of the one old network whose
+kinetics converged: verbose captioners do not repeat, and loops that do not
+repeat mix.
 
-## What follows
+## Caveats on the prior
 
-The horizon question is empirical and can be answered cheaply before launch.
-`db/length_5000_experiment.sqlite` (experiment `067efc98`) holds 128 runs at
-2,500 text states on the SMC networks. Re-embedding those stored captions with
-Qwen3Embed costs a few GPU-hours and no generation, and fitting this pipeline to
-2,500-state trajectories would give the order of magnitude of the slowest
-timescale in a loop of this shape. Old models, so it is a prior and not a
-substitute --- but if that timescale sits well inside 100 text states the
-committed horizon is safe, and if it is 400 the panel should be deeper before it
-launches.
-
-Failing that, the panel launches as committed with the resolution guards on, and
-cells whose implied timescales do not converge are reported as unresolved. That
-is what `long-horizon-design.md` already specifies. The risk is only that the
-fraction of unresolved cells is discovered after three weeks of GPU rather than
-estimated in an afternoon beforehand.
+The 5,000-step runs are unseeded, use truncated captions and the 2025 lineup
+(FluxSchnell, SDXLTurbo, BLIP2, the 23-word Moondream), and cover two prompts
+("yeah" and "nah") at 16 repeats. Their embeddings are STSBMpnet, not
+Qwen3Embed. They give the order of magnitude of the timescales a loop of this
+shape has and the behaviour of the estimator at the panel's budget; they say
+nothing about the v2 networks' state structure, which is what the panel is
+for.
