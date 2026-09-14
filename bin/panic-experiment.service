@@ -13,6 +13,12 @@ Restart=on-failure
 RestartSec=60
 # a Python interpreter shutdown can take a while; don't SIGKILL it early
 TimeoutStopSec=300
+# the run is GPU-bound, so yield CPU and disk to the machine's other jobs;
+# CPUWeight is what arbitrates between service cgroups, Nice only within one
+Nice=10
+CPUWeight=20
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
 
 [Install]
 WantedBy=default.target
