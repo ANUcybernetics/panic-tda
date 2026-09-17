@@ -16,6 +16,12 @@ transition matrix at a chosen lag, and PCCA+ to coarse-grain the microstates
 into metastable sets from the dynamics rather than from density. Every
 timestep gets a label; there is no outlier class and no transit story.
 
+The partition is pooled over every cell in the export and each cell's
+transition matrix estimated on it, because one cell holds too few frames to
+support a few hundred microstates and because sets are only comparable across
+cells when the cells are read on the same ruler (`--partition per-cell` for the
+comparison). Burn-in is likewise one figure for the whole export.
+
     ./analysis/msm_pipeline.py 019f3645_parquet --network SDXLTurbo_Moondream
     ./analysis/msm_pipeline.py 019f3645_parquet --all --microstates 40 --lag 5
 
@@ -532,26 +538,59 @@ def noise_floor() -> dict:
     }
 
 
+def build_partition(
+    trajectories: dict[tuple[str, str], np.ndarray],
+    k: int,
+    burn_in: int,
+    scope: str,
+) -> tuple[KMeans, dict]:
+    """Fit the microstate partition, on whatever corpus `scope` names.
+
+    Pooled is the default: one partition over every cell's stationary frames,
+    each cell's transition matrix then estimated on that shared partition. A
+    cell holds 3,000--4,000 stationary frames, which supports 60--80
+    microstates at ten frames each, well short of the few hundred the task
+    wants; the pooled corpus is the whole export, so it supports them. It costs
+    no horizon, and it makes metastable sets comparable across cells, which RQ2
+    needs anyway. Per-cell transition sparsity is unchanged, so the numbers to
+    watch are still each cell's frames per microstate and connected-set share.
+    """
+    corpus, provenance = frozen_corpus(trajectories, burn_in)
+    used = min(k, corpus.shape[0] // 10)  # keep >=10 corpus states per microstate
+    partition = fit_partition(corpus, used)
+    meta = {
+        "scope": scope,
+        "microstates": used,
+        "microstates_requested": k,
+        "corpus": provenance,
+        "stability": partition_stability(corpus, used),
+    }
+    return partition, meta
+
+
 def analyse(
     trajectories: dict[tuple[str, str], np.ndarray],
     label: str,
-    k: int,
+    partition: KMeans,
+    burn_in: int,
     n_sets: int,
     lag: int,
 ) -> dict:
-    burn_in = burn_in_length(trajectories)
-    corpus, provenance = frozen_corpus(trajectories, burn_in)
-
-    k = min(k, corpus.shape[0] // 10)  # keep >=10 corpus states per microstate
-    partition = fit_partition(corpus, k)
+    k = int(partition.n_clusters)
     symbols = symbolise(trajectories, partition)
     estimation = [s[burn_in:] for s in symbols.values() if len(s) > burn_in]
 
+    power = report_power(trajectories, burn_in, k)
+    # Under a pooled partition, how much of it this cell actually visits: a
+    # cell confined to a few of the shared microstates is a finding about where
+    # the cells live, not a fault of the partition.
+    power["microstates_occupied"] = (
+        int(np.unique(np.concatenate(estimation)).size) if estimation else 0
+    )
+
     result = {
         "label": label,
-        "corpus": provenance,
-        "power": report_power(trajectories, burn_in, k),
-        "partition_stability": partition_stability(corpus, k),
+        "power": power,
         "implied_timescales": implied_timescales(estimation),
         "noise_floor": noise_floor(),
     }
@@ -572,6 +611,23 @@ def analyse(
     return result
 
 
+def print_partition(meta: dict, indent: str = "") -> None:
+    corpus = meta["corpus"]
+    clamped = (
+        ""
+        if meta["microstates"] == meta["microstates_requested"]
+        else f" (clamped from {meta['microstates_requested']})"
+    )
+    print(
+        f"{indent}{meta['scope']} partition: {meta['microstates']} microstates"
+        f"{clamped} over {corpus['corpus_states']} stationary frames from "
+        f"{corpus['trajectories_contributing']} trajectories, stability "
+        f"(adjusted Rand, refit on "
+        f"{meta['stability']['subsample_fraction']:.0%}): "
+        f"{meta['stability']['adjusted_rand_mean']:.3f}"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("export_dir", type=pathlib.Path)
@@ -579,6 +635,14 @@ def main() -> None:
     parser.add_argument("--all", action="store_true", help="every network separately")
     parser.add_argument("--microstates", type=int, default=MICROSTATES)
     parser.add_argument("--sets", type=int, default=METASTABLE_SETS)
+    parser.add_argument(
+        "--partition",
+        choices=("pooled", "per-cell"),
+        default="pooled",
+        help="fit one partition on every cell's stationary frames (default), or "
+        "one per cell; pooled is what the microstate budget supports and what "
+        "makes metastable sets comparable across cells",
+    )
     parser.add_argument(
         "--lag",
         type=int,
@@ -600,22 +664,53 @@ def main() -> None:
     else:
         targets = [max(by_network, key=lambda n: len(by_network[n]))]
 
+    for network in targets:
+        if network not in by_network:
+            raise SystemExit(f"no such network: {network}")
+
+    # One burn-in for the whole export, so every cell's stationary corpus is
+    # cut at the same point and the cells stay comparable.
+    burn_in = burn_in_length(trajectories)
+
     results = {
         "export": str(args.export_dir),
         "args": {
             k: str(v) if isinstance(v, pathlib.Path) else v
             for k, v in vars(args).items()
         },
+        "burn_in_text_states": burn_in,
         "repetition": repetition_rate(args.export_dir),
         "networks": {},
     }
-    for network in targets:
-        if network not in by_network:
-            raise SystemExit(f"no such network: {network}")
-        print(f"\n=== {network} ===")
-        analysis = analyse(
-            by_network[network], network, args.microstates, args.sets, args.lag
+
+    if args.partition == "pooled":
+        # Fitted on every cell in the export, not only the targets: the point
+        # of a shared partition is that cells are read on the same ruler.
+        shared, meta = build_partition(
+            trajectories, args.microstates, burn_in, "pooled"
         )
+        meta["networks"] = sorted(by_network)
+        results["partition"] = meta
+        print_partition(meta)
+        partitions = {network: (shared, None) for network in targets}
+    else:
+        results["partition"] = {"scope": "per-cell"}
+        partitions = {
+            network: build_partition(
+                by_network[network], args.microstates, burn_in, "per-cell"
+            )
+            for network in targets
+        }
+
+    for network in targets:
+        print(f"\n=== {network} ===")
+        partition, meta = partitions[network]
+        analysis = analyse(
+            by_network[network], network, partition, burn_in, args.sets, args.lag
+        )
+        if meta is not None:
+            analysis["partition"] = meta
+            print_partition(meta, indent="  ")
         results["networks"][network] = analysis
 
         power = analysis["power"]
@@ -623,12 +718,8 @@ def main() -> None:
             f"  {power['trajectories']} trajectories, "
             f"{power['median_text_states_per_trajectory']:.0f} text states each, "
             f"{power['stationary_frames_per_microstate']} stationary frames per "
-            f"microstate ({power['microstates']} microstates)"
-        )
-        print(
-            f"  partition stability (adjusted Rand, refit on "
-            f"{analysis['partition_stability']['subsample_fraction']:.0%}): "
-            f"{analysis['partition_stability']['adjusted_rand_mean']:.3f}"
+            f"microstate, occupying {power['microstates_occupied']}/"
+            f"{power['microstates']} microstates"
         )
         print("  implied timescales (text states), slowest first:")
         for row in analysis["implied_timescales"]:

@@ -124,12 +124,22 @@ is frames per microstate (the row total), not entries in the k x k matrix:
 | 1,000 invocations       | 17,000--18,000         | 85--90                         | 340--360                 |
 
 TASK-76's "a few hundred microstates" is above what the committed budget
-supports per cell. The mitigation costs no horizon: fit one partition on the
-pooled stationary frames of every cell (about 64,000 at the committed design)
-and estimate each cell's transition matrix on that shared partition. It is what
-"a frozen corpus" in TASK-76 AC#1 already implies, and it makes metastable sets
-comparable across cells, which RQ2 needs anyway. Per-cell transition sparsity
-is unchanged, so the connected-set fraction per cell is the thing to watch.
+supports per cell, so `msm_pipeline.py` pools: one partition over the stationary
+frames of every cell in the export (about 64,000 at the committed design), and
+each cell's transition matrix estimated on that shared partition. It costs no
+horizon, it is what "a frozen corpus" in TASK-76 AC#1 already implies, and it
+makes metastable sets comparable across cells, which RQ2 needs anyway.
+`--partition per-cell` fits one partition per cell instead, which is worth
+running as a comparison but not as the analysis. Per-cell transition sparsity is
+unchanged under pooling, so the numbers to watch per cell are frames per
+microstate, the connected-set fraction, and how many of the shared microstates
+the cell occupies at all.
+
+On the 25-state `balanced_panel_5x5` export, pooling lifts partition stability
+from 0.61 to 0.85 (adjusted Rand under subsampling) and the largest connected
+set from 3 of 12 microstates to 9, with unassigned frames falling from 61% to
+15%. That export is too shallow for kinetics, so this says the partition is
+better conditioned, not that the numbers on it mean anything.
 
 ## Burn-in
 

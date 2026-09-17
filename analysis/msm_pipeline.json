@@ -6,8 +6,10 @@
     "all": false,
     "microstates": 12,
     "sets": 3,
+    "partition": "pooled",
     "lag": 1
   },
+  "burn_in_text_states": 8,
   "repetition": {
     "consecutive_pairs": 48000,
     "exact_repeats": 517,
@@ -17,13 +19,6 @@
   "networks": {
     "[\"Flux2Dev\",\"Gemma3n\"]": {
       "label": "[\"Flux2Dev\",\"Gemma3n\"]",
-      "corpus": {
-        "trajectories_total": 80,
-        "trajectories_contributing": 80,
-        "burn_in_text_states": 8,
-        "corpus_states": 1360,
-        "dimension": 256
-      },
       "power": {
         "trajectories": 80,
         "median_text_states_per_trajectory": 25.0,
@@ -31,68 +26,85 @@
         "stationary_frames": 1360,
         "microstates": 12,
         "frames_per_microstate": 166.7,
-        "stationary_frames_per_microstate": 113.3
-      },
-      "partition_stability": {
-        "adjusted_rand_mean": 0.6123511364380197,
-        "adjusted_rand_min": 0.569026079786907,
-        "subsample_fraction": 0.8,
-        "repeats": 5
+        "stationary_frames_per_microstate": 113.3,
+        "microstates_occupied": 12
       },
       "implied_timescales": [
         {
           "lag": 1,
           "status": "ok",
-          "states_connected": 3,
+          "states_connected": 9,
           "states_total": 12,
           "timescales": [
-            139.36748841265316,
-            31.365143912968918
+            74.40499869629271,
+            58.45535024142727,
+            31.41486417873332,
+            24.766162743502502,
+            14.545300633694316
           ]
         },
         {
           "lag": 2,
           "status": "ok",
-          "states_connected": 2,
+          "states_connected": 9,
           "states_total": 12,
           "timescales": [
-            47.00006681569196
+            116.75261507675836,
+            78.41522853898014,
+            45.52556375351858,
+            35.24635381796466,
+            22.482899563807866
           ]
         },
         {
           "lag": 3,
           "status": "ok",
-          "states_connected": 2,
+          "states_connected": 8,
           "states_total": 12,
           "timescales": [
-            43.35449620822957
+            163.92046495210283,
+            96.61925827237256,
+            58.846531682720546,
+            39.94063501361644,
+            25.85372456426659
           ]
         },
         {
           "lag": 5,
           "status": "ok",
-          "states_connected": 2,
+          "states_connected": 8,
           "states_total": 12,
           "timescales": [
-            51.32821447201019
+            228.85668881280125,
+            115.7438417311648,
+            66.16208438709499,
+            46.57808965073114,
+            43.88166052625472
           ]
         },
         {
           "lag": 8,
           "status": "ok",
-          "states_connected": 2,
+          "states_connected": 7,
           "states_total": 12,
           "timescales": [
-            60.70675295335731
+            176.3162542150992,
+            101.89494328912032,
+            63.189581829872616,
+            52.94684161174268,
+            26.455802214856337
           ]
         },
         {
           "lag": 12,
           "status": "ok",
-          "states_connected": 2,
+          "states_connected": 5,
           "states_total": 12,
           "timescales": [
-            48.1243474233186
+            652.9908742484819,
+            129.53234693126254,
+            43.02405558668808,
+            16.181013730638984
           ]
         },
         {
@@ -106,51 +118,51 @@
       },
       "coarse_graining": {
         "microstates_total": 12,
-        "microstates_connected": 3,
+        "microstates_connected": 9,
         "frames_total": 1360,
-        "frames_unassigned": 833,
-        "frames_unassigned_pct": 61.25,
+        "frames_unassigned": 204,
+        "frames_unassigned_pct": 15.0,
         "metastable_sets": 3,
         "metastable_sets_requested": 3,
         "lag": 1
       },
       "stationary_distribution": [
-        0.29233870967743153,
-        0.3185483870967576,
-        0.3891129032258108
+        0.11266484252749569,
+        0.11044497345347741,
+        0.776890184019027
       ],
       "set_occupancy": {
         "0": {
-          "frames": 154,
-          "trajectories": 11,
-          "dominant_trajectory_pct": 11.0,
-          "verdict": "shared"
+          "frames": 105,
+          "trajectories": 8,
+          "dominant_trajectory_pct": 16.2,
+          "verdict": "private: 8 trajectories, need 10"
         },
         "1": {
-          "frames": 168,
-          "trajectories": 11,
-          "dominant_trajectory_pct": 10.1,
-          "verdict": "shared"
+          "frames": 69,
+          "trajectories": 5,
+          "dominant_trajectory_pct": 24.6,
+          "verdict": "private: 5 trajectories, need 10"
         },
         "2": {
-          "frames": 205,
-          "trajectories": 13,
-          "dominant_trajectory_pct": 8.3,
+          "frames": 982,
+          "trajectories": 58,
+          "dominant_trajectory_pct": 1.7,
           "verdict": "shared"
         }
       },
       "dwell_times": {
         "0": {
-          "n_visits": 2,
-          "n_censored": 18,
-          "median_dwell": 2.5,
-          "mean_dwell": 2.5,
-          "cv": 0.6,
-          "verdict": "unresolved: 2 visits, need 20"
-        },
-        "2": {
           "n_visits": 1,
-          "n_censored": 24,
+          "n_censored": 13,
+          "median_dwell": 1.0,
+          "mean_dwell": 1.0,
+          "cv": 0.0,
+          "verdict": "unresolved: 1 visits, need 20"
+        },
+        "1": {
+          "n_visits": 1,
+          "n_censored": 8,
           "median_dwell": 1.0,
           "mean_dwell": 1.0,
           "cv": 0.0,
@@ -159,66 +171,111 @@
       },
       "escape_times": {
         "0->1": {
-          "mfpt_text_states": 169.00000000000017,
+          "mfpt_text_states": 1018.0244031164029,
           "ci95_text_states": [
-            45.190471541804804,
-            3764.0267803782976
-          ],
-          "crossings_observed": 2,
-          "resolved": false,
-          "note": "rests on 2 observed crossings, need 10"
-        },
-        "0->2": {
-          "mfpt_text_states": 303.00000000000557,
-          "ci95_text_states": [
-            104.72699313906544,
-            5813.177628139941
-          ],
-          "crossings_observed": 1,
-          "resolved": false,
-          "note": "rests on 1 observed crossings, need 10"
-        },
-        "1->0": {
-          "mfpt_text_states": 79.00000000000027,
-          "ci95_text_states": [
-            32.77388599071493,
-            440.74485532755307
-          ],
-          "crossings_observed": 2,
-          "resolved": false,
-          "note": "rests on 2 observed crossings, need 10"
-        },
-        "1->2": {
-          "mfpt_text_states": 382.0000000000069,
-          "ci95_text_states": [
-            203.61880070077044,
-            5999.030979333262
+            297.8274243415314,
+            31707.46728144951
           ],
           "crossings_observed": 0,
           "resolved": false,
           "note": "rests on 0 observed crossings, need 10"
         },
-        "2->0": {
-          "mfpt_text_states": 192.99999999999932,
+        "0->2": {
+          "mfpt_text_states": 49.500022087592114,
           "ci95_text_states": [
-            68.76341406190807,
-            7106.054886999515
+            19.338156894430252,
+            320.97157374357243
+          ],
+          "crossings_observed": 2,
+          "resolved": false,
+          "note": "rests on 2 observed crossings, need 10"
+        },
+        "1->0": {
+          "mfpt_text_states": 1691.7114095095346,
+          "ci95_text_states": [
+            670.2992979183786,
+            1061649.1758688765
+          ],
+          "crossings_observed": 0,
+          "resolved": false,
+          "note": "rests on 0 observed crossings, need 10"
+        },
+        "1->2": {
+          "mfpt_text_states": 64.99998341510125,
+          "ci95_text_states": [
+            16.320129256917404,
+            1538.5737231294218
+          ],
+          "crossings_observed": 1,
+          "resolved": false,
+          "note": "rests on 1 observed crossings, need 10"
+        },
+        "2->0": {
+          "mfpt_text_states": 1578.2426455407578,
+          "ci95_text_states": [
+            538.8947316048267,
+            1061541.2209144295
           ],
           "crossings_observed": 1,
           "resolved": false,
           "note": "rests on 1 observed crossings, need 10"
         },
         "2->1": {
-          "mfpt_text_states": 361.99999999999886,
+          "mfpt_text_states": 913.3185358019609,
           "ci95_text_states": [
-            138.2581725207979,
-            12196.711096256195
+            173.5570057915779,
+            31544.69251221934
           ],
-          "crossings_observed": 0,
+          "crossings_observed": 1,
           "resolved": false,
-          "note": "rests on 0 observed crossings, need 10"
+          "note": "rests on 1 observed crossings, need 10"
         }
       }
     }
+  },
+  "partition": {
+    "scope": "pooled",
+    "microstates": 12,
+    "microstates_requested": 12,
+    "corpus": {
+      "trajectories_total": 2000,
+      "trajectories_contributing": 2000,
+      "burn_in_text_states": 8,
+      "corpus_states": 34000,
+      "dimension": 256
+    },
+    "stability": {
+      "adjusted_rand_mean": 0.8517711071143198,
+      "adjusted_rand_min": 0.8017069929945367,
+      "subsample_fraction": 0.8,
+      "repeats": 5
+    },
+    "networks": [
+      "[\"Flux2Dev\",\"Gemma3n\"]",
+      "[\"Flux2Dev\",\"LLaMA32Vision\"]",
+      "[\"Flux2Dev\",\"Moondream\"]",
+      "[\"Flux2Dev\",\"Pixtral\"]",
+      "[\"Flux2Dev\",\"Qwen25VL\"]",
+      "[\"Flux2Klein\",\"Gemma3n\"]",
+      "[\"Flux2Klein\",\"LLaMA32Vision\"]",
+      "[\"Flux2Klein\",\"Moondream\"]",
+      "[\"Flux2Klein\",\"Pixtral\"]",
+      "[\"Flux2Klein\",\"Qwen25VL\"]",
+      "[\"GLMImage\",\"Gemma3n\"]",
+      "[\"GLMImage\",\"LLaMA32Vision\"]",
+      "[\"GLMImage\",\"Moondream\"]",
+      "[\"GLMImage\",\"Pixtral\"]",
+      "[\"GLMImage\",\"Qwen25VL\"]",
+      "[\"SD35Medium\",\"Gemma3n\"]",
+      "[\"SD35Medium\",\"LLaMA32Vision\"]",
+      "[\"SD35Medium\",\"Moondream\"]",
+      "[\"SD35Medium\",\"Pixtral\"]",
+      "[\"SD35Medium\",\"Qwen25VL\"]",
+      "[\"ZImageTurbo\",\"Gemma3n\"]",
+      "[\"ZImageTurbo\",\"LLaMA32Vision\"]",
+      "[\"ZImageTurbo\",\"Moondream\"]",
+      "[\"ZImageTurbo\",\"Pixtral\"]",
+      "[\"ZImageTurbo\",\"Qwen25VL\"]"
+    ]
   }
 }
