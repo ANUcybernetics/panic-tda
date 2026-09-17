@@ -41,7 +41,10 @@ identical, 10--22-word captions), and there the slow processes are individual
 runs parked in private regions for thousands of states: implied timescales
 climb without converging out to lag 50, and the satellite sets PCCA+ finds are
 visited by one to four runs each. No affordable horizon resolves those, and
-they are the non-ergodicity finding, not a resolution failure. The one network
+they are the non-ergodicity finding, not a resolution failure. The per-set
+trajectory count in the guards below is what names this shape when it appears;
+it is a statement about the ensemble rather than the partition, so repartitioning
+does not help and only more runs would. The one network
 with the v2 lineup's repetition rate (SDXLTurbo + old Moondream, 1.7%) has its
 slowest implied timescale converged at about 150 text states, one dominant set
 holding 94% of the stationary distribution, and satellites that runs return
@@ -88,6 +91,15 @@ estimate when TASK-90's data arrives.
   synthetic chain this passes the escapes that were recovered and fails the
   one that was not. The earlier version flagged any escape beyond half the
   trajectory length, which would have flagged the 101-state answer above.
+- **Every metastable set reports how many trajectories its frames came from**,
+  and is marked private when fewer than ten contributed or when one holds more
+  than half of them. A set can be thick in frames and thin in trajectories: a
+  run parked in a private region fills it with thousands of within-set counts,
+  so the matrix looks well sampled exactly where the one or two entries and
+  exits an escape rests on are all it has. The transition matrix cannot show
+  this, having discarded which run each count came from, and the connected-set
+  restriction may amputate such a set silently --- which reads as a clean fit
+  unless `frames_unassigned_pct` is read alongside it.
 - **A dwell verdict needs 20 complete residences**, and the first and last
   residence of every trajectory are censored and counted rather than measured.
   Dropping them biases the mean dwell short (a true mean of 50 states came back

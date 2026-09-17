@@ -119,6 +119,26 @@
         0.3185483870967576,
         0.3891129032258108
       ],
+      "set_occupancy": {
+        "0": {
+          "frames": 154,
+          "trajectories": 11,
+          "dominant_trajectory_pct": 11.0,
+          "verdict": "shared"
+        },
+        "1": {
+          "frames": 168,
+          "trajectories": 11,
+          "dominant_trajectory_pct": 10.1,
+          "verdict": "shared"
+        },
+        "2": {
+          "frames": 205,
+          "trajectories": 13,
+          "dominant_trajectory_pct": 8.3,
+          "verdict": "shared"
+        }
+      },
       "dwell_times": {
         "0": {
           "n_visits": 2,
@@ -141,8 +161,8 @@
         "0->1": {
           "mfpt_text_states": 169.00000000000017,
           "ci95_text_states": [
-            42.2928514313459,
-            5969.362855074347
+            45.190471541804804,
+            3764.0267803782976
           ],
           "crossings_observed": 2,
           "resolved": false,
@@ -151,8 +171,8 @@
         "0->2": {
           "mfpt_text_states": 303.00000000000557,
           "ci95_text_states": [
-            97.82014850098122,
-            20758.70912019206
+            104.72699313906544,
+            5813.177628139941
           ],
           "crossings_observed": 1,
           "resolved": false,
@@ -161,8 +181,8 @@
         "1->0": {
           "mfpt_text_states": 79.00000000000027,
           "ci95_text_states": [
-            30.18048260804749,
-            468.9122945847808
+            32.77388599071493,
+            440.74485532755307
           ],
           "crossings_observed": 2,
           "resolved": false,
@@ -171,8 +191,8 @@
         "1->2": {
           "mfpt_text_states": 382.0000000000069,
           "ci95_text_states": [
-            150.7772922958449,
-            20924.455771301717
+            203.61880070077044,
+            5999.030979333262
           ],
           "crossings_observed": 0,
           "resolved": false,
@@ -181,8 +201,8 @@
         "2->0": {
           "mfpt_text_states": 192.99999999999932,
           "ci95_text_states": [
-            63.45586112942454,
-            27619.64241279031
+            68.76341406190807,
+            7106.054886999515
           ],
           "crossings_observed": 1,
           "resolved": false,
@@ -191,8 +211,8 @@
         "2->1": {
           "mfpt_text_states": 361.99999999999886,
           "ci95_text_states": [
-            163.70064070274424,
-            52730.4468503632
+            138.2581725207979,
+            12196.711096256195
           ],
           "crossings_observed": 0,
           "resolved": false,

@@ -34,17 +34,19 @@ timescales against lag), AC#3 (repetition as a descriptive statistic) and AC#4
 seed-resample noise floor they must be tested against needs TASK-90's recorded
 seeds; `noise_floor` says so rather than inventing one.
 
-Two guards keep the pipeline from returning confident numbers the data cannot
+Three guards keep the pipeline from returning confident numbers the data cannot
 support (see `backlog/docs/escape-time-resolvability.md` for the failure they
-catch). A dwell-time verdict needs a minimum number of complete residences, and
-an escape time is reported as resolved only when enough crossings between the
-two sets were actually observed, with a Bayesian interval alongside the point
-estimate. An escape time is not bounded by the trajectory length: it is a mean
-first passage time inferred from the transition matrix, and the ensemble of
-trajectories sees a fraction of every escape however long it is. What bounds
-it is the number of crossings the ensemble contains, which is what the guard
-counts. `analysis/escape_time_prior.py` checks both guards against known
-answers.
+catch). A dwell-time verdict needs a minimum number of complete residences; an
+escape time is reported as resolved only when enough crossings between the two
+sets were actually observed, with a Bayesian interval alongside the point
+estimate; and every metastable set reports how many distinct trajectories its
+frames came from, since a set filled by one run supports no escape estimate
+however many frames it holds. An escape time is not bounded by the trajectory
+length: it is a mean first passage time inferred from the transition matrix,
+and the ensemble of trajectories sees a fraction of every escape however long
+it is. What bounds it is the number of crossings the ensemble contains, which
+is what the guard counts. `analysis/escape_time_prior.py` checks the dwell and
+escape guards against known answers.
 
 Results -> analysis/msm_pipeline.json, tables to stdout.
 """
@@ -81,6 +83,8 @@ SEED = 0
 # that cannot support them.
 MIN_VISITS_FOR_VERDICT = 20
 MIN_CROSSINGS_FOR_ESCAPE = 10
+MIN_TRAJECTORIES_FOR_SHARED_SET = 10
+MAX_DOMINANT_TRAJECTORY_SHARE = 0.5
 BAYES_SAMPLES = 100
 
 
@@ -271,6 +275,62 @@ def coarse_grain(
         "lag": lag,
     }
     return msm, lookup, diagnostic
+
+
+def set_occupancy(coarse: list[np.ndarray], n_sets: int) -> dict:
+    """How many distinct trajectories each metastable set's frames come from.
+
+    A set can be thick in frames and thin in trajectories: one run parked in a
+    private region for thousands of states fills it without the ensemble ever
+    pooling over it. Every within-set count then looks well sampled while the
+    entries and exits an escape time rests on number one or two, so the matrix
+    is most confident where it knows least. Frames from one run are not
+    independent, which is why the guard counts trajectories and is set at the
+    same floor as the crossing count.
+
+    This is what the old data's non-ergodic networks look like -- satellite
+    sets visited by one to four runs out of 128 -- and the transition matrix
+    cannot show it, having discarded which run each count came from.
+    """
+    frames = np.zeros(n_sets, dtype=int)
+    trajectories = np.zeros(n_sets, dtype=int)
+    largest = np.zeros(n_sets, dtype=int)
+    for sequence in coarse:
+        valid = sequence[sequence >= 0]
+        if valid.size == 0:
+            continue
+        counts = np.bincount(valid, minlength=n_sets)[:n_sets]
+        frames += counts
+        trajectories += counts > 0
+        largest = np.maximum(largest, counts)
+
+    def verdict(state: int) -> str:
+        if not frames[state]:
+            return "unoccupied"
+        n = int(trajectories[state])
+        if n < MIN_TRAJECTORIES_FOR_SHARED_SET:
+            return (
+                f"private: {n} trajector{'y' if n == 1 else 'ies'}, "
+                f"need {MIN_TRAJECTORIES_FOR_SHARED_SET}"
+            )
+        share = largest[state] / frames[state]
+        if share > MAX_DOMINANT_TRAJECTORY_SHARE:
+            return f"private: one trajectory holds {share:.0%} of its frames"
+        return "shared"
+
+    return {
+        str(state): {
+            "frames": int(frames[state]),
+            "trajectories": int(trajectories[state]),
+            "dominant_trajectory_pct": round(
+                float(100 * largest[state] / frames[state]), 1
+            )
+            if frames[state]
+            else None,
+            "verdict": verdict(state),
+        }
+        for state in range(n_sets)
+    }
 
 
 def dwell_times(coarse: list[np.ndarray]) -> dict:
@@ -503,6 +563,7 @@ def analyse(
         result["stationary_distribution"] = [
             float(x) for x in msm.pcca(n_sets).coarse_grained_stationary_probability
         ]
+        result["set_occupancy"] = set_occupancy(coarse, diagnostic["metastable_sets"])
         result["dwell_times"] = dwell_times(coarse)
         result["escape_times"] = escape_times(msm, estimation, lookup, n_sets, lag)
     except (ValueError, RuntimeError) as exc:  # a shallow export cannot support this
@@ -587,6 +648,13 @@ def main() -> None:
                 f"  PCCA+ into {cg['metastable_sets']} sets at lag {cg['lag']}, "
                 f"{cg['frames_unassigned_pct']}% of frames unassigned"
             )
+            for state, occ in analysis["set_occupancy"].items():
+                flag = "" if occ["verdict"] == "shared" else f"  << {occ['verdict']}"
+                print(
+                    f"    set {state}: {occ['frames']} frames from "
+                    f"{occ['trajectories']} trajectories, largest holds "
+                    f"{occ['dominant_trajectory_pct']}%{flag}"
+                )
             for pair, esc in analysis["escape_times"].items():
                 ci = esc["ci95_text_states"]
                 interval = f" [{ci[0]:.0f}, {ci[1]:.0f}]" if ci else ""
