@@ -1,0 +1,254 @@
+{
+  "design": {
+    "seed": 20260918,
+    "wells": 3,
+    "per_well": 20,
+    "p_leave": 0.01,
+    "trajectories": 40,
+    "length": 100,
+    "draws": 25,
+    "min_crossings_for_escape": 10
+  },
+  "rows": [
+    {
+      "forward_share": 0.5,
+      "flux_asymmetry": 3.1875543871074045e-14,
+      "exact_mfpt": {
+        "0->1": 200.00000000000128,
+        "1->0": 199.99999999999974,
+        "0->2": 200.00000000000006
+      },
+      "reversible_mfpt": {
+        "0->1": 187.99121306213675,
+        "1->0": 212.14426779629088,
+        "0->2": 203.29052185441145
+      },
+      "nonreversible_mfpt": {
+        "0->1": 191.37133978670627,
+        "1->0": 205.59021985178995,
+        "0->2": 193.94003068008212
+      },
+      "crossings_median": {
+        "0->1": 14.0,
+        "1->0": 3.0,
+        "0->2": 15.0
+      },
+      "resolved_by_guard": {
+        "0->1": true,
+        "1->0": false,
+        "0->2": true
+      },
+      "exact_set_weights": [
+        0.3333333333333206,
+        0.33333333333333787,
+        0.33333333333334186
+      ],
+      "reversible_set_weights": [
+        0.3006944852185593,
+        0.3329543935878448,
+        0.33806966092199753
+      ],
+      "nonreversible_set_weights": [
+        0.3142960653015006,
+        0.32015135046976007,
+        0.3263616203024718
+      ],
+      "reversible_max_weight_error": 0.033,
+      "nonreversible_max_weight_error": 0.019,
+      "ratio_to_exact": {
+        "0->1": {
+          "reversible": 0.94,
+          "nonreversible": 0.96
+        },
+        "1->0": {
+          "reversible": 1.06,
+          "nonreversible": 1.03
+        },
+        "0->2": {
+          "reversible": 1.02,
+          "nonreversible": 0.97
+        }
+      }
+    },
+    {
+      "forward_share": 0.7,
+      "flux_asymmetry": 0.4000000000000096,
+      "exact_mfpt": {
+        "0->1": 164.5569620253162,
+        "1->0": 215.18987341772223,
+        "0->2": 215.18987341772103
+      },
+      "reversible_mfpt": {
+        "0->1": 151.44143630472482,
+        "1->0": 268.44785507098715,
+        "0->2": 263.0526371672916
+      },
+      "nonreversible_mfpt": {
+        "0->1": 158.46815571195708,
+        "1->0": 252.64035319407617,
+        "0->2": 246.97796772550032
+      },
+      "crossings_median": {
+        "0->1": 20.0,
+        "1->0": 2.0,
+        "0->2": 7.0
+      },
+      "resolved_by_guard": {
+        "0->1": true,
+        "1->0": false,
+        "0->2": false
+      },
+      "exact_set_weights": [
+        0.33333333333334114,
+        0.3333333333333333,
+        0.33333333333332565
+      ],
+      "reversible_set_weights": [
+        0.272998658763742,
+        0.43176361640242,
+        0.25398377818947165
+      ],
+      "nonreversible_set_weights": [
+        0.30396948065144846,
+        0.37185487814224494,
+        0.2895394304785963
+      ],
+      "reversible_max_weight_error": 0.098,
+      "nonreversible_max_weight_error": 0.044,
+      "ratio_to_exact": {
+        "0->1": {
+          "reversible": 0.92,
+          "nonreversible": 0.96
+        },
+        "1->0": {
+          "reversible": 1.25,
+          "nonreversible": 1.17
+        },
+        "0->2": {
+          "reversible": 1.22,
+          "nonreversible": 1.15
+        }
+      }
+    },
+    {
+      "forward_share": 0.9,
+      "flux_asymmetry": 0.8000000000000118,
+      "exact_mfpt": {
+        "0->1": 120.87912087912068,
+        "1->0": 208.79120879120973,
+        "0->2": 208.7912087912072
+      },
+      "reversible_mfpt": {
+        "0->1": 125.1482336182191,
+        "1->0": 333.81902970515523,
+        "0->2": 273.9018113728232
+      },
+      "nonreversible_mfpt": {
+        "0->1": 122.2039261586677,
+        "1->0": 196.74401555104993,
+        "0->2": 214.4026506315547
+      },
+      "crossings_median": {
+        "0->1": 24.0,
+        "1->0": 1.0,
+        "0->2": 3.0
+      },
+      "resolved_by_guard": {
+        "0->1": true,
+        "1->0": false,
+        "0->2": false
+      },
+      "exact_set_weights": [
+        0.3333333333333176,
+        0.3333333333333432,
+        0.33333333333333925
+      ],
+      "reversible_set_weights": [
+        0.23597945536143175,
+        0.5072612129487014,
+        0.27003998895882253
+      ],
+      "nonreversible_set_weights": [
+        0.32978262976172884,
+        0.3740699594803688,
+        0.28312558595918086
+      ],
+      "reversible_max_weight_error": 0.174,
+      "nonreversible_max_weight_error": 0.05,
+      "ratio_to_exact": {
+        "0->1": {
+          "reversible": 1.04,
+          "nonreversible": 1.01
+        },
+        "1->0": {
+          "reversible": 1.6,
+          "nonreversible": 0.94
+        },
+        "0->2": {
+          "reversible": 1.31,
+          "nonreversible": 1.03
+        }
+      }
+    },
+    {
+      "forward_share": 0.98,
+      "flux_asymmetry": 0.9600000000000025,
+      "exact_mfpt": {
+        "0->1": 104.03916768665826,
+        "1->0": 201.95838433292656,
+        "0->2": 201.9583843329252
+      },
+      "reversible_mfpt": {
+        "0->1": 109.83184715867719,
+        "1->0": 469.45064139467297,
+        "0->2": 242.70093978633818
+      },
+      "nonreversible_mfpt": {
+        "0->1": 95.21663493190027,
+        "1->0": 181.0123006383173,
+        "0->2": 188.9826167533597
+      },
+      "crossings_median": {
+        "0->1": 27.0,
+        "1->0": 0.0,
+        "0->2": 0.0
+      },
+      "resolved_by_guard": {
+        "0->1": true,
+        "1->0": false,
+        "0->2": false
+      },
+      "exact_set_weights": [
+        0.3333333333333445,
+        0.3333333333333223,
+        0.3333333333333329
+      ],
+      "reversible_set_weights": [
+        0.14365804683916825,
+        0.40766243527747986,
+        0.36883832568984143
+      ],
+      "nonreversible_set_weights": [
+        0.35229059566824533,
+        0.28494793849525885,
+        0.33123311940230504
+      ],
+      "reversible_max_weight_error": 0.19,
+      "nonreversible_max_weight_error": 0.048,
+      "ratio_to_exact": {
+        "0->1": {
+          "reversible": 1.06,
+          "nonreversible": 0.92
+        },
+        "1->0": {
+          "reversible": 2.32,
+          "nonreversible": 0.9
+        },
+        "0->2": {
+          "reversible": 1.2,
+          "nonreversible": 0.94
+        }
+      }
+    }
+  ]
+}
