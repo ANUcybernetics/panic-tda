@@ -63,6 +63,7 @@ oriented; additions welcome.
 | Hartigan level-set view | The view that clusters are the high-density regions of a distribution, so a point in a sparse region genuinely belongs to no cluster rather than being misassigned. This is the justification for reading a high outlier rate as real sparsity in the space rather than as a clustering failure. Referenced in TASK-75. |
 | Spectral gap | The distance between the largest and second-largest eigenvalues of a transition matrix. A large gap means fast mixing; a small one means the system lingers in metastable regions. Used to estimate mixing time. |
 | Detailed balance | The property that flow from state A to state B equals flow from B to A. Violations indicate directed, irreversible dynamics rather than equilibrium fluctuation. |
+| Flux asymmetry | How far a pair of metastable sets is from detailed balance, measured as the normalised difference between the two directions' stationary flux: 0 is detailed balance, 1 is one-way flow. Computed on the coarse sets rather than the microstates, so it is the asymmetry the metastable-set analysis sees. It is the diagnostic that says whether fitting with `reversible=True` is free variance reduction or a distortion --- see `reversible-estimator.md`. |
 | Difference-in-differences | A comparison design that measures how a quantity changes over time in one group relative to the change over the same period in a control group, so shared background trends cancel out. |
 
 ## Still to confirm
