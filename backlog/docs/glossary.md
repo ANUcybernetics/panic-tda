@@ -28,6 +28,7 @@ oriented; additions welcome.
 | `max_length` | Number of model invocations per run. Because networks alternate text and image, the number of *text* states is roughly half this. |
 | Cell | One combination of models in a factorial experiment — a single text-to-image model paired with a single image-to-text model — together with every run it contributes, across all prompts and all repeats. The long-horizon panel's "16 cells" are its 4 generators crossed with its 4 captioners, each holding 20 prompts × 2 runs = 40 trajectories. A cell is a *network* plus its runs within one experiment, and it is the unit in three separate senses: cells execute sequentially on the GPU, a cell is embedded and given its persistence diagrams as soon as it finishes, and the analysis fits one transition matrix per cell. |
 | Panel | A factorial experiment: every text-to-image model crossed with every image-to-text model, run over the same prompts with the same number of repeats, so that model choice can be treated as an experimental factor. Named by its shape and size — `balanced_panel_5x5`, the 4x4 long-horizon panel. |
+| Prompt tier | One of the five groups of four the long-horizon panel's twenty prompts fall into, ordered by how much they constrain a depiction: single objects, multi-object scenes, people, events, abstractions. The grouping is built into `config/long_horizon_panel_4x4_300.json` by prompt order. Tier is crossed with cell, not nested in it, since every cell runs all twenty prompts, so a tier is analysed pooled across cells rather than within one — see TASK-102. |
 
 ## Analysis methods
 
@@ -65,6 +66,7 @@ oriented; additions welcome.
 | Hartigan level-set view | The view that clusters are the high-density regions of a distribution, so a point in a sparse region genuinely belongs to no cluster rather than being misassigned. This is the justification for reading a high outlier rate as real sparsity in the space rather than as a clustering failure. Referenced in TASK-75. |
 | Spectral gap | The distance between the largest and second-largest eigenvalues of a transition matrix. A large gap means fast mixing; a small one means the system lingers in metastable regions. Used to estimate mixing time. |
 | Detailed balance | The property that flow from state A to state B equals flow from B to A. Violations indicate directed, irreversible dynamics rather than equilibrium fluctuation. |
+| Flux asymmetry | How far a pair of metastable sets is from detailed balance, measured as the normalised difference between the two directions' stationary flux: 0 is detailed balance, 1 is one-way flow. Computed on the coarse sets rather than the microstates, so it is the asymmetry the metastable-set analysis sees. It is the diagnostic that says whether fitting with `reversible=True` is free variance reduction or a distortion --- see `reversible-estimator.md`. |
 | Difference-in-differences | A comparison design that measures how a quantity changes over time in one group relative to the change over the same period in a control group, so shared background trends cancel out. |
 
 ## Still to confirm
