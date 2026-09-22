@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-14 07:00'
+updated_date: '2026-09-22 04:43'
 labels:
   - experiment
   - paper
@@ -80,4 +80,12 @@ PRE-LAUNCH RESOLVABILITY CHECK 2026-09-14 (backlog/docs/escape-time-resolvabilit
 LAUNCHED 2026-09-14 14:16 AEST as experiment 01a09e21 (systemctl --user enable --now panic-experiment; the unit had been installed but never enabled, so it would not have come back after a reboot). Step 0 matches the cost model: SD35Medium 40 images in 4 min 07 s including cold load, Moondream3 40 captions in 1 min 46 s. Expected completion from the long-horizon-design.md per-item times, model-only to with-overhead: SD35Medium cells by 16-17 Sep, ZImageTurbo by 18 Sep, Flux2Klein by 19-20 Sep, Flux2Dev and the panel by 2-4 Oct 2026. Found and fixed at launch: bin/long-run's awk stage (mawk) block-buffered its piped input, so logs/long-run.id stayed empty until mix exited and a reboot or stop would have created a second experiment; the running instance's id file was written by hand and the script now captures the id with grep alone.
 
 DATABASE MOVED 2026-09-14 16:57 AEST to /data/panic_tda/panic_tda_dev.db (the 3.7 T volume, 2.1 T free); priv/panic_tda_dev.db is now a symlink to it, so config and every script path are unchanged and SQLite writes its WAL beside the real file. Stopped the unit, checkpointed the WAL, copied (cmp identical, quick_check ok), restarted. The mid-cell resume worked as designed: it lost the in-progress Moondream3 step, redid it with all 40 items, and left no duplicate (run, sequence_number) pairs and no incomplete invocations.
+
+STATUS 2026-09-22 (mid-panel). 12 of 16 cells complete, each inside its predicted window: SD35Medium cells 14 Sep 14:16 to 16 Sep 17:32 AEST, ZImageTurbo to 18 Sep 18:56, Flux2Klein to 20 Sep 05:32; 7.7-14.4 h of wall clock per cell, and every finished cell has its 12,000 invocations, 6,000 embeddings and 40 persistence diagrams. Flux2Dev + Moondream3 is at step 175 of 300 after 56.8 h; the other three Flux2Dev cells have not started.
+
+REVISED COMPLETION 5-7 Oct 2026 (launch estimate was 2-4 Oct). Flux2Dev measures 50.4 s/item in the panel (33.6 min per 40-image step) against the 43.4 s/item mix gpu.bench gave after the allocator flag came out, 16% over; the captioner half of a step-pair costs 1-2 min, so a pair is ~35 min clean and ~39 min including interruptions. Remaining work: 125 steps of the current cell (~41 h), then three Flux2Dev cells at ~95 h each (the other three captioners run ~2.5 h lighter per cell than Moondream3), about 13.5 days from 22 Sep 14:30 AEST. Flux2Dev is now the entire remaining budget, so nothing else moves the date.
+
+OOM 2026-09-22 00:53 UTC. The OOM killer took the unit after 8 days up; systemd restarted it a minute later and experiment.resume picked up mid-cell at step 164, costing ~10 min. cgroup memory is back at 118 G, but 99 G of that is page cache with 98 G available, so it is the SQLite working set rather than a leak. Expect a repeat roughly weekly at ~10 min each.
+
+No degradation in the current cell: caption length drifts 301 to 270 chars over 175 steps, gradual, with nothing cut at the generation ceiling. The 13 GB database sits on /data with 2.1 T free.
 <!-- SECTION:NOTES:END -->
