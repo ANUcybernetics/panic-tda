@@ -549,11 +549,13 @@ def build_partition(
     Pooled is the default: one partition over every cell's stationary frames,
     each cell's transition matrix then estimated on that shared partition. A
     cell holds 3,000--4,000 stationary frames, which supports 60--80
-    microstates at ten frames each, well short of the few hundred the task
-    wants; the pooled corpus is the whole export, so it supports them. It costs
-    no horizon, and it makes metastable sets comparable across cells, which RQ2
-    needs anyway. Per-cell transition sparsity is unchanged, so the numbers to
-    watch are still each cell's frames per microstate and connected-set share.
+    microstates at the ~50 frames each `escape-time-resolvability.md` calls
+    workable -- not the looser floor of ten the clamp below enforces -- and
+    well short of the few hundred the task wants; the pooled corpus is the
+    whole export, so it supports them. It costs no horizon, and it makes
+    metastable sets comparable across cells, which RQ2 needs anyway. Per-cell
+    transition sparsity is unchanged, so the numbers to watch are still each
+    cell's frames per microstate and connected-set share.
     """
     corpus, provenance = frozen_corpus(trajectories, burn_in)
     used = min(k, corpus.shape[0] // 10)  # keep >=10 corpus states per microstate
