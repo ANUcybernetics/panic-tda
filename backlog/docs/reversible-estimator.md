@@ -5,10 +5,10 @@ Asked 2026-09-18 by Sungyeon Hong; measured with
 `analysis/reversible_estimator.json`). No new data and no GPU: a synthetic
 chain, fitted with the pipeline's own crossing guard.
 
-The question (TASK-76, TASK-102): `analysis/msm_pipeline.py` fits every
-transition matrix with `MaximumLikelihoodMSM(reversible=True)` (lines 225 and
-253) and the Bayesian posterior with `BayesianMSM(..., reversible=True)` (line
-369). Detailed balance is therefore imposed by construction and never tested.
+The question (TASK-76): `analysis/msm_pipeline.py` fits every
+transition matrix with `MaximumLikelihoodMSM(reversible=True)` (lines 235 and
+263) and the Bayesian posterior with `BayesianMSM(..., reversible=True)` (line
+435). Detailed balance is therefore imposed by construction and never tested.
 The Markov state model literature the horizon argument rests on is molecular:
 molecular dynamics trajectories are Boltzmann-weighted samples of a system in
 thermal equilibrium, so enforcing reversibility there is variance reduction on
@@ -91,16 +91,33 @@ implied by the other two; it is imposed by a keyword argument.
   whether the constraint is doing harm. Near zero, `reversible=True` is free
   variance reduction and should stay.
 - **Fit the stationary distribution over metastable sets both ways** and report
-  the pair where they disagree, at least for TASK-90's data. This is
-  TASK-102's first per-tier observable and RQ2's object --- "whose prior does
-  the stationary distribution sample from?" is a question about that vector, so
-  a systematic distortion of it is not a methodological footnote.
+  the pair where they disagree, at least for TASK-90's data. That vector is
+  RQ2's object --- "whose prior does the stationary distribution sample
+  from?" is a question about that vector, so a systematic distortion of it is
+  not a methodological footnote.
 - **Leave the escape-time guard alone.** It handles the escape times, for a
   reason that generalises past this chain.
 - **Consider whether irreversibility is a result rather than a nuisance.** A
   measured detailed-balance violation says the loop has a direction --- that the
   captioner and the generator are not inverses --- which is a claim about the
   system and not about the estimator.
+
+## What fitting both ways requires
+
+Checked 2026-09-23: `reversible=False` is not reachable through the pipeline's
+existing coarse-graining path. PCCA+ is how `msm_pipeline.py` defines the
+metastable sets (line 265) and where the coarse stationary vector is read from
+(line 603), and deeptime refuses it on a non-reversible model --- `ValueError:
+Cannot compute PCCA+ for non-reversible matrices`. `reversible_estimator.py`
+sidesteps this because its wells are known by construction, so it sums the
+microstate stationary vector over the true partition; the pipeline has no such
+luxury, since PCCA+ is what tells it where the sets are.
+
+So fitting both ways means keeping the reversible fit to build the partition,
+then estimating a second transition matrix with `reversible=False` on the same
+microstates and summing its stationary vector over the frozen sets. The pooled
+partition makes this cheap: the sets are already fitted once across every cell,
+so the second fit changes the matrix and not the ruler.
 
 ## Limits
 
