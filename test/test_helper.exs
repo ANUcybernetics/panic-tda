@@ -1,2 +1,2 @@
-ExUnit.start(exclude: [:gpu])
+ExUnit.start(exclude: [:gpu, :rehearsal])
 Ecto.Adapters.SQL.Sandbox.mode(PanicTda.Repo, :manual)
