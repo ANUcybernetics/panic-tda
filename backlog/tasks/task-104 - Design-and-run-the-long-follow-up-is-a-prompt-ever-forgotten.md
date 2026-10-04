@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-04 07:19'
-updated_date: '2026-10-04 08:50'
+updated_date: '2026-10-04 08:53'
 labels:
   - experiment
   - paper
@@ -43,10 +43,14 @@ LAUNCH TRAPS LEFT BY THE PANEL. logs/long-run.id still holds 01a09e21, and bin/l
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. AC#1: read the design off the panel (analysis/follow_up_design.py: cost per cell from the panel's timestamps, the five prompts, what 700 text states tells apart, what eight runs resolve) and write it up with costs and what each choice is for (backlog/docs/long-follow-up-design.md). Ben agrees it before any GPU time is spent.
-2. Before launch: clear the traps. Done 2026-10-04: bin/long-run keeps its id and log per config, the unit is a template (panic-experiment@<config>), the panel's id and log are moved under its config's name and the old unit is removed; the two end-of-cell calls allow for a long run.
-3. AC#2: commit the config, smoke one cell at the batch of 40 for a few steps on the code that will run, launch as panic-experiment@<config>, record the experiment id and the expected completion date here.
-4. AC#3, once the run completes: analysis/panel_audit.py and analysis/panel_regenerate.py on the new experiment. Both carry the panel's own constants and need generalising first: the regeneration targets (cells, steps and restarts), the second half taken as step 150 on, and a low-detail run counted at fifty images.
+1. AC#1, done 2026-10-04: the design read off the panel (analysis/follow_up_design.py) and written up with costs and what each choice is for (backlog/docs/long-follow-up-design.md); Ben agreed it before any GPU time was spent.
+2. Launch traps, cleared 2026-10-04: bin/long-run keeps its id and log per config, the unit is a template (panic-experiment@<config>), the panel's id and log are moved under its config's name and the old unit is removed; the two end-of-cell calls allow for a long run.
+3. AC#2, done 2026-10-04: config committed, one cell smoked at the batch of 40, the new unit killed and seen to restart and resume, launched as experiment 01a10613 with the expected completion recorded in the notes.
+4. AC#3, once the run completes (due 25 Oct 2026; the last line of logs/long-run.long_follow_up_3x2_2000.log says so, and the unit exits 0):
+   a. mix experiment.export_data 01a10613 --output 01a10613_parquet
+   b. ./analysis/panel_audit.py 01a10613 --cache 01a10613_parquet --log logs/long-run.long_follow_up_3x2_2000.log --out <a file of its own>. The script is ready: the low-detail rule follows the run's length, and its image, caption, process and log checks ran clean on the live run's first six steps. Its embeddings check needs at least one embedded cell, so it can first be run when Flux2Klein + Gemma4 finishes (due 7 Oct) to catch anything wrong at 1,000 text states before the other five cells are spent.
+   c. analysis/panel_regenerate.py still carries the panel's own constants and needs them lifted out: the regeneration targets (which cells and steps, either side of each restart), its output file (it skips sections already in its JSON, so pointed at a new experiment it would do nothing), and the second half taken as step 150 on. It needs the GPU, so it waits for the run to finish.
+   d. Write the audit up as panel-audit.md was, then disable the unit instance (systemctl --user disable panic-experiment@long_follow_up_3x2_2000).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
