@@ -4,6 +4,7 @@ title: Measure encoder-side caption truncation per cell after the long-horizon r
 status: To Do
 assignee: []
 created_date: '2026-09-07 04:23'
+updated_date: '2026-10-04 05:44'
 labels:
   - analysis
   - paper
@@ -25,3 +26,11 @@ WHAT TO DO. Captions are stored and all three tokenizers are in the HF cache, so
 - [ ] #2 mix experiment.status reports the share alongside the existing terminal-punctuation truncation check, so the next lineup change cannot miss it
 - [ ] #3 Methods text for the paper states the share for each affected cell and RQ2 carries it as a covariate
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+MEASURED ON THE PANEL 2026-10-04 (analysis/panel_regenerate.py, encoder_ceiling in its JSON; table in backlog/docs/panel-audit.md). Each caption counted under the tokenizer of the generator that read it, wrapped as that pipeline wraps it. 346 of the 95,360 captions a generator read (0.36%) are over 512 tokens: SD35Medium + Gemma4 209 (3.5%, median 30 tokens cut), Flux2Dev + Gemma4 125 (2.1%, 23), ZImageTurbo + Gemma4 3, and nine Moondream3 repetition loops across Flux2Klein and SD35Medium. Eleven cells have none. For Gemma4 the cut is a little more common in the second half of a run than the first (3.7% against 3.3% with SD35Medium, 2.4% against 1.8% with Flux2Dev).
+
+That covers the per-cell half of AC#1, with two step bins rather than a finer split and the table in the audit doc rather than the design doc; neither AC is checked. For AC#2, note that the existing terminal-punctuation check in mix experiment.status is wrong for Gemma4: it reports 13.1% truncated because Gemma4 captions end in '.**' (markdown bold closing after the full stop). Allowing closing marks after the punctuation, 1 of 24,000 is unterminated and none was cut at the generation ceiling. The pattern panel_audit.py uses is the fix.
+<!-- SECTION:NOTES:END -->
