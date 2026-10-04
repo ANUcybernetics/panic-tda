@@ -79,7 +79,7 @@ implied timescales do not converge.
 ## Launch
 
 `bin/long-run` under the `panic-experiment` systemd user unit
-(`bin/panic-experiment.service`), so the run survives crashes and the
+(`bin/panic-experiment@.service`), so the run survives crashes and the
 fortnightly reboots this machine gets. Cells execute in config order with
 Flux2Dev last, and each cell is embedded and given its persistence diagrams
 as soon as it finishes, so the twelve fast cells (29% of the GPU time,

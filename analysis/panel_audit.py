@@ -23,7 +23,8 @@ resumes, retried steps and anything logged above debug level.
 Every image is decoded, which takes a few minutes on all cores, so the
 per-image table is cached in the export directory (untracked) and reused.
 
-    ./analysis/panel_audit.py 01a09e21 --cache 01a09e21_parquet --log logs/long-run.log
+    ./analysis/panel_audit.py 01a09e21 --cache 01a09e21_parquet \
+        --log logs/long-run.long_horizon_panel_4x4_300.log
 
 Results -> analysis/panel_audit.json, summary to stdout.
 """

@@ -4,22 +4,28 @@
 #   bin/long-run config/some_experiment.json
 #
 # The first invocation creates and runs the experiment; its id is written to
-# logs/long-run.id. Every later invocation (the systemd unit restarts this
-# script on failure and after a reboot) resumes that id until the experiment
-# has completed_at set, then exits 0. Output goes to logs/long-run.log.
+# logs/long-run.some_experiment.id. Every later invocation (the systemd unit
+# restarts this script on failure and after a reboot) resumes that id until the
+# experiment has completed_at set, then exits 0. Output goes to
+# logs/long-run.some_experiment.log. Both files are named after the config, so
+# a new config starts a new experiment rather than resuming the last one.
 #
-# Install as a user service so it outlives logouts and reboots:
-#   cp bin/panic-experiment.service ~/.config/systemd/user/
+# Install as a user service so it outlives logouts and reboots. The unit is a
+# template, and its instance is the config's name:
+#   cp bin/panic-experiment@.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload
-#   systemctl --user start panic-experiment      # (linger is already enabled)
-#   journalctl --user -u panic-experiment -f      # or tail logs/long-run.log
+#   systemctl --user enable --now panic-experiment@some_experiment
+#   journalctl --user -u panic-experiment@some_experiment -f
+# (linger is already enabled). Enabling is what brings it back after a reboot;
+# disable the instance once its experiment has completed.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 config="${1:?usage: bin/long-run <config.json>}"
-id_file=logs/long-run.id
-log=logs/long-run.log
+name="$(basename "$config" .json)"
+id_file="logs/long-run.$name.id"
+log="logs/long-run.$name.log"
 db=priv/panic_tda_dev.db
 mise=/home/ben/.local/bin/mise
 mkdir -p logs
@@ -41,7 +47,9 @@ id="$(cat "$id_file")"
 while ! completed "$id"; do
   echo "$(date -Is) resuming $id" >> "$log"
   "$mise" exec -- mix experiment.resume "$id" >> "$log" 2>&1 || {
-    echo "$(date -Is) resume exited $?; retrying in 60s" >> "$log"
+    # taken before $(date) runs and replaces it
+    status=$?
+    echo "$(date -Is) resume exited $status; retrying in 60s" >> "$log"
     sleep 60
   }
 done

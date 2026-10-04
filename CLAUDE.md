@@ -156,7 +156,7 @@ batch takes roughly two to three times longer than it did under the old
   experiment and all its data
 - `bin/long-run config/x.json` --- run an experiment to completion across
   crashes and reboots; the header comment covers the systemd unit
-  (`bin/panic-experiment.service`) that keeps it alive
+  (`bin/panic-experiment@.service`) that keeps it alive
 
 Cells (one network's runs, batched in lockstep) execute in the order the config
 lists them, and each cell is embedded and given its persistence diagrams as soon

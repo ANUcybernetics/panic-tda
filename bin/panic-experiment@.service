@@ -1,12 +1,13 @@
 [Unit]
-Description=PANIC-TDA long-horizon experiment (bin/long-run)
+Description=PANIC-TDA long experiment %i (bin/long-run)
 Documentation=file:///home/ben/projects/panic_tda/bin/long-run
 
 [Service]
 Type=simple
 WorkingDirectory=/home/ben/projects/panic_tda
 Environment=PATH=/home/ben/.local/share/mise/shims:/home/ben/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/ben/projects/panic_tda/bin/long-run config/long_horizon_panel_4x4_300.json
+# the instance name is the config's: panic-experiment@x runs config/x.json
+ExecStart=/home/ben/projects/panic_tda/bin/long-run config/%i.json
 # bin/long-run exits 0 only once the experiment is complete; anything else
 # (crash, OOM, reboot) comes back here after a minute.
 Restart=on-failure
