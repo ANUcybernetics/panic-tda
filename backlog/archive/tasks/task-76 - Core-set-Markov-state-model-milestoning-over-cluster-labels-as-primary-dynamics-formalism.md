@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:50'
-updated_date: '2026-10-04 04:07'
+updated_date: '2026-10-04 05:11'
 labels:
   - analysis
   - paper
@@ -50,4 +50,16 @@ FIRST LOOK AT THE TASK-90 PANEL 2026-10-04 (analysis/trajectory_mixing.py, expor
 The direct check says why, and that no microstate count repairs it. In all 16 cells every run keeps to its own region for the 75 stationary text states: a frame's nearest neighbour in its cell is from its own run 89-100% of the time (chance 1.9%). Mean cosine distance between stationary frames is 0.07-0.16 within a run, 0.31-0.48 to the other run of the same prompt, 0.53-0.64 to runs of other prompts. With a per-cell partition of 5, 10, 20 or 40 microstates a run spends 95-98% of its frames in one microstate and changes label 0.3-0.6 times per 100 steps, so coarse states are shared but never crossed; at 80 a run splits across 2.2 microstates that only 2% of frames share with another prompt, so fine states are crossed but private. There is no resolution with both, which is what an MSM needs.
 
 The motion is slow drift, not hopping. Within a run, distance between frames grows with their separation and has not levelled at 70 text states (0.042 at 1, 0.079 at 10, 0.175 at 70, mean over cells). The two runs of a prompt start 0.21 apart and reach 0.39 by states 125-149, still rising; runs of different prompts go from 0.61 to 0.59. So the step size plateaus but the chain is not stationary at 150 text states and has not forgotten its prompt. AC#2's outcome for this panel is that every cell is unresolved, and the observables worth computing are the drift ones (displacement against separation, twin divergence, prompt-memory decay) rather than set-to-set kinetics.
+
+ABANDONED 2026-10-04 (Ben's decision, on the first look above). The Markov state model is dropped as the dynamics formalism and this task is closed with none of its acceptance criteria met.
+
+WHY. A Markov state model estimates escape times from many trajectories crossing between the same states. The panel has no such states at any resolution: coarse partitions give states that runs share but almost never leave (a run changes label 0.3-0.6 times per 100 steps at 5-40 microstates per cell), fine ones give states that runs cross but do not share (2% of frames in a microstate shared across prompts at 80). That is a property of the data, not of k-means, so the HMM fallback named in the description fails the same way: it also needs runs that visit common states. Nor is it only a matter of horizon. Shared metastable regions would show as runs from different prompts arriving in the same places, and they do not approach each other (mean distance 0.61 at the start, 0.59 at the end). Within a run, displacement is still growing at 70 text states of separation, and the two runs of a prompt are still diverging at state 150. So there is no sign of a small set of regions that runs settle into and hop between; the loop at this horizon is slow movement away from a prompt-specific start, and a state-to-state description has nothing to count.
+
+It was also never required for its own sake. The formalism was chosen to speak to Hintze et al.'s attractor claim. Ben's brief is the simplest and clearest formalism that explains what the runs are seen to do.
+
+WHAT REPLACES IT. TASK-103: seed noise, slow wander and prompt memory, read off distances between embeddings with no partition. AC#3 here (exact repetition as a descriptive statistic, not a state) carries over as TASK-103's count of frozen runs.
+
+WHAT STAYS. analysis/msm_pipeline.py and its guards stay as the record of what was tried. It is not maintained, and it still crashes on a cell whose count matrix has no connected set: the first panel run (./analysis/msm_pipeline.py 01a09e21_parquet --all, at the default 200 pooled microstates) got through two cells before deeptime raised on Flux2Dev + Moondream3, and since the script writes its JSON at the end that run left stdout only. backlog/docs/escape-time-resolvability.md stays as the pre-launch argument it was: its bound (ten crossings between two sets) is the right one, and the mixing check puts every cell on the unresolvable side of it.
+
+KNOCK-ON. TASK-77 (TDA keep/kill) compared topology against this task's symbol sequences; it now depends on TASK-103 and its comparison is against the drift description. TASK-91 (prior matching) assumed a stationary distribution and this task's region medoids; the panel does not reach a stationary regime in 150 text states, so its test needs restating before it is run. backlog/docs/research-programme.md and the paper skeleton still state RQ1 as metastable regions and escape times.
 <!-- SECTION:NOTES:END -->

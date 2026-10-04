@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-09-04 02:28'
+updated_date: '2026-10-04 05:11'
 labels:
   - analysis
   - paper
@@ -31,3 +32,9 @@ Cheap: needs captioning of an existing image set per captioner, no new trajector
 - [ ] #2 Stationary-regime distribution of every network compared against captioner and generator reference sets with a stated distribution distance
 - [ ] #3 Result stated as which factor the stationary distribution tracks, with the iterated-learning framing written up for Results II
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+NEEDS RESTATING BEFORE IT RUNS (2026-10-04). This test assumes the loop has a stationary distribution to compare against the reference sets, and that TASK-76 supplies region medoids. TASK-76 was abandoned and the TASK-90 panel does not reach a stationary regime in 150 text states: runs are still moving away from their prompt-specific start and the two runs of a prompt are still diverging at the end (analysis/trajectory_mixing.json; TASK-103). The comparison that survives is whether each network's late-run captions sit nearer one captioner's reference set than one generator's, with the caveat that they have not forgotten their prompts.
+<!-- SECTION:NOTES:END -->

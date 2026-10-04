@@ -4,12 +4,12 @@ title: 'TDA keep/kill pilot: does topology add anything beyond symbolic dynamics
 status: To Do
 assignee: []
 created_date: '2026-07-10 00:51'
-updated_date: '2026-09-07 04:06'
+updated_date: '2026-10-04 05:11'
 labels:
   - analysis
   - paper
 dependencies:
-  - TASK-76
+  - TASK-103
 priority: medium
 ---
 
@@ -31,4 +31,6 @@ Decide with data whether TDA earns a place in the next paper or is dropped from 
 
 <!-- SECTION:NOTES:BEGIN -->
 Gate for Results III, which exists in the paper only if this passes: sliding-window persistence is retained only if geometric recurrence exists that symbol sequences miss. Otherwise it shrinks to a negative-result paragraph and the TDA rationale moves to discussion. See backlog/docs/research-programme.md.
+
+DEPENDENCY MOVED 2026-10-04. TASK-76 (the Markov state model) was abandoned: the panel has no states that runs both share and cross, so there are no symbol sequences to compare against. The baseline topology has to beat is now TASK-103's description (seed noise, slow wander, prompt memory), and AC#1's question becomes whether geometric recurrence exists that the displacement curve and the twin/stranger distances miss.
 <!-- SECTION:NOTES:END -->

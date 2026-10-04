@@ -25,14 +25,14 @@ comparison). Burn-in is likewise one figure for the whole export.
     ./analysis/msm_pipeline.py 019f3645_parquet --network SDXLTurbo_Moondream
     ./analysis/msm_pipeline.py 019f3645_parquet --all --microstates 40 --lag 5
 
-**This is plumbing, not a result.** The only export on hand is
-`balanced_panel_5x5` at `max_length` 50, which is about 26 text states per run
-against a plateau that does not arrive until 50--75 (see
-`long-horizon-design.md`). No trajectory here reaches the stationary regime, so
-implied timescales cannot converge and the numbers this prints are not
-interpretable as kinetics. Its embeddings also predate TASK-96, which found the
-stored vectors were mean-pooled. The script exists so that when TASK-90's panel
-lands the analysis is a data swap rather than a build.
+**Abandoned, and kept as the record of what was tried** (TASK-76, archived).
+TASK-90's panel has no states that runs both share and cross, at any
+resolution, so there is nothing for a transition matrix to count:
+`trajectory_mixing.py` shows it and `drift_memory.py` describes what the runs
+do instead. The committed JSON is the plumbing run over `balanced_panel_5x5`
+at `max_length` 50, not a kinetic result. On the panel itself the script
+raises inside `implied_timescales` at the first cell whose count matrix has no
+connected set, which is not handled.
 
 Covers TASK-76 AC#1 (frozen corpus, subsampling stability), AC#2 (implied
 timescales against lag), AC#3 (repetition as a descriptive statistic) and AC#4
