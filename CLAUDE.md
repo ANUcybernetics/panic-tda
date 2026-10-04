@@ -163,6 +163,16 @@ lists them, and each cell is embedded and given its persistence diagrams as soon
 as its runs finish, so put the slow generators last and analyse the fast cells
 while they run.
 
+While a long run is live (`systemctl --user list-units 'panic-experiment@*'`),
+leave `lib/`, `priv/`, `config/` and `bin/long-run` alone and keep other work
+off the GPU. A restart resumes on whatever code is on disk, and editing an `.ex`
+file recompiles the dev build at once through the format hook. `mix test` is
+safe: it has its own build and database.
+
+Before a run longer than any before it, rehearse the stages that follow a cell
+at that length (`test/long_run_rehearsal_test.exs`). They first meet a run's
+full length when its cell finishes, days into the GPU time.
+
 ## Analysis scripts
 
 One-off analyses live in `analysis/` as uv inline-metadata scripts
