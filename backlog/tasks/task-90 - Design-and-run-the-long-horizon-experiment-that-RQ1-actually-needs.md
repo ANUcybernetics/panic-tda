@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-10-04 03:53'
+updated_date: '2026-10-04 05:25'
 labels:
   - experiment
   - paper
@@ -94,4 +94,6 @@ COMPLETED 2026-10-04 03:14 AEDT (2026-10-03 16:14 UTC), inside the 2-4 Oct launc
 POST-RUN INTEGRITY CHECK 2026-10-04 (read-only SQL against the database): 16 cells x 40 runs x 300 steps = 192,000 invocations, every run with exactly steps 0-299, none incomplete, no empty image or caption, every step linked to the previous step of its own run; 96,000 images each with a seed (95,999 distinct); 96,000 embeddings, one per caption, uniform vector size; 640 persistence diagrams, one per run, all with data.
 
 Two things that look like faults and are not. (1) experiment.status reports Gemma4 at 13.1% truncated (3,151 of 24,000 captions not ending in terminal punctuation); a sample of eight all end in '.**', markdown bold closing after the full stop, so the heuristic is miscounting rather than captions hitting the ceiling. Sampled, not counted in full. (2) About 1,180 images are under 5 kB, concentrated in a few runs. The entries traced go through coherent captions (fog, dark scenes, flat colour fields), so they are compressible images rather than generation failures. Some Flux2Dev runs settle into an all-black loop: Flux2Dev + Gemma4 on 'a city slowly turning into a forest' has 140 small images of 150, with the caption repeating 'The image you provided is completely black'. Relevant to the metastability analysis (TASK-76).
+
+CORRECTION 2026-10-04 to the post-run check above. The all-black run is Flux2Dev + Gemma4 on 'a glass bottle beside a candle', not 'a city slowly turning into a forest': I matched the smallest files to the wrong run. The city run's 140 small images are bright fog (mean luma 151), which compresses well; file size was a poor proxy for a flat image. Decoding every image (analysis/panel_audit.py) finds 224 flat images in 3 of the 640 runs: the bottle-and-candle run from step 62 (black) and two SD35Medium + Gemma4 runs (lime green, from steps 62 and 102). The Gemma4 figure also firms up: with markdown closing marks allowed for, 1 of 24,000 Gemma4 captions lacks terminal punctuation, and that one ends on a bullet point, so none was cut.
 <!-- SECTION:NOTES:END -->
