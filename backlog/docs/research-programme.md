@@ -207,10 +207,13 @@ states, and that rate has been falling. It is also too short to see a run cover
 its prompt's region, which the old runs say takes from 200 to more than 1,250
 text states.
 
-So the next experiment is fewer prompts, more runs per prompt, and 700 text
-states or more. The panel's own step times price it. A cell of 40 runs to 700
-text states costs about two and a half days with SD35Medium or ZImageTurbo.
-With Flux2Klein it is a day and a half, and with Flux2Dev fifteen.
+So the next experiment is fewer prompts, more runs per prompt and a longer
+run. TASK-104 is running it as experiment `01a10613`: five prompts by eight
+runs in six cells, to 1,000 text states, for 20 GPU-days
+(`long-follow-up-design.md`). The panel's own step times priced it. A cell of
+40 runs to 1,000 text states costs two to four days with Flux2Klein, SD35Medium
+or ZImageTurbo. With Flux2Dev it costs 21 to 27, which is why Flux2Dev is not
+in it.
 
 Measured per-item times (the model predicted 14.9 days for the July panel,
 which took ~17):
@@ -236,8 +239,8 @@ GPU-days estimated (`backlog/docs/long-horizon-design.md`).
 | --------------------------------- | ----------------------- | --------------------------------------------------------------- |
 | TASK-90                           | closed                  | the dataset both RQs need: 640 runs of 300 invocations          |
 | TASK-103 noise, offset and memory | **primary description** | Results I, and both RQs as now stated                           |
-| TASK-104 the long follow-up       | **the next experiment** | whether a prompt is ever forgotten; few prompts, eight runs     |
-| TASK-105 reading the follow-up    | after 104               | memory and displacement over 700 text states or more            |
+| TASK-104 the long follow-up       | **running**             | whether a prompt is ever forgotten; five prompts, eight runs    |
+| TASK-105 reading the follow-up    | after 104               | memory and displacement over 1,000 text states                  |
 | TASK-76 Markov state model        | abandoned               | the panel has no states that runs both share and cross          |
 | TASK-89 drift/noise decomposition | closed                  | the noise floor is most of the step; Null models, and RQ2       |
 | TASK-75 outliers as sparse space  | closed                  | failed: outliers are not sparse, transit time is not observable |

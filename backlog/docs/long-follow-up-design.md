@@ -5,7 +5,8 @@ The design for the experiment that asks whether a prompt is ever forgotten
 `analysis/follow_up_design.py` and `analysis/pd_cost.py`, with the JSON beside
 each. Config: `config/long_follow_up_3x2_2000.json`.
 
-Ben agreed the design on 2026-10-04, before any GPU time was spent on it.
+Ben agreed the design on 2026-10-04, before any GPU time was spent on it. It
+was launched the same day as experiment `01a10613`.
 
 ## What the panel left open
 
@@ -155,9 +156,11 @@ and its eight runs show whether they sit in one region or several.
 
 ## Launch
 
-The run goes under `bin/long-run` as the unit
+The run went up at 19:42 AEDT on 2026-10-04, under `bin/long-run` as the unit
 `panic-experiment@long_follow_up_3x2_2000`. The script's header comment covers
-the unit, and it keeps the experiment's id and log under the config's name.
+the unit, and it keeps the experiment's id and log under the config's name. On
+the table's schedule the first cell is due on 7 October and the last on 25
+October 2026.
 
 Two calls that follow a cell were sized for 150 text states. A persistence
 diagram over 1,000 points takes 14--48 s, and Snex waits five by default. The
