@@ -15,14 +15,85 @@
       "total": 224,
       "runs": 3,
       "by_kind": {
-        "colour": 105,
-        "black": 119
+        "black": 119,
+        "colour": 105
       },
       "by_network": {
         "[\"Flux2Dev\",\"Gemma4\"]": 119,
         "[\"SD35Medium\",\"Gemma4\"]": 105
       },
       "caption_does_not_ask_for_it": []
+    },
+    "low_detail": {
+      "rule": "an image under 5000 bytes; a run with 50 or more",
+      "images": 1184,
+      "runs": 7,
+      "runs_ending_there": 4,
+      "by_run": [
+        {
+          "network": "[\"Flux2Dev\",\"Moondream3\"]",
+          "prompt": "a city slowly turning into a forest",
+          "images": 148,
+          "first_step": 4,
+          "share_of_last_fifty": 1.0,
+          "luma": 160.2227326985952,
+          "flat_images": 0
+        },
+        {
+          "network": "[\"Flux2Dev\",\"Gemma4\"]",
+          "prompt": "a city slowly turning into a forest",
+          "images": 140,
+          "first_step": 4,
+          "share_of_last_fifty": 1.0,
+          "luma": 151.95345611572264,
+          "flat_images": 0
+        },
+        {
+          "network": "[\"Flux2Dev\",\"Gemma4\"]",
+          "prompt": "a glass bottle beside a candle",
+          "images": 126,
+          "first_step": 48,
+          "share_of_last_fifty": 1.0,
+          "luma": 1.2891411496629377,
+          "flat_images": 119
+        },
+        {
+          "network": "[\"Flux2Dev\",\"Moondream3\"]",
+          "prompt": "a bustling Tokyo street at night",
+          "images": 125,
+          "first_step": 50,
+          "share_of_last_fifty": 1.0,
+          "luma": 37.86603645324707,
+          "flat_images": 0
+        },
+        {
+          "network": "[\"SD35Medium\",\"Gemma4\"]",
+          "prompt": "a market stall displaying fruit, flowers, and handmade crafts",
+          "images": 97,
+          "first_step": 64,
+          "share_of_last_fifty": 0.86,
+          "luma": 164.91743610814675,
+          "flat_images": 74
+        },
+        {
+          "network": "[\"Flux2Dev\",\"Gemma4\"]",
+          "prompt": "a library with impossible architecture",
+          "images": 84,
+          "first_step": 82,
+          "share_of_last_fifty": 0.68,
+          "luma": 16.121887751988,
+          "flat_images": 0
+        },
+        {
+          "network": "[\"SD35Medium\",\"Gemma4\"]",
+          "prompt": "the feeling of nostalgia",
+          "images": 56,
+          "first_step": 14,
+          "share_of_last_fifty": 0.0,
+          "luma": 132.37917069026403,
+          "flat_images": 0
+        }
+      ]
     },
     "pure_black": {
       "total": 1,
@@ -423,6 +494,7 @@
         "special_tokens": 0,
         "refusals": 4,
         "with_non_latin_script": 14,
+        "with_ten_or_more_non_latin_characters": 1,
         "addresses_the_user": 117,
         "with_markdown_bold": 22939
       },
@@ -439,6 +511,7 @@
         "special_tokens": 0,
         "refusals": 0,
         "with_non_latin_script": 0,
+        "with_ten_or_more_non_latin_characters": 0,
         "addresses_the_user": 0,
         "with_markdown_bold": 0
       },
@@ -451,10 +524,11 @@
         "chars_max": 5140,
         "chars_min": 94,
         "unterminated": 10,
-        "looping": 11,
+        "looping": 12,
         "special_tokens": 2,
         "refusals": 0,
         "with_non_latin_script": 22,
+        "with_ten_or_more_non_latin_characters": 4,
         "addresses_the_user": 0,
         "with_markdown_bold": 0
       },
@@ -471,6 +545,7 @@
         "special_tokens": 0,
         "refusals": 0,
         "with_non_latin_script": 43,
+        "with_ten_or_more_non_latin_characters": 8,
         "addresses_the_user": 0,
         "with_markdown_bold": 104
       }
@@ -565,14 +640,21 @@
     ],
     "looping": {
       "rule": ">= 60 words and < 0.5 distinct 4-grams",
-      "total": 11,
-      "runs": 4,
+      "total": 12,
+      "runs": 5,
       "by_network": {
         "[\"Flux2Klein\",\"Moondream3\"]": 6,
-        "[\"SD35Medium\",\"Moondream3\"]": 3,
+        "[\"SD35Medium\",\"Moondream3\"]": 4,
         "[\"ZImageTurbo\",\"Moondream3\"]": 2
       },
       "examples": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a09eaa-d36f-76c5-8f05-6af5b9a09353",
+          "sn": 51,
+          "words": 63,
+          "text": "\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\ufffd"
+        },
         {
           "network": "[\"SD35Medium\",\"Moondream3\"]",
           "id": "01a0a0a1-1692-7fd1-b2dd-66ceb07ea5fd",
@@ -607,13 +689,6 @@
           "sn": 243,
           "words": 262,
           "text": "ides. The man in the center has his hands at his sides. The man on the far left has his hands at his sides. The man on the far right has his hands at his sides."
-        },
-        {
-          "network": "[\"Flux2Klein\",\"Moondream3\"]",
-          "id": "01a0b484-e5eb-7c14-8529-f14277b1969e",
-          "sn": 99,
-          "words": 773,
-          "text": " for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading"
         }
       ]
     },

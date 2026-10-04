@@ -52,6 +52,13 @@ DB = (HERE.parent / "priv" / "panic_tda_dev.db").resolve()
 # decodes to, so those are checked against the caption that produced them.
 FLAT_STD = 2.0
 DARK_MEAN = 8.0
+# An image that compresses this small has almost nothing in it: a flat field, a
+# gradient, two blocks of colour, fog. A run is counted as low-detail when a
+# third of its images are, and as ending there when nine-tenths of its last
+# fifty are.
+LOW_DETAIL_BYTES = 5000
+LOW_DETAIL_RUN = 50
+LOW_DETAIL_END = 0.9
 BRIGHT_MEAN = 247.0
 # What a caption says when it is asking for a flat or near-empty image.
 FLAT_WORDS = re.compile(
@@ -78,6 +85,8 @@ NON_LATIN = re.compile(
     r"぀-ヿ㐀-鿿가-힯]"
 )
 WORD = re.compile(r"[A-Za-z']+")
+# any script: a loop is a loop whatever it is written in
+ANY_WORD = re.compile(r"\w+")
 STOP = frozenset(
     {
         "a",
@@ -334,6 +343,23 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
         )
         .sort("network", "third")
     )
+    low = ok.with_columns((pl.col("bytes") < LOW_DETAIL_BYTES).alias("low"))
+    last = ok["sn"].max() - 2 * (LOW_DETAIL_RUN - 1)
+    low_runs = (
+        low.group_by("network", "prompt", "run_id")
+        .agg(
+            pl.col("low").sum().alias("images"),
+            pl.col("sn").filter(pl.col("low")).min().alias("first_step"),
+            pl.col("low")
+            .filter(pl.col("sn") >= last)
+            .mean()
+            .alias("share_of_last_fifty"),
+            pl.col("mean").filter(pl.col("low")).mean().alias("luma"),
+            (pl.col("std") < FLAT_STD).sum().alias("flat_images"),
+        )
+        .filter(pl.col("images") >= LOW_DETAIL_RUN)
+        .sort("images", descending=True)
+    )
     return {
         "images": images.height,
         "decode_failures": images.height - ok.height,
@@ -354,6 +380,15 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
             .select("network", "id", "sn", "kind", "caption_in")
             .with_columns(pl.col("caption_in").str.slice(0, 300))
             .to_dicts(),
+        },
+        "low_detail": {
+            "rule": f"an image under {LOW_DETAIL_BYTES} bytes; a run with {LOW_DETAIL_RUN} or more",
+            "images": int(low["low"].sum()),
+            "runs": low_runs.height,
+            "runs_ending_there": low_runs.filter(
+                pl.col("share_of_last_fifty") >= LOW_DETAIL_END
+            ).height,
+            "by_run": low_runs.drop("run_id").to_dicts(),
         },
         "pure_black": {
             "total": pure_black.height,
@@ -380,7 +415,7 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
 
 def loopiness(text: str) -> float:
     """Share of a caption's word 4-grams that are distinct: low means it is looping."""
-    words = WORD.findall(text.lower())
+    words = ANY_WORD.findall(text.lower())
     grams = list(zip(words, words[1:], words[2:], words[3:]))
     return len(set(grams)) / len(grams) if grams else 1.0
 
@@ -464,6 +499,9 @@ def audit_captions(inv: pl.DataFrame) -> dict:
             (pl.col("special").list.len() > 0).sum().alias("special_tokens"),
             pl.col("refusal").sum().alias("refusals"),
             (pl.col("non_latin") > 0).sum().alias("with_non_latin_script"),
+            (pl.col("non_latin") >= 10)
+            .sum()
+            .alias("with_ten_or_more_non_latin_characters"),
             pl.col("text")
             .str.starts_with("The image you provided")
             .sum()
