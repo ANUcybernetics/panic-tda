@@ -11744,6 +11744,7 @@
       }
     }
   },
+  "seed_resample": null,
   "collapsed_runs": [
     {
       "network": "[\"Flux2Dev\",\"Gemma4\"]",

@@ -63,6 +63,7 @@ HERE = pathlib.Path(__file__).parent
 OUT = pathlib.Path(__file__).with_suffix(".json")
 FIGURES = HERE / "drift_memory"
 AUDIT = HERE / "panel_audit.json"
+RESAMPLE = HERE / "seed_resample.json"
 
 # Step size and displacement both slow over the first fifty text states and are
 # close to steady after that (`ageing` shows it), so the settled numbers come
@@ -565,6 +566,76 @@ def prompt_table(
     }
 
 
+def seed_resample_check(prompts: list[str], draws: np.ndarray) -> dict | None:
+    """Set a direct measurement of one seed draw beside the chain's own estimate.
+
+    `seed_resample.py` redraws one late step of every cell at a new seed. Two
+    successors of one caption should then be as far apart as two steps of the
+    stored run, `w + s`, if a step is an independent increment plus fresh noise.
+    """
+    if not RESAMPLE.exists():
+        return None
+    data = json.loads(RESAMPLE.read_text())
+    index = {prompt: i for i, prompt in enumerate(prompts)}
+    keys = ("resampled", "step", "two_steps")
+    tables, cells = {}, {}
+    for network, cell in data["cells"].items():
+        total = np.zeros((len(keys), len(prompts)))
+        count = np.zeros(len(prompts))
+        for run in cell["runs"]:
+            if run["redrawn"]:
+                total[:, index[run["prompt"]]] += [run[k] for k in keys]
+                count[index[run["prompt"]]] += 1
+        table = np.where(count > 0, total / np.maximum(count, 1), np.nan)
+        tables[network] = table
+        resampled, step, two = np.nanmean(table, axis=1)
+        cells[network] = {
+            "redrawn": cell["redrawn"],
+            "resampled": float(resampled),
+            "step": float(step),
+            "two_steps": float(two),
+            "noise_direct": float(2 * step - resampled),
+            "noise_chain": float(2 * step - two),
+            "identical_captions": cell["identical_captions"],
+            "kept": cell["kept"],
+            "kept_identical_captions": cell["kept_identical_captions"],
+        }
+
+    def pooled(idx: np.ndarray) -> dict[str, float]:
+        resampled, step, two = np.mean(
+            [np.nanmean(table[:, idx], axis=1) for table in tables.values()], axis=0
+        )
+        return {
+            "resampled": float(resampled),
+            "step": float(step),
+            "two_steps": float(two),
+            "resampled_less_two_steps": float(resampled - two),
+            "resampled_less_step": float(resampled - step),
+            "noise_direct": float(2 * step - resampled),
+            "noise_chain": float(2 * step - two),
+            "noise_share_direct": float((2 * step - resampled) / step),
+        }
+
+    point = pooled(np.arange(len(prompts)))
+    with np.errstate(invalid="ignore"):
+        boots = [pooled(idx) for idx in draws]
+    return {
+        "image_step": data["image_step"],
+        "redrawn": sum(c["redrawn"] for c in cells.values()),
+        "pooled": {
+            k: {
+                "value": v,
+                "interval": [
+                    float(q)
+                    for q in np.nanpercentile([b[k] for b in boots], [2.5, 97.5])
+                ],
+            }
+            for k, v in point.items()
+        },
+        "networks": cells,
+    }
+
+
 def collapsed_runs() -> list[dict]:
     if not AUDIT.exists():
         return []
@@ -594,7 +665,10 @@ def styled(ax: plt.Axes) -> plt.Axes:
 def save(fig: plt.Figure, name: str) -> None:
     FIGURES.mkdir(exist_ok=True)
     fig.savefig(FIGURES / f"{name}.png", dpi=200, facecolor=SURFACE)
-    fig.savefig(FIGURES / f"{name}.pdf", facecolor=SURFACE)
+    # no creation date, so a rerun on unchanged data leaves the file unchanged
+    fig.savefig(
+        FIGURES / f"{name}.pdf", facecolor=SURFACE, metadata={"CreationDate": None}
+    )
     plt.close(fig)
 
 
@@ -988,6 +1062,7 @@ def main() -> None:
                 "reached",
             )
         },
+        "seed_resample": seed_resample_check(prompts, draws),
         "collapsed_runs": collapsed_runs(),
     }
     OUT.write_text(json.dumps(results, indent=2))
