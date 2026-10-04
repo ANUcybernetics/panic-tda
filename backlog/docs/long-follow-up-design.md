@@ -3,9 +3,9 @@
 The design for the experiment that asks whether a prompt is ever forgotten
 (TASK-104), written 2026-10-04 from the panel's own data. The numbers come from
 `analysis/follow_up_design.py` and `analysis/pd_cost.py`, with the JSON beside
-each. Config: `config/long_follow_up_3x2_1400.json`.
+each. Config: `config/long_follow_up_3x2_2000.json`.
 
-Proposed, and not yet agreed. No GPU time has been spent on it.
+Ben agreed the design on 2026-10-04, before any GPU time was spent on it.
 
 ## What the panel left open
 
@@ -46,10 +46,10 @@ What counts as an answer is fixed here, before the run.
 | runs per prompt | eight | a prompt's centre seen from eight runs, where the panel inferred it from one pair |
 | runs per cell | 40, in lockstep | the panel's batch of 40, so each captioner is defined as it was |
 | cells | Moondream3 and Gemma4, each with Flux2Klein, SD35Medium and ZImageTurbo | the two captioners furthest apart, with every generator that is affordable |
-| horizon | 700 text states (1,400 invocations) | 2.2 doublings past the panel, which tells the three courses apart inside one cell |
+| horizon | 1,000 text states (2,000 invocations) | 2.7 doublings past the panel, and past state 840, where the fastest course would bring twins to the stranger distance |
 | everything else | as the panel | the first 150 text states can be set beside the panel's |
 
-The six cells cost 14.1 GPU-days.
+The six cells cost 20.2 GPU-days.
 
 As in the panel, every text-to-image invocation draws and records its own seed.
 Captioners decode greedily (decision-02) and nothing is truncated
@@ -93,12 +93,12 @@ separately, as `panel-audit.md` counted them.
 
 | Cell | Memory at 150 in the panel | The same, these five prompts | GPU-days | Finished after |
 | --- | --- | --- | --- | --- |
-| Flux2Klein + Gemma4 | 0.40 | 0.41 | 1.6 | 1.6 days |
-| SD35Medium + Moondream3 | 0.13 | 0.16 | 2.8 | 4.4 |
-| ZImageTurbo + Moondream3 | 0.48 | 0.41 | 2.8 | 7.2 |
-| Flux2Klein + Moondream3 | 0.25 | 0.26 | 2.1 | 9.3 |
-| SD35Medium + Gemma4 | 0.30 | 0.32 | 2.3 | 11.7 |
-| ZImageTurbo + Gemma4 | 0.36 | 0.34 | 2.4 | 14.1 |
+| Flux2Klein + Gemma4 | 0.40 | 0.41 | 2.3 | 2.3 days |
+| SD35Medium + Moondream3 | 0.13 | 0.16 | 4.1 | 6.3 |
+| ZImageTurbo + Moondream3 | 0.48 | 0.41 | 4.0 | 10.3 |
+| Flux2Klein + Moondream3 | 0.25 | 0.26 | 3.1 | 13.4 |
+| SD35Medium + Gemma4 | 0.30 | 0.32 | 3.4 | 16.8 |
+| ZImageTurbo + Gemma4 | 0.36 | 0.34 | 3.4 | 20.2 |
 
 Moondream3 and Gemma4 are the captioners furthest apart on what the panel
 measured. Moondream3 writes the shortest captions, a median of 50 words, with
@@ -107,7 +107,7 @@ most (0.046).
 
 Each also does something the panel could only count as rare. Moondream3 runs
 freeze on a caption: 1--5% of late steps repeat the one before. Two of the 120
-Gemma4 runs in these cells slid into a flat field of colour. A run nearly five
+Gemma4 runs in these cells slid into a flat field of colour. A run nearly seven
 times as long will show whether either becomes common.
 
 The three generators span what a step keeps: 0.012 with SD35Medium, 0.008 with
@@ -117,31 +117,26 @@ lowest memory of the twelve and the highest, 0.13 and 0.48.
 A cell is priced from the panel's own timestamps. One text state took a median
 of 191 to 342 seconds of wall clock in these cells, and the panel's restarts
 added 1.8%. Embedding and persistence diagrams follow once a cell's runs are
-done, and take 11 to 24 minutes.
+done, and take 37 to 56 minutes.
 
 Cells run in the order of the table. The cheapest goes first, so the stages
-that follow a cell are met at this length inside two days. Next come the two
-cells at the ends of the panel's range, which are both in after a week.
+that follow a cell are met at this length inside three days. Next come the two
+cells at the ends of the panel's range, which are both in after ten days.
 
 ## Horizon
 
 The twin distance has followed the logarithm of time, so what a longer run adds
-is counted in doublings. From state 20 the panel covers 2.9 of them. Running to
-700 adds 2.2 more. Going on to 1,000 would add another half, for 43% more GPU
-time.
+is counted in doublings. From state 20 the panel covers 2.9 of them, and
+running to 1,000 adds 2.7 more.
 
-At 700 the three courses put memory at 0.36, 0.19 and 0.07. The standard error
-on one cell's memory is 0.02 to 0.06, so a single cell can tell them apart.
+At 1,000 the level course leaves memory at 0.36 and the logarithmic course at
+0.16. On the third course twins are as far apart as strangers by state 840, so
+the run would watch a prompt forgotten. The standard error on one cell's memory
+is 0.02 to 0.06, so a single cell can tell the three apart.
 
-Displacement within a run can be followed out to a separation of 350 text
+Displacement within a run can be followed out to a separation of 500 text
 states, half the run. The panel's stopped at 70, where a run had covered
 23--59% of the distance to its twin.
-
-A cell that is still moving at 700 can be taken further. A run's state is its
-last caption, so continuing it under fresh seeds is the same chain as a longer
-run. Nothing in the resources prevents it: `max_length` can be updated and a
-finished experiment reopened. The task that would do it has not been written.
-It would raise the length, drop the diagrams and resume.
 
 ## What eight runs resolve
 
@@ -161,11 +156,11 @@ and its eight runs show whether they sit in one region or several.
 ## Launch
 
 The run goes under `bin/long-run` as the unit
-`panic-experiment@long_follow_up_3x2_1400`. The script's header comment covers
+`panic-experiment@long_follow_up_3x2_2000`. The script's header comment covers
 the unit, and it keeps the experiment's id and log under the config's name.
 
 Two calls that follow a cell were sized for 150 text states. A persistence
-diagram over 700 points takes 7--11 s, and Snex waits five by default. A longer
+diagram over 1,000 points takes 14--48 s, and Snex waits five by default. The
 run would have failed at the end of its first cell. Both calls now allow for
 the length of the run (`analysis/pd_cost.py`).
 
@@ -173,7 +168,7 @@ the length of the run (`analysis/pd_cost.py`).
 
 | Alternative | GPU-days | Why not |
 | --- | --- | --- |
-| the same six cells to 1,000 text states | 20.2 | half a doubling for six more days, and an extension can add it where it is needed |
-| all twelve affordable cells to 700 | 26.4 | the JoyCaption and Qwen25VL cells make a second batch of 12.3 days, better decided once the six are read |
-| the three Moondream3 cells alone | 7.7 | one captioner, and the one whose runs freeze |
-| one Flux2Dev cell | 14.7 to 19.1 | a single cell costs more than the six together |
+| the same six cells to 700 text states | 14.1 | stops 140 states short of where the fastest course meets the strangers, and going on later would need an extension task that does not exist |
+| all twelve affordable cells to 1,000 | 37.8 | the JoyCaption and Qwen25VL cells make a second batch of 17.6 days, better decided once the six are read |
+| the three Moondream3 cells alone | 11.1 | one captioner, and the one whose runs freeze |
+| one Flux2Dev cell | 21.0 to 27.3 | a single cell costs more than the six together |
