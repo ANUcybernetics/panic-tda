@@ -1,0 +1,20 @@
+{
+  "networks": [
+    ["Flux2Klein", "Gemma4"],
+    ["SD35Medium", "Moondream3"],
+    ["ZImageTurbo", "Moondream3"],
+    ["Flux2Klein", "Moondream3"],
+    ["SD35Medium", "Gemma4"],
+    ["ZImageTurbo", "Gemma4"]
+  ],
+  "prompts": [
+    "a red apple on a wooden table",
+    "a train station with travellers carrying colourful luggage",
+    "a man standing in a doorway",
+    "firefighters responding to a building fire",
+    "a city slowly turning into a forest"
+  ],
+  "embedding_models": ["Qwen3Embed"],
+  "max_length": 2000,
+  "num_runs": 8
+}
