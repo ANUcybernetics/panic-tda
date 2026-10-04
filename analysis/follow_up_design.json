@@ -1,0 +1,1205 @@
+{
+  "export": "01a09e21_parquet",
+  "cost": {
+    "what": "a cell is 40 runs in lockstep; days at a horizon are text states times the median wall clock of one, times the panel's overhead, plus embedding and diagrams once the runs are done",
+    "overhead": 1.0175887761683986,
+    "overhead_from": "wall clock over uninterrupted time, cells without Flux2Dev",
+    "cells": {
+      "[\"Flux2Dev\",\"Gemma4\"]": {
+        "text_states": 150,
+        "image_step_seconds": 2072.8827825,
+        "caption_step_seconds": 23.461893500000002,
+        "text_state_seconds": 2102.672229,
+        "wall_hours": 89.46408705138889,
+        "uninterrupted_hours": 87.61134287499999,
+        "embedding_seconds_per_caption": 0.038608910499999996,
+        "finishing_minutes_at": {
+          "700": 25.297491566666665,
+          "1000": 57.479273666666664
+        },
+        "days_at": {
+          "700": 17.35274087532375,
+          "1000": 24.804449266335517
+        }
+      },
+      "[\"Flux2Dev\",\"JoyCaption\"]": {
+        "text_states": 150,
+        "image_step_seconds": 1765.0906544999998,
+        "caption_step_seconds": 18.8145455,
+        "text_state_seconds": 1784.066261,
+        "wall_hours": 74.70387160416666,
+        "uninterrupted_hours": 74.33609420833334,
+        "embedding_seconds_per_caption": 0.023552620999999996,
+        "finishing_minutes_at": {
+          "700": 18.27122313333333,
+          "1000": 47.44174733333333
+        },
+        "days_at": {
+          "700": 14.721161291458616,
+          "1000": 21.045049860813897
+        }
+      },
+      "[\"Flux2Dev\",\"Moondream3\"]": {
+        "text_states": 150,
+        "image_step_seconds": 2221.9586959999997,
+        "caption_step_seconds": 79.963682,
+        "text_state_seconds": 2313.584316,
+        "wall_hours": 93.30947333722222,
+        "uninterrupted_hours": 96.39934650000001,
+        "embedding_seconds_per_caption": 0.008226723166666667,
+        "finishing_minutes_at": {
+          "700": 11.119137477777778,
+          "1000": 37.22448211111111
+        },
+        "days_at": {
+          "700": 19.081728600986757,
+          "1000": 27.27443173156838
+        }
+      },
+      "[\"Flux2Dev\",\"Qwen25VL\"]": {
+        "text_states": 150,
+        "image_step_seconds": 1771.76092,
+        "caption_step_seconds": 22.8365035,
+        "text_state_seconds": 1796.1043499999998,
+        "wall_hours": 75.02864766916666,
+        "uninterrupted_hours": 74.83768124999999,
+        "embedding_seconds_per_caption": 0.012736757,
+        "finishing_minutes_at": {
+          "700": 13.223819933333335,
+          "1000": 40.231171333333336
+        },
+        "days_at": {
+          "700": 14.816902411655855,
+          "1000": 21.181822889667096
+        }
+      },
+      "[\"Flux2Klein\",\"Gemma4\"]": {
+        "text_states": 150,
+        "image_step_seconds": 151.49113799999998,
+        "caption_step_seconds": 19.724637,
+        "text_state_seconds": 191.21802599999998,
+        "wall_hours": 7.979101758611111,
+        "uninterrupted_hours": 7.967417749999999,
+        "embedding_seconds_per_caption": 0.035220863166666665,
+        "finishing_minutes_at": {
+          "700": 23.71640281111111,
+          "1000": 55.220575444444435
+        },
+        "days_at": {
+          "700": 1.5929387281219973,
+          "1000": 2.2904461989044402
+        }
+      },
+      "[\"Flux2Klein\",\"JoyCaption\"]": {
+        "text_states": 150,
+        "image_step_seconds": 151.997369,
+        "caption_step_seconds": 18.421725,
+        "text_state_seconds": 184.21794,
+        "wall_hours": 7.686381204166667,
+        "uninterrupted_hours": 7.6757475,
+        "embedding_seconds_per_caption": 0.023240555333333333,
+        "finishing_minutes_at": {
+          "700": 18.12559248888889,
+          "1000": 47.23370355555555
+        },
+        "days_at": {
+          "700": 1.5313450373650206,
+          "1000": 2.20245521210876
+        }
+      },
+      "[\"Flux2Klein\",\"Moondream3\"]": {
+        "text_states": 150,
+        "image_step_seconds": 149.53470149999998,
+        "caption_step_seconds": 87.44059299999999,
+        "text_state_seconds": 258.301151,
+        "wall_hours": 10.830753758611111,
+        "uninterrupted_hours": 10.762547958333334,
+        "embedding_seconds_per_caption": 0.010748916166666667,
+        "finishing_minutes_at": {
+          "700": 12.296160877777776,
+          "1000": 38.90594411111111
+        },
+        "days_at": {
+          "700": 2.1380650016545344,
+          "1000": 3.0691980182366367
+        }
+      },
+      "[\"Flux2Klein\",\"Qwen25VL\"]": {
+        "text_states": 150,
+        "image_step_seconds": 152.24241899999998,
+        "caption_step_seconds": 23.424646499999998,
+        "text_state_seconds": 189.93861099999998,
+        "wall_hours": 7.939332744722223,
+        "uninterrupted_hours": 7.914108791666665,
+        "embedding_seconds_per_caption": 0.014977602666666668,
+        "finishing_minutes_at": {
+          "700": 14.269547911111111,
+          "1000": 41.725068444444446
+        },
+        "days_at": {
+          "700": 1.5758304626724249,
+          "1000": 2.2660058196907658
+        }
+      },
+      "[\"SD35Medium\",\"Gemma4\"]": {
+        "text_states": 150,
+        "image_step_seconds": 248.4077715,
+        "caption_step_seconds": 22.711836499999997,
+        "text_state_seconds": 281.933165,
+        "wall_hours": 11.751145748888888,
+        "uninterrupted_hours": 11.747215208333332,
+        "embedding_seconds_per_caption": 0.03610146633333333,
+        "finishing_minutes_at": {
+          "700": 24.127350955555553,
+          "1000": 55.807644222222216
+        },
+        "days_at": {
+          "700": 2.3411117834592194,
+          "1000": 3.3592648493861863
+        }
+      },
+      "[\"SD35Medium\",\"JoyCaption\"]": {
+        "text_states": 150,
+        "image_step_seconds": 248.22710999999998,
+        "caption_step_seconds": 18.7280145,
+        "text_state_seconds": 271.708988,
+        "wall_hours": 11.323573005555556,
+        "uninterrupted_hours": 11.32120783333333,
+        "embedding_seconds_per_caption": 0.02322801233333333,
+        "finishing_minutes_at": {
+          "700": 18.119739088888885,
+          "1000": 47.22534155555555
+        },
+        "days_at": {
+          "700": 2.252648101230847,
+          "1000": 3.2328881604885114
+        }
+      },
+      "[\"SD35Medium\",\"Moondream3\"]": {
+        "text_states": 150,
+        "image_step_seconds": 246.857124,
+        "caption_step_seconds": 83.47992199999999,
+        "text_state_seconds": 342.16826599999996,
+        "wall_hours": 14.399013210555555,
+        "uninterrupted_hours": 14.257011083333332,
+        "embedding_seconds_per_caption": 0.010046321999999998,
+        "finishing_minutes_at": {
+          "700": 11.9682836,
+          "1000": 38.437548
+        },
+        "days_at": {
+          "700": 2.829267453076645,
+          "1000": 4.0566300916967934
+        }
+      },
+      "[\"SD35Medium\",\"Qwen25VL\"]": {
+        "text_states": 150,
+        "image_step_seconds": 249.118777,
+        "caption_step_seconds": 24.719364999999996,
+        "text_state_seconds": 279.345036,
+        "wall_hours": 13.687257751666667,
+        "uninterrupted_hours": 11.639376500000001,
+        "embedding_seconds_per_caption": 0.013969742666666667,
+        "finishing_minutes_at": {
+          "700": 13.799213244444445,
+          "1000": 41.053161777777774
+        },
+        "days_at": {
+          "700": 2.312602015197184,
+          "1000": 3.3185366090118515
+        }
+      },
+      "[\"ZImageTurbo\",\"Gemma4\"]": {
+        "text_states": 150,
+        "image_step_seconds": 257.7938395,
+        "caption_step_seconds": 19.417427,
+        "text_state_seconds": 289.765359,
+        "wall_hours": 12.0750348325,
+        "uninterrupted_hours": 12.073556624999998,
+        "embedding_seconds_per_caption": 0.03209243916666667,
+        "finishing_minutes_at": {
+          "700": 22.25647161111111,
+          "1000": 53.13495944444444
+        },
+        "days_at": {
+          "700": 2.4043839377920295,
+          "1000": 3.4496536412902006
+        }
+      },
+      "[\"ZImageTurbo\",\"JoyCaption\"]": {
+        "text_states": 150,
+        "image_step_seconds": 253.58659849999998,
+        "caption_step_seconds": 18.598636,
+        "text_state_seconds": 278.446265,
+        "wall_hours": 11.598389335,
+        "uninterrupted_hours": 11.601927708333333,
+        "embedding_seconds_per_caption": 0.023609552166666666,
+        "finishing_minutes_at": {
+          "700": 18.29779101111111,
+          "1000": 47.47970144444444
+        },
+        "days_at": {
+          "700": 2.3083162416860503,
+          "1000": 3.3124140754245164
+        }
+      },
+      "[\"ZImageTurbo\",\"Moondream3\"]": {
+        "text_states": 150,
+        "image_step_seconds": 239.82255449999997,
+        "caption_step_seconds": 83.363981,
+        "text_state_seconds": 336.492995,
+        "wall_hours": 14.028586201944444,
+        "uninterrupted_hours": 14.020541458333332,
+        "embedding_seconds_per_caption": 0.008598853333333333,
+        "finishing_minutes_at": {
+          "700": 11.292798222222222,
+          "1000": 37.47256888888889
+        },
+        "days_at": {
+          "700": 2.7820094256161543,
+          "1000": 3.989118623896093
+        }
+      },
+      "[\"ZImageTurbo\",\"Qwen25VL\"]": {
+        "text_states": 150,
+        "image_step_seconds": 246.90345399999998,
+        "caption_step_seconds": 23.296746,
+        "text_state_seconds": 276.857175,
+        "wall_hours": 11.54860533111111,
+        "uninterrupted_hours": 11.535715625,
+        "embedding_seconds_per_caption": 0.012688020666666666,
+        "finishing_minutes_at": {
+          "700": 13.201076311111109,
+          "1000": 40.19868044444444
+        },
+        "days_at": {
+          "700": 2.2916758367575207,
+          "1000": 3.2886420683837594
+        }
+      }
+    },
+    "designs": {
+      "three cells": {
+        "cells": [
+          "Flux2Klein + Moondream3",
+          "SD35Medium + Moondream3",
+          "ZImageTurbo + Moondream3"
+        ],
+        "days_at": {
+          "700": 7.749341880347334,
+          "1000": 11.114946733829523
+        },
+        "finished_after_days_at": {
+          "700": [
+            2.1380650016545344,
+            4.96733245473118,
+            7.749341880347334
+          ],
+          "1000": [
+            3.0691980182366367,
+            7.12582810993343,
+            11.114946733829523
+          ]
+        }
+      },
+      "six cells": {
+        "cells": [
+          "Flux2Klein + Gemma4",
+          "SD35Medium + Moondream3",
+          "ZImageTurbo + Moondream3",
+          "Flux2Klein + Moondream3",
+          "SD35Medium + Gemma4",
+          "ZImageTurbo + Gemma4"
+        ],
+        "days_at": {
+          "700": 14.08777632972058,
+          "1000": 20.21431142341035
+        },
+        "finished_after_days_at": {
+          "700": [
+            1.5929387281219973,
+            4.422206181198642,
+            7.204215606814796,
+            9.34228060846933,
+            11.68339239192855,
+            14.08777632972058
+          ],
+          "1000": [
+            2.2904461989044402,
+            6.347076290601233,
+            10.336194914497327,
+            13.405392932733964,
+            16.76465778212015,
+            20.21431142341035
+          ]
+        }
+      },
+      "twelve cells": {
+        "cells": [
+          "Flux2Klein + Gemma4",
+          "SD35Medium + Moondream3",
+          "ZImageTurbo + Moondream3",
+          "Flux2Klein + Moondream3",
+          "SD35Medium + Gemma4",
+          "ZImageTurbo + Gemma4",
+          "Flux2Klein + JoyCaption",
+          "Flux2Klein + Qwen25VL",
+          "SD35Medium + JoyCaption",
+          "SD35Medium + Qwen25VL",
+          "ZImageTurbo + JoyCaption",
+          "ZImageTurbo + Qwen25VL"
+        ],
+        "days_at": {
+          "700": 26.360194024629628,
+          "1000": 37.835253368518515
+        },
+        "finished_after_days_at": {
+          "700": [
+            1.5929387281219973,
+            4.422206181198642,
+            7.204215606814796,
+            9.34228060846933,
+            11.68339239192855,
+            14.08777632972058,
+            15.6191213670856,
+            17.194951829758025,
+            19.447599930988872,
+            21.760201946186058,
+            24.068518187872108,
+            26.360194024629628
+          ],
+          "1000": [
+            2.2904461989044402,
+            6.347076290601233,
+            10.336194914497327,
+            13.405392932733964,
+            16.76465778212015,
+            20.21431142341035,
+            22.41676663551911,
+            24.682772455209875,
+            27.915660615698386,
+            31.234197224710236,
+            34.54661130013475,
+            37.83525336851851
+          ]
+        }
+      }
+    }
+  },
+  "prompts": {
+    "rule": "one prompt from each group, maximising the smallest gap between neighbours in memory, on the twelve affordable cells and on all sixteen",
+    "smallest_gap": 0.09466699231574394,
+    "chosen": [
+      "a red apple on a wooden table",
+      "firefighters responding to a building fire",
+      "a train station with travellers carrying colourful luggage",
+      "a man standing in a doorway",
+      "a city slowly turning into a forest"
+    ],
+    "by_prompt": [
+      {
+        "prompt": "a bicycle leaning against a brick wall",
+        "group": "objects",
+        "memory_affordable_cells": 0.6472227419440222,
+        "memory_affordable_cells_se": 0.08482720334883329,
+        "memory_all_cells": 0.5574993993474491,
+        "chosen": false
+      },
+      {
+        "prompt": "a red apple on a wooden table",
+        "group": "objects",
+        "memory_affordable_cells": 0.6429724503272308,
+        "memory_affordable_cells_se": 0.07517693923577441,
+        "memory_all_cells": 0.6357428711694856,
+        "chosen": true
+      },
+      {
+        "prompt": "firefighters responding to a building fire",
+        "group": "events",
+        "memory_affordable_cells": 0.5483054580114869,
+        "memory_affordable_cells_se": 0.1065525426705758,
+        "memory_all_cells": 0.5150801499095851,
+        "chosen": true
+      },
+      {
+        "prompt": "a picnic basket under a tree beside a river",
+        "group": "arrangements",
+        "memory_affordable_cells": 0.49547110303001785,
+        "memory_affordable_cells_se": 0.08180798070817728,
+        "memory_all_cells": 0.4596662254858573,
+        "chosen": false
+      },
+      {
+        "prompt": "a cat sitting on a windowsill",
+        "group": "objects",
+        "memory_affordable_cells": 0.44649534690824333,
+        "memory_affordable_cells_se": 0.10566022897413291,
+        "memory_all_cells": 0.44524852488992445,
+        "chosen": false
+      },
+      {
+        "prompt": "a train station with travellers carrying colourful luggage",
+        "group": "arrangements",
+        "memory_affordable_cells": 0.4381911689547806,
+        "memory_affordable_cells_se": 0.08781652450181705,
+        "memory_all_cells": 0.4036878628037984,
+        "chosen": true
+      },
+      {
+        "prompt": "a glass bottle beside a candle",
+        "group": "objects",
+        "memory_affordable_cells": 0.4001420400962214,
+        "memory_affordable_cells_se": 0.1061192801802159,
+        "memory_all_cells": 0.4148805996605853,
+        "chosen": false
+      },
+      {
+        "prompt": "a family dinner in a small kitchen",
+        "group": "people",
+        "memory_affordable_cells": 0.39405390186886585,
+        "memory_affordable_cells_se": 0.05580097071296612,
+        "memory_all_cells": 0.3870712257821229,
+        "chosen": false
+      },
+      {
+        "prompt": "a woman reading beside a window",
+        "group": "people",
+        "memory_affordable_cells": 0.3803658306237708,
+        "memory_affordable_cells_se": 0.09050860993658641,
+        "memory_all_cells": 0.3724567101962119,
+        "chosen": false
+      },
+      {
+        "prompt": "a storm approaching a fishing village",
+        "group": "events",
+        "memory_affordable_cells": 0.3590613673370469,
+        "memory_affordable_cells_se": 0.08941260814172408,
+        "memory_all_cells": 0.31333054406956096,
+        "chosen": false
+      },
+      {
+        "prompt": "two friends talking at a cafe",
+        "group": "people",
+        "memory_affordable_cells": 0.3474736523849833,
+        "memory_affordable_cells_se": 0.09084190129252012,
+        "memory_all_cells": 0.3728542656817835,
+        "chosen": false
+      },
+      {
+        "prompt": "a bustling Tokyo street at night",
+        "group": "events",
+        "memory_affordable_cells": 0.3263609658689893,
+        "memory_affordable_cells_se": 0.08182628592718572,
+        "memory_all_cells": 0.29562424431745843,
+        "chosen": false
+      },
+      {
+        "prompt": "a machine dreaming of a forest",
+        "group": "abstractions",
+        "memory_affordable_cells": 0.31831389053460474,
+        "memory_affordable_cells_se": 0.09377607477469836,
+        "memory_all_cells": 0.30763963700510294,
+        "chosen": false
+      },
+      {
+        "prompt": "a library with impossible architecture",
+        "group": "abstractions",
+        "memory_affordable_cells": 0.2847486353231317,
+        "memory_affordable_cells_se": 0.09380693956790558,
+        "memory_all_cells": 0.25108636599582684,
+        "chosen": false
+      },
+      {
+        "prompt": "a festival procession moving through a narrow street",
+        "group": "events",
+        "memory_affordable_cells": 0.25049417820065406,
+        "memory_affordable_cells_se": 0.07899994799356252,
+        "memory_all_cells": 0.2613378495044855,
+        "chosen": false
+      },
+      {
+        "prompt": "a man standing in a doorway",
+        "group": "people",
+        "memory_affordable_cells": 0.24262405714243085,
+        "memory_affordable_cells_se": 0.07372121221453962,
+        "memory_all_cells": 0.24443761858078297,
+        "chosen": true
+      },
+      {
+        "prompt": "a market stall displaying fruit, flowers, and handmade crafts",
+        "group": "arrangements",
+        "memory_affordable_cells": 0.2174478004506908,
+        "memory_affordable_cells_se": 0.060920083559159864,
+        "memory_all_cells": 0.20631791607168484,
+        "chosen": false
+      },
+      {
+        "prompt": "a bookshelf filled with plants, books, and photographs",
+        "group": "arrangements",
+        "memory_affordable_cells": 0.15862583377317843,
+        "memory_affordable_cells_se": 0.07958128883960565,
+        "memory_all_cells": 0.20860798301779465,
+        "chosen": false
+      },
+      {
+        "prompt": "the feeling of nostalgia",
+        "group": "abstractions",
+        "memory_affordable_cells": 0.107144805423668,
+        "memory_affordable_cells_se": 0.052172952766457864,
+        "memory_all_cells": 0.1329265957695978,
+        "chosen": false
+      },
+      {
+        "prompt": "a city slowly turning into a forest",
+        "group": "abstractions",
+        "memory_affordable_cells": 0.09699227787072397,
+        "memory_affordable_cells_se": 0.05798920090970318,
+        "memory_all_cells": 0.12243715499975447,
+        "chosen": true
+      }
+    ],
+    "distance_between_the_chosen_at_the_end": {
+      "a red apple on a wooden table / firefighters responding to a building fire": 0.6570430622125183,
+      "a red apple on a wooden table / a train station with travellers carrying colourful luggage": 0.6224960709570155,
+      "a red apple on a wooden table / a man standing in a doorway": 0.6271638443942695,
+      "a red apple on a wooden table / a city slowly turning into a forest": 0.5728395943921624,
+      "firefighters responding to a building fire / a train station with travellers carrying colourful luggage": 0.527806911184578,
+      "firefighters responding to a building fire / a man standing in a doorway": 0.6020063237333676,
+      "firefighters responding to a building fire / a city slowly turning into a forest": 0.5810345946384289,
+      "a train station with travellers carrying colourful luggage / a man standing in a doorway": 0.5563903105909235,
+      "a train station with travellers carrying colourful luggage / a city slowly turning into a forest": 0.5881435952953998,
+      "a man standing in a doorway / a city slowly turning into a forest": 0.605205644933785
+    }
+  },
+  "horizon": {
+    "what": "memory at a horizon if the distance between twins stays level, keeps the logarithmic course fitted from state 20, or keeps the rate of the last fifty states; the stranger distance is held at its end value",
+    "pooled_over_affordable_cells": {
+      "twin_end": 0.3928898676771731,
+      "stranger_end": 0.5924841009992693,
+      "noise_end": 0.03383632339773622,
+      "memory_start": 0.7116654783205965,
+      "memory_end": 0.35728099408006747,
+      "twin_rate_per_100": 0.02847844712031523,
+      "forgotten_at": {
+        "last_fifty_rate": 840.8606630791843,
+        "logarithmic": 4734.255115102135
+      },
+      "logarithmic_fit": {
+        "from_text_state": 20,
+        "per_e_fold": 0.05645537844548457,
+        "per_doubling": 0.03913188639693234,
+        "at_one": 0.11472596261948437,
+        "rmse": 0.0031397982411458135,
+        "rmse_of_a_straight_line": 0.00665169691345326
+      },
+      "memory_at": {
+        "700": {
+          "level": 0.35728099408006747,
+          "logarithmic": 0.19317076548921644,
+          "last_fifty_rate": 0.07180719418693139
+        },
+        "1000": {
+          "level": 0.35728099408006747,
+          "logarithmic": 0.15712619545882112,
+          "last_fifty_rate": -0.08112519861296312
+        }
+      }
+    },
+    "the_chosen_prompts_pooled": {
+      "twin_end": 0.3731011340703573,
+      "stranger_end": 0.5940129952332449,
+      "noise_end": 0.03587195230674972,
+      "memory_start": 0.74990582873768,
+      "memory_end": 0.39579934850263426,
+      "twin_rate_per_100": 0.05077040071209003,
+      "forgotten_at": {
+        "last_fifty_rate": 575.1193964681108,
+        "logarithmic": 6010.548624322844
+      },
+      "logarithmic_fit": {
+        "from_text_state": 20,
+        "per_e_fold": 0.058573821381602,
+        "per_doubling": 0.040600279145279264,
+        "at_one": 0.08434628380997727,
+        "rmse": 0.004371088623438449,
+        "rmse_of_a_straight_line": 0.007968697658242522
+      },
+      "memory_at": {
+        "700": {
+          "level": 0.39579934850263426,
+          "logarithmic": 0.22565067310145168,
+          "last_fifty_rate": -0.11359562896930031
+        },
+        "1000": {
+          "level": 0.39579934850263426,
+          "logarithmic": 0.1882196066670279,
+          "last_fifty_rate": -0.38648579547212275
+        }
+      }
+    },
+    "by_cell": {
+      "[\"Flux2Dev\",\"Gemma4\"]": {
+        "twin_end": 0.4973364466546,
+        "stranger_end": 0.5348987396123206,
+        "noise_end": 0.04306367080687959,
+        "memory_start": 0.6996013151132309,
+        "memory_end": 0.07637172568631828,
+        "twin_rate_per_100": 0.039942290645825614,
+        "forgotten_at": {
+          "last_fifty_rate": 234.04140911894916,
+          "logarithmic": 190.7916002140518
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.09832401180448466,
+          "per_doubling": 0.06815301156362132,
+          "at_one": 0.018581484810053502,
+          "rmse": 0.0068829089023475,
+          "rmse_of_a_straight_line": 0.014326720962874077
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.07637172568631828,
+            "logarithmic": -0.25986606791397227,
+            "last_fifty_rate": -0.37840842685523424
+          },
+          "1000": {
+            "level": 0.07637172568631828,
+            "logarithmic": -0.33116987201922327,
+            "last_fifty_rate": -0.622040651431066
+          }
+        },
+        "reached_at_70": 0.36836464121923146,
+        "memory_end_chosen_prompts": 0.10023781364623907
+      },
+      "[\"Flux2Dev\",\"JoyCaption\"]": {
+        "twin_end": 0.34782187317440794,
+        "stranger_end": 0.560911258359416,
+        "noise_end": 0.034142759243204215,
+        "memory_start": 0.7324182151435211,
+        "memory_end": 0.4045218830330966,
+        "twin_rate_per_100": 0.014690185404899482,
+        "forgotten_at": {
+          "last_fifty_rate": 1590.556131946016,
+          "logarithmic": 14082.459554050776
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.0445363600274208,
+          "per_doubling": 0.030870252385409375,
+          "at_one": 0.13546942666817124,
+          "rmse": 0.0068168986457699575,
+          "rmse_of_a_straight_line": 0.011473789766159186
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.4045218830330966,
+            "logarithmic": 0.2537747787604582,
+            "last_fifty_rate": 0.24835263903794955
+          },
+          "1000": {
+            "level": 0.4045218830330966,
+            "logarithmic": 0.2236192099618936,
+            "last_fifty_rate": 0.1646905440405493
+          }
+        },
+        "reached_at_70": 0.4113086041935643,
+        "memory_end_chosen_prompts": 0.5424939442535222
+      },
+      "[\"Flux2Dev\",\"Moondream3\"]": {
+        "twin_end": 0.3374490771548221,
+        "stranger_end": 0.5395562735678607,
+        "noise_end": 0.023457192492335036,
+        "memory_start": 0.6675507400971693,
+        "memory_end": 0.3916054180756473,
+        "twin_rate_per_100": 0.01909859961429801,
+        "forgotten_at": {
+          "last_fifty_rate": 1198.2304488007212,
+          "logarithmic": 5315961.95316136
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.018931630139909585,
+          "per_doubling": 0.013122406054882012,
+          "at_one": 0.24637679827991524,
+          "rmse": 0.005866139528207828,
+          "rmse_of_a_straight_line": 0.007053249198429552
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.3916054180756473,
+            "logarithmic": 0.3277604079735117,
+            "last_fifty_rate": 0.1843735865110848
+          },
+          "1000": {
+            "level": 0.3916054180756473,
+            "logarithmic": 0.3146767998710728,
+            "last_fifty_rate": 0.07335653388721199
+          }
+        },
+        "reached_at_70": 0.31250580554814217,
+        "memory_end_chosen_prompts": 0.2916474776927136
+      },
+      "[\"Flux2Dev\",\"Qwen25VL\"]": {
+        "twin_end": 0.384738949304551,
+        "stranger_end": 0.6199985454676766,
+        "noise_end": 0.02529524935012009,
+        "memory_start": 0.7824270325191137,
+        "memory_end": 0.3955915457321112,
+        "twin_rate_per_100": 0.12295743166183201,
+        "forgotten_at": {
+          "last_fifty_rate": 331.33418206892657,
+          "logarithmic": 2337.7520764933242
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.08844850902286645,
+          "per_doubling": 0.06130783465393076,
+          "at_one": -0.06609168280680212,
+          "rmse": 0.010775344742845224,
+          "rmse_of_a_straight_line": 0.005023625992927744
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.3955915457321112,
+            "logarithmic": 0.1793447940295022,
+            "last_fifty_rate": -0.7622322326149141
+          },
+          "1000": {
+            "level": 0.3955915457321112,
+            "logarithmic": 0.12629755651938868,
+            "last_fifty_rate": -1.3824949710151064
+          }
+        },
+        "reached_at_70": 0.4146777164971622,
+        "memory_end_chosen_prompts": 0.5681826675486806
+      },
+      "[\"Flux2Klein\",\"Gemma4\"]": {
+        "twin_end": 0.3818241472632297,
+        "stranger_end": 0.6029542508175223,
+        "noise_end": 0.04670997883420694,
+        "memory_start": 0.780788266155469,
+        "memory_end": 0.39754135852193623,
+        "twin_rate_per_100": 0.05175614025308006,
+        "forgotten_at": {
+          "last_fifty_rate": 567.2538533070632,
+          "logarithmic": 18117.790683284376
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.046603836446387485,
+          "per_doubling": 0.032303317836090306,
+          "at_one": 0.14601996233885337,
+          "rmse": 0.005332767860853387,
+          "rmse_of_a_straight_line": 0.006229214185337995
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.39754135852193623,
+            "logarithmic": 0.27259392974335017,
+            "last_fifty_rate": -0.12351458760732467
+          },
+          "1000": {
+            "level": 0.39754135852193623,
+            "logarithmic": 0.24271061841939326,
+            "last_fifty_rate": -0.402651701605143
+          }
+        },
+        "reached_at_70": 0.4640968032830346,
+        "memory_end_chosen_prompts": 0.4128664770004824
+      },
+      "[\"Flux2Klein\",\"JoyCaption\"]": {
+        "twin_end": 0.32530814060339364,
+        "stranger_end": 0.5718535320912339,
+        "noise_end": 0.030210161687565143,
+        "memory_start": 0.7449105544644701,
+        "memory_end": 0.4551802993621028,
+        "twin_rate_per_100": 0.09221714228458634,
+        "forgotten_at": {
+          "last_fifty_rate": 407.35310309984436,
+          "logarithmic": 209211.22616095757
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.035541442004931256,
+          "per_doubling": 0.02463545031875291,
+          "at_one": 0.1364317835997112,
+          "rmse": 0.011120393883314018,
+          "rmse_of_a_straight_line": 0.007182360258795318
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.4551802993621028,
+            "logarithmic": 0.3740226831225695,
+            "last_fifty_rate": -0.4982440846727575
+          },
+          "1000": {
+            "level": 0.4551802993621028,
+            "logarithmic": 0.3506184608477486,
+            "last_fifty_rate": -1.0090071475485753
+          }
+        },
+        "reached_at_70": 0.3576057535340065,
+        "memory_end_chosen_prompts": 0.6133813470176686
+      },
+      "[\"Flux2Klein\",\"Moondream3\"]": {
+        "twin_end": 0.41968280409672754,
+        "stranger_end": 0.5542552421207776,
+        "noise_end": 0.019598069846328718,
+        "memory_start": 0.6408711861154476,
+        "memory_end": 0.25169855564000865,
+        "twin_rate_per_100": 0.013553769598716238,
+        "forgotten_at": {
+          "last_fifty_rate": 1132.8783062447533,
+          "logarithmic": 1018.3072875912145
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.06389794904178803,
+          "per_doubling": 0.04429068322187843,
+          "at_one": 0.1117046281769673,
+          "rmse": 0.005516539549717845,
+          "rmse_of_a_straight_line": 0.011833417539743967
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.25169855564000865,
+            "logarithmic": 0.044795090702071785,
+            "last_fifty_rate": 0.10973635315065425
+          },
+          "1000": {
+            "level": 0.25169855564000865,
+            "logarithmic": 0.0021681540889766336,
+            "last_fifty_rate": 0.03368517324564299
+          }
+        },
+        "reached_at_70": 0.3343437197497429,
+        "memory_end_chosen_prompts": 0.260226265026435
+      },
+      "[\"Flux2Klein\",\"Qwen25VL\"]": {
+        "twin_end": 0.38874183226513687,
+        "stranger_end": 0.6232762903171885,
+        "noise_end": 0.0303420404379752,
+        "memory_start": 0.735673032424958,
+        "memory_end": 0.39554884559262454,
+        "twin_rate_per_100": -0.012272551339356367,
+        "forgotten_at": {
+          "last_fifty_rate": null,
+          "logarithmic": 3372.1484084246654
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.07135756002056622,
+          "per_doubling": 0.049461291539892545,
+          "at_one": 0.043617042656225145,
+          "rmse": 0.008843050818240777,
+          "rmse_of_a_straight_line": 0.011851539754377893
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.39554884559262454,
+            "logarithmic": 0.18921177091120434,
+            "last_fifty_rate": 0.5114576289263515
+          },
+          "1000": {
+            "level": 0.39554884559262454,
+            "logarithmic": 0.14628719078258992,
+            "last_fifty_rate": 0.5735516199979909
+          }
+        },
+        "reached_at_70": 0.4336408992830877,
+        "memory_end_chosen_prompts": 0.347392126540244
+      },
+      "[\"SD35Medium\",\"Gemma4\"]": {
+        "twin_end": 0.41358824279774603,
+        "stranger_end": 0.572208974048401,
+        "noise_end": 0.04744856854032284,
+        "memory_start": 0.7128898370022216,
+        "memory_end": 0.3022726745114789,
+        "twin_rate_per_100": 0.06880257750781874,
+        "forgotten_at": {
+          "last_fifty_rate": 370.54475136869587,
+          "logarithmic": 14238.24520885074
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.036097534985135495,
+          "per_doubling": 0.025020904600110656,
+          "at_one": 0.22698344986846783,
+          "rmse": 0.007592184693787472,
+          "rmse_of_a_straight_line": 0.008455643986096245
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.3022726745114789,
+            "logarithmic": 0.2072329990102439,
+            "last_fifty_rate": -0.43195656610879823
+          },
+          "1000": {
+            "level": 0.3022726745114789,
+            "logarithmic": 0.1826978280407728,
+            "last_fifty_rate": -0.8252936592982327
+          }
+        },
+        "reached_at_70": 0.5888167848425122,
+        "memory_end_chosen_prompts": 0.31831268672615637
+      },
+      "[\"SD35Medium\",\"JoyCaption\"]": {
+        "twin_end": 0.42578892053344747,
+        "stranger_end": 0.624359048785098,
+        "noise_end": 0.03751748382524721,
+        "memory_start": 0.6920491121710288,
+        "memory_end": 0.3383709336696964,
+        "twin_rate_per_100": 0.07703280160842307,
+        "forgotten_at": {
+          "last_fifty_rate": 397.7734732549803,
+          "logarithmic": 4184.227775499623
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.060140738048717404,
+          "per_doubling": 0.041686383015262694,
+          "at_one": 0.12284077666270196,
+          "rmse": 0.010467229097062733,
+          "rmse_of_a_straight_line": 0.012959175577932915
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.3383709336696964,
+            "logarithmic": 0.18323764398624975,
+            "last_fifty_rate": -0.3967230248447839
+          },
+          "1000": {
+            "level": 0.3383709336696964,
+            "logarithmic": 0.14668485759078045,
+            "last_fifty_rate": -0.7905233597632557
+          }
+        },
+        "reached_at_70": 0.3887050804494768,
+        "memory_end_chosen_prompts": 0.46677188157341454
+      },
+      "[\"SD35Medium\",\"Moondream3\"]": {
+        "twin_end": 0.48234618417723224,
+        "stranger_end": 0.5493740668509015,
+        "noise_end": 0.03235520177737736,
+        "memory_start": 0.6430339926062825,
+        "memory_end": 0.12964301150623853,
+        "twin_rate_per_100": 0.034797021382641284,
+        "forgotten_at": {
+          "last_fifty_rate": 332.625345533473,
+          "logarithmic": 296.196152874925
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.08746877144075928,
+          "per_doubling": 0.06062873231120455,
+          "at_one": 0.05158737183627632,
+          "rmse": 0.00783219787281813,
+          "rmse_of_a_straight_line": 0.01159119796461931
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.12964301150623853,
+            "logarithmic": -0.14550388502872338,
+            "last_fifty_rate": -0.2472548792797778
+          },
+          "1000": {
+            "level": 0.12964301150623853,
+            "logarithmic": -0.20584582080235492,
+            "last_fifty_rate": -0.4491644636294294
+          }
+        },
+        "reached_at_70": 0.4282698215660123,
+        "memory_end_chosen_prompts": 0.1637774143256051
+      },
+      "[\"SD35Medium\",\"Qwen25VL\"]": {
+        "twin_end": 0.44874364386640336,
+        "stranger_end": 0.6335805090261644,
+        "noise_end": 0.03953797201676412,
+        "memory_start": 0.6784012287077706,
+        "memory_end": 0.311150891803622,
+        "twin_rate_per_100": -0.014392665511035713,
+        "forgotten_at": {
+          "last_fifty_rate": null,
+          "logarithmic": 2278.539442513881
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.06528353253168238,
+          "per_doubling": 0.04525109651132911,
+          "at_one": 0.12885459193769883,
+          "rmse": 0.016015809401019536,
+          "rmse_of_a_straight_line": 0.014346916670422462
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.311150891803622,
+            "logarithmic": 0.12970157205556393,
+            "last_fifty_rate": 0.4468296047583553
+          },
+          "1000": {
+            "level": 0.311150891803622,
+            "logarithmic": 0.09050404181962433,
+            "last_fifty_rate": 0.519514629555534
+          }
+        },
+        "reached_at_70": 0.4633650823658628,
+        "memory_end_chosen_prompts": 0.33365990184501104
+      },
+      "[\"ZImageTurbo\",\"Gemma4\"]": {
+        "twin_end": 0.4068216823469975,
+        "stranger_end": 0.6141889459434454,
+        "noise_end": 0.042863420636602215,
+        "memory_start": 0.7256005629226864,
+        "memory_end": 0.3629581637982596,
+        "twin_rate_per_100": 0.04865376333109299,
+        "forgotten_at": {
+          "last_fifty_rate": 566.2101210656534,
+          "logarithmic": 2152.3742819907325
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.07538921493630862,
+          "per_doubling": 0.05225582177773004,
+          "at_one": 0.03562747113920336,
+          "rmse": 0.008049880723002436,
+          "rmse_of_a_straight_line": 0.01084518881260631
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.3629581637982596,
+            "logarithmic": 0.14821790312125566,
+            "last_fifty_rate": -0.11393471527937188
+          },
+          "1000": {
+            "level": 0.3629581637982596,
+            "logarithmic": 0.101152888834433,
+            "last_fifty_rate": -0.3694130433566747
+          }
+        },
+        "reached_at_70": 0.3325962916476863,
+        "memory_end_chosen_prompts": 0.3378181079187187
+      },
+      "[\"ZImageTurbo\",\"JoyCaption\"]": {
+        "twin_end": 0.32845634771916266,
+        "stranger_end": 0.5731025656488664,
+        "noise_end": 0.027940591509533562,
+        "memory_start": 0.7532881807968835,
+        "memory_end": 0.44875877176858436,
+        "twin_rate_per_100": -0.028731350723083478,
+        "forgotten_at": {
+          "last_fifty_rate": null,
+          "logarithmic": 14279.151757874894
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.05047540840389438,
+          "per_doubling": 0.03498688702277116,
+          "at_one": 0.09022675293832152,
+          "rmse": 0.007444804548759023,
+          "rmse_of_a_straight_line": 0.012087837899561334
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.44875877176858436,
+            "logarithmic": 0.2791965774076651,
+            "last_fifty_rate": 0.7438922764545617
+          },
+          "1000": {
+            "level": 0.44875877176858436,
+            "logarithmic": 0.24617278940196988,
+            "last_fifty_rate": 0.9019995111077639
+          }
+        },
+        "reached_at_70": 0.32397409385029985,
+        "memory_end_chosen_prompts": 0.6153204237108028
+      },
+      "[\"ZImageTurbo\",\"Moondream3\"]": {
+        "twin_end": 0.30930083917260964,
+        "stranger_end": 0.5655805332582791,
+        "noise_end": 0.02707502606894988,
+        "memory_start": 0.7221976882798026,
+        "memory_end": 0.47590914236568044,
+        "twin_rate_per_100": 0.010444275468183335,
+        "forgotten_at": {
+          "last_fifty_rate": 2593.781450579131,
+          "logarithmic": 56347.84239257502
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.04141461130485883,
+          "per_doubling": 0.028706421059948934,
+          "at_one": 0.11253370772763908,
+          "rmse": 0.007000073520152435,
+          "rmse_of_a_straight_line": 0.010941157497127079
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.47590914236568044,
+            "logarithmic": 0.3374828621093705,
+            "last_fifty_rate": 0.3672975463077346
+          },
+          "1000": {
+            "level": 0.47590914236568044,
+            "logarithmic": 0.31005221568478064,
+            "last_fifty_rate": 0.30911276270526356
+          }
+        },
+        "reached_at_70": 0.3777067770885986,
+        "memory_end_chosen_prompts": 0.40649155725926733
+      },
+      "[\"ZImageTurbo\",\"Qwen25VL\"]": {
+        "twin_end": 0.38407562728399,
+        "stranger_end": 0.6250752530833539,
+        "noise_end": 0.024437365591961437,
+        "memory_start": 0.7035451087735125,
+        "memory_end": 0.40123946693725276,
+        "twin_rate_per_100": -0.00011955841728187844,
+        "forgotten_at": {
+          "last_fifty_rate": null,
+          "logarithmic": 32363.869469803863
+        },
+        "logarithmic_fit": {
+          "from_text_state": 20,
+          "per_e_fold": 0.043793942180784834,
+          "per_doubling": 0.03035564754821627,
+          "at_one": 0.1702840125517498,
+          "rmse": 0.005004691532154389,
+          "rmse_of_a_straight_line": 0.007318959928733334
+        },
+        "memory_at": {
+          "700": {
+            "level": 0.40123946693725276,
+            "logarithmic": 0.2795255021594733,
+            "last_fifty_rate": 0.402354160416838
+          },
+          "1000": {
+            "level": 0.40123946693725276,
+            "logarithmic": 0.25351948056562007,
+            "last_fifty_rate": 0.4029513176380444
+          }
+        },
+        "reached_at_70": 0.23430956165380235,
+        "memory_end_chosen_prompts": 0.46141234867135417
+      }
+    }
+  },
+  "precision": {
+    "single_pair_sd": 0.16039662603805122,
+    "runs_per_prompt": 8,
+    "pairs_per_prompt": 28,
+    "twin_distance_se_one_prompt": [
+      0.030312113116465058,
+      0.08019831301902561
+    ],
+    "memory_se_one_prompt": [
+      0.05425979361558616,
+      0.14355792009653118
+    ],
+    "memory_se_cell_of_five_prompts": [
+      0.024265717393911947,
+      0.06420105360886537
+    ],
+    "memory_se_from": "the twin distance's standard error over the stranger distance less the noise"
+  }
+}
