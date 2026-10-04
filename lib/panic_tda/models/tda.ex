@@ -4,6 +4,12 @@ defmodule PanicTda.Models.Tda do
   Computes persistent homology using giotto-ph's ripser_parallel.
   """
 
+  # The cost climbs steeply with the number of points: 0.03 s for a run of 150
+  # text states, 7-11 s for 700 and up to 140 s for 1,400
+  # (`analysis/pd_cost.py`). A diagram that times out is never retried into
+  # success, so the ceiling sits far above anything a planned run needs.
+  @pd_timeout 3_600_000
+
   def compute_persistence_diagram(env, point_cloud_binary, dimension, max_dim \\ 2) do
     point_cloud_b64 = Base.encode64(point_cloud_binary)
 
@@ -32,7 +38,8 @@ defmodule PanicTda.Models.Tda do
              "point_cloud_b64" => point_cloud_b64,
              "dimension" => dimension,
              "max_dim" => max_dim
-           }
+           },
+           timeout: @pd_timeout
          ) do
       {:ok, result} ->
         {:ok,

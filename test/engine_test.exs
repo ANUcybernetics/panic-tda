@@ -4,7 +4,7 @@ defmodule PanicTda.EngineTest do
   require Ash.Query
 
   alias PanicTda.Engine
-  alias PanicTda.Models.{GenAI, Embeddings, PythonInterpreter}
+  alias PanicTda.Models.{GenAI, Embeddings, PythonInterpreter, Tda}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(PanicTda.Repo)
@@ -45,6 +45,21 @@ defmodule PanicTda.EngineTest do
       assert is_binary(emb2)
       assert byte_size(emb1) == 256 * 4
       assert byte_size(emb2) == 256 * 4
+    end
+
+    # A diagram over 700 points takes several seconds, which is longer than
+    # Snex waits by default. The cloud is a random walk under fresh noise at
+    # every state, the shape a run's captions have.
+    test "a run of 700 text states gets its persistence diagram", %{env: env} do
+      key = Nx.Random.key(0)
+      {steps, key} = Nx.Random.normal(key, shape: {700, 256}, type: :f32)
+      {noise, _key} = Nx.Random.normal(key, shape: {700, 256}, type: :f32)
+      cloud = steps |> Nx.cumulative_sum(axis: 0) |> Nx.add(noise)
+
+      assert {:ok, %{dgms: [components, _loops, _voids]}} =
+               Tda.compute_persistence_diagram(env, Nx.to_binary(cloud), 256)
+
+      assert length(components) == 700
     end
   end
 

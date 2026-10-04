@@ -18,7 +18,10 @@ defmodule PanicTda.Models.Embeddings do
   @real_text_models ~w(Qwen3Embed)
   @text_models @dummy_text_models ++ @real_text_models
 
+  # A whole run's captions are embedded in one call, so the wait scales with
+  # the run: the panel's longest captions took 0.04 s each.
   @embed_timeout 60_000
+  @embed_timeout_per_text 1_000
 
   def list_models, do: @text_models
 
@@ -46,7 +49,7 @@ defmodule PanicTda.Models.Embeddings do
              env,
              "return panic_models.embed_text(model_name, texts)",
              %{"model_name" => model_name, "texts" => texts},
-             timeout: @embed_timeout
+             timeout: max(@embed_timeout, @embed_timeout_per_text * length(texts))
            ) do
         {:ok, base64_list} -> {:ok, Enum.map(base64_list, &Base.decode64!/1)}
         error -> error
