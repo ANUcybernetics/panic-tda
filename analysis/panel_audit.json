@@ -15,8 +15,8 @@
       "total": 224,
       "runs": 3,
       "by_kind": {
-        "colour": 105,
-        "black": 119
+        "black": 119,
+        "colour": 105
       },
       "by_network": {
         "[\"Flux2Dev\",\"Gemma4\"]": 119,
@@ -826,14 +826,14 @@
           "runs": 2
         },
         {
-          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
-          "text": "The image shows a classic-style bicycle leaning against a brick wall. The bicycle has a dark blue frame with cream-colored tires and handlebars. It features a w",
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "text": "A black bicycle with cream-colored tires and brown leather seat and handlebars is leaning against a red brick wall. A wicker basket is attached to the handlebar",
           "n": 18,
           "runs": 2
         },
         {
-          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
-          "text": "A black bicycle with cream-colored tires and brown leather seat and handlebars is leaning against a red brick wall. A wicker basket is attached to the handlebar",
+          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+          "text": "The image shows a classic-style bicycle leaning against a brick wall. The bicycle has a dark blue frame with cream-colored tires and handlebars. It features a w",
           "n": 18,
           "runs": 2
         },

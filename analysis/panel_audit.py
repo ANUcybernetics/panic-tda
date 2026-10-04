@@ -26,7 +26,8 @@ per-image table is cached in the export directory (untracked) and reused.
     ./analysis/panel_audit.py 01a09e21 --cache 01a09e21_parquet \
         --log logs/long-run.long_horizon_panel_4x4_300.log
 
-Results -> analysis/panel_audit.json, summary to stdout.
+Results -> analysis/panel_audit.json, summary to stdout. `--out` sends another
+experiment's results to a file of their own.
 """
 
 import argparse
@@ -58,7 +59,8 @@ DARK_MEAN = 8.0
 # third of its images are, and as ending there when nine-tenths of its last
 # fifty are.
 LOW_DETAIL_BYTES = 5000
-LOW_DETAIL_RUN = 50
+LOW_DETAIL_SHARE = 1 / 3
+LOW_DETAIL_LAST = 50
 LOW_DETAIL_END = 0.9
 BRIGHT_MEAN = 247.0
 # What a caption says when it is asking for a flat or near-empty image.
@@ -346,7 +348,8 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
         .sort("network", "third")
     )
     low = ok.with_columns((pl.col("bytes") < LOW_DETAIL_BYTES).alias("low"))
-    last = ok["sn"].max() - 2 * (LOW_DETAIL_RUN - 1)
+    low_detail_run = int(ok.group_by("run_id").len()["len"].max() * LOW_DETAIL_SHARE)
+    last = ok["sn"].max() - 2 * (LOW_DETAIL_LAST - 1)
     low_runs = (
         low.group_by("network", "prompt", "run_id")
         .agg(
@@ -359,8 +362,8 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
             pl.col("mean").filter(pl.col("low")).mean().alias("luma"),
             (pl.col("std") < FLAT_STD).sum().alias("flat_images"),
         )
-        .filter(pl.col("images") >= LOW_DETAIL_RUN)
-        .sort("images", descending=True)
+        .filter(pl.col("images") >= low_detail_run)
+        .sort(["images", "network", "prompt"], descending=[True, False, False])
     )
     return {
         "images": images.height,
@@ -374,7 +377,7 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
             "threshold_luma_std": FLAT_STD,
             "total": flat.height,
             "runs": flat["run_id"].n_unique(),
-            "by_kind": dict(flat.group_by("kind").len().iter_rows()),
+            "by_kind": dict(flat.group_by("kind").len().sort("kind").iter_rows()),
             "by_network": dict(
                 flat.group_by("network").len().sort("network").iter_rows()
             ),
@@ -384,7 +387,7 @@ def audit_images(images: pl.DataFrame, inv: pl.DataFrame) -> dict:
             .to_dicts(),
         },
         "low_detail": {
-            "rule": f"an image under {LOW_DETAIL_BYTES} bytes; a run with {LOW_DETAIL_RUN} or more",
+            "rule": f"an image under {LOW_DETAIL_BYTES} bytes; a run with {low_detail_run} or more",
             "images": int(low["low"].sum()),
             "runs": low_runs.height,
             "runs_ending_there": low_runs.filter(
@@ -542,7 +545,9 @@ def audit_captions(inv: pl.DataFrame) -> dict:
                 .sort("network")
                 .iter_rows()
             ),
-            "most_common": repeated.sort("n", descending=True)
+            "most_common": repeated.sort(
+                ["n", "network", "text"], descending=[True, False, False]
+            )
             .head(8)
             .with_columns(pl.col("text").str.slice(0, 160))
             .to_dicts(),
@@ -589,6 +594,7 @@ def audit_process(inv: pl.DataFrame) -> dict:
             (pl.col("items") != 40) | (pl.col("batches") != 1)
         )
         .select("network", "sn", "items", "batches")
+        .sort("network", "sn")
         .to_dicts(),
         "invocations_started_before_their_input_completed": order.filter(
             pl.col("started_at") < pl.col("previous_completed")
@@ -699,6 +705,9 @@ def main() -> None:
         "--cache", type=pathlib.Path, help="directory for the per-image table"
     )
     parser.add_argument("--log", type=pathlib.Path, help="the run's log file")
+    parser.add_argument(
+        "--out", type=pathlib.Path, default=OUT, help="where the results go"
+    )
     args = parser.parse_args()
 
     runs, inv, vectors = load(args.experiment)
@@ -713,7 +722,7 @@ def main() -> None:
     }
     if args.log:
         results["log"] = audit_log(args.log)
-    OUT.write_text(json.dumps(results, indent=2, default=str))
+    args.out.write_text(json.dumps(results, indent=2, default=str))
 
     i, c, p, e = (results[k] for k in ("images", "captions", "process", "embeddings"))
     print(
