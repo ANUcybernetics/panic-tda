@@ -1,11 +1,11 @@
 ---
 id: TASK-90
 title: Design and run the uniform 250-300 step factorial that both RQs need
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-09-04 01:00'
-updated_date: '2026-09-22 04:43'
+updated_date: '2026-10-04 03:53'
 labels:
   - experiment
   - paper
@@ -88,4 +88,10 @@ REVISED COMPLETION 5-7 Oct 2026 (launch estimate was 2-4 Oct). Flux2Dev measures
 OOM 2026-09-22 00:53 UTC. The OOM killer took the unit after 8 days up; systemd restarted it a minute later and experiment.resume picked up mid-cell at step 164, costing ~10 min. cgroup memory is back at 118 G, but 99 G of that is page cache with 98 G available, so it is the SQLite working set rather than a leak. Expect a repeat roughly weekly at ~10 min each.
 
 No degradation in the current cell: caption length drifts 301 to 270 chars over 175 steps, gradual, with nothing cut at the generation ceiling. The 13 GB database sits on /data with 2.1 T free.
+
+COMPLETED 2026-10-04 03:14 AEDT (2026-10-03 16:14 UTC), inside the 2-4 Oct launch estimate. Service exited 0. The four Flux2Dev cells finished 23 Sep, 26 Sep, 30 Sep and 3 Oct (UTC). Restarts over the run: 14 Sep (database move), 15 Sep, 22 Sep (the OOM kill), 23 Sep, 1 Oct; none left a gap or duplicate.
+
+POST-RUN INTEGRITY CHECK 2026-10-04 (read-only SQL against the database): 16 cells x 40 runs x 300 steps = 192,000 invocations, every run with exactly steps 0-299, none incomplete, no empty image or caption, every step linked to the previous step of its own run; 96,000 images each with a seed (95,999 distinct); 96,000 embeddings, one per caption, uniform vector size; 640 persistence diagrams, one per run, all with data.
+
+Two things that look like faults and are not. (1) experiment.status reports Gemma4 at 13.1% truncated (3,151 of 24,000 captions not ending in terminal punctuation); a sample of eight all end in '.**', markdown bold closing after the full stop, so the heuristic is miscounting rather than captions hitting the ceiling. Sampled, not counted in full. (2) About 1,180 images are under 5 kB, concentrated in a few runs. The entries traced go through coherent captions (fog, dark scenes, flat colour fields), so they are compressible images rather than generation failures. Some Flux2Dev runs settle into an all-black loop: Flux2Dev + Gemma4 on 'a city slowly turning into a forest' has 140 small images of 150, with the caption repeating 'The image you provided is completely black'. Relevant to the metastability analysis (TASK-76).
 <!-- SECTION:NOTES:END -->
