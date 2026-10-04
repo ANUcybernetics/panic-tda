@@ -69,8 +69,9 @@ FLAT_WORDS = re.compile(
 )
 
 # Closing punctuation a finished caption can end on, allowing for markdown
-# emphasis and quotes closing after the full stop.
-TERMINATED = re.compile(r"[.!?][\s*_\"'”’)\]`]*$")
+# emphasis and quotes closing after the full stop, and for a caption that has
+# switched into Chinese. The same pattern as `mix experiment.status`.
+TERMINATED = re.compile(r"[.!?。！？][\s*_\"'”’)\]`]*$")
 SPECIAL = re.compile(
     r"<\|[^|>\n]{0,40}\|>|</?s>|<eos>|<bos>|<pad>|<unk>|</?start_of_turn>|"
     r"</?end_of_turn>|\[/?INST\]|<image>|<img>|addCriterion|�"

@@ -118,11 +118,12 @@ stops it: "POLICIA POLICIA POLICIA", or "Reading for Life," over and over.
 Three more captions repeat a phrase many times before ending on their own. In
 every case the run is back to an ordinary caption one or two captions later.
 
-`mix experiment.status` reports 13.1% of Gemma4 captions as truncated. That
-figure is wrong. Its check wants a caption to end in terminal punctuation, and
-Gemma4's end in `.**`, the markdown bold closing after the full stop. Allowing
-for that, one Gemma4 caption in 24,000 lacks terminal punctuation, and it ends
-on a bullet point.
+When the run finished, `mix experiment.status` reported 13.1% of Gemma4
+captions as truncated. That figure was wrong. Its check wanted a caption to end
+in terminal punctuation, and Gemma4's end in `.**`, the markdown bold closing
+after the full stop. The check now allows closing marks after the punctuation
+and agrees with this audit: one Gemma4 caption in 24,000 lacks terminal
+punctuation, and it ends on a bullet point.
 
 ### Cut at the generator's encoder
 

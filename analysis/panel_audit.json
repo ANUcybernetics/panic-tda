@@ -15,8 +15,8 @@
       "total": 224,
       "runs": 3,
       "by_kind": {
-        "black": 119,
-        "colour": 105
+        "colour": 105,
+        "black": 119
       },
       "by_network": {
         "[\"Flux2Dev\",\"Gemma4\"]": 119,
@@ -540,7 +540,7 @@
         "words_max": 308,
         "chars_max": 1842,
         "chars_min": 122,
-        "unterminated": 7,
+        "unterminated": 0,
         "looping": 0,
         "special_tokens": 0,
         "refusals": 0,
@@ -580,18 +580,18 @@
         "text": " Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana"
       },
       {
-        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
-        "id": "01a0a3b2-4de6-79a4-8eec-8d56f0e28ef3",
-        "sn": 243,
-        "words": 6,
-        "text": "The image shows two small,\u71c3\u70e7\u7684\u8721\u70db\uff08burning candles\uff09\u5305\u88f9\u5728\u9488\u7ec7\u5e03\u6599\u4e2d\u3002\u5de6\u8fb9\u7684\u8721\u70db\u88ab\u5305\u88f9\u5728\u4e00\u4e2a\u7d2b\u8272\u548c\u7ea2\u8272\u76f8\u95f4\u7684\u9488\u7ec7\u5e03\u6599\u4e2d\uff0c\u53f3\u8fb9\u7684\u8721\u70db\u5219\u88ab\u5305\u88f9\u5728\u4e00\u4e2a\u7eff\u8272\u7684\u9488\u7ec7\u5e03\u6599\u4e2d\u3002\u80cc\u666f\u662f\u7eff\u8272\u7684\uff0c\u653e\u5728\u4e00\u4e2a\u6d45\u68d5\u8272\u7684\u8868\u9762\u4e0a\u3002"
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "id": "01a0b40d-f5c9-7492-be56-487ca8e816d4",
+        "sn": 39,
+        "words": 40,
+        "text": "\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\u5d0e\u99c5\u9577\ufffd"
       },
       {
-        "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
-        "id": "01a0ac49-7f0b-76bc-ab1b-20c054821ec7",
-        "sn": 15,
-        "words": 82,
-        "text": "a sense of peace and mindfulness. The reflection of the person and the rock is visible in the water, adding to the overall tranquility of the scene.\u8fdc\u5904\u53ef\u4ee5\u770b\u5230\u5c71\u8109\u7684\u8f6e\u5ed3\u3002"
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "id": "01a0b484-e5eb-7c14-8529-f14277b1969e",
+        "sn": 99,
+        "words": 773,
+        "text": " for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading"
       }
     ],
     "longest": [
