@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-04 07:19'
-updated_date: '2026-10-04 09:38'
+updated_date: '2026-10-04 09:40'
 labels:
   - experiment
   - paper
@@ -86,4 +86,6 @@ Ben chose to restart rather than let the run meet the fix at the end of its cell
 Suite with the fix: three full runs, 119 tests. The second and third passed. The first had one failure, which passed when re-run on its own; an output filter had cut its name, so which test it was is not known.
 
 Also done while the run goes: analysis/panel_regenerate.py takes its targets by experiment and can count tokens without the GPU (run that way on the panel it reproduces the stored section exactly); CLAUDE.md says what to leave alone while a long run is live; TASK-106 holds the eight-character id, which cannot be fixed until the run is over.
+
+The path the resumed run takes at the end of a cell was rehearsed too, since it now runs under experiment.resume: EmbeddingsStage.resume and PdStage.resume from nothing, on one run of 1,000 text states. Both passed (embedding 0.4 s with the dummy model, diagram 42 s). What remains unrehearsed is Qwen3Embed itself on 1,000 real captions a run, which needs the GPU the run is using; from the panel's 0.04 s a caption it should take about 40 s against a limit of 1,000.
 <!-- SECTION:NOTES:END -->
