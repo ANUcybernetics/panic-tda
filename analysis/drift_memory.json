@@ -11764,5 +11764,68 @@
       "sn": 102,
       "kind": "colour"
     }
-  ]
+  ],
+  "without_low_detail_runs": {
+    "[\"Flux2Dev\",\"Gemma4\"]": {
+      "prompts_left_out": [
+        "a city slowly turning into a forest",
+        "a glass bottle beside a candle",
+        "a library with impossible architecture"
+      ],
+      "with": {
+        "step": 0.05290057477969447,
+        "noise_share": 0.8476852661974446,
+        "offset_end": 0.4542727758477204,
+        "memory_end": 0.07638041271155475,
+        "reached": 0.36836464121923146
+      },
+      "without": {
+        "step": 0.053851443937722406,
+        "noise_share": 0.8455324809206235,
+        "offset_end": 0.44674866424278775,
+        "memory_end": 0.09737422234706666,
+        "reached": 0.41527975311500326
+      }
+    },
+    "[\"Flux2Dev\",\"Moondream3\"]": {
+      "prompts_left_out": [
+        "a bustling Tokyo street at night",
+        "a city slowly turning into a forest"
+      ],
+      "with": {
+        "step": 0.027588504909372202,
+        "noise_share": 0.7939161484462502,
+        "offset_end": 0.31399188466248706,
+        "memory_end": 0.3916038909157945,
+        "reached": 0.31250580554814217
+      },
+      "without": {
+        "step": 0.02690073562406075,
+        "noise_share": 0.7869190982748145,
+        "offset_end": 0.302244416413497,
+        "memory_end": 0.41142951356030233,
+        "reached": 0.3020742753291665
+      }
+    },
+    "[\"SD35Medium\",\"Gemma4\"]": {
+      "prompts_left_out": [
+        "a market stall displaying fruit, flowers, and handmade crafts",
+        "the feeling of nostalgia"
+      ],
+      "with": {
+        "step": 0.0622213737952673,
+        "noise_share": 0.8092471642844554,
+        "offset_end": 0.3661396742574232,
+        "memory_end": 0.3022723563931123,
+        "reached": 0.5888167848425122
+      },
+      "without": {
+        "step": 0.06213959397869589,
+        "noise_share": 0.8081285216325921,
+        "offset_end": 0.35558988206694664,
+        "memory_end": 0.3136855145599692,
+        "reached": 0.6141227282984274
+      }
+    }
+  }
 }

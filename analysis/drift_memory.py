@@ -643,6 +643,33 @@ def collapsed_runs() -> list[dict]:
     return [{k: r[k] for k in ("network", "prompt", "sn", "kind")} for r in first]
 
 
+def without_low_detail_runs(all_stats: dict[str, dict], prompts: list[str]) -> dict:
+    """The headline numbers again, leaving out prompts with a run that simplified.
+
+    `panel_audit.py` lists the runs that spend a third or more of their length on
+    images with almost nothing in them. Every number in this script includes
+    them; this is how much they move the cells they are in.
+    """
+    if not AUDIT.exists():
+        return {}
+    listed = json.loads(AUDIT.read_text())["images"]["low_detail"]["by_run"]
+    keys = ("step", "noise_share", "offset_end", "memory_end", "reached")
+    out = {}
+    for network in sorted({r["network"] for r in listed}):
+        dropped = sorted({r["prompt"] for r in listed if r["network"] == network})
+        keep = np.array(
+            [i for i, prompt in enumerate(prompts) if prompt not in dropped]
+        )
+        full = summarise(all_stats[network], np.arange(len(prompts)))
+        rest = summarise(all_stats[network], keep)
+        out[network] = {
+            "prompts_left_out": dropped,
+            "with": {k: full[k] for k in keys},
+            "without": {k: rest[k] for k in keys},
+        }
+    return out
+
+
 # Figures. Light surface, three validated categorical hues, text in ink.
 SURFACE, INK, SECONDARY, MUTED = "#fcfcfb", "#0b0b0b", "#52514e", "#898781"
 GRID, AXIS = "#e1e0d9", "#c3c2b7"
@@ -1064,6 +1091,7 @@ def main() -> None:
         },
         "seed_resample": seed_resample_check(prompts, draws),
         "collapsed_runs": collapsed_runs(),
+        "without_low_detail_runs": without_low_detail_runs(all_stats, prompts),
     }
     OUT.write_text(json.dumps(results, indent=2))
     figure_picture(cells_out)
