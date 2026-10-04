@@ -236,6 +236,8 @@ GPU-days estimated (`backlog/docs/long-horizon-design.md`).
 | --------------------------------- | ----------------------- | --------------------------------------------------------------- |
 | TASK-90                           | closed                  | the dataset both RQs need: 640 runs of 300 invocations          |
 | TASK-103 noise, offset and memory | **primary description** | Results I, and both RQs as now stated                           |
+| TASK-104 the long follow-up       | **the next experiment** | whether a prompt is ever forgotten; few prompts, eight runs     |
+| TASK-105 reading the follow-up    | after 104               | memory and displacement over 700 text states or more            |
 | TASK-76 Markov state model        | abandoned               | the panel has no states that runs both share and cross          |
 | TASK-89 drift/noise decomposition | closed                  | the noise floor is most of the step; Null models, and RQ2       |
 | TASK-75 outliers as sparse space  | closed                  | failed: outliers are not sparse, transit time is not observable |
