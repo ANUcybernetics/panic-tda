@@ -64,11 +64,19 @@ defmodule Mix.Tasks.Experiment.Status do
     |> Ash.read!()
     |> Enum.group_by(& &1.model, & &1.output_text)
     |> Enum.map(fn {model, captions} ->
-      truncated = Enum.count(captions, &(not String.match?(String.trim(&1), ~r/[.!?"”)]$/u)))
+      truncated = Enum.count(captions, &(not complete?(&1)))
       max_words = captions |> Enum.map(&length(String.split(&1))) |> Enum.max()
       {model, length(captions), truncated, max_words}
     end)
     |> Enum.sort()
+  end
+
+  # Closing marks may follow the punctuation: Gemma4 writes markdown and ends
+  # on `.**`. A closing quote or bracket alone is not an end, since a
+  # repetition loop cut at the ceiling can stop on one. Qwen25VL sometimes
+  # switches into Chinese, hence the full-width marks.
+  defp complete?(caption) do
+    String.match?(caption, ~r/[.!?。！？][\s*_"'”’)\]`]*$/u)
   end
 
   defp format_truncation([]), do: "  (no captions yet)"
