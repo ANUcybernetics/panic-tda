@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@claude'
 created_date: '2026-10-04 07:19'
-updated_date: '2026-10-04 08:53'
+updated_date: '2026-10-04 09:38'
 labels:
   - experiment
   - paper
@@ -49,8 +49,9 @@ LAUNCH TRAPS LEFT BY THE PANEL. logs/long-run.id still holds 01a09e21, and bin/l
 4. AC#3, once the run completes (due 25 Oct 2026; the last line of logs/long-run.long_follow_up_3x2_2000.log says so, and the unit exits 0):
    a. mix experiment.export_data 01a10613 --output 01a10613_parquet
    b. ./analysis/panel_audit.py 01a10613 --cache 01a10613_parquet --log logs/long-run.long_follow_up_3x2_2000.log --out <a file of its own>. The script is ready: the low-detail rule follows the run's length, and its image, caption, process and log checks ran clean on the live run's first six steps. Its embeddings check needs at least one embedded cell, so it can first be run when Flux2Klein + Gemma4 finishes (due 7 Oct) to catch anything wrong at 1,000 text states before the other five cells are spent.
-   c. analysis/panel_regenerate.py still carries the panel's own constants and needs them lifted out: the regeneration targets (which cells and steps, either side of each restart), its output file (it skips sections already in its JSON, so pointed at a new experiment it would do nothing), and the second half taken as step 150 on. It needs the GPU, so it waits for the run to finish.
-   d. Write the audit up as panel-audit.md was, then disable the unit instance (systemctl --user disable panic-experiment@long_follow_up_3x2_2000).
+   c. analysis/panel_regenerate.py 01a10613 --out <a file of its own>. The script now takes its targets by experiment (TARGETS), so what is left is to add this run's: steps either side of the 20:30 restart on 4 Oct (image step 30 of Flux2Klein + Gemma4) and of any later one, any retried step, and the first flat image of any run that goes flat. --sections encoder_ceiling counts tokens without the GPU and can run while the experiment does; the other sections wait for the run to finish.
+   d. The audit's process table has one entry the panel's did not: code under lib/ changed after launch (commit d2143d5, the two reads in the stages that follow a cell, taken up by the restart at step 30; nothing in generation or captioning changed, and RunExecutor's compiled module is still the one from 5 September).
+   e. Write the audit up as panel-audit.md was, then disable the unit instance (systemctl --user disable panic-experiment@long_follow_up_3x2_2000).
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -75,4 +76,14 @@ RESTART CHECK 2026-10-04, because the unit and the script both changed. The same
 LAUNCHED 2026-10-04 19:42 AEDT (AC#2) as experiment 01a10613 (01a10613-d5e1-7393-99af-d59399021508): systemctl --user enable --now panic-experiment@long_follow_up_3x2_2000, enabled so it returns after a reboot, linger on. 240 runs of 2,000 invocations. Id in logs/long-run.long_follow_up_3x2_2000.id, output in logs/long-run.long_follow_up_3x2_2000.log. The first four steps match the cost model: 152 s for 40 Flux2Klein images, 27 s then 18 s for 40 Gemma4 captions, no retries.
 
 EXPECTED COMPLETION 25 Oct 2026, from the panel's step times (analysis/follow_up_design.json, cost.designs). Cell by cell in config order, AEDT: Flux2Klein + Gemma4 by Wed 7 Oct 02:40; SD35Medium + Moondream3 by Sun 11 Oct 04:00; ZImageTurbo + Moondream3 by Thu 15 Oct 03:45; Flux2Klein + Moondream3 by Sun 18 Oct 05:25; SD35Medium + Gemma4 by Wed 21 Oct 14:00; ZImageTurbo + Gemma4 and the experiment by Sun 25 Oct 00:50. The panel's own estimate held to within a day over 19.5 days. Each cell is embedded and given its diagrams when it finishes, which takes 37-56 minutes at this length and is the first time those stages run on 1,000 text states with real captions.
+
+FOUND AFTER LAUNCH 2026-10-04, and fixed with one restart. To see the stages that follow a cell at full length before 7 October, one run of 1,000 text states was stored in the test database as the pipeline stores it (2,000 invocations, 136 MB of images) and put through EmbeddingsStage and PdStage on CPU. The diagram stage failed at once: it read the run's embeddings with each one's invocation loaded, Ash renders that load as one id = ? per embedding in a nested OR, and SQLite refuses an expression more than 1,000 deep (Expression tree is too large). EmbeddingsStage.resume had the same load. So the live run would have finished its first cell at about 02:40 on 7 October, failed in the diagram stage, and then failed in the embeddings resume on every retry, with the GPU idle. 150 states a run, and the 700 I first proposed, are both under the limit; 1,000 is exactly on it. Recompute already pages around the same limit.
+
+Fix in commit d2143d5: the resume reads invocation_id, and the diagram stage orders its embeddings through the run's own invocations. A test of a run of 1,100 text states (embedded, resumed, given its diagram) failed with the SQLite error before and passes after. The full-size rehearsal then passed: stored in 0.6 s, embedded in 0.4 s with the dummy model, diagram stage 42 s. It is kept as test/long_run_rehearsal_test.exs, out of the default suite. No other read in the pipeline passes a list that grows with a run's length.
+
+Ben chose to restart rather than let the run meet the fix at the end of its cell. Killed at 20:30:40 AEDT, 67 s into image step 30 of Flux2Klein + Gemma4, with step 29 fully stored; systemd restarted it at 20:31:42; the resume compiled the two changed files and went on. Step 30 was redone whole from 20:31:46. Checked afterwards: 32 steps each a single batch of 40, no duplicate (run, step) pairs, every step linked to the one before, no retries. About two minutes lost. Only the PdStage and EmbeddingsStage modules were recompiled.
+
+Suite with the fix: three full runs, 119 tests. The second and third passed. The first had one failure, which passed when re-run on its own; an output filter had cut its name, so which test it was is not known.
+
+Also done while the run goes: analysis/panel_regenerate.py takes its targets by experiment and can count tokens without the GPU (run that way on the panel it reproduces the stored section exactly); CLAUDE.md says what to leave alone while a long run is live; TASK-106 holds the eight-character id, which cannot be fixed until the run is over.
 <!-- SECTION:NOTES:END -->

@@ -162,10 +162,17 @@ the unit, and it keeps the experiment's id and log under the config's name. On
 the table's schedule the first cell is due on 7 October and the last on 25
 October 2026.
 
-Two calls that follow a cell were sized for 150 text states. A persistence
-diagram over 1,000 points takes 14--48 s, and Snex waits five by default. The
-run would have failed at the end of its first cell. Both calls now allow for
-the length of the run (`analysis/pd_cost.py`).
+The stages that follow a cell had only ever met runs of 150 text states. Three
+things in them would have stopped a run of 1,000 at the end of its first cell.
+Two were timeouts, fixed before launch: a persistence diagram over 1,000 points
+takes 14--48 s, and Snex waits five by default (`analysis/pd_cost.py`). The
+third was found within an hour of launch, by rehearsing those stages on CPU at
+full length (`test/long_run_rehearsal_test.exs`). They read a run's embeddings
+with each one's invocation loaded, which SQLite refuses once there are 1,000.
+
+The run was restarted once to take that fix, at 20:30 AEDT, part-way through
+image step 30 of the first cell. The step was redone whole, and no step is
+split or duplicated. The code that generates and captions did not change.
 
 ## What was priced and not chosen
 
