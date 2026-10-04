@@ -14,17 +14,20 @@ back through the production invoke path in a fresh process and comparing:
   wrapped as that pipeline wraps it, since a generator reads only its first
   512 tokens and cuts the rest without saying so (TASK-100)
 
-The steps regenerated are chosen to sit either side of the panel's restarts,
-on a step that was retried after a CUDA out-of-memory error, and on the step
-where a run first went all black.
+The steps regenerated are chosen by hand for each experiment (`TARGETS`). The
+panel's sit either side of its restarts, on a step that was retried after a
+CUDA out-of-memory error, and on the step where a run first went all black.
 
     _build/dev/snex/projects/Elixir.PanicTda.Models.PythonInterpreter/venv/bin/python \
         analysis/panel_regenerate.py 01a09e21
 
-Results -> analysis/panel_regenerate.json. Sections already present in the
-JSON are skipped, so an interrupted run picks up where it stopped.
+Results -> analysis/panel_regenerate.json, or `--out` for another experiment.
+Sections already present in the JSON are skipped, so an interrupted run picks
+up where it stopped. `--sections encoder_ceiling` counts tokens alone, which
+needs no GPU and can run beside an experiment.
 """
 
+import argparse
 import base64
 import difflib
 import io
@@ -50,36 +53,52 @@ OUT = pathlib.Path(__file__).with_suffix(".json")
 CEILING = 512
 GEN_CEILING = pm._I2T_MAX_NEW_TOKENS_DEFAULT
 
-# (generator, captioner, image step, chunk of the batch of 40, why)
-T2I_TARGETS = [
-    ("SD35Medium", "Moondream3", 10, 0, "before the 14 Sep restart"),
-    ("SD35Medium", "Qwen25VL", 40, 5, "before the 15 Sep crash"),
-    ("SD35Medium", "Qwen25VL", 200, 5, "after the 15 Sep crash"),
-    ("ZImageTurbo", "Moondream3", 100, 3, "cell with repeated captions"),
-    ("ZImageTurbo", "JoyCaption", 250, 7, ""),
-    ("Flux2Klein", "Qwen25VL", 60, 2, "cell with an allocator warning every step"),
-    ("Flux2Klein", "Gemma4", 220, 11, ""),
-    ("Flux2Klein", "JoyCaption", 150, 15, ""),
-    ("Flux2Dev", "Gemma4", 62, 1, "holds the run's first all-black image"),
-    ("Flux2Dev", "Gemma4", 118, 0, "step retried after CUDA out of memory"),
-    ("Flux2Dev", "Moondream3", 170, 9, "after the 22 Sep OOM kill"),
-]
-# Flux2Dev costs ~45 s an image, so only one of its chunks gets the control.
-T2I_CONTROL_SKIP = {("Flux2Dev", "Gemma4", 118), ("Flux2Dev", "Moondream3", 170)}
-# (captioner, generator, caption step)
-I2T_TARGETS = [
-    ("Moondream3", "ZImageTurbo", 101),
-    ("Qwen25VL", "SD35Medium", 41),
-    ("Qwen25VL", "SD35Medium", 201),
-    ("Gemma4", "Flux2Dev", 119),
-    ("JoyCaption", "Flux2Klein", 151),
-]
-EMBED_CELLS = [
-    ("SD35Medium", "Moondream3"),
-    ("ZImageTurbo", "Qwen25VL"),
-    ("Flux2Klein", "Gemma4"),
-    ("Flux2Dev", "JoyCaption"),
-]
+# What is run again, by experiment id prefix.
+TARGETS = {
+    "01a09e21": {
+        # (generator, captioner, image step, chunk of the batch of 40, why)
+        "images": [
+            ("SD35Medium", "Moondream3", 10, 0, "before the 14 Sep restart"),
+            ("SD35Medium", "Qwen25VL", 40, 5, "before the 15 Sep crash"),
+            ("SD35Medium", "Qwen25VL", 200, 5, "after the 15 Sep crash"),
+            ("ZImageTurbo", "Moondream3", 100, 3, "cell with repeated captions"),
+            ("ZImageTurbo", "JoyCaption", 250, 7, ""),
+            (
+                "Flux2Klein",
+                "Qwen25VL",
+                60,
+                2,
+                "cell with an allocator warning every step",
+            ),
+            ("Flux2Klein", "Gemma4", 220, 11, ""),
+            ("Flux2Klein", "JoyCaption", 150, 15, ""),
+            ("Flux2Dev", "Gemma4", 62, 1, "holds the run's first all-black image"),
+            ("Flux2Dev", "Gemma4", 118, 0, "step retried after CUDA out of memory"),
+            ("Flux2Dev", "Moondream3", 170, 9, "after the 22 Sep OOM kill"),
+        ],
+        # Flux2Dev costs ~45 s an image, so only one of its chunks gets the
+        # control at another seed.
+        "images_without_control": {
+            ("Flux2Dev", "Gemma4", 118),
+            ("Flux2Dev", "Moondream3", 170),
+        },
+        # (captioner, generator, caption step)
+        "captions": [
+            ("Moondream3", "ZImageTurbo", 101),
+            ("Qwen25VL", "SD35Medium", 41),
+            ("Qwen25VL", "SD35Medium", 201),
+            ("Gemma4", "Flux2Dev", 119),
+            ("JoyCaption", "Flux2Klein", 151),
+        ],
+        # one whole run of each of these cells
+        "embeddings": [
+            ("SD35Medium", "Moondream3"),
+            ("ZImageTurbo", "Qwen25VL"),
+            ("Flux2Klein", "Gemma4"),
+            ("Flux2Dev", "JoyCaption"),
+        ],
+    },
+}
 
 
 def connect() -> sqlite3.Connection:
@@ -122,17 +141,18 @@ def encoder_ceiling(con: sqlite3.Connection, experiment: str) -> dict:
     """Every caption a generator read, counted as that generator counts it."""
     encoders = load_encoder_tokenizers()
     rows = con.execute(
-        "select r.network, i.sequence_number, i.output_text from invocations i "
-        "join runs r on r.id = i.run_id where r.experiment_id like ? "
+        "select r.network, i.sequence_number, i.output_text, r.max_length "
+        "from invocations i join runs r on r.id = i.run_id "
+        "where r.experiment_id like ? "
         "and i.type = 'text' and i.sequence_number < r.max_length - 1",
         (experiment + "%",),
     ).fetchall()
     by_cell: dict[str, list[int]] = {}
     late: dict[str, list[int]] = {}
-    for net, sn, text in rows:
+    for net, sn, text, max_length in rows:
         count = encoders[json.loads(net)[0]]["effective"](text)
         by_cell.setdefault(net, []).append(count)
-        if sn >= 150:
+        if sn >= max_length // 2:
             late.setdefault(net, []).append(count)
     cells = {}
     for net, counts in sorted(by_cell.items()):
@@ -174,7 +194,8 @@ def generate_pixels(
 def regenerate_images(con: sqlite3.Connection, experiment: str) -> list[dict]:
     results = []
     loaded = None
-    for generator, captioner, sn, chunk, why in T2I_TARGETS:
+    targets = TARGETS[experiment]
+    for generator, captioner, sn, chunk, why in targets["images"]:
         if generator != loaded:
             use(generator)
             loaded = generator
@@ -206,7 +227,7 @@ def regenerate_images(con: sqlite3.Connection, experiment: str) -> list[dict]:
                 round(float(np.abs(a - b).mean()), 2) for a, b in zip(same, stored)
             ],
         }
-        if (generator, captioner, sn) not in T2I_CONTROL_SKIP:
+        if (generator, captioner, sn) not in targets["images_without_control"]:
             other = generate_pixels(
                 generator, prompts, [(s + 1) % 2**32 for s in seeds]
             )
@@ -234,7 +255,7 @@ def own_token_counts(name: str, texts: list[str]) -> list[int] | None:
 def regenerate_captions(con: sqlite3.Connection, experiment: str) -> list[dict]:
     results = []
     loaded = None
-    for captioner, generator, sn in I2T_TARGETS:
+    for captioner, generator, sn in TARGETS[experiment]["captions"]:
         if captioner != loaded:
             use(captioner)
             loaded = captioner
@@ -290,7 +311,7 @@ def regenerate_embeddings(con: sqlite3.Connection, experiment: str) -> list[dict
     pm.unload_all_models()
     pm.load_model("Qwen3Embed")
     results = []
-    for generator, captioner in EMBED_CELLS:
+    for generator, captioner in TARGETS[experiment]["embeddings"]:
         run_id, _ = cell_runs(con, experiment, network(generator, captioner))[0]
         rows = con.execute(
             "select i.output_text, e.vector from invocations i "
@@ -319,29 +340,44 @@ def regenerate_embeddings(con: sqlite3.Connection, experiment: str) -> list[dict
     return results
 
 
+SECTIONS = {
+    "encoder_ceiling": encoder_ceiling,
+    "images": regenerate_images,
+    "captions": regenerate_captions,
+    "embeddings": regenerate_embeddings,
+}
+# the one section that only counts tokens
+NO_GPU = {"encoder_ceiling"}
+
+
 def main() -> None:
-    experiment = sys.argv[1]
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("experiment", help="experiment id prefix")
+    parser.add_argument(
+        "--out", type=pathlib.Path, default=OUT, help="where the results go"
+    )
+    parser.add_argument(
+        "--sections", nargs="+", choices=list(SECTIONS), default=list(SECTIONS)
+    )
+    args = parser.parse_args()
+
     pm.setup()
     con = connect()
-    results = json.loads(OUT.read_text()) if OUT.exists() else {}
-    results["experiment"] = experiment
-    results["versions"] = {
-        "torch": torch.__version__,
-        "gpu": torch.cuda.get_device_name(0),
-    }
-    sections = {
-        "encoder_ceiling": encoder_ceiling,
-        "images": regenerate_images,
-        "captions": regenerate_captions,
-        "embeddings": regenerate_embeddings,
-    }
-    for name, section in sections.items():
-        if name in results:
-            continue
+    results = json.loads(args.out.read_text()) if args.out.exists() else {}
+    results["experiment"] = args.experiment
+    todo = [name for name in args.sections if name not in results]
+    on_gpu = any(name not in NO_GPU for name in todo)
+    if on_gpu:
+        results["versions"] = {
+            "torch": torch.__version__,
+            "gpu": torch.cuda.get_device_name(0),
+        }
+    for name in todo:
         print(f"=== {name} ===", flush=True)
-        results[name] = section(con, experiment)
-        OUT.write_text(json.dumps(results, indent=2))
-    pm.unload_all_models()
+        results[name] = SECTIONS[name](con, args.experiment)
+        args.out.write_text(json.dumps(results, indent=2))
+    if on_gpu:
+        pm.unload_all_models()
 
 
 if __name__ == "__main__":
