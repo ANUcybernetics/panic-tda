@@ -1,0 +1,610 @@
+{
+  "experiment": "01a09e21",
+  "versions": {
+    "torch": "2.14.0+cu130",
+    "gpu": "NVIDIA RTX 6000 Ada Generation"
+  },
+  "encoder_ceiling": {
+    "ceiling": 512,
+    "captions_read": 95360,
+    "over_512": 346,
+    "cells": {
+      "[\"Flux2Dev\",\"Gemma4\"]": {
+        "tokenizer": "PixtralProcessor (Mistral3 template + system message)",
+        "captions_read": 5960,
+        "median": 345,
+        "p99": 535,
+        "max": 608,
+        "over_512": 125,
+        "over_512_pct": 2.1,
+        "over_512_pct_second_half": 2.43,
+        "median_tokens_cut_when_over": 23
+      },
+      "[\"Flux2Dev\",\"JoyCaption\"]": {
+        "tokenizer": "PixtralProcessor (Mistral3 template + system message)",
+        "captions_read": 5960,
+        "median": 251,
+        "p99": 291,
+        "max": 371,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"Flux2Dev\",\"Moondream3\"]": {
+        "tokenizer": "PixtralProcessor (Mistral3 template + system message)",
+        "captions_read": 5960,
+        "median": 90,
+        "p99": 136,
+        "max": 173,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"Flux2Dev\",\"Qwen25VL\"]": {
+        "tokenizer": "PixtralProcessor (Mistral3 template + system message)",
+        "captions_read": 5960,
+        "median": 136,
+        "p99": 197,
+        "max": 279,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"Flux2Klein\",\"Gemma4\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 5960,
+        "median": 301,
+        "p99": 430,
+        "max": 507,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"Flux2Klein\",\"JoyCaption\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 5960,
+        "median": 229,
+        "p99": 264,
+        "max": 295,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"Flux2Klein\",\"Moondream3\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 5960,
+        "median": 76,
+        "p99": 122,
+        "max": 1373,
+        "over_512": 5,
+        "over_512_pct": 0.08,
+        "over_512_pct_second_half": 0.07,
+        "median_tokens_cut_when_over": 696
+      },
+      "[\"Flux2Klein\",\"Qwen25VL\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 5960,
+        "median": 124,
+        "p99": 206,
+        "max": 276,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"SD35Medium\",\"Gemma4\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 5960,
+        "median": 340,
+        "p99": 560,
+        "max": 665,
+        "over_512": 209,
+        "over_512_pct": 3.51,
+        "over_512_pct_second_half": 3.68,
+        "median_tokens_cut_when_over": 30
+      },
+      "[\"SD35Medium\",\"JoyCaption\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 5960,
+        "median": 239,
+        "p99": 293,
+        "max": 318,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"SD35Medium\",\"Moondream3\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 5960,
+        "median": 67,
+        "p99": 120,
+        "max": 1040,
+        "over_512": 4,
+        "over_512_pct": 0.07,
+        "over_512_pct_second_half": 0.14,
+        "median_tokens_cut_when_over": 202
+      },
+      "[\"SD35Medium\",\"Qwen25VL\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 5960,
+        "median": 111,
+        "p99": 246,
+        "max": 470,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"ZImageTurbo\",\"Gemma4\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 5960,
+        "median": 270,
+        "p99": 422,
+        "max": 575,
+        "over_512": 3,
+        "over_512_pct": 0.05,
+        "over_512_pct_second_half": 0.03,
+        "median_tokens_cut_when_over": 47
+      },
+      "[\"ZImageTurbo\",\"JoyCaption\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 5960,
+        "median": 225,
+        "p99": 263,
+        "max": 303,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"ZImageTurbo\",\"Moondream3\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 5960,
+        "median": 67,
+        "p99": 112,
+        "max": 292,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      },
+      "[\"ZImageTurbo\",\"Qwen25VL\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 5960,
+        "median": 107,
+        "p99": 200,
+        "max": 284,
+        "over_512": 0,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 0
+      }
+    }
+  },
+  "images": [
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "image_step": 10,
+      "chunk": 0,
+      "why": "before the 14 Sep restart",
+      "seconds_per_image": 5.4,
+      "stored_luma_mean": [
+        208.8,
+        208.5,
+        158.7,
+        162.9
+      ],
+      "regenerated_luma_mean": [
+        208.8,
+        208.3,
+        158.6,
+        162.8
+      ],
+      "same_seed_diff": [
+        1.06,
+        1.52,
+        1.35,
+        1.97
+      ],
+      "other_seed_diff": [
+        29.39,
+        31.94,
+        85.78,
+        64.88
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Qwen25VL",
+      "image_step": 40,
+      "chunk": 5,
+      "why": "before the 15 Sep crash",
+      "seconds_per_image": 5.8,
+      "stored_luma_mean": [
+        170.6,
+        128.8,
+        193.8,
+        129.2
+      ],
+      "regenerated_luma_mean": [
+        170.5,
+        128.7,
+        193.7,
+        129.1
+      ],
+      "same_seed_diff": [
+        3.47,
+        2.54,
+        2.14,
+        2.4
+      ],
+      "other_seed_diff": [
+        74.4,
+        87.4,
+        62.58,
+        74.79
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Qwen25VL",
+      "image_step": 200,
+      "chunk": 5,
+      "why": "after the 15 Sep crash",
+      "seconds_per_image": 6.0,
+      "stored_luma_mean": [
+        134.2,
+        193.6,
+        203.8,
+        207.0
+      ],
+      "regenerated_luma_mean": [
+        134.0,
+        193.5,
+        203.7,
+        206.9
+      ],
+      "same_seed_diff": [
+        4.7,
+        3.71,
+        2.12,
+        3.07
+      ],
+      "other_seed_diff": [
+        69.59,
+        52.94,
+        31.19,
+        46.87
+      ]
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "Moondream3",
+      "image_step": 100,
+      "chunk": 3,
+      "why": "cell with repeated captions",
+      "seconds_per_image": 5.9,
+      "stored_luma_mean": [
+        158.4,
+        114.1,
+        163.2,
+        187.4
+      ],
+      "regenerated_luma_mean": [
+        158.2,
+        114.0,
+        163.1,
+        187.3
+      ],
+      "same_seed_diff": [
+        2.51,
+        2.02,
+        1.66,
+        2.26
+      ],
+      "other_seed_diff": [
+        50.31,
+        38.36,
+        48.8,
+        46.86
+      ]
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "JoyCaption",
+      "image_step": 250,
+      "chunk": 7,
+      "why": "",
+      "seconds_per_image": 6.2,
+      "stored_luma_mean": [
+        107.4,
+        133.7,
+        127.2,
+        96.8
+      ],
+      "regenerated_luma_mean": [
+        107.3,
+        133.6,
+        127.1,
+        96.6
+      ],
+      "same_seed_diff": [
+        2.89,
+        3.39,
+        3.53,
+        3.34
+      ],
+      "other_seed_diff": [
+        45.41,
+        34.16,
+        48.04,
+        53.53
+      ]
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Qwen25VL",
+      "image_step": 60,
+      "chunk": 2,
+      "why": "cell with an allocator warning every step",
+      "seconds_per_image": 3.5,
+      "stored_luma_mean": [
+        114.7,
+        140.9
+      ],
+      "regenerated_luma_mean": [
+        114.6,
+        140.8
+      ],
+      "same_seed_diff": [
+        4.65,
+        4.34
+      ],
+      "other_seed_diff": [
+        61.81,
+        46.73
+      ]
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Gemma4",
+      "image_step": 220,
+      "chunk": 11,
+      "why": "",
+      "seconds_per_image": 3.6,
+      "stored_luma_mean": [
+        196.9,
+        168.9
+      ],
+      "regenerated_luma_mean": [
+        196.8,
+        168.8
+      ],
+      "same_seed_diff": [
+        1.61,
+        2.2
+      ],
+      "other_seed_diff": [
+        22.76,
+        28.73
+      ]
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "JoyCaption",
+      "image_step": 150,
+      "chunk": 15,
+      "why": "",
+      "seconds_per_image": 3.6,
+      "stored_luma_mean": [
+        125.7,
+        145.1
+      ],
+      "regenerated_luma_mean": [
+        125.5,
+        144.9
+      ],
+      "same_seed_diff": [
+        3.91,
+        4.12
+      ],
+      "other_seed_diff": [
+        43.85,
+        50.96
+      ]
+    },
+    {
+      "generator": "Flux2Dev",
+      "captioner": "Gemma4",
+      "image_step": 62,
+      "chunk": 1,
+      "why": "holds the run's first all-black image",
+      "seconds_per_image": 52.6,
+      "stored_luma_mean": [
+        78.0,
+        144.6,
+        0.3,
+        39.6
+      ],
+      "regenerated_luma_mean": [
+        77.9,
+        144.6,
+        0.3,
+        39.5
+      ],
+      "same_seed_diff": [
+        2.84,
+        1.86,
+        0.08,
+        1.77
+      ],
+      "other_seed_diff": [
+        27.8,
+        33.21,
+        0.3,
+        23.32
+      ]
+    },
+    {
+      "generator": "Flux2Dev",
+      "captioner": "Gemma4",
+      "image_step": 118,
+      "chunk": 0,
+      "why": "step retried after CUDA out of memory",
+      "seconds_per_image": 46.0,
+      "stored_luma_mean": [
+        47.4,
+        127.8,
+        64.2,
+        82.1
+      ],
+      "regenerated_luma_mean": [
+        47.3,
+        127.6,
+        64.0,
+        81.9
+      ],
+      "same_seed_diff": [
+        1.41,
+        1.67,
+        1.86,
+        1.83
+      ]
+    },
+    {
+      "generator": "Flux2Dev",
+      "captioner": "Moondream3",
+      "image_step": 170,
+      "chunk": 9,
+      "why": "after the 22 Sep OOM kill",
+      "seconds_per_image": 45.7,
+      "stored_luma_mean": [
+        133.0,
+        216.9,
+        95.0,
+        180.6
+      ],
+      "regenerated_luma_mean": [
+        133.0,
+        216.9,
+        94.8,
+        180.6
+      ],
+      "same_seed_diff": [
+        0.51,
+        1.18,
+        2.7,
+        2.14
+      ]
+    }
+  ],
+  "captions": [
+    {
+      "captioner": "Moondream3",
+      "generator": "ZImageTurbo",
+      "caption_step": 101,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 1.95,
+      "generation_ceiling": null
+    },
+    {
+      "captioner": "Qwen25VL",
+      "generator": "SD35Medium",
+      "caption_step": 41,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.59,
+      "generation_ceiling": {
+        "captions": 24000,
+        "max_tokens": 431,
+        "at_or_over_generation_ceiling": 0
+      }
+    },
+    {
+      "captioner": "Qwen25VL",
+      "generator": "SD35Medium",
+      "caption_step": 201,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.52,
+      "generation_ceiling": {
+        "captions": 24000,
+        "max_tokens": 431,
+        "at_or_over_generation_ceiling": 0
+      }
+    },
+    {
+      "captioner": "Gemma4",
+      "generator": "Flux2Dev",
+      "caption_step": 119,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.57,
+      "generation_ceiling": {
+        "captions": 24000,
+        "max_tokens": 566,
+        "at_or_over_generation_ceiling": 0
+      }
+    },
+    {
+      "captioner": "JoyCaption",
+      "generator": "Flux2Klein",
+      "caption_step": 151,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.46,
+      "generation_ceiling": {
+        "captions": 24000,
+        "max_tokens": 335,
+        "at_or_over_generation_ceiling": 0
+      }
+    }
+  ],
+  "embeddings": [
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "run_id": "01a09e21-a636-755b-8efa-0701bcc0aafe",
+      "captions": 150,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "Qwen25VL",
+      "run_id": "01a09e21-a67a-75e1-bce8-1ffa829a9da4",
+      "captions": 150,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Gemma4",
+      "run_id": "01a09e21-a6b2-7657-bde8-95d7161ea8ca",
+      "captions": 150,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    },
+    {
+      "generator": "Flux2Dev",
+      "captioner": "JoyCaption",
+      "run_id": "01a09e21-a6ea-705e-acde-cfc3e0e3bbb0",
+      "captions": 150,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    }
+  ]
+}
