@@ -1,11 +1,11 @@
 ---
 id: TASK-103
 title: 'Describe each network''s dynamics as seed noise, slow wander and prompt memory'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-10-04 05:11'
-updated_date: '2026-10-04 06:25'
+updated_date: '2026-10-04 07:00'
 labels:
   - analysis
   - paper
@@ -36,7 +36,7 @@ WHAT IT HAS TO ANSWER. RQ1 becomes: does a run forget its prompt, how fast, and 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Every cell has its displacement curve (mean distance between two states of one run against their separation in time, at every lag) from a tracked script with tracked output, and how the curve depends on how far into the run the pair starts is reported
-- [ ] #2 Each cell's step is split into the share the next step takes back and the share that accumulates, and the split is checked against a direct measurement: a sample of steps regenerated from the stored caption with a different seed
+- [x] #2 Each cell's step is split into the share the next step takes back and the share that accumulates, and the split is checked against a direct measurement: a sample of steps regenerated from the stored caption with a different seed
 - [x] #3 Each cell's accumulating displacement is classified as levelling off, still growing or undecided at 150 text states by a stated rule, with an interval from resampling prompts
 - [x] #4 Prompt memory (distance between the two runs of a prompt against distance between runs of different prompts, noise removed) is reported over time for every cell with an interval, and whether runs from different prompts approach each other is stated as the test of the convergence claim
 - [x] #5 The generator's and the captioner's contribution to noise, wander and memory is stated across the 4x4 panel, with what sixteen cells can and cannot support
@@ -63,4 +63,12 @@ OUTSTANDING: AC#2's direct check. analysis/seed_resample.py was launched 2026-10
 2. The prediction is that the resampled distance matches the two-step distance (the interval on resampled_less_two_steps includes zero), which makes noise_direct equal noise_chain. Replace the paragraph in drift-and-memory.md that begins 'TASK-89 reached the same reading' with the result either way, and adjust the four-fifths wording there and in research-programme.md if it does not match.
 3. Commit seed_resample.json, the regenerated drift_memory.json and the doc, check AC#2 and set the task Done.
 If the JSON is missing the job died: rerun the command in the script's docstring. Generation resumes from the cache; captioning and embedding take about ten minutes.
+
+SEED-RESAMPLE RESULT 2026-10-04 (analysis/seed_resample.json; the seed_resample section of drift_memory.json). 528 steps redrawn at image step 200. Two redraws of one caption sit 0.049 apart (interval 0.046-0.054), against 0.045 for the stored step and 0.052 for two stored steps from the same captions. The prediction was that redraws match two steps: the difference is -0.003 with an interval of -0.006 to 0.002, which includes zero. Redraws are further apart than one step by 0.004 (0.001-0.007), as an accumulating part requires. Read off the redraws the noise is 0.041 of that 0.045 step, 91% (84-97%); the chain's own estimate at the same step is 85%, and 80% averaged over the late run. So four-fifths is the cautious figure and the reading holds. Also: 5 of 528 redraws reproduced the stored caption exactly (all Moondream3), and in the Flux2Dev cells all 112 captions of images left unchanged in a partly redrawn batch came back identical.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Replaced the abandoned Markov state model with a description read straight off distances between embeddings: a caption sits where its prompt puts it in this network, plus the run's own offset, plus the noise of the last seed. analysis/drift_memory.py computes it for all sixteen networks with intervals from resampling prompts, seed_resample.py checks the noise split against 528 steps redrawn on the GPU, long_run_drift.py takes the same measure on the old 5,000-invocation runs, and backlog/docs/drift-and-memory.md is the write-up with figures. Verified by the JSON outputs beside each script and by the redraw check agreeing with the chain's own estimate of the noise.
+<!-- SECTION:FINAL_SUMMARY:END -->

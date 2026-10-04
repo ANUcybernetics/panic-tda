@@ -77,14 +77,20 @@ is twice the one-step distance less the two-step distance. That comes to 0.034,
 which is 80% of a step. In every one of the sixteen networks it is between 73%
 and 87%. What accumulates is 0.008 per step.
 
-TASK-89 reached the same reading by a direct route. It redrew captions taken
-from pilot images at several seeds, and the scatter between redraws was
-89--107% of a settled step in the old 200-step runs. The direct check on the
-panel's own steps is
-`analysis/seed_resample.py`, which redraws one late step of every network at a
-new seed. If a step is an increment plus fresh noise, two redraws of one
-caption should sit as far apart as two steps of the stored run. That result is
-not in this document yet; TASK-103 says how to fold it in.
+`analysis/seed_resample.py` checks that reading directly. It redraws one late
+step of every network at a new seed, 528 steps in all. Each new image is
+captioned in the stored step's own batch. If a step is an increment plus fresh
+noise, two redraws of one caption should sit as far apart as two steps of the
+stored run. They do: 0.049 against 0.052, a difference whose interval includes
+zero (-0.006 to 0.002). Read off the redraws, the noise at that step is 0.041
+of a 0.045 step, which is 91% (84--97%). The chain's own estimate at the same
+step is 85%. So four-fifths is the cautious figure. TASK-89 had found the same
+on captions taken from pilot images.
+
+The redraws show two more things. Five of the 528 gave the very caption the
+run had produced, all five with Moondream3. In the Flux2Dev cells, 28 of the
+40 images in each batch were left as stored. All 112 of their captions came
+back identical, so changing part of a batch does not disturb the rest.
 
 This is why the runs look busier than they are. Most of the difference between
 one caption and the next is detail that the generator redraws at every step,

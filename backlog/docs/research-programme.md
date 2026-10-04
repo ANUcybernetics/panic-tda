@@ -72,8 +72,8 @@ states per run, and `panel-audit.md` is the check that its data is sound.
 TASK-103 reads it off distances between embeddings, with no clustering.
 `drift-and-memory.md` has the tables and figures.
 
-- About four-fifths of the distance between consecutive captions is seed noise
-  that the next step takes back, in every network.
+- Four-fifths or more of the distance between consecutive captions is seed
+  noise that the next step takes back, in every network.
 - A run's own offset is the largest part. The two runs of a prompt are 0.36
   apart by the end, noise removed, and have nearly stopped separating.
 - The prompt still fixes a third of where a run sits. Memory, the prompt's
@@ -254,7 +254,8 @@ how much is generator sampling noise. On the old 200-step runs it found the
 generator's own sampling accounts for essentially the whole settled step
 (89--107% of it, matched by generator), falling to 53--62% in the 50-step arms
 where the chain is still drifting. TASK-103 re-measured that on the panel's own
-trajectories, at about four-fifths of a step. TASK-75 answered negatively: the
+trajectories: about four-fifths of a step by the chain's own estimate, and
+nine-tenths by redrawing 528 steps at new seeds. TASK-75 answered negatively: the
 outlier share is an artefact of the clustering procedure and outlier time is
 settled time. TASK-76 was to be the standard MSM pipeline, and was abandoned
 when the panel turned out to have nothing for it to count. TASK-103 replaced it
