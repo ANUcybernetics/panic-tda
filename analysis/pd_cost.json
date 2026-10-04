@@ -1,0 +1,203 @@
+{
+  "max_dimension": 2,
+  "threads": 4,
+  "clouds": {
+    "an old run": [
+      {
+        "points": 150,
+        "seconds": 0.04,
+        "pairs_by_dimension": [
+          61,
+          13,
+          2
+        ]
+      },
+      {
+        "points": 300,
+        "seconds": 0.44,
+        "pairs_by_dimension": [
+          148,
+          26,
+          3
+        ]
+      },
+      {
+        "points": 500,
+        "seconds": 3.02,
+        "pairs_by_dimension": [
+          238,
+          45,
+          11
+        ]
+      },
+      {
+        "points": 700,
+        "seconds": 10.92,
+        "pairs_by_dimension": [
+          330,
+          58,
+          19
+        ]
+      },
+      {
+        "points": 1000,
+        "seconds": 47.61,
+        "pairs_by_dimension": [
+          508,
+          78,
+          32
+        ]
+      },
+      {
+        "points": 1400,
+        "seconds": 140.79,
+        "pairs_by_dimension": [
+          730,
+          95,
+          43
+        ]
+      }
+    ],
+    "the panel, stitched": [
+      {
+        "points": 150,
+        "seconds": 0.01,
+        "pairs_by_dimension": [
+          150,
+          44,
+          3
+        ]
+      },
+      {
+        "points": 300,
+        "seconds": 0.12,
+        "pairs_by_dimension": [
+          298,
+          106,
+          22
+        ]
+      },
+      {
+        "points": 500,
+        "seconds": 1.94,
+        "pairs_by_dimension": [
+          498,
+          186,
+          50
+        ]
+      },
+      {
+        "points": 700,
+        "seconds": 6.92,
+        "pairs_by_dimension": [
+          698,
+          284,
+          81
+        ]
+      },
+      {
+        "points": 1000,
+        "seconds": 14.07,
+        "pairs_by_dimension": [
+          998,
+          404,
+          120
+        ]
+      },
+      {
+        "points": 1400,
+        "seconds": 31.85,
+        "pairs_by_dimension": [
+          1398,
+          539,
+          150
+        ]
+      }
+    ],
+    "a run as described": [
+      {
+        "points": 150,
+        "seconds": 0.04,
+        "pairs_by_dimension": [
+          150,
+          24,
+          1
+        ]
+      },
+      {
+        "points": 300,
+        "seconds": 0.34,
+        "pairs_by_dimension": [
+          300,
+          55,
+          1
+        ]
+      },
+      {
+        "points": 500,
+        "seconds": 2.45,
+        "pairs_by_dimension": [
+          500,
+          104,
+          6
+        ]
+      },
+      {
+        "points": 700,
+        "seconds": 8.15,
+        "pairs_by_dimension": [
+          700,
+          119,
+          5
+        ]
+      },
+      {
+        "points": 1000,
+        "seconds": 22.78,
+        "pairs_by_dimension": [
+          1000,
+          215,
+          10
+        ]
+      },
+      {
+        "points": 1400,
+        "seconds": 54.76,
+        "pairs_by_dimension": [
+          1400,
+          320,
+          34
+        ]
+      }
+    ],
+    "no structure": [
+      {
+        "points": 60,
+        "seconds": 0.03,
+        "pairs_by_dimension": [
+          60,
+          136,
+          226
+        ]
+      },
+      {
+        "points": 100,
+        "seconds": 0.42,
+        "pairs_by_dimension": [
+          100,
+          287,
+          671
+        ]
+      },
+      {
+        "points": 150,
+        "seconds": 7.37,
+        "pairs_by_dimension": [
+          150,
+          559,
+          1735
+        ]
+      }
+    ]
+  }
+}
