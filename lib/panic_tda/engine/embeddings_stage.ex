@@ -21,12 +21,14 @@ defmodule PanicTda.Engine.EmbeddingsStage do
     invocations = load_invocations(run)
 
     Enum.each(embedding_models, fn embedding_model ->
+      # By the foreign key, not by loading each embedding's invocation: that
+      # load is one `id = ?` per embedding, and SQLite rejects the query once
+      # a run has a thousand of them.
       embedded_invocation_ids =
         PanicTda.Embedding
         |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == ^embedding_model)
-        |> Ash.Query.load(:invocation)
         |> Ash.read!()
-        |> MapSet.new(& &1.invocation.id)
+        |> MapSet.new(& &1.invocation_id)
 
       missing = Enum.reject(invocations, &MapSet.member?(embedded_invocation_ids, &1.id))
       :ok = compute_for_invocations(env, missing, embedding_model)

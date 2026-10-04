@@ -31,12 +31,21 @@ defmodule PanicTda.Engine.PdStage do
   end
 
   defp compute_for_model(env, run, embedding_model) do
+    # Ordered through the run's own invocations, not by loading each
+    # embedding's: that load is one `id = ?` per embedding, and SQLite rejects
+    # the query once a run has a thousand of them.
+    position =
+      PanicTda.Invocation
+      |> Ash.Query.filter(run_id == ^run.id)
+      |> Ash.Query.select([:id, :sequence_number])
+      |> Ash.read!()
+      |> Map.new(&{&1.id, &1.sequence_number})
+
     embeddings =
       PanicTda.Embedding
       |> Ash.Query.filter(invocation.run_id == ^run.id and embedding_model == ^embedding_model)
-      |> Ash.Query.load(:invocation)
       |> Ash.read!()
-      |> Enum.sort_by(& &1.invocation.sequence_number)
+      |> Enum.sort_by(&Map.fetch!(position, &1.invocation_id))
 
     if embeddings == [] do
       :ok

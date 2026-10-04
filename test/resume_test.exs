@@ -4,7 +4,7 @@ defmodule PanicTda.ResumeTest do
   require Ash.Query
 
   alias PanicTda.Engine
-  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage}
+  alias PanicTda.Engine.{RunExecutor, EmbeddingsStage, PdStage}
   alias PanicTda.Models.{PythonInterpreter, PythonSession}
 
   setup do
@@ -240,6 +240,61 @@ defmodule PanicTda.ResumeTest do
         |> Ash.count!()
 
       assert embeddings_after == 2
+    end
+  end
+
+  describe "the stages after a cell, on a long run" do
+    setup :with_python
+
+    # Loading each embedding's invocation is one `id = ?` per embedding, and
+    # SQLite rejects that query once a run has a thousand of them.
+    test "a run of 1,100 text states is embedded, resumed and given its diagram", %{env: env} do
+      experiment = create_started_experiment(%{max_length: 2_200})
+      [run] = Engine.init_runs(experiment)
+      now = DateTime.utc_now()
+
+      # Stored directly: the dummy captions are all different, and a diagram
+      # over a thousand unrelated points does not finish. Eight captions in
+      # rotation embed to eight points.
+      Enum.reduce(0..2_199, nil, fn seq, previous ->
+        output =
+          if rem(seq, 2) == 0 do
+            %{type: :image, model: "DummyT2I", output_image: <<seq::32>>}
+          else
+            %{type: :text, model: "DummyI2T", output_text: "caption #{rem(seq, 16)}"}
+          end
+
+        invocation =
+          PanicTda.create_invocation!(
+            Map.merge(output, %{
+              sequence_number: seq,
+              started_at: now,
+              completed_at: now,
+              run_id: run.id,
+              input_invocation_id: previous
+            })
+          )
+
+        invocation.id
+      end)
+
+      :ok = EmbeddingsStage.compute(env, run, ["DummyText"])
+      :ok = EmbeddingsStage.resume(env, run, ["DummyText"])
+      :ok = PdStage.compute(env, run, ["DummyText"])
+
+      embeddings =
+        PanicTda.Embedding
+        |> Ash.Query.filter(invocation.run_id == ^run.id)
+        |> Ash.count!()
+
+      assert embeddings == 1_100
+
+      assert [diagram] =
+               PanicTda.PersistenceDiagram
+               |> Ash.Query.filter(run_id == ^run.id)
+               |> Ash.read!()
+
+      assert length(diagram.diagram_data.dgms) == 3
     end
   end
 
