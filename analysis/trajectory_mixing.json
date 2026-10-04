@@ -1,0 +1,1751 @@
+{
+  "export": "01a09e21_parquet",
+  "burn_in_text_states": 75,
+  "shared_min_share": 0.1,
+  "networks": {
+    "[\"Flux2Dev\",\"Gemma4\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.05290057477969446,
+        "within_run": 0.12927642506065123,
+        "same_prompt_other_run": 0.48415473178605134,
+        "other_prompt": 0.5322376331223093
+      },
+      "separation_curve": {
+        "1": 0.05290057477969446,
+        "2": 0.0609581117452658,
+        "5": 0.0753175063787547,
+        "10": 0.09340571487141765,
+        "20": 0.12337408052729244,
+        "40": 0.16658273731829273,
+        "70": 0.21174149119498054
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.21055030490081697,
+          "other_prompt": 0.5862628523077731
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.3026791555893972,
+          "other_prompt": 0.5565509435459018
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.36948914212156003,
+          "other_prompt": 0.5361360101708356
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.42198964072346834,
+          "other_prompt": 0.5306508697285683
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.4628817943331035,
+          "other_prompt": 0.5339744556510075
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.48888893617984286,
+          "other_prompt": 0.5290877883386529
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.4961910446601598,
+          "other_prompt": 0.5346004034162692
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 99.93333333333332,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 14.000000000000002,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.175,
+          "modal_microstate_share_pct": 96.96666666666667,
+          "label_changes_per_100_steps": 1.2837837837837838
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.25,
+          "modal_microstate_share_pct": 94.9,
+          "label_changes_per_100_steps": 0.8445945945945946
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 14,
+          "shared_by_prompts": 13,
+          "frames_in_prompt_shared_pct": 80.0,
+          "microstates_per_run": 1.275,
+          "modal_microstate_share_pct": 96.36666666666667,
+          "label_changes_per_100_steps": 1.2162162162162162
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 32.86666666666667,
+          "microstates_per_run": 1.375,
+          "modal_microstate_share_pct": 88.56666666666666,
+          "label_changes_per_100_steps": 0.8783783783783784
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 1,
+          "shared_by_prompts": 1,
+          "frames_in_prompt_shared_pct": 1.6666666666666667,
+          "microstates_per_run": 2.1,
+          "modal_microstate_share_pct": 70.26666666666668,
+          "label_changes_per_100_steps": 4.121621621621622
+        }
+      ]
+    },
+    "[\"Flux2Dev\",\"JoyCaption\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.040653544064061305,
+        "within_run": 0.09989897341505824,
+        "same_prompt_other_run": 0.3478018819533489,
+        "other_prompt": 0.5679060116919752
+      },
+      "separation_curve": {
+        "1": 0.040653544064061305,
+        "2": 0.047025756103851915,
+        "5": 0.05958221231926278,
+        "10": 0.07423308818001369,
+        "20": 0.09597927218063017,
+        "40": 0.128416857251497,
+        "70": 0.16512023912693674
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.19071361346197896,
+          "other_prompt": 0.61158862627243
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.252365001553574,
+          "other_prompt": 0.5998435729780633
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.2920503212080495,
+          "other_prompt": 0.5910253530368089
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3245551691684228,
+          "other_prompt": 0.5894144215610895
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.34339310928405353,
+          "other_prompt": 0.5756375070135452
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3434151282346914,
+          "other_prompt": 0.5671768981842812
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.34873235051225016,
+          "other_prompt": 0.561399402123899
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 100.0,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 56.666666666666664,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 98.5,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 97.23333333333332,
+          "label_changes_per_100_steps": 0.6756756756756757
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 13,
+          "shared_by_prompts": 6,
+          "frames_in_prompt_shared_pct": 47.4,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 99.23333333333333,
+          "label_changes_per_100_steps": 0.10135135135135136
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 0,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.0,
+          "modal_microstate_share_pct": 100.0,
+          "label_changes_per_100_steps": 0.0
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 0,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.0,
+          "modal_microstate_share_pct": 69.23333333333332,
+          "label_changes_per_100_steps": 2.837837837837838
+        }
+      ]
+    },
+    "[\"Flux2Dev\",\"Moondream3\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.027588504909372192,
+        "within_run": 0.06919307421454939,
+        "same_prompt_other_run": 0.3341396712751677,
+        "other_prompt": 0.5447719771650114
+      },
+      "separation_curve": {
+        "1": 0.027588504909372192,
+        "2": 0.03327405025970515,
+        "5": 0.04284391148532166,
+        "10": 0.05428614055972111,
+        "20": 0.06676313279844426,
+        "40": 0.08426476854741664,
+        "70": 0.11876933303585152
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.2212470168588318,
+          "other_prompt": 0.5875446349583155
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.28681048503469586,
+          "other_prompt": 0.5679513307750571
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.31064649885311335,
+          "other_prompt": 0.5563902722162856
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3304439365510984,
+          "other_prompt": 0.5551003709601703
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.3349865860903091,
+          "other_prompt": 0.5512531379061258
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3329737735983246,
+          "other_prompt": 0.5436141046863755
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.33749259880806753,
+          "other_prompt": 0.539610150531052
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 100.0,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 49.13333333333333,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 99.70000000000002,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.025,
+          "modal_microstate_share_pct": 99.96666666666665,
+          "label_changes_per_100_steps": 0.06756756756756757
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 15,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 47.5,
+          "microstates_per_run": 1.0,
+          "modal_microstate_share_pct": 100.0,
+          "label_changes_per_100_steps": 0.0
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 2,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 98.5,
+          "label_changes_per_100_steps": 0.13513513513513514
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 0,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.0,
+          "modal_microstate_share_pct": 72.06666666666666,
+          "label_changes_per_100_steps": 6.79054054054054
+        }
+      ]
+    },
+    "[\"Flux2Dev\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.0358903167917352,
+        "within_run": 0.10492644924956514,
+        "same_prompt_other_run": 0.35506743817430386,
+        "other_prompt": 0.6209406353566339
+      },
+      "separation_curve": {
+        "1": 0.0358903167917352,
+        "2": 0.04474509304747128,
+        "5": 0.05814633901752645,
+        "10": 0.07339604556142772,
+        "20": 0.09819864816703898,
+        "40": 0.13848565820702882,
+        "70": 0.1770088522715139
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.16387786456235895,
+          "other_prompt": 0.6337947199681033
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.22574032411219686,
+          "other_prompt": 0.6307372267474396
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.2526539851523831,
+          "other_prompt": 0.6312696125772841
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.29339335238045816,
+          "other_prompt": 0.6201777407113174
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.31687108991920254,
+          "other_prompt": 0.6170976943107882
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3527949195907002,
+          "other_prompt": 0.6252333062377009
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3804634597862062,
+          "other_prompt": 0.6206749056144428
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 99.7,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 59.9,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 4,
+          "frames_in_prompt_shared_pct": 95.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 98.93333333333334,
+          "label_changes_per_100_steps": 0.37162162162162166
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 97.96666666666667,
+          "label_changes_per_100_steps": 0.33783783783783783
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 45.0,
+          "microstates_per_run": 1.0,
+          "modal_microstate_share_pct": 100.0,
+          "label_changes_per_100_steps": 0.0
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 1,
+          "frames_in_prompt_shared_pct": 3.3333333333333335,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 95.43333333333332,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 2,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.075,
+          "modal_microstate_share_pct": 67.16666666666666,
+          "label_changes_per_100_steps": 4.087837837837838
+        }
+      ]
+    },
+    "[\"Flux2Klein\",\"Gemma4\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.054234795994561234,
+        "within_run": 0.12042581726769905,
+        "same_prompt_other_run": 0.3644534579084776,
+        "other_prompt": 0.6061201689685055
+      },
+      "separation_curve": {
+        "1": 0.054234795994561234,
+        "2": 0.06179643681318107,
+        "5": 0.07436529067584406,
+        "10": 0.08823218831703497,
+        "20": 0.11287273765050901,
+        "40": 0.15342922218427713,
+        "70": 0.20462553721631438
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.17091403756552048,
+          "other_prompt": 0.610529313111436
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.26086103301639507,
+          "other_prompt": 0.6053566995769973
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3132484621120493,
+          "other_prompt": 0.6070408650591808
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.34395434052062496,
+          "other_prompt": 0.613417204825486
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.3457070403732912,
+          "other_prompt": 0.6105153800456067
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.36538207123756067,
+          "other_prompt": 0.6042070340389676
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3801226945919927,
+          "other_prompt": 0.6031801735017118
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 97.2,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 49.53333333333333,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 98.26666666666668,
+          "label_changes_per_100_steps": 0.5405405405405406
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 8,
+          "frames_in_prompt_shared_pct": 90.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 98.4,
+          "label_changes_per_100_steps": 0.5067567567567568
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 14,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 65.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 98.03333333333335,
+          "label_changes_per_100_steps": 0.2702702702702703
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 9,
+          "shared_by_prompts": 3,
+          "frames_in_prompt_shared_pct": 9.466666666666667,
+          "microstates_per_run": 1.25,
+          "modal_microstate_share_pct": 92.86666666666667,
+          "label_changes_per_100_steps": 0.7094594594594595
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 9,
+          "shared_by_prompts": 2,
+          "frames_in_prompt_shared_pct": 4.533333333333333,
+          "microstates_per_run": 2.275,
+          "modal_microstate_share_pct": 66.2,
+          "label_changes_per_100_steps": 7.871621621621622
+        }
+      ]
+    },
+    "[\"Flux2Klein\",\"JoyCaption\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.039004401047141944,
+        "within_run": 0.08901451129386709,
+        "same_prompt_other_run": 0.30486187829932165,
+        "other_prompt": 0.5798898791059214
+      },
+      "separation_curve": {
+        "1": 0.039004401047141944,
+        "2": 0.04594366835428479,
+        "5": 0.05705841100334034,
+        "10": 0.06867256847362363,
+        "20": 0.08462201162688675,
+        "40": 0.11227035720729536,
+        "70": 0.13805543999983821
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.1901300716088783,
+          "other_prompt": 0.6275927389645978
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.25093210666407184,
+          "other_prompt": 0.6187647579229317
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.27007923453649496,
+          "other_prompt": 0.6125990613008236
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.27367927164804834,
+          "other_prompt": 0.5974686247066333
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.28530135738733814,
+          "other_prompt": 0.5862015243144615
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.30267179365469876,
+          "other_prompt": 0.5795200447892569
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3249179718297889,
+          "other_prompt": 0.5738243959423898
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 99.83333333333333,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 57.233333333333334,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 4,
+          "frames_in_prompt_shared_pct": 95.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 98.79999999999998,
+          "label_changes_per_100_steps": 0.10135135135135136
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 98.79999999999998,
+          "label_changes_per_100_steps": 0.10135135135135136
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 15,
+          "shared_by_prompts": 6,
+          "frames_in_prompt_shared_pct": 42.5,
+          "microstates_per_run": 1.025,
+          "modal_microstate_share_pct": 98.83333333333333,
+          "label_changes_per_100_steps": 0.033783783783783786
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 96.83333333333334,
+          "label_changes_per_100_steps": 0.10135135135135136
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 0,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.075,
+          "modal_microstate_share_pct": 68.43333333333334,
+          "label_changes_per_100_steps": 3.6486486486486487
+        }
+      ]
+    },
+    "[\"Flux2Klein\",\"Moondream3\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.02970080146660921,
+        "within_run": 0.09155906538033795,
+        "same_prompt_other_run": 0.41243941230102266,
+        "other_prompt": 0.5565938294217199
+      },
+      "separation_curve": {
+        "1": 0.02970080146660921,
+        "2": 0.03751155869942891,
+        "5": 0.051447792420192866,
+        "10": 0.06555725245984295,
+        "20": 0.0866806623727211,
+        "40": 0.12097651380998453,
+        "70": 0.15738837056358176
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.2353651980044152,
+          "other_prompt": 0.583405484666929
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.2921402347352949,
+          "other_prompt": 0.567097034534704
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3463284369141351,
+          "other_prompt": 0.5621121369286061
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.37414969903578776,
+          "other_prompt": 0.5642439570261032
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.39930110662740825,
+          "other_prompt": 0.5602654420536162
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.41869098905969837,
+          "other_prompt": 0.5567411867407903
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.41932182200625034,
+          "other_prompt": 0.5534179431407685
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 100.0,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 39.7,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.15,
+          "modal_microstate_share_pct": 95.5,
+          "label_changes_per_100_steps": 0.9121621621621622
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 98.33333333333331,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 15,
+          "shared_by_prompts": 11,
+          "frames_in_prompt_shared_pct": 68.6,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 96.23333333333332,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 2,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 97.73333333333333,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 2,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.075,
+          "modal_microstate_share_pct": 72.10000000000001,
+          "label_changes_per_100_steps": 5.033783783783783
+        }
+      ]
+    },
+    "[\"Flux2Klein\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.04007255746241632,
+        "within_run": 0.1148180273156671,
+        "same_prompt_other_run": 0.3843427744856467,
+        "other_prompt": 0.629678578813554
+      },
+      "separation_curve": {
+        "1": 0.04007255746241632,
+        "2": 0.05030832688505446,
+        "5": 0.0664165620991868,
+        "10": 0.08370663250009482,
+        "20": 0.1108037396893686,
+        "40": 0.14824125129538182,
+        "70": 0.18416250922920988
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.19373125719194587,
+          "other_prompt": 0.6324953301389561
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.25611370625125335,
+          "other_prompt": 0.6315428143448956
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.2998392192198904,
+          "other_prompt": 0.6357336150266071
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3301556358633627,
+          "other_prompt": 0.6295537186528067
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.36594933488167924,
+          "other_prompt": 0.6355393223270535
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3905406777030332,
+          "other_prompt": 0.6308968807284641
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3892554096760178,
+          "other_prompt": 0.6234696730755085
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 100.0,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 51.63333333333333,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 98.16666666666667,
+          "label_changes_per_100_steps": 0.7770270270270271
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 8,
+          "frames_in_prompt_shared_pct": 90.0,
+          "microstates_per_run": 1.1,
+          "modal_microstate_share_pct": 97.96666666666667,
+          "label_changes_per_100_steps": 0.2702702702702703
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 8,
+          "frames_in_prompt_shared_pct": 51.666666666666664,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 98.69999999999999,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 8,
+          "shared_by_prompts": 2,
+          "frames_in_prompt_shared_pct": 5.0,
+          "microstates_per_run": 1.25,
+          "modal_microstate_share_pct": 93.83333333333333,
+          "label_changes_per_100_steps": 0.6756756756756757
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 1,
+          "frames_in_prompt_shared_pct": 0.6,
+          "microstates_per_run": 2.15,
+          "modal_microstate_share_pct": 68.26666666666668,
+          "label_changes_per_100_steps": 4.02027027027027
+        }
+      ]
+    },
+    "[\"SD35Medium\",\"Gemma4\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.06222137379526729,
+        "within_run": 0.16438567374662322,
+        "same_prompt_other_run": 0.4051462706103893,
+        "other_prompt": 0.5804379409391764
+      },
+      "separation_curve": {
+        "1": 0.06222137379526729,
+        "2": 0.0740902772888314,
+        "5": 0.09630764885968036,
+        "10": 0.1200928423921532,
+        "20": 0.1566667183550978,
+        "40": 0.21296198536335892,
+        "70": 0.26707138995725943
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.21544689788585178,
+          "other_prompt": 0.6022129287351122
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.31171522872953733,
+          "other_prompt": 0.5798910642787637
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3596856608266096,
+          "other_prompt": 0.593755551398214
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3718160019466105,
+          "other_prompt": 0.5875312885915468
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.39531953343608917,
+          "other_prompt": 0.584461351161052
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.38859149811696353,
+          "other_prompt": 0.5832012370717552
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.4087020481538609,
+          "other_prompt": 0.5725035091134172
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 89.16666666666667,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 37.7,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.3,
+          "modal_microstate_share_pct": 96.63333333333334,
+          "label_changes_per_100_steps": 1.4864864864864866
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 8,
+          "frames_in_prompt_shared_pct": 90.03333333333333,
+          "microstates_per_run": 1.325,
+          "modal_microstate_share_pct": 92.43333333333332,
+          "label_changes_per_100_steps": 0.6756756756756757
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 14,
+          "shared_by_prompts": 9,
+          "frames_in_prompt_shared_pct": 59.8,
+          "microstates_per_run": 1.35,
+          "modal_microstate_share_pct": 92.86666666666667,
+          "label_changes_per_100_steps": 0.7770270270270271
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 8,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 23.533333333333335,
+          "microstates_per_run": 1.55,
+          "modal_microstate_share_pct": 89.8,
+          "label_changes_per_100_steps": 1.0810810810810811
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 14.9,
+          "microstates_per_run": 2.55,
+          "modal_microstate_share_pct": 59.13333333333334,
+          "label_changes_per_100_steps": 6.317567567567567
+        }
+      ]
+    },
+    "[\"SD35Medium\",\"JoyCaption\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.04610297522947784,
+        "within_run": 0.1146588467246316,
+        "same_prompt_other_run": 0.4036165908575916,
+        "other_prompt": 0.6226571091402078
+      },
+      "separation_curve": {
+        "1": 0.04610297522947784,
+        "2": 0.056136579389459755,
+        "5": 0.07212296078114794,
+        "10": 0.08808288373817084,
+        "20": 0.10956037817695811,
+        "40": 0.14430563505194705,
+        "70": 0.18716034939141893
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.23005773593602039,
+          "other_prompt": 0.6349830533544897
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.2829836588838516,
+          "other_prompt": 0.6242634481187218
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3501519719602412,
+          "other_prompt": 0.6310024398350081
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3701008694899654,
+          "other_prompt": 0.628112349425637
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.3844477924947705,
+          "other_prompt": 0.623719075669795
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.403300292818377,
+          "other_prompt": 0.6199362639776826
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.4242397497850844,
+          "other_prompt": 0.6237812812070398
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 97.73333333333333,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 46.96666666666667,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.175,
+          "modal_microstate_share_pct": 98.86666666666667,
+          "label_changes_per_100_steps": 0.5743243243243243
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 99.13333333333334,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 14,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 65.0,
+          "microstates_per_run": 1.1,
+          "modal_microstate_share_pct": 98.53333333333335,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 7,
+          "shared_by_prompts": 1,
+          "frames_in_prompt_shared_pct": 4.233333333333333,
+          "microstates_per_run": 1.2,
+          "modal_microstate_share_pct": 94.93333333333334,
+          "label_changes_per_100_steps": 0.33783783783783783
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 6,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.175,
+          "modal_microstate_share_pct": 67.56666666666666,
+          "label_changes_per_100_steps": 4.864864864864865
+        }
+      ]
+    },
+    "[\"SD35Medium\",\"Moondream3\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.05012538821955142,
+        "within_run": 0.13906026182881687,
+        "same_prompt_other_run": 0.46829533646904425,
+        "other_prompt": 0.5469845282978882
+      },
+      "separation_curve": {
+        "1": 0.05012538821955142,
+        "2": 0.06359154082526848,
+        "5": 0.08424334872568416,
+        "10": 0.10623825575472953,
+        "20": 0.13468666375598315,
+        "40": 0.17650247491096566,
+        "70": 0.23033717295184336
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.23669730264069413,
+          "other_prompt": 0.5750091782531794
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.3194389207335993,
+          "other_prompt": 0.572478643345858
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.36614114282036614,
+          "other_prompt": 0.5683932805203591
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.4059926414898758,
+          "other_prompt": 0.5502946188540908
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.4448755648085185,
+          "other_prompt": 0.5443836328975215
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.4704129481920116,
+          "other_prompt": 0.5485196763169956
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.47985688688637546,
+          "other_prompt": 0.548575027107587
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 99.63333333333333,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 31.766666666666666,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.15,
+          "modal_microstate_share_pct": 98.26666666666665,
+          "label_changes_per_100_steps": 0.7094594594594595
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 10,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.2,
+          "modal_microstate_share_pct": 95.93333333333334,
+          "label_changes_per_100_steps": 0.4391891891891892
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 12,
+          "frames_in_prompt_shared_pct": 74.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 96.73333333333332,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 7,
+          "shared_by_prompts": 4,
+          "frames_in_prompt_shared_pct": 14.333333333333334,
+          "microstates_per_run": 1.25,
+          "modal_microstate_share_pct": 94.23333333333332,
+          "label_changes_per_100_steps": 0.7432432432432433
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 6,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 4.566666666666666,
+          "microstates_per_run": 2.25,
+          "modal_microstate_share_pct": 68.76666666666667,
+          "label_changes_per_100_steps": 4.054054054054054
+        }
+      ]
+    },
+    "[\"SD35Medium\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.04992642963659752,
+        "within_run": 0.1352288707469455,
+        "same_prompt_other_run": 0.4409786495052762,
+        "other_prompt": 0.6373531451543597
+      },
+      "separation_curve": {
+        "1": 0.04992642963659752,
+        "2": 0.06157956245242597,
+        "5": 0.08062113661642452,
+        "10": 0.10215634868591263,
+        "20": 0.13184678011233628,
+        "40": 0.16680178221192948,
+        "70": 0.23018857874458662
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.2394987713831008,
+          "other_prompt": 0.6567052970034493
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.3441522222894491,
+          "other_prompt": 0.6573082942665496
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.360548302649356,
+          "other_prompt": 0.64938218950041
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.37860303753513425,
+          "other_prompt": 0.6392487338522312
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.4257621913535347,
+          "other_prompt": 0.6400901257336935
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.45023822939502534,
+          "other_prompt": 0.638410246663191
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.4482247493720216,
+          "other_prompt": 0.6330921392793214
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 97.89999999999999,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 45.1,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 99.36666666666667,
+          "label_changes_per_100_steps": 0.5405405405405406
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.15,
+          "modal_microstate_share_pct": 97.89999999999999,
+          "label_changes_per_100_steps": 0.5067567567567568
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 9,
+          "frames_in_prompt_shared_pct": 55.06666666666667,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 98.23333333333333,
+          "label_changes_per_100_steps": 0.6418918918918919
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 1,
+          "frames_in_prompt_shared_pct": 3.066666666666667,
+          "microstates_per_run": 1.225,
+          "modal_microstate_share_pct": 96.29999999999998,
+          "label_changes_per_100_steps": 0.8445945945945946
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.15,
+          "modal_microstate_share_pct": 70.19999999999999,
+          "label_changes_per_100_steps": 4.054054054054054
+        }
+      ]
+    },
+    "[\"ZImageTurbo\",\"Gemma4\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.04905659687860476,
+        "within_run": 0.098984837361458,
+        "same_prompt_other_run": 0.39254133822754256,
+        "other_prompt": 0.6168429417284409
+      },
+      "separation_curve": {
+        "1": 0.04905659687860476,
+        "2": 0.05555481837539739,
+        "5": 0.06645498074367448,
+        "10": 0.07927391234987624,
+        "20": 0.09507771593352887,
+        "40": 0.12046609551224888,
+        "70": 0.16425131252914127
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.20306728468284335,
+          "other_prompt": 0.6199220589426847
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.27672860565225194,
+          "other_prompt": 0.6204636439722503
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3046949881139395,
+          "other_prompt": 0.617455792004425
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.33939342508394077,
+          "other_prompt": 0.6204450592625145
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.379229184195102,
+          "other_prompt": 0.6169462999662537
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3917368867023846,
+          "other_prompt": 0.6164595239408763
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.406833840638809,
+          "other_prompt": 0.6162914663230408
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 95.76666666666667,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 48.36666666666667,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.25,
+          "modal_microstate_share_pct": 96.4,
+          "label_changes_per_100_steps": 0.9797297297297298
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 9,
+          "frames_in_prompt_shared_pct": 95.0,
+          "microstates_per_run": 1.175,
+          "modal_microstate_share_pct": 98.00000000000001,
+          "label_changes_per_100_steps": 1.0135135135135136
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 13,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 53.86666666666667,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 97.76666666666667,
+          "label_changes_per_100_steps": 0.2364864864864865
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 3,
+          "frames_in_prompt_shared_pct": 8.166666666666666,
+          "microstates_per_run": 1.2,
+          "modal_microstate_share_pct": 96.26666666666665,
+          "label_changes_per_100_steps": 0.472972972972973
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 2,
+          "frames_in_prompt_shared_pct": 5.233333333333333,
+          "microstates_per_run": 2.15,
+          "modal_microstate_share_pct": 71.33333333333333,
+          "label_changes_per_100_steps": 12.094594594594595
+        }
+      ]
+    },
+    "[\"ZImageTurbo\",\"JoyCaption\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.034857027354833196,
+        "within_run": 0.07662291748892931,
+        "same_prompt_other_run": 0.32973878019884206,
+        "other_prompt": 0.5750171562018539
+      },
+      "separation_curve": {
+        "1": 0.034857027354833196,
+        "2": 0.040037642341812035,
+        "5": 0.048440614779631276,
+        "10": 0.0574055962176474,
+        "20": 0.07130214036431387,
+        "40": 0.09692693583766039,
+        "70": 0.12872407530131094
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.17800598560232891,
+          "other_prompt": 0.6172715673301844
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.23037701533211888,
+          "other_prompt": 0.5999498852701001
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.2742241780944212,
+          "other_prompt": 0.5940209587043827
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.295577064966783,
+          "other_prompt": 0.5813973447795788
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.32119492981066433,
+          "other_prompt": 0.5780449064895296
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.33630663303962194,
+          "other_prompt": 0.5741702589087111
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3289125040747406,
+          "other_prompt": 0.5729447091369751
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 98.83333333333333,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 61.86666666666667,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 3,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.025,
+          "modal_microstate_share_pct": 99.93333333333332,
+          "label_changes_per_100_steps": 0.06756756756756757
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 9,
+          "frames_in_prompt_shared_pct": 95.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 98.86666666666667,
+          "label_changes_per_100_steps": 0.06756756756756757
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 6,
+          "frames_in_prompt_shared_pct": 40.0,
+          "microstates_per_run": 1.0,
+          "modal_microstate_share_pct": 100.0,
+          "label_changes_per_100_steps": 0.0
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.125,
+          "modal_microstate_share_pct": 95.89999999999999,
+          "label_changes_per_100_steps": 0.37162162162162166
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 2,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.075,
+          "modal_microstate_share_pct": 72.96666666666667,
+          "label_changes_per_100_steps": 4.695945945945946
+        }
+      ]
+    },
+    "[\"ZImageTurbo\",\"Moondream3\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.03140117152336896,
+        "within_run": 0.0774906620666237,
+        "same_prompt_other_run": 0.3096564776608076,
+        "other_prompt": 0.5667404555081222
+      },
+      "separation_curve": {
+        "1": 0.03140117152336896,
+        "2": 0.03723861085086102,
+        "5": 0.046494454736864775,
+        "10": 0.05729251240720738,
+        "20": 0.07368902567155633,
+        "40": 0.09863601353409317,
+        "70": 0.13032505889719195
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.18722491555550036,
+          "other_prompt": 0.5777131541431245
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.21598400122469377,
+          "other_prompt": 0.5669581309254161
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.26133882719713286,
+          "other_prompt": 0.5678111275974982
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.2857114479055987,
+          "other_prompt": 0.5631816564729517
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.30718823777704035,
+          "other_prompt": 0.5657558710447612
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.3075354137034797,
+          "other_prompt": 0.5675835292925125
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3094162450048526,
+          "other_prompt": 0.5669092367574826
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 96.06666666666666,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 52.43333333333333,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 4,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.1,
+          "modal_microstate_share_pct": 98.76666666666667,
+          "label_changes_per_100_steps": 0.5067567567567568
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 85.0,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 99.8,
+          "label_changes_per_100_steps": 0.16891891891891891
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 13,
+          "shared_by_prompts": 7,
+          "frames_in_prompt_shared_pct": 51.96666666666667,
+          "microstates_per_run": 1.075,
+          "modal_microstate_share_pct": 99.33333333333334,
+          "label_changes_per_100_steps": 0.13513513513513514
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 6,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.15,
+          "modal_microstate_share_pct": 94.93333333333334,
+          "label_changes_per_100_steps": 0.20270270270270271
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 8,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.25,
+          "modal_microstate_share_pct": 70.23333333333333,
+          "label_changes_per_100_steps": 7.7027027027027035
+        }
+      ]
+    },
+    "[\"ZImageTurbo\",\"Qwen25VL\"]": {
+      "runs": 40,
+      "text_states": 150,
+      "distances": {
+        "step": 0.033326641913162466,
+        "within_run": 0.07584664684797801,
+        "same_prompt_other_run": 0.3764153564153907,
+        "other_prompt": 0.6243250388289874
+      },
+      "separation_curve": {
+        "1": 0.033326641913162466,
+        "2": 0.04032886195201016,
+        "5": 0.04986410149027066,
+        "10": 0.059441972234028195,
+        "20": 0.07404685771141249,
+        "40": 0.09400789545369041,
+        "70": 0.11013657620212797
+      },
+      "convergence": [
+        {
+          "text_states": "0-9",
+          "same_prompt_other_run": 0.2137802757641362,
+          "other_prompt": 0.6389766058535176
+        },
+        {
+          "text_states": "10-24",
+          "same_prompt_other_run": 0.2917028383572905,
+          "other_prompt": 0.6322339871145299
+        },
+        {
+          "text_states": "25-49",
+          "same_prompt_other_run": 0.3260482040781873,
+          "other_prompt": 0.6294798746366463
+        },
+        {
+          "text_states": "50-74",
+          "same_prompt_other_run": 0.3546132540257433,
+          "other_prompt": 0.6277777634010303
+        },
+        {
+          "text_states": "75-99",
+          "same_prompt_other_run": 0.35999550172396233,
+          "other_prompt": 0.6246008197706826
+        },
+        {
+          "text_states": "100-124",
+          "same_prompt_other_run": 0.38435131709895665,
+          "other_prompt": 0.6230485718887544
+        },
+        {
+          "text_states": "125-149",
+          "same_prompt_other_run": 0.3829439383406587,
+          "other_prompt": 0.6251466607755257
+        }
+      ],
+      "nearest_neighbour": {
+        "nearest_is_own_run_pct": 95.63333333333334,
+        "own_run_chance_pct": 2.4674891630543514,
+        "nearest_other_run_is_same_prompt_pct": 53.733333333333334,
+        "same_prompt_chance_pct": 2.5641025641025643
+      },
+      "sharing": [
+        {
+          "microstates": 5,
+          "shared_by_runs": 5,
+          "shared_by_prompts": 5,
+          "frames_in_prompt_shared_pct": 100.0,
+          "microstates_per_run": 1.1,
+          "modal_microstate_share_pct": 99.23333333333333,
+          "label_changes_per_100_steps": 0.6081081081081081
+        },
+        {
+          "microstates": 10,
+          "shared_by_runs": 10,
+          "shared_by_prompts": 9,
+          "frames_in_prompt_shared_pct": 95.0,
+          "microstates_per_run": 1.05,
+          "modal_microstate_share_pct": 99.3,
+          "label_changes_per_100_steps": 0.10135135135135136
+        },
+        {
+          "microstates": 20,
+          "shared_by_runs": 16,
+          "shared_by_prompts": 8,
+          "frames_in_prompt_shared_pct": 51.833333333333336,
+          "microstates_per_run": 1.025,
+          "modal_microstate_share_pct": 99.33333333333334,
+          "label_changes_per_100_steps": 0.033783783783783786
+        },
+        {
+          "microstates": 40,
+          "shared_by_runs": 6,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 1.15,
+          "modal_microstate_share_pct": 94.96666666666667,
+          "label_changes_per_100_steps": 0.2702702702702703
+        },
+        {
+          "microstates": 80,
+          "shared_by_runs": 9,
+          "shared_by_prompts": 0,
+          "frames_in_prompt_shared_pct": 0.0,
+          "microstates_per_run": 2.25,
+          "modal_microstate_share_pct": 65.23333333333333,
+          "label_changes_per_100_steps": 12.533783783783784
+        }
+      ]
+    }
+  }
+}
