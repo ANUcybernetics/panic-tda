@@ -1,0 +1,1039 @@
+{
+  "experiment": "01a09e21",
+  "runs": 640,
+  "images": {
+    "images": 96000,
+    "decode_failures": 0,
+    "dimensions": {
+      "1024x1024": 96000
+    },
+    "modes": {
+      "RGB": 96000
+    },
+    "flat": {
+      "threshold_luma_std": 2.0,
+      "total": 224,
+      "runs": 3,
+      "by_kind": {
+        "colour": 105,
+        "black": 119
+      },
+      "by_network": {
+        "[\"Flux2Dev\",\"Gemma4\"]": 119,
+        "[\"SD35Medium\",\"Gemma4\"]": 105
+      },
+      "caption_does_not_ask_for_it": []
+    },
+    "pure_black": {
+      "total": 1,
+      "runs": 1,
+      "by_network": {
+        "[\"Flux2Dev\",\"Gemma4\"]": 1
+      }
+    },
+    "first_flat_image_per_run": [
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "prompt": "a glass bottle beside a candle",
+        "run_id": "01a09e21-a6e1-7e2c-a9b4-b2c8c234e9d1",
+        "id": "01a0e33f-67f8-79d8-9429-cc36f75806ba",
+        "sn": 62,
+        "kind": "black",
+        "mean": 0.286848783493042,
+        "caption_in": "I'm sorry, but the image you provided is almost entirely black, with a very small, dark, horizontal bar near the center.\n\nDue to the extreme darkness and lack of detail in the visible area, I cannot provide a meaningful description of the image content. It appears to be a mostly black screen."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "prompt": "a market stall displaying fruit, flowers, and handmade crafts",
+        "run_id": "01a09e21-a654-7f47-8c8b-b8d9ccf7dc5b",
+        "id": "01a0a4b4-7056-7764-810d-f7835873fbd3",
+        "sn": 62,
+        "kind": "colour",
+        "mean": 190.05372619628906,
+        "caption_in": "This is a solid, vibrant **lime green** image.\n\nIt appears to have a very fine, subtle **horizontal line texture** or grain across the entire surface, giving it a slightly digital or textured look rather than being perfectly smooth.\n\nOverall, it is a bright, uniform field of green color."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "prompt": "a city slowly turning into a forest",
+        "run_id": "01a09e21-a65a-7dc7-ad41-eda7a9b3d087",
+        "id": "01a0a50a-77cf-7853-8344-e34491595911",
+        "sn": 102,
+        "kind": "colour",
+        "mean": 200.05902099609375,
+        "caption_in": "This is a solid, vibrant **lime green** image.\n\nIt has a subtle **horizontal line pattern** or texture overlaid on the color, giving it a slightly ribbed or textured appearance, rather than being a perfectly flat color.\n\nOverall, it is a bright, uniform field of neon or electric green."
+      }
+    ],
+    "byte_identical": {
+      "groups": 0,
+      "images": 0,
+      "groups_that_are_not_flat": 0,
+      "groups_spanning_runs": 0
+    },
+    "by_model": [
+      {
+        "model": "Flux2Dev",
+        "images": 24000,
+        "luma_median": 117.78364944458008,
+        "dark_pct": 1.3166666666666667,
+        "flat_pct": 0.49583333333333335,
+        "roughness_median": 2.6567524671554565,
+        "roughness_p999": 17.876556396484375,
+        "roughness_max": 35.739044189453125,
+        "bytes_median": 29881.0
+      },
+      {
+        "model": "Flux2Klein",
+        "images": 24000,
+        "luma_median": 135.9967803955078,
+        "dark_pct": 0.004166666666666667,
+        "flat_pct": 0.0,
+        "roughness_median": 5.003322601318359,
+        "roughness_p999": 21.359651565551758,
+        "roughness_max": 23.973888397216797,
+        "bytes_median": 57445.0
+      },
+      {
+        "model": "SD35Medium",
+        "images": 24000,
+        "luma_median": 123.89120864868164,
+        "dark_pct": 0.2375,
+        "flat_pct": 0.43750000000000006,
+        "roughness_median": 3.498055338859558,
+        "roughness_p999": 30.804107666015625,
+        "roughness_max": 46.17578125,
+        "bytes_median": 42466.0
+      },
+      {
+        "model": "ZImageTurbo",
+        "images": 24000,
+        "luma_median": 132.58395385742188,
+        "dark_pct": 0.11666666666666668,
+        "flat_pct": 0.0,
+        "roughness_median": 3.4615308046340942,
+        "roughness_p999": 17.478727340698242,
+        "roughness_max": 19.559993743896484,
+        "bytes_median": 42494.0
+      }
+    ],
+    "luma_and_saturation_by_hundred_steps": [
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 81.20902943991497,
+        "saturation": 60.72605849599838
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 74.10209651060053,
+        "saturation": 64.02469953155517
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 75.69429728906788,
+        "saturation": 64.32841130828858
+      },
+      {
+        "network": "[\"Flux2Dev\",\"JoyCaption\"]",
+        "third": 0,
+        "luma": 132.33557306289674,
+        "saturation": 59.20227372312546
+      },
+      {
+        "network": "[\"Flux2Dev\",\"JoyCaption\"]",
+        "third": 1,
+        "luma": 135.92638111686708,
+        "saturation": 61.49260271024704
+      },
+      {
+        "network": "[\"Flux2Dev\",\"JoyCaption\"]",
+        "third": 2,
+        "luma": 140.37597010421752,
+        "saturation": 58.246718622684476
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 132.25509375810623,
+        "saturation": 47.2371421380043
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 137.69888727760315,
+        "saturation": 55.19995815086365
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 135.79974588394165,
+        "saturation": 59.87864101648331
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Qwen25VL\"]",
+        "third": 0,
+        "luma": 113.84302434253692,
+        "saturation": 55.506720038414
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Qwen25VL\"]",
+        "third": 1,
+        "luma": 111.4954195394516,
+        "saturation": 55.59458604001999
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Qwen25VL\"]",
+        "third": 2,
+        "luma": 111.87659333992005,
+        "saturation": 56.113477158069614
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 118.54567098140717,
+        "saturation": 37.48416393136978
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 117.58575633716583,
+        "saturation": 43.538331480026244
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 118.3828589553833,
+        "saturation": 45.78421349191666
+      },
+      {
+        "network": "[\"Flux2Klein\",\"JoyCaption\"]",
+        "third": 0,
+        "luma": 141.15223987960815,
+        "saturation": 34.82671007061005
+      },
+      {
+        "network": "[\"Flux2Klein\",\"JoyCaption\"]",
+        "third": 1,
+        "luma": 147.96949684906005,
+        "saturation": 37.53622336006165
+      },
+      {
+        "network": "[\"Flux2Klein\",\"JoyCaption\"]",
+        "third": 2,
+        "luma": 148.99358211898803,
+        "saturation": 36.83577625083923
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 140.5021970176697,
+        "saturation": 32.965078934192654
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 143.82261050605774,
+        "saturation": 29.254902661800383
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 145.54975996017455,
+        "saturation": 28.00399762773514
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Qwen25VL\"]",
+        "third": 0,
+        "luma": 128.28260705184937,
+        "saturation": 33.83091056537628
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Qwen25VL\"]",
+        "third": 1,
+        "luma": 134.10589082717897,
+        "saturation": 36.80614846992493
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Qwen25VL\"]",
+        "third": 2,
+        "luma": 132.6231011695862,
+        "saturation": 36.61991655015945
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 104.20809822368622,
+        "saturation": 62.120408421516416
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 101.18209853506089,
+        "saturation": 93.87710089349747
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 97.62478523969651,
+        "saturation": 86.53944162797927
+      },
+      {
+        "network": "[\"SD35Medium\",\"JoyCaption\"]",
+        "third": 0,
+        "luma": 123.51639931201935,
+        "saturation": 69.04990920209885
+      },
+      {
+        "network": "[\"SD35Medium\",\"JoyCaption\"]",
+        "third": 1,
+        "luma": 131.57399847507477,
+        "saturation": 86.72719112634658
+      },
+      {
+        "network": "[\"SD35Medium\",\"JoyCaption\"]",
+        "third": 2,
+        "luma": 134.20555236291887,
+        "saturation": 94.54515044927597
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 134.30973338222503,
+        "saturation": 68.50508173370362
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 141.595029211998,
+        "saturation": 83.91081058502198
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 147.03756735038758,
+        "saturation": 89.82560051250458
+      },
+      {
+        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
+        "third": 0,
+        "luma": 122.71693033885956,
+        "saturation": 55.58319840717316
+      },
+      {
+        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
+        "third": 1,
+        "luma": 126.99349337291717,
+        "saturation": 68.83058636283874
+      },
+      {
+        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
+        "third": 2,
+        "luma": 123.90542023277283,
+        "saturation": 78.03220347309113
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 114.83019397640228,
+        "saturation": 43.274725939273836
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 116.27997195339204,
+        "saturation": 52.63392784023285
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 112.60131454753876,
+        "saturation": 53.49013810396195
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"JoyCaption\"]",
+        "third": 0,
+        "luma": 133.64042639541626,
+        "saturation": 36.52835079336166
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"JoyCaption\"]",
+        "third": 1,
+        "luma": 135.46221884536743,
+        "saturation": 37.69694319200516
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"JoyCaption\"]",
+        "third": 2,
+        "luma": 138.4141630897522,
+        "saturation": 37.78340369510651
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 141.7917022972107,
+        "saturation": 31.543630849838255
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 147.144219039917,
+        "saturation": 32.011992255687716
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 149.10752519035339,
+        "saturation": 32.49384370660782
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+        "third": 0,
+        "luma": 126.83798744010926,
+        "saturation": 40.867410271644594
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+        "third": 1,
+        "luma": 130.77008082580568,
+        "saturation": 42.60830344438553
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+        "third": 2,
+        "luma": 132.5624849395752,
+        "saturation": 42.8657172369957
+      }
+    ]
+  },
+  "captions": {
+    "captions": 96000,
+    "empty_placeholder": 0,
+    "by_model": [
+      {
+        "model": "Gemma4",
+        "captions": 24000,
+        "words_median": 214.0,
+        "words_p99": 344.0,
+        "words_max": 421,
+        "chars_max": 2704,
+        "chars_min": 94,
+        "unterminated": 1,
+        "looping": 0,
+        "special_tokens": 0,
+        "refusals": 4,
+        "with_non_latin_script": 14,
+        "addresses_the_user": 117,
+        "with_markdown_bold": 22939
+      },
+      {
+        "model": "JoyCaption",
+        "captions": 24000,
+        "words_median": 177.0,
+        "words_p99": 207.0,
+        "words_max": 261,
+        "chars_max": 1547,
+        "chars_min": 471,
+        "unterminated": 0,
+        "looping": 0,
+        "special_tokens": 0,
+        "refusals": 0,
+        "with_non_latin_script": 0,
+        "addresses_the_user": 0,
+        "with_markdown_bold": 0
+      },
+      {
+        "model": "Moondream3",
+        "captions": 24000,
+        "words_median": 50.0,
+        "words_p99": 89.0,
+        "words_max": 773,
+        "chars_max": 5140,
+        "chars_min": 94,
+        "unterminated": 10,
+        "looping": 11,
+        "special_tokens": 2,
+        "refusals": 0,
+        "with_non_latin_script": 22,
+        "addresses_the_user": 0,
+        "with_markdown_bold": 0
+      },
+      {
+        "model": "Qwen25VL",
+        "captions": 24000,
+        "words_median": 87.0,
+        "words_p99": 156.0,
+        "words_max": 308,
+        "chars_max": 1842,
+        "chars_min": 122,
+        "unterminated": 7,
+        "looping": 0,
+        "special_tokens": 0,
+        "refusals": 0,
+        "with_non_latin_script": 43,
+        "addresses_the_user": 0,
+        "with_markdown_bold": 104
+      }
+    ],
+    "unterminated_examples": [
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09eaa-d36f-76c5-8f05-6af5b9a09353",
+        "sn": 51,
+        "words": 63,
+        "text": "\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\ufffd"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a0a0a1-1692-7fd1-b2dd-66ceb07ea5fd",
+        "sn": 241,
+        "words": 368,
+        "text": " POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a0a109-7a52-7ce5-a098-6f5ccef07f7c",
+        "sn": 281,
+        "words": 209,
+        "text": ": \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a0a10f-2804-7fe7-ac74-4e66886f37e1",
+        "sn": 283,
+        "words": 368,
+        "text": " Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
+        "id": "01a0a3b2-4de6-79a4-8eec-8d56f0e28ef3",
+        "sn": 243,
+        "words": 6,
+        "text": "The image shows two small,\u71c3\u70e7\u7684\u8721\u70db\uff08burning candles\uff09\u5305\u88f9\u5728\u9488\u7ec7\u5e03\u6599\u4e2d\u3002\u5de6\u8fb9\u7684\u8721\u70db\u88ab\u5305\u88f9\u5728\u4e00\u4e2a\u7d2b\u8272\u548c\u7ea2\u8272\u76f8\u95f4\u7684\u9488\u7ec7\u5e03\u6599\u4e2d\uff0c\u53f3\u8fb9\u7684\u8721\u70db\u5219\u88ab\u5305\u88f9\u5728\u4e00\u4e2a\u7eff\u8272\u7684\u9488\u7ec7\u5e03\u6599\u4e2d\u3002\u80cc\u666f\u662f\u7eff\u8272\u7684\uff0c\u653e\u5728\u4e00\u4e2a\u6d45\u68d5\u8272\u7684\u8868\u9762\u4e0a\u3002"
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+        "id": "01a0ac49-7f0b-76bc-ab1b-20c054821ec7",
+        "sn": 15,
+        "words": 82,
+        "text": "a sense of peace and mindfulness. The reflection of the person and the rock is visible in the water, adding to the overall tranquility of the scene.\u8fdc\u5904\u53ef\u4ee5\u770b\u5230\u5c71\u8109\u7684\u8f6e\u5ed3\u3002"
+      }
+    ],
+    "longest": [
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "id": "01a0a43c-8afa-72f0-9f64-a24f6d010322",
+        "sn": 7,
+        "words": 405,
+        "text": "own a mossy, misty forest path toward a gigantic, glowing, and mysterious piece of ancient technology, creating a powerful sense of awe, dread, and discovery.**"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "id": "01a0a452-34bf-7ab7-87fe-80098d282acf",
+        "sn": 17,
+        "words": 418,
+        "text": "y.\n\nIn summary, the image is a powerful piece of dark fantasy art depicting a luminous, cosmic gateway embedded within the roots of an ancient, mystical forest."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "id": "01a0a622-d0d0-71fc-8f7e-b1695a014026",
+        "sn": 233,
+        "words": 416,
+        "text": "nd dread. The composition is highly dramatic, using contrast (light moon vs. dark tree) and strong leading lines (tracks) to create a powerful visual narrative."
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "id": "01a0b484-e5eb-7c14-8529-f14277b1969e",
+        "sn": 99,
+        "words": 773,
+        "text": " for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading"
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0df67-3f81-710a-baa6-f4aa0a6172c8",
+        "sn": 1,
+        "words": 417,
+        "text": " of high-concept fantasy art depicting a sophisticated, weathered robot interacting with a burst of ethereal, bioluminescent life within a deep, misty forest.**"
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0e3ff-be53-7a5b-8823-cd6c0c5b0f85",
+        "sn": 75,
+        "words": 421,
+        "text": " is a highly stylized, high-contrast piece of dramatic digital art depicting a small, ordered element moving toward an immense, fiery, and chaotic power source."
+      }
+    ],
+    "looping": {
+      "rule": ">= 60 words and < 0.5 distinct 4-grams",
+      "total": 11,
+      "runs": 4,
+      "by_network": {
+        "[\"Flux2Klein\",\"Moondream3\"]": 6,
+        "[\"SD35Medium\",\"Moondream3\"]": 3,
+        "[\"ZImageTurbo\",\"Moondream3\"]": 2
+      },
+      "examples": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a0a0a1-1692-7fd1-b2dd-66ceb07ea5fd",
+          "sn": 241,
+          "words": 368,
+          "text": " POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA POLICIA"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a0a109-7a52-7ce5-a098-6f5ccef07f7c",
+          "sn": 281,
+          "words": 209,
+          "text": ": \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b\u0103u C\u0103: \"Lucanu\u021b"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a0a10f-2804-7fe7-ac74-4e66886f37e1",
+          "sn": 283,
+          "words": 368,
+          "text": " Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana Lubiana"
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "id": "01a0a972-5ca3-7406-9203-80f93c95aa72",
+          "sn": 29,
+          "words": 216,
+          "text": "he far right wears a light beige sweater and blue jeans. The man in the center wears a gray shirt. The woman on the far left wears a blue shirt and khaki pants."
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "id": "01a0ab96-ef19-7ed7-b587-1122eaf63c27",
+          "sn": 243,
+          "words": 262,
+          "text": "ides. The man in the center has his hands at his sides. The man on the far left has his hands at his sides. The man on the far right has his hands at his sides."
+        },
+        {
+          "network": "[\"Flux2Klein\",\"Moondream3\"]",
+          "id": "01a0b484-e5eb-7c14-8529-f14277b1969e",
+          "sn": 99,
+          "words": 773,
+          "text": " for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading for Life,\u201d \u201cReading"
+        }
+      ]
+    },
+    "special_tokens": {
+      "\ufffd": 2
+    },
+    "special_token_examples": [
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09eaa-d36f-76c5-8f05-6af5b9a09353",
+        "sn": 51,
+        "words": 63,
+        "text": "A purple train is at a station platform, facing right. The train\u2019s front displays \u201c29 \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0\u10e5\u10d0\u10e0\u10d7\u10d5\u10d4\u10da\u10dd \u10e1\u10d0"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "id": "01a0b40d-f5c9-7492-be56-487ca8e816d4",
+        "sn": 39,
+        "words": 40,
+        "text": "A light blue train is stopped at a platform with yellow tactile paving and dark gray flooring. Several people are standing on the platform, some facing the train. A digital display board hangs from the ceiling, showing t"
+      }
+    ],
+    "refusal_examples": [
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0e300-4961-7e77-9b11-cac246ce2210",
+        "sn": 59,
+        "words": 71,
+        "text": "I'm sorry, but the image you provided is almost entirely black, with a very small, dark horizontal strip near the center that appears to be a piece of electronic equipment or a display panel with some red lights illumina"
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0e31f-bdf3-79ef-8a24-856188e65c41",
+        "sn": 61,
+        "words": 51,
+        "text": "I'm sorry, but the image you provided is almost entirely black, with a very small, dark, horizontal bar near the center.\n\nDue to the extreme darkness and lack of detail in the visible area, I cannot provide a meaningful "
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0eb76-b462-7c11-b822-c79d606f1209",
+        "sn": 189,
+        "words": 16,
+        "text": "I'm sorry, but the image you provided is completely black. Therefore, there is nothing to describe."
+      },
+      {
+        "network": "[\"Flux2Dev\",\"Gemma4\"]",
+        "id": "01a0ee30-e7e5-7e1c-bbae-cdfe41bfe664",
+        "sn": 231,
+        "words": 16,
+        "text": "I'm sorry, but the image you provided is completely black. Therefore, there is nothing to describe."
+      }
+    ],
+    "non_latin_examples": [
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09fad-3a84-7ae4-a912-397e430d6c1e",
+        "sn": 149,
+        "words": 31,
+        "text": "Four colored pencils\u2014purple, lavender, black, and black\u2014are arranged in a row on a white background. A red \"X\" is positioned above the pencils. Japanese text to the right reads \u201c\u7dca\u6025\u6e1b\u5c11\u6e1b\u5c11\u201d vertically."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09fb2-fe7f-7db5-855a-01f05b612d9d",
+        "sn": 151,
+        "words": 37,
+        "text": "Three colored pencils\u2014purple, dark purple, and black\u2014are arranged vertically against a white background. A red \"X\" appears in the top left corner. Japanese text to the right reads \u201c\u307e\u305f\u3082\u3063\u3066\u201d (\u201c\u307e\u305f\u3082\u3063\u3066\u201d), followed by \u201c\u3075\u3075\u3075\u3075\u201d (\u201c"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09fb8-32f4-776d-b306-4f65c58b4841",
+        "sn": 153,
+        "words": 43,
+        "text": "Two colored pencils are shown against a white background. The left pencil is purple, and the right pencil is black. The Japanese characters \u201c\u77f3\u77f3\u201d are vertically oriented to the right of the black pencil. A red \u201cX\u201d is posi"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a09fd9-dd8d-7241-8cab-872df4c58fdc",
+        "sn": 165,
+        "words": 53,
+        "text": "A teal-colored boxcar with the number \"4\" in white on its side is positioned on railroad tracks. The boxcar has a white ladder on its side and visible markings including \u201c50\u201d and \u201c\u0423\u0427\u042f\u0426\u042f \u0414\u0415\u041d\u0421\u041a\u0410\u042f \u0414\u0415\u041d\u0421\u041a\u0410\u042f\u201d on its side. The "
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a0a0df-8bc2-78e3-a89c-d5992d719d85",
+        "sn": 265,
+        "words": 33,
+        "text": "Two red banners with gold Chinese characters hang against a white background. The left banner displays \u201c\u606d\u559c\u201d vertically, while the right banner shows \u201c\u606d\u559c\u201d vertically. Both banners have red tassels at the bottom."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Qwen25VL\"]",
+        "id": "01a0a1b5-acc9-763b-a73b-5b892276d1e2",
+        "sn": 57,
+        "words": 152,
+        "text": "The image shows an elevator control panel with a digital display and several buttons. The display shows the number \"16\" and some other characters that appear to be\u4e71\u7801 (random characters). There are three icons above the d"
+      }
+    ],
+    "same_caption_in_different_runs": {
+      "distinct_captions": 91,
+      "occurrences": 528,
+      "by_network": {
+        "[\"SD35Medium\",\"Gemma4\"]": 36,
+        "[\"SD35Medium\",\"Qwen25VL\"]": 2,
+        "[\"ZImageTurbo\",\"Moondream3\"]": 255,
+        "[\"ZImageTurbo\",\"Qwen25VL\"]": 235
+      },
+      "most_common": [
+        {
+          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+          "text": "The image shows a close-up of a lit candle in a glass container. The candle has a white wax that appears to be melting slightly around the wick, indicating it h",
+          "n": 34,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "text": "A light pink apple rests on a light-colored wooden surface. Water droplets are visible on the apple\u2019s skin. The apple has a short stem.",
+          "n": 27,
+          "runs": 2
+        },
+        {
+          "network": "[\"SD35Medium\",\"Gemma4\"]",
+          "text": "This is a solid, vibrant **lime green** color field.\n\nThere are no objects, patterns, or discernible features in the image; it is a uniform block of bright gree",
+          "n": 25,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+          "text": "The image shows a close-up of a red apple with water droplets on its surface, giving it a fresh and juicy appearance. The apple has a small stem at the top, and",
+          "n": 21,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+          "text": "The image shows a close-up of a lit candle in a glass container. The candle has a white wax that appears to be melting slightly around the wick, indicating it h",
+          "n": 19,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Qwen25VL\"]",
+          "text": "The image shows a classic-style bicycle leaning against a brick wall. The bicycle has a dark blue frame with cream-colored tires and handlebars. It features a w",
+          "n": 18,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "text": "A black bicycle with cream-colored tires and brown leather seat and handlebars is leaning against a red brick wall. A wicker basket is attached to the handlebar",
+          "n": 18,
+          "runs": 2
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "text": "A gray tabby cat with green eyes sits on a white windowsill. The cat is facing forward and looking directly at the camera. The window behind it has a blurred gr",
+          "n": 16,
+          "runs": 2
+        }
+      ]
+    },
+    "first_caption_mentions_its_prompt": [
+      {
+        "prompt": "a bicycle leaning against a brick wall",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a bookshelf filled with plants, books, and photographs",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a bustling Tokyo street at night",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a cat sitting on a windowsill",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a city slowly turning into a forest",
+        "mentions": 31,
+        "does_not": 1
+      },
+      {
+        "prompt": "a family dinner in a small kitchen",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a festival procession moving through a narrow street",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a glass bottle beside a candle",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a library with impossible architecture",
+        "mentions": 29,
+        "does_not": 3
+      },
+      {
+        "prompt": "a machine dreaming of a forest",
+        "mentions": 31,
+        "does_not": 1
+      },
+      {
+        "prompt": "a man standing in a doorway",
+        "mentions": 31,
+        "does_not": 1
+      },
+      {
+        "prompt": "a market stall displaying fruit, flowers, and handmade crafts",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a picnic basket under a tree beside a river",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a red apple on a wooden table",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a storm approaching a fishing village",
+        "mentions": 29,
+        "does_not": 3
+      },
+      {
+        "prompt": "a train station with travellers carrying colourful luggage",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "a woman reading beside a window",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "firefighters responding to a building fire",
+        "mentions": 32,
+        "does_not": 0
+      },
+      {
+        "prompt": "the feeling of nostalgia",
+        "mentions": 8,
+        "does_not": 24
+      },
+      {
+        "prompt": "two friends talking at a cafe",
+        "mentions": 17,
+        "does_not": 15
+      }
+    ]
+  },
+  "process": {
+    "steps": 4800,
+    "steps_not_a_single_batch_of_40": [],
+    "invocations_started_before_their_input_completed": 0,
+    "step_seconds_by_model": [
+      {
+        "model": "Flux2Dev",
+        "median": 1856.5,
+        "p99": 2423.0,
+        "max": 4374
+      },
+      {
+        "model": "Flux2Klein",
+        "median": 151.0,
+        "p99": 153.0,
+        "max": 164
+      },
+      {
+        "model": "Gemma4",
+        "median": 21.0,
+        "p99": 28.0,
+        "max": 42
+      },
+      {
+        "model": "JoyCaption",
+        "median": 18.0,
+        "p99": 22.0,
+        "max": 34
+      },
+      {
+        "model": "Moondream3",
+        "median": 83.0,
+        "p99": 119.0,
+        "max": 133
+      },
+      {
+        "model": "Qwen25VL",
+        "median": 23.0,
+        "p99": 35.0,
+        "max": 42
+      },
+      {
+        "model": "SD35Medium",
+        "median": 248.0,
+        "p99": 251.0,
+        "max": 270
+      },
+      {
+        "model": "ZImageTurbo",
+        "median": 249.0,
+        "p99": 260.0,
+        "max": 262
+      }
+    ],
+    "stalled_steps": [],
+    "seeds": {
+      "images": 96000,
+      "missing": 0,
+      "min": 38091,
+      "max": 4294967200,
+      "values_used_more_than_once": 1,
+      "expected_repeats_for_32_bit_seeds": 1.0728836059570312,
+      "sixteenths_min_max": [
+        5861,
+        6120
+      ]
+    }
+  },
+  "embeddings": {
+    "captions": 96000,
+    "without_embedding": 0,
+    "dimension": 256,
+    "non_finite_values": 0,
+    "zero_vectors": 0,
+    "norm_min": 0.9999998807907104,
+    "norm_max": 1.0000001192092896,
+    "identical_caption_pairs": 19857,
+    "identical_caption_min_cosine": 0.9996097087860107
+  },
+  "log": {
+    "resumes": 5,
+    "tracebacks": 2,
+    "above_debug": [
+      {
+        "near": "2026-09-22",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-09-22",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-09-23",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-09-23",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-09-28",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 118 (batch of 40): attempt 1 of 3 failed: Snex.Error: python_runtime_error CUDA out of memory. Tried to allocate 648.00 MiB. GPU 0 has a total capacity of 47.36 GiB of which 510.50 MiB is free. Including non-PyTorch memory, this process has 5.36 GiB memory in use. Process 2887226 has 4.56 GiB memory in use. Process 2888187 has 4.37 GiB memory in use. Process 2890947 has 4.34 GiB memory in use. Process 2891341 has 4.34 GiB memory in use. Process 2895545 has 4.31 GiB memory in use. Process 2895666 has 4.31 GiB memory in use. Process 2896968 has 4.31 GiB memory in use. Process 2901351 has 4.31 GiB memory in use. Process 2902581 has 3.20 GiB memory in use. Process 2902584 h"
+      },
+      {
+        "near": "2026-09-28",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 118 (batch of 40): succeeded on attempt 2"
+      },
+      {
+        "near": "2026-09-29",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 186 (batch of 40): attempt 1 of 3 failed: Snex.Error: python_runtime_error CUDA out of memory. Tried to allocate 576.00 MiB. GPU 0 has a total capacity of 47.36 GiB of which 453.94 MiB is free. Including non-PyTorch memory, this process has 4.17 GiB memory in use. Process 1161488 has 4.34 GiB memory in use. Process 1161306 has 4.34 GiB memory in use. Process 1161061 has 4.37 GiB memory in use. Process 1170643 has 4.34 GiB memory in use. Process 1170650 has 4.34 GiB memory in use. Process 1170658 has 4.34 GiB memory in use. Process 1182798 has 4.31 GiB memory in use. Process 1183426 has 4.31 GiB memory in use. Process 1184870 has 4.34 GiB memory in use. Process 1186534 h"
+      },
+      {
+        "near": "2026-09-29",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 186 (batch of 40): succeeded on attempt 2"
+      },
+      {
+        "near": "2026-10-01",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-01",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      }
+    ],
+    "retried_steps": [
+      {
+        "near": "2026-09-28",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 118 (batch of 40): attempt 1 of 3 failed: Snex.Error: python_runtime_error CUDA out of memory. Tried to allocate 648.00 MiB. GPU 0 has a total capacity of 47.36 GiB of which 510.50 MiB is free. Including non-PyTorch memory, this process has 5.36 GiB memory in use. Process 2887226 has 4.56 GiB memory in use. Process 2888187 has 4.37 GiB memory in use. Process 2890947 has 4.34 GiB memory in use. Process 2891341 has 4.34 GiB memory in use. Process 2895545 has 4.31 GiB memory in use. Process 2895666 has 4.31 GiB memory in use. Process 2896968 has 4.31 GiB memory in use. Process 2901351 has 4.31 GiB memory in use. Process 2902581 has 3.20 GiB memory in use. Process 2902584 h"
+      },
+      {
+        "near": "2026-09-28",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 118 (batch of 40): succeeded on attempt 2"
+      },
+      {
+        "near": "2026-09-29",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 186 (batch of 40): attempt 1 of 3 failed: Snex.Error: python_runtime_error CUDA out of memory. Tried to allocate 576.00 MiB. GPU 0 has a total capacity of 47.36 GiB of which 453.94 MiB is free. Including non-PyTorch memory, this process has 4.17 GiB memory in use. Process 1161488 has 4.34 GiB memory in use. Process 1161306 has 4.34 GiB memory in use. Process 1161061 has 4.37 GiB memory in use. Process 1170643 has 4.34 GiB memory in use. Process 1170650 has 4.34 GiB memory in use. Process 1170658 has 4.34 GiB memory in use. Process 1182798 has 4.31 GiB memory in use. Process 1183426 has 4.31 GiB memory in use. Process 1184870 has 4.34 GiB memory in use. Process 1186534 h"
+      },
+      {
+        "near": "2026-09-29",
+        "level": "warning",
+        "message": "[retry] Flux2Dev step 186 (batch of 40): succeeded on attempt 2"
+      }
+    ],
+    "allocator_warnings_by_date": {
+      "2026-09-18": 78,
+      "2026-09-19": 220,
+      "2026-09-28": 9,
+      "2026-09-29": 2
+    }
+  }
+}
