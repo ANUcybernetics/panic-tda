@@ -11744,7 +11744,246 @@
       }
     }
   },
-  "seed_resample": null,
+  "seed_resample": {
+    "image_step": 200,
+    "redrawn": 528,
+    "pooled": {
+      "resampled": {
+        "value": 0.04917500633746384,
+        "interval": [
+          0.04566837112962579,
+          0.05349941718325551
+        ]
+      },
+      "step": {
+        "value": 0.04494234900921583,
+        "interval": [
+          0.042916798081926326,
+          0.04727638153980175
+        ]
+      },
+      "two_steps": {
+        "value": 0.05178710737576087,
+        "interval": [
+          0.048653470256166266,
+          0.05446206934439639
+        ]
+      },
+      "resampled_less_two_steps": {
+        "value": -0.002612101038297031,
+        "interval": [
+          -0.006444116472525309,
+          0.001612182739190761
+        ]
+      },
+      "resampled_less_step": {
+        "value": 0.004232657328248013,
+        "interval": [
+          0.0013489725984012055,
+          0.007203623452223846
+        ]
+      },
+      "noise_direct": {
+        "value": 0.040709691680967816,
+        "interval": [
+          0.03729077344294637,
+          0.043978683660472084
+        ]
+      },
+      "noise_chain": {
+        "value": 0.038097590642670785,
+        "interval": [
+          0.03462611797487452,
+          0.04202044753512988
+        ]
+      },
+      "noise_share_direct": {
+        "value": 0.9058202915165812,
+        "interval": [
+          0.8399822438841109,
+          0.9695850994581615
+        ]
+      }
+    },
+    "networks": {
+      "[\"SD35Medium\",\"Moondream3\"]": {
+        "redrawn": 40,
+        "resampled": 0.0690900906920433,
+        "step": 0.056053781509399415,
+        "two_steps": 0.05912191122770309,
+        "noise_direct": 0.043017472326755526,
+        "noise_chain": 0.05298565179109574,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"SD35Medium\",\"Qwen25VL\"]": {
+        "redrawn": 40,
+        "resampled": 0.056103935837745665,
+        "step": 0.04727948904037475,
+        "two_steps": 0.05837011784315109,
+        "noise_direct": 0.03845504224300384,
+        "noise_chain": 0.036188860237598416,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"SD35Medium\",\"Gemma4\"]": {
+        "redrawn": 40,
+        "resampled": 0.08683819472789764,
+        "step": 0.07664490044116974,
+        "two_steps": 0.09031257182359695,
+        "noise_direct": 0.06645160615444184,
+        "noise_chain": 0.06297722905874253,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"SD35Medium\",\"JoyCaption\"]": {
+        "redrawn": 40,
+        "resampled": 0.05056362450122833,
+        "step": 0.04240837097167969,
+        "two_steps": 0.05580935329198837,
+        "noise_direct": 0.03425311744213105,
+        "noise_chain": 0.029007388651371008,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"ZImageTurbo\",\"Moondream3\"]": {
+        "redrawn": 40,
+        "resampled": 0.03573225438594818,
+        "step": 0.03492322415113449,
+        "two_steps": 0.041463878750801084,
+        "noise_direct": 0.0341141939163208,
+        "noise_chain": 0.028382569551467896,
+        "identical_captions": 3,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"ZImageTurbo\",\"Qwen25VL\"]": {
+        "redrawn": 40,
+        "resampled": 0.03601003289222717,
+        "step": 0.03285450637340546,
+        "two_steps": 0.03861836194992065,
+        "noise_direct": 0.029698979854583744,
+        "noise_chain": 0.027090650796890263,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"ZImageTurbo\",\"Gemma4\"]": {
+        "redrawn": 40,
+        "resampled": 0.04664542675018311,
+        "step": 0.04169548153877258,
+        "two_steps": 0.04819657653570175,
+        "noise_direct": 0.036745536327362056,
+        "noise_chain": 0.03519438654184341,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"ZImageTurbo\",\"JoyCaption\"]": {
+        "redrawn": 40,
+        "resampled": 0.03859686851501465,
+        "step": 0.03621979206800461,
+        "two_steps": 0.04148643910884857,
+        "noise_direct": 0.03384271562099457,
+        "noise_chain": 0.03095314502716065,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"Flux2Klein\",\"Moondream3\"]": {
+        "redrawn": 40,
+        "resampled": 0.04184506386518479,
+        "step": 0.030412693321704865,
+        "two_steps": 0.035913996398448944,
+        "noise_direct": 0.018980322778224944,
+        "noise_chain": 0.024911390244960786,
+        "identical_captions": 2,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"Flux2Klein\",\"Qwen25VL\"]": {
+        "redrawn": 40,
+        "resampled": 0.04901506155729294,
+        "step": 0.049781310558319095,
+        "two_steps": 0.06515013873577118,
+        "noise_direct": 0.05054755955934525,
+        "noise_chain": 0.03441248238086701,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"Flux2Klein\",\"Gemma4\"]": {
+        "redrawn": 40,
+        "resampled": 0.056299877166748044,
+        "step": 0.05800404995679855,
+        "two_steps": 0.0601694718003273,
+        "noise_direct": 0.05970822274684906,
+        "noise_chain": 0.055838628113269805,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"Flux2Klein\",\"JoyCaption\"]": {
+        "redrawn": 40,
+        "resampled": 0.04176611453294754,
+        "step": 0.0368750274181366,
+        "two_steps": 0.04756809920072556,
+        "noise_direct": 0.03198394030332566,
+        "noise_chain": 0.026181955635547642,
+        "identical_captions": 0,
+        "kept": 0,
+        "kept_identical_captions": 0
+      },
+      "[\"Flux2Dev\",\"Moondream3\"]": {
+        "redrawn": 12,
+        "resampled": 0.029424458742141724,
+        "step": 0.03012413779894511,
+        "two_steps": 0.028101762135823567,
+        "noise_direct": 0.030823816855748497,
+        "noise_chain": 0.03214651346206665,
+        "identical_captions": 0,
+        "kept": 28,
+        "kept_identical_captions": 28
+      },
+      "[\"Flux2Dev\",\"Qwen25VL\"]": {
+        "redrawn": 12,
+        "resampled": 0.046897570292154946,
+        "step": 0.046167934934298195,
+        "two_steps": 0.0535541425148646,
+        "noise_direct": 0.045438299576441445,
+        "noise_chain": 0.03878172735373179,
+        "identical_captions": 0,
+        "kept": 28,
+        "kept_identical_captions": 28
+      },
+      "[\"Flux2Dev\",\"Gemma4\"]": {
+        "redrawn": 12,
+        "resampled": 0.06377766529719035,
+        "step": 0.060789138078689575,
+        "two_steps": 0.06224048634370168,
+        "noise_direct": 0.0578006108601888,
+        "noise_chain": 0.05933778981367747,
+        "identical_captions": 0,
+        "kept": 28,
+        "kept_identical_captions": 28
+      },
+      "[\"Flux2Dev\",\"JoyCaption\"]": {
+        "redrawn": 12,
+        "resampled": 0.038193861643473305,
+        "step": 0.03884374598662058,
+        "two_steps": 0.04251641035079956,
+        "noise_direct": 0.03949363032976786,
+        "noise_chain": 0.035171081622441605,
+        "identical_captions": 0,
+        "kept": 28,
+        "kept_identical_captions": 28
+      }
+    }
+  },
   "collapsed_runs": [
     {
       "network": "[\"Flux2Dev\",\"Gemma4\"]",
