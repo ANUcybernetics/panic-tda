@@ -1,0 +1,454 @@
+{
+  "experiment": "01a10613",
+  "network": [
+    "Flux2Klein",
+    "Gemma4"
+  ],
+  "encoder": {
+    "format": "AVIF (AV1 in HEIF)",
+    "library": "libvips heifsave_buffer via vix 0.38.0",
+    "quality": 50,
+    "other_settings": "libvips defaults",
+    "source": "lib/panic_tda/models/image_converter.ex"
+  },
+  "embedding_model": "Qwen3Embed",
+  "prompts": [
+    "a city slowly turning into a forest",
+    "a man standing in a doorway",
+    "a red apple on a wooden table",
+    "a train station with travellers carrying colourful luggage",
+    "firefighters responding to a building fire"
+  ],
+  "runs_per_prompt": 8,
+  "images_per_run": 1000,
+  "image_dimensions": [
+    [
+      1024,
+      1024
+    ]
+  ],
+  "bytes": {
+    "min": 1206,
+    "median": 45893,
+    "max": 374542,
+    "share_small": 0.035425,
+    "small_bytes": 15000
+  },
+  "typical_bytes_by_prompt": {
+    "a city slowly turning into a forest": 77344,
+    "a man standing in a doorway": 26861,
+    "a red apple on a wooden table": 30109,
+    "a train station with travellers carrying colourful luggage": 60750,
+    "firefighters responding to a building fire": 59997
+  },
+  "variance_split": {
+    "variance": 0.4792660006387435,
+    "between_prompts": 0.36926907219904925,
+    "between_runs_of_a_prompt": 0.2992149048075598,
+    "within_a_run": 0.3315160229933917
+  },
+  "variance_split_by_quarter": [
+    {
+      "variance": 0.6475495436352092,
+      "between_prompts": 0.5335403067558875,
+      "between_runs_of_a_prompt": 0.2876124433215968,
+      "within_a_run": 0.1788472499225155
+    },
+    {
+      "variance": 0.5502275024214148,
+      "between_prompts": 0.3510824747240057,
+      "between_runs_of_a_prompt": 0.47053240684996167,
+      "within_a_run": 0.1783851184260337
+    },
+    {
+      "variance": 0.3923509910073472,
+      "between_prompts": 0.30126915432841056,
+      "between_runs_of_a_prompt": 0.4706273215950279,
+      "within_a_run": 0.22810352407656143
+    },
+    {
+      "variance": 0.3182339852701031,
+      "between_prompts": 0.3393025141793564,
+      "between_runs_of_a_prompt": 0.39153670050403017,
+      "within_a_run": 0.2691607853166127
+    }
+  ],
+  "within_run": {
+    "variance": 0.15888435848770457,
+    "variogram": {
+      "1": 0.0216311389114483,
+      "2": 0.027907310570835887,
+      "5": 0.03691975367507566,
+      "10": 0.04636987187355131,
+      "20": 0.058042784532482475,
+      "50": 0.07565958385199516,
+      "100": 0.10138664410563193,
+      "200": 0.14303333857409006,
+      "500": 0.19742009487331985
+    },
+    "seed_noise": 0.015354967252060713,
+    "seed_noise_share_of_within_run_variance": 0.09664240960036964,
+    "autocorrelation_run_mean_removed": {
+      "1": 0.8622354257559126,
+      "2": 0.8213337618672033,
+      "5": 0.7594334798255082,
+      "10": 0.6923912896242431,
+      "20": 0.6049244748240961,
+      "50": 0.4772985132428311,
+      "100": 0.31129686492233277,
+      "200": 0.05654049193137759,
+      "500": -0.24253952215565258
+    }
+  },
+  "steps_together": {
+    "per_run_rank_correlation": {
+      "median": 0.025186944459489546,
+      "min": -0.10041516065163357,
+      "max": 0.1965878784596219
+    },
+    "size_step_on_largest_caption_steps_over_mean": {
+      "median": 0.9914649638206382,
+      "min": 0.7112024843880204,
+      "max": 2.375203213162202
+    },
+    "caption_step_on_largest_size_steps_over_mean": {
+      "median": 1.0401714194993064,
+      "min": 0.8994173104815396,
+      "max": 1.794204388898817
+    },
+    "jump_share": 0.05,
+    "block_images": 25,
+    "per_run_rank_correlation_between_blocks": {
+      "median": 0.4509109311740891,
+      "min": 0.005263157894736842,
+      "max": 0.6327935222672065
+    }
+  },
+  "predicted_from_captions": {
+    "r_squared_held_out_runs": 0.5480386951682499,
+    "correlation_of_run_means": 0.8473442342580073,
+    "correlation_within_runs": 0.5200799500892599
+  },
+  "runs": [
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 0,
+      "typical_bytes": 154844,
+      "typical_bytes_last_quarter": 115042,
+      "sd_log_bytes": 0.381,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 1,
+      "typical_bytes": 67715,
+      "typical_bytes_last_quarter": 69359,
+      "sd_log_bytes": 0.737,
+      "share_small": 0.012
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 2,
+      "typical_bytes": 81973,
+      "typical_bytes_last_quarter": 79761,
+      "sd_log_bytes": 0.307,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 3,
+      "typical_bytes": 86526,
+      "typical_bytes_last_quarter": 80080,
+      "sd_log_bytes": 0.295,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 4,
+      "typical_bytes": 82139,
+      "typical_bytes_last_quarter": 77301,
+      "sd_log_bytes": 0.349,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 5,
+      "typical_bytes": 28830,
+      "typical_bytes_last_quarter": 24639,
+      "sd_log_bytes": 0.455,
+      "share_small": 0.008
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 6,
+      "typical_bytes": 92207,
+      "typical_bytes_last_quarter": 82210,
+      "sd_log_bytes": 0.313,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a city slowly turning into a forest",
+      "run_number": 7,
+      "typical_bytes": 78862,
+      "typical_bytes_last_quarter": 79272,
+      "sd_log_bytes": 0.306,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 0,
+      "typical_bytes": 30781,
+      "typical_bytes_last_quarter": 34687,
+      "sd_log_bytes": 0.189,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 1,
+      "typical_bytes": 39979,
+      "typical_bytes_last_quarter": 31326,
+      "sd_log_bytes": 0.273,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 2,
+      "typical_bytes": 17132,
+      "typical_bytes_last_quarter": 30146,
+      "sd_log_bytes": 0.453,
+      "share_small": 0.598
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 3,
+      "typical_bytes": 22884,
+      "typical_bytes_last_quarter": 22606,
+      "sd_log_bytes": 0.126,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 4,
+      "typical_bytes": 26557,
+      "typical_bytes_last_quarter": 43891,
+      "sd_log_bytes": 0.669,
+      "share_small": 0.027
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 5,
+      "typical_bytes": 27225,
+      "typical_bytes_last_quarter": 31256,
+      "sd_log_bytes": 0.552,
+      "share_small": 0.19
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 6,
+      "typical_bytes": 34062,
+      "typical_bytes_last_quarter": 43037,
+      "sd_log_bytes": 0.33,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a man standing in a doorway",
+      "run_number": 7,
+      "typical_bytes": 22809,
+      "typical_bytes_last_quarter": 25694,
+      "sd_log_bytes": 0.331,
+      "share_small": 0.08
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 0,
+      "typical_bytes": 35551,
+      "typical_bytes_last_quarter": 32793,
+      "sd_log_bytes": 0.21,
+      "share_small": 0.001
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 1,
+      "typical_bytes": 17433,
+      "typical_bytes_last_quarter": 21551,
+      "sd_log_bytes": 0.273,
+      "share_small": 0.308
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 2,
+      "typical_bytes": 45518,
+      "typical_bytes_last_quarter": 55253,
+      "sd_log_bytes": 0.354,
+      "share_small": 0.002
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 3,
+      "typical_bytes": 72979,
+      "typical_bytes_last_quarter": 72195,
+      "sd_log_bytes": 0.45,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 4,
+      "typical_bytes": 22988,
+      "typical_bytes_last_quarter": 24047,
+      "sd_log_bytes": 0.197,
+      "share_small": 0.029
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 5,
+      "typical_bytes": 22711,
+      "typical_bytes_last_quarter": 23775,
+      "sd_log_bytes": 0.25,
+      "share_small": 0.069
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 6,
+      "typical_bytes": 25811,
+      "typical_bytes_last_quarter": 25674,
+      "sd_log_bytes": 0.15,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a red apple on a wooden table",
+      "run_number": 7,
+      "typical_bytes": 24347,
+      "typical_bytes_last_quarter": 23993,
+      "sd_log_bytes": 0.187,
+      "share_small": 0.014
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 0,
+      "typical_bytes": 60812,
+      "typical_bytes_last_quarter": 75069,
+      "sd_log_bytes": 0.361,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 1,
+      "typical_bytes": 27353,
+      "typical_bytes_last_quarter": 23268,
+      "sd_log_bytes": 0.507,
+      "share_small": 0.013
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 2,
+      "typical_bytes": 74136,
+      "typical_bytes_last_quarter": 44661,
+      "sd_log_bytes": 0.467,
+      "share_small": 0.001
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 3,
+      "typical_bytes": 50424,
+      "typical_bytes_last_quarter": 54412,
+      "sd_log_bytes": 0.331,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 4,
+      "typical_bytes": 78394,
+      "typical_bytes_last_quarter": 53767,
+      "sd_log_bytes": 0.331,
+      "share_small": 0.002
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 5,
+      "typical_bytes": 45075,
+      "typical_bytes_last_quarter": 37328,
+      "sd_log_bytes": 0.756,
+      "share_small": 0.053
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 6,
+      "typical_bytes": 84440,
+      "typical_bytes_last_quarter": 86941,
+      "sd_log_bytes": 0.41,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "a train station with travellers carrying colourful luggage",
+      "run_number": 7,
+      "typical_bytes": 99985,
+      "typical_bytes_last_quarter": 100185,
+      "sd_log_bytes": 0.245,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 0,
+      "typical_bytes": 56804,
+      "typical_bytes_last_quarter": 65274,
+      "sd_log_bytes": 0.275,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 1,
+      "typical_bytes": 40022,
+      "typical_bytes_last_quarter": 52710,
+      "sd_log_bytes": 0.362,
+      "share_small": 0.008
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 2,
+      "typical_bytes": 48615,
+      "typical_bytes_last_quarter": 51946,
+      "sd_log_bytes": 0.246,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 3,
+      "typical_bytes": 79186,
+      "typical_bytes_last_quarter": 54887,
+      "sd_log_bytes": 0.608,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 4,
+      "typical_bytes": 62768,
+      "typical_bytes_last_quarter": 74433,
+      "sd_log_bytes": 0.463,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 5,
+      "typical_bytes": 127542,
+      "typical_bytes_last_quarter": 71583,
+      "sd_log_bytes": 0.553,
+      "share_small": 0.0
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 6,
+      "typical_bytes": 58053,
+      "typical_bytes_last_quarter": 53861,
+      "sd_log_bytes": 0.43,
+      "share_small": 0.001
+    },
+    {
+      "prompt": "firefighters responding to a building fire",
+      "run_number": 7,
+      "typical_bytes": 41277,
+      "typical_bytes_last_quarter": 48963,
+      "sd_log_bytes": 0.303,
+      "share_small": 0.001
+    }
+  ]
+}
