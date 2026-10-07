@@ -1,9 +1,11 @@
 ---
 id: TASK-108
 title: Image compressed size as an image-side observable of a run
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-10-05 02:25'
+updated_date: '2026-10-07 04:58'
 labels:
   - analysis
 dependencies: []
@@ -27,9 +29,19 @@ WHAT LIMITS IT. Size depends on the AVIF encoder settings (lib/panic_tda/models/
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An analysis/ script computes per-image byte length for a finished cell of 01a10613 and writes its results to the JSON beside it, with its lock committed
-- [ ] #2 The script reports the between-prompt, between-run and within-run split, and autocorrelation within runs after removing each run's mean
-- [ ] #3 It reports whether steps in byte length coincide with steps in caption-embedding distance
-- [ ] #4 The AVIF encoder settings in force for the experiment are confirmed and recorded with the result
+- [x] #1 An analysis/ script computes per-image byte length for a finished cell of 01a10613 and writes its results to the JSON beside it, with its lock committed
+- [x] #2 The script reports the between-prompt, between-run and within-run split, and autocorrelation within runs after removing each run's mean
+- [x] #3 It reports whether steps in byte length coincide with steps in caption-embedding distance
+- [x] #4 The AVIF encoder settings in force for the experiment are confirmed and recorded with the result
 - [ ] #5 A short note in backlog/docs says whether the measure is kept, and for what
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+MEASURED 2026-10-07 on the first finished cell of 01a10613 (Flux2Klein + Gemma4, 5 prompts x 8 runs x 1,000 images): analysis/image_size.py, results in analysis/image_size.json, written up in backlog/docs/image-size.md. Variance of log bytes splits 37% between prompts, 30% between runs of a prompt, 33% within a run; the seed is a tenth of the within-run variance and a run is still moving in size after 500 images. Single steps in size do not coincide with single steps between captions (rank correlation 0.03); between blocks of 25 images they do (0.45). A ridge regression from the caption embedding explains 55% of size on held-out runs. Encoder confirmed: libvips heifsave AV1 at quality 50, defaults otherwise, all images 1024 x 1024.
+
+The first look's 81% between runs was at 330 images per run and does not hold over the full run, and the doorway run it called settled left its white corridor in the last quarter.
+
+AC#5 is open on Ben's call: the note recommends keeping it as a cheap second instrument for slow movement and not as a step-level detector. Rerun per cell as the SD35Medium and ZImageTurbo cells finish (the script takes --network and --out).
+<!-- SECTION:NOTES:END -->
