@@ -1,0 +1,138 @@
+{
+  "export": "long_horizon_panel_01a09e21_parquet",
+  "runs": 640,
+  "late_from_text_state": 75,
+  "stored_diagram_max_total_difference": 7.301568984985352e-07,
+  "redundancy_r2": {
+    "h0_count": 0.6884238920225738,
+    "h0_total": 0.9844402894118524,
+    "h0_max": 0.5160911118310947,
+    "h0_entropy": 0.9502350057027487,
+    "h0_entropy_norm": 0.9436873263132356,
+    "h1_count": 0.6765988982893301,
+    "h1_total": 0.5074710390273705,
+    "h1_max": 0.2937591428052535,
+    "h1_entropy": 0.7152409313508359,
+    "h1_entropy_norm": 0.2519315821184871,
+    "h2_count": 0.47938992926270707,
+    "h2_total": 0.3626902718352051,
+    "h2_max": 0.21351645942975261,
+    "h2_entropy": 0.500306495299282,
+    "h2_entropy_norm": 0.21691800219626356
+  },
+  "added_value": {
+    "generator": {
+      "distances": 0.425,
+      "diagram": 0.4046875,
+      "both": 0.425,
+      "distances_h0": 0.4125,
+      "distances_h0_h1_h2": 0.425,
+      "gain": 0.0013546875,
+      "gain_interval": [
+        -0.035937499999999956,
+        0.03749999999999998
+      ],
+      "gain_h1_h2_over_h0": 0.0133984375,
+      "gain_h1_h2_over_h0_interval": [
+        -0.02031250000000001,
+        0.04531249999999998
+      ],
+      "chance": 0.25
+    },
+    "captioner": {
+      "distances": 0.665625,
+      "diagram": 0.6125,
+      "both": 0.6921875,
+      "distances_h0": 0.675,
+      "distances_h0_h1_h2": 0.6921875,
+      "gain": 0.0270296875,
+      "gain_interval": [
+        0.00464843749999996,
+        0.04843750000000002
+      ],
+      "gain_h1_h2_over_h0": 0.017125,
+      "gain_h1_h2_over_h0_interval": [
+        -0.0015625000000000222,
+        0.035937499999999956
+      ],
+      "chance": 0.25
+    }
+  },
+  "against_null": {
+    "h0_count": {
+      "real": 148.2921875,
+      "null": 149.0,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_total": {
+      "real": 34.27871246721842,
+      "null": 47.5354690245178,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_max": {
+      "real": 0.476801946433261,
+      "null": 0.41962013651694485,
+      "share_of_runs_above_null": 0.7796875
+    },
+    "h0_entropy": {
+      "real": 4.912324302266142,
+      "null": 4.99901827171176,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_entropy_norm": {
+      "real": 0.9825707417395023,
+      "null": 0.9990151704410088,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_count": {
+      "real": 51.7546875,
+      "null": 125.3734375,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_total": {
+      "real": 0.666427628020756,
+      "null": 1.862381431221729,
+      "share_of_runs_above_null": 0.003125
+    },
+    "h1_max": {
+      "real": 0.05300418699625879,
+      "null": 0.05428541147072489,
+      "share_of_runs_above_null": 0.4734375
+    },
+    "h1_entropy": {
+      "real": 3.5099725315274157,
+      "null": 4.513826870251174,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_entropy_norm": {
+      "real": 0.9022740504443201,
+      "null": 0.935694243533014,
+      "share_of_runs_above_null": 0.04375
+    },
+    "h2_count": {
+      "real": 11.40625,
+      "null": 58.68177083333334,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_total": {
+      "real": 0.056858115713112056,
+      "null": 0.4140551914771399,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_max": {
+      "real": 0.012944762629922479,
+      "null": 0.025434730337777482,
+      "share_of_runs_above_null": 0.0921875
+    },
+    "h2_entropy": {
+      "real": 1.8086439312897156,
+      "null": 3.6925333676807464,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_entropy_norm": {
+      "real": 0.7999987066624039,
+      "null": 0.9162498373909553,
+      "share_of_runs_above_null": 0.1640625
+    }
+  }
+}
