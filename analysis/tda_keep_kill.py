@@ -23,6 +23,10 @@ only if the diagram carries something those numbers do not. Three tests:
 - a null: each run's diagram against the diagram of a Gaussian cloud with the
   run's own mean and covariance. H1 and H2 bars that a cloud with no structure
   also produces are geometry of the noise, not loops in the run.
+- the stronger null: TASK-103's description and nothing else, a Gaussian
+  process with the run's own displacement curve, centre, main directions and
+  local intrinsic dimension (`sliding_window.Null`). A diagram feature that
+  this null reproduces is already said by the displacement curve.
 
 A Rips diagram is computed on the set of states, so it cannot see their order:
 shuffling a run in time leaves it unchanged. Recurrence in time is a separate
@@ -39,7 +43,13 @@ Results -> analysis/tda_keep_kill.json, summary to stdout.
 
 import argparse
 import json
+import os
 import pathlib
+from multiprocessing import Pool
+
+# one numerical thread per worker; the pool supplies the parallelism
+for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
 
 import numpy as np
 import polars as pl
@@ -53,6 +63,8 @@ OUT = pathlib.Path(__file__).with_suffix(".json")
 LATE = 75
 FOLDS = 5
 NULL_DRAWS = 3
+PROCESS_DRAWS = 9
+WORKERS = 4
 BOOTSTRAPS = 1000
 SEED = 0
 
@@ -131,8 +143,26 @@ def diagram_features(dgms: list) -> dict[str, float]:
     return feats
 
 
-def rips(x: np.ndarray) -> list:
-    return ripser_parallel(x, maxdim=2, n_threads=4)["dgms"]
+def rips(x: np.ndarray, threads: int = 4) -> list:
+    return ripser_parallel(x, maxdim=2, n_threads=threads)["dgms"]
+
+
+def process_null(job: tuple) -> dict[str, dict[str, list[float]]]:
+    """Diagram features of PROCESS_DRAWS draws of TASK-103's process for one run,
+    over the whole run and over its second half alone. The process moves at the
+    same rate throughout, while runs move faster early; the second half checks
+    that a difference is not that."""
+    from sliding_window import Null
+
+    index, x = job
+    out = {}
+    for name, y in (("whole", x), ("late", x[LATE:])):
+        null = Null(y, np.random.default_rng([SEED, index]))
+        draws = [diagram_features(rips(null.draw(), threads=1)) for _ in range(PROCESS_DRAWS)]
+        out[name] = {k: [d[k] for d in draws] for k in draws[0]} | {
+            "real": diagram_features(rips(y, threads=1))
+        }
+    return out
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -315,6 +345,21 @@ def main() -> None:
     tda = [c for c in diagram_features(json.loads(runs["diagram_data"][0])["dgms"])]
     tda = [c for c in tda if table[c].std() > 0]
 
+    with Pool(WORKERS) as pool:
+        process = pool.map(process_null, list(enumerate(xs)), chunksize=4)
+    against_process = {"whole": {}, "late": {}}
+    for part in against_process:
+        for f in tda:
+            draws = np.array([p[part][f] for p in process])
+            real = np.array([p[part]["real"][f] for p in process])
+            against_process[part][f] = {
+                "real": float(real.mean()),
+                "null": float(draws.mean()),
+                "share_of_runs_above_every_draw": float((real > draws.max(axis=1)).mean()),
+                "share_of_runs_below_every_draw": float((real < draws.min(axis=1)).mean()),
+                "share_expected_by_chance": 1 / (PROCESS_DRAWS + 1),
+            }
+
     null = {}
     for f in tda:
         diff = (table[f] - table[f"null_{f}"]).to_numpy()
@@ -332,6 +377,7 @@ def main() -> None:
         "redundancy_r2": redundancy(table, tda),
         "added_value": added_value(table, tda, rng),
         "against_null": null,
+        "against_task103_process": against_process,
     }
     OUT.write_text(json.dumps(result, indent=2) + "\n")
 
@@ -353,6 +399,13 @@ def main() -> None:
     for f, v in null.items():
         print(f"  {f:18s} real {v['real']:8.3f}  null {v['null']:8.3f}"
               f"  runs above null {v['share_of_runs_above_null']:.2f}")
+    for part, rows_ in against_process.items():
+        print(f"\nagainst TASK-103's process, {part} run ({PROCESS_DRAWS} draws a run; "
+              f"chance {1 / (PROCESS_DRAWS + 1):.2f} each side)")
+        for f, v in rows_.items():
+            print(f"  {f:18s} real {v['real']:8.3f}  null {v['null']:8.3f}"
+                  f"  above every draw {v['share_of_runs_above_every_draw']:.2f}"
+                  f"  below every draw {v['share_of_runs_below_every_draw']:.2f}")
 
 
 if __name__ == "__main__":
