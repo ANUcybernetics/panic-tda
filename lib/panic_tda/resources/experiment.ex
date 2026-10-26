@@ -77,7 +77,7 @@ defmodule PanicTda.Experiment do
     # makes an ambiguous prefix an error rather than a silent first match.
     read :by_id_prefix do
       argument(:prefix, :string, allow_nil?: false)
-      filter(expr(like(id, ^arg(:prefix) <> "%")))
+      filter(expr(like(type(id, :string), ^arg(:prefix) <> "%")))
     end
 
     create :create do
@@ -100,6 +100,8 @@ defmodule PanicTda.Experiment do
         :max_length,
         :i2t_max_new_tokens
       ])
+
+      require_atomic?(false)
     end
 
     # Function captures, not `expr(now())`: AshSqlite never runs these

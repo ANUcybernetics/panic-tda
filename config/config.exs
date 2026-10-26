@@ -10,6 +10,7 @@ config :panic_tda, PanicTda.Repo,
   busy_timeout: 30_000
 
 config :ash,
-  disable_async?: false
+  disable_async?: false,
+  default_string_length_count: :mixed
 
 import_config "#{config_env()}.exs"
