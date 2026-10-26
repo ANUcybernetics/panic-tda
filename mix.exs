@@ -23,17 +23,17 @@ defmodule PanicTda.MixProject do
 
   defp deps do
     [
-      {:ash, "~> 3.4"},
-      {:ash_sqlite, "~> 0.2"},
-      {:ecto_sqlite3, "~> 0.18"},
-      {:nx, "~> 0.9"},
-      {:explorer, "~> 0.10"},
+      {:ash, "~> 3.37"},
+      {:ash_sqlite, "~> 0.3"},
+      {:ecto_sqlite3, "~> 0.26"},
+      {:nx, "~> 1.0"},
+      {:explorer, "~> 0.13"},
       {:jason, "~> 1.4"},
-      {:snex, "~> 0.3"},
-      {:vix, "~> 0.35"},
-      {:usage_rules, "~> 1.1", only: [:dev]},
-      {:tidewave, "~> 0.5", only: :dev},
-      {:bandit, "~> 1.0", only: :dev}
+      {:snex, "~> 0.4"},
+      {:vix, "~> 0.42"},
+      {:usage_rules, "~> 1.3", only: [:dev]},
+      {:tidewave, "~> 0.9", only: :dev},
+      {:bandit, "~> 1.14", only: :dev}
     ]
   end
 
