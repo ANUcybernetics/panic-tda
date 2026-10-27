@@ -19,7 +19,13 @@ defmodule PanicTda.Models.PythonBridge do
                env,
                """
                import sys
+               import warnings
                sys.path.insert(0, _priv_python_dir)
+               # panic_models' imports pull in timm, which uses a deprecated torch
+               # API at import time, before setup() can silence it
+               warnings.filterwarnings(
+                   "ignore", message="`torch.jit.interface` is deprecated", category=FutureWarning
+               )
                import panic_models
                panic_models.setup()
                _panic_setup_done = True
