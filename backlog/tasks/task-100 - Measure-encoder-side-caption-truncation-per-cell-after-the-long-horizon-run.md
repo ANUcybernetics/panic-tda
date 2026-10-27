@@ -3,8 +3,8 @@ id: TASK-100
 title: Measure encoder-side caption truncation per cell after the long-horizon run
 status: To Do
 assignee: []
-created_date: '2026-09-07 04:23'
-updated_date: '2026-10-04 06:11'
+created_date: 2026-09-07 04:23
+updated_date: '2026-10-27T03:55:00Z'
 labels:
   - analysis
   - paper
@@ -35,4 +35,6 @@ MEASURED ON THE PANEL 2026-10-04 (analysis/panel_regenerate.py, encoder_ceiling 
 That covers the per-cell half of AC#1, with two step bins rather than a finer split and the table in the audit doc rather than the design doc; neither AC is checked. For AC#2, note that the existing terminal-punctuation check in mix experiment.status is wrong for Gemma4: it reports 13.1% truncated because Gemma4 captions end in '.**' (markdown bold closing after the full stop). Allowing closing marks after the punctuation, 1 of 24,000 is unterminated and none was cut at the generation ceiling. The pattern panel_audit.py uses is the fix.
 
 STATUS CHECK FIXED 2026-10-04. mix experiment.status now counts a caption as truncated only when it stops short of a sentence end, allowing closing marks after the punctuation and full-width marks; on the panel it reports Gemma4 1/24,000, Moondream3 10 (the repetition loops cut at the ceiling), JoyCaption and Qwen25VL 0. Covered by test/experiment_status_test.exs. AC#2 itself, reporting the encoder-ceiling share in the same output, is still open.
+
+MEASURED ON THE FOLLOW-UP 2026-10-27 (experiment 01a10613, 1,000 text states a run; encoder_ceiling in analysis/follow_up_regenerate.json, table in backlog/docs/follow-up-audit.md). 1,090 of 239,760 captions a generator read (0.45%) are over 512 tokens: SD35Medium + Gemma4 863 (2.2%, median 29 cut), Flux2Klein + Gemma4 114 (0.3%, 67), SD35Medium + Moondream3 96 (repetition loops), and 17 across the other three cells. Second half against whole run: SD35Medium + Gemma4 1.5% against 2.2%, Flux2Klein + Gemma4 0.57% against 0.29%, so the change with run age goes opposite ways for the two generators.
 <!-- SECTION:NOTES:END -->
