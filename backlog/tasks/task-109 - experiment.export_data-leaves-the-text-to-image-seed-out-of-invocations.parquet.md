@@ -3,9 +3,10 @@ id: TASK-109
 title: >-
   experiment.export_data leaves the text-to-image seed out of
   invocations.parquet
-status: To Do
+status: Done
 assignee: []
-created_date: '2026-10-06 05:02'
+created_date: 2026-10-06 05:02
+updated_date: '2026-10-27T05:13:00Z'
 labels:
   - export
 dependencies: []
@@ -27,7 +28,13 @@ The fix is in lib/, so it waits until the long run of experiment 01a10613 has fi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 invocations.parquet has an integer seed column, set on image rows and null on text rows and on the synthetic prompt row
-- [ ] #2 test/data_export_test.exs checks that an exported seed equals the stored one
-- [ ] #3 The change lands after experiment 01a10613 has completed
+- [x] #1 invocations.parquet has an integer seed column, set on image rows and null on text rows and on the synthetic prompt row
+- [x] #2 test/data_export_test.exs checks that an exported seed equals the stored one
+- [x] #3 The change lands after experiment 01a10613 has completed
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+invocations.parquet now carries an integer seed column: the stored seed on image rows, null on text rows and on the synthetic prompt row. test/data_export_test.exs checks every exported seed against the stored one and that only image rows have one. Exports made before this (01a09e21_parquet, 01a10613_parquet) lack the column until re-exported.
+<!-- SECTION:FINAL_SUMMARY:END -->

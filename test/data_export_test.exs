@@ -65,6 +65,19 @@ defmodule PanicTda.DataExportTest do
     emb = Explorer.DataFrame.from_parquet!(elem(tables[:embeddings], 0))
     assert {:list, {:f, 32}} == Explorer.DataFrame.dtypes(emb)["vector"]
 
+    # image rows carry the seed they were generated from, text rows none
+    stored_seeds =
+      PanicTda.Invocation
+      |> Ash.read!()
+      |> Map.new(&{&1.id, &1.seed})
+
+    exported = Explorer.DataFrame.to_rows(inv)
+
+    for row <- exported do
+      assert row["seed"] == stored_seeds[row["id"]]
+      assert is_integer(row["seed"]) == (row["type"] == "image")
+    end
+
     # nested/array attributes are JSON strings
     runs = Explorer.DataFrame.from_parquet!(elem(tables[:runs], 0))
     [network_json] = runs["network"] |> Explorer.Series.to_list()
@@ -108,8 +121,15 @@ defmodule PanicTda.DataExportTest do
 
     prompt_rows = Enum.filter(inv_rows, &(&1["sequence_number"] == -1))
 
-    assert [%{"output_text" => "test prompt", "type" => "text", "id" => id, "run_id" => run_id}] =
-             prompt_rows
+    assert [
+             %{
+               "output_text" => "test prompt",
+               "type" => "text",
+               "seed" => nil,
+               "id" => id,
+               "run_id" => run_id
+             }
+           ] = prompt_rows
 
     assert id == "prompt-" <> run_id
 
