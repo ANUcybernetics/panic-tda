@@ -141,17 +141,17 @@ batch takes roughly two to three times longer than it did under the old
 - `mise exec -- mix experiment.resume <id-prefix>` --- resume an interrupted
   experiment (picks up where it left off: skips completed runs, computes missing
   embeddings/PDs; does not recluster)
-- `mise exec -- mix experiment.export <id-prefix> [--output path.mp4] [--fps 10] [--resolution hd|4k]`
-  --- export mosaic video of an experiment
-- `mise exec -- mix experiment.export --image <invocation-id> [--output image.png]`
-  --- export a single invocation's image
-- `mise exec -- mix experiment.export_images <id-prefix> [--output dir] [--limit N]`
-  --- dump every image invocation as an AVIF file (organised by
-  network/prompt/run) with EXIF/XMP metadata (needs `exiftool`)
-- `mise exec -- mix experiment.export_data <id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]`
-  --- dump experiment data (everything except image bytes) to parquet, one file
-  per table, for analysis in polars/pandas; `--embed-prompts` also embeds each
-  run's initial prompt as a synthetic `sequence_number == -1` row (`t_0`)
+- `mise exec -- mix experiment.export <id-prefix> [--output path.mp4] [--fps 10] [--resolution hd|4k]` ---
+  export mosaic video of an experiment
+- `mise exec -- mix experiment.export --image <invocation-id> [--output image.png]` ---
+  export a single invocation's image
+- `mise exec -- mix experiment.export_images <id-prefix> [--output dir] [--limit N]` ---
+  dump every image invocation as an AVIF file (organised by network/prompt/run)
+  with EXIF/XMP metadata (needs `exiftool`)
+- `mise exec -- mix experiment.export_data <id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]` ---
+  dump experiment data (everything except image bytes) to parquet, one file per
+  table, for analysis in polars/pandas; `--embed-prompts` also embeds each run's
+  initial prompt as a synthetic `sequence_number == -1` row (`t_0`)
 - `mise exec -- mix experiment.delete <id-prefix> [--force]` --- delete an
   experiment and all its data
 - `bin/long-run config/x.json` --- run an experiment to completion across
