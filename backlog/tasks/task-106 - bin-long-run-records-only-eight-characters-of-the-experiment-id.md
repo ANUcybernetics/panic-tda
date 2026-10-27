@@ -1,9 +1,10 @@
 ---
 id: TASK-106
 title: bin/long-run records only eight characters of the experiment id
-status: To Do
+status: Done
 assignee: []
-created_date: '2026-10-04 09:36'
+created_date: 2026-10-04 09:36
+updated_date: '2026-10-27T05:13:00Z'
 labels:
   - instrument
   - bug
@@ -20,6 +21,12 @@ experiment.run prints the first eight characters of the new experiment's id, and
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 bin/long-run records an id that stays unique however close together two experiments are created, and resumes by it
-- [ ] #2 A test or scripted check launches two experiments within a minute of each other and both resume
+- [x] #1 bin/long-run records an id that stays unique however close together two experiments are created, and resumes by it
+- [x] #2 A test or scripted check launches two experiments within a minute of each other and both resume
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+experiment.run prints the whole experiment id and bin/long-run's grep takes the hyphens with it, so the id file holds the full UUID and resumes by it. test/experiment_run_test.exs launches two experiments back to back through the task, reads each id with the pattern taken from bin/long-run itself, shows the old eight-character prefix is ambiguous between them, and resumes each by its recorded id; it fails on the old code. The existing logs/long-run.*.id files keep their eight characters, which are unique for those experiments.
+<!-- SECTION:FINAL_SUMMARY:END -->

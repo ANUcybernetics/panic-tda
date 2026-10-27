@@ -34,7 +34,9 @@ defmodule Mix.Tasks.Experiment.Run do
 
     config = read_config(config_path)
     experiment = PanicTda.create_experiment!(config)
-    Mix.shell().info("Created experiment #{short_id(experiment.id)}")
+    # the whole id, which bin/long-run records: the first eight characters of a
+    # UUIDv7 are shared by every experiment created within about 65 seconds
+    Mix.shell().info("Created experiment #{experiment.id}")
 
     try do
       {:ok, experiment} = PanicTda.Engine.perform_experiment(experiment.id)
