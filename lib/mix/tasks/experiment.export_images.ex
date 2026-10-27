@@ -7,18 +7,24 @@ defmodule Mix.Tasks.Experiment.ExportImages do
   metadata describing the prompt, network, model, run/sequence, input text,
   and generation timestamp.
 
-      $ mix experiment.export_images <experiment-id-prefix> [--output dir] [--limit N]
+      $ mix experiment.export_images <experiment-id-prefix> [--output dir] [--every N] [--limit N]
 
   Layout:
 
       <output>/<network>/<prompt-slug>/run_<n>/seq_<NNN>.avif
+
+  The step number is padded to the width of the run's last step, and to at
+  least three digits.
 
   Requires `exiftool` on the PATH.
 
   ## Options
 
     - `--output` — output directory (default: `./<short-id>_images`)
-    - `--limit` — only export the first N images (useful for a quick test)
+    - `--every` — export every Nth image of each run, starting from its first
+      (counted in images, so `--every 10` keeps a run's 1st, 11th, 21st image)
+    - `--limit` — only export the first N images (useful for a quick test),
+      applied after `--every`
   """
 
   use Mix.Task
@@ -28,7 +34,7 @@ defmodule Mix.Tasks.Experiment.ExportImages do
   @impl Mix.Task
   def run(args) do
     {opts, rest, _} =
-      OptionParser.parse(args, strict: [output: :string, limit: :integer])
+      OptionParser.parse(args, strict: [output: :string, every: :integer, limit: :integer])
 
     id_prefix =
       case rest do
@@ -37,7 +43,8 @@ defmodule Mix.Tasks.Experiment.ExportImages do
 
         _ ->
           Mix.raise(
-            "Usage: mix experiment.export_images <experiment-id-prefix> [--output dir] [--limit N]"
+            "Usage: mix experiment.export_images <experiment-id-prefix> " <>
+              "[--output dir] [--every N] [--limit N]"
           )
       end
 
@@ -54,10 +61,14 @@ defmodule Mix.Tasks.Experiment.ExportImages do
     {invocations, run_lookup, text_lookup} = load_invocations(experiment.id)
 
     invocations =
-      case Keyword.get(opts, :limit) do
-        nil -> invocations
-        n -> Enum.take(invocations, n)
-      end
+      invocations
+      |> every_nth_per_run(Keyword.get(opts, :every, 1))
+      |> then(fn invs ->
+        case Keyword.get(opts, :limit) do
+          nil -> invs
+          n -> Enum.take(invs, n)
+        end
+      end)
 
     total = length(invocations)
     Mix.shell().info("Exporting #{total} images to #{output_dir}/...")
@@ -106,10 +117,20 @@ defmodule Mix.Tasks.Experiment.ExportImages do
       |> Ash.read!()
       |> Map.new(fn run -> {run.id, run} end)
 
+    # Everything but the image bytes, which are read one image at a time as it
+    # is written, so a thinned export of a large experiment never holds them all
     image_invocations =
       PanicTda.Invocation
       |> Ash.Query.filter(run.experiment_id == ^experiment_id)
-      |> Ash.Query.filter(not is_nil(output_image))
+      |> Ash.Query.filter(type == :image)
+      |> Ash.Query.select([
+        :id,
+        :run_id,
+        :input_invocation_id,
+        :sequence_number,
+        :model,
+        :started_at
+      ])
       |> Ash.Query.sort([:run_id, :sequence_number])
       |> Ash.read!()
 
@@ -126,12 +147,22 @@ defmodule Mix.Tasks.Experiment.ExportImages do
     dir = Path.join([output_dir, network_slug, prompt_slug, run_dir])
     File.mkdir_p!(dir)
 
-    seq = String.pad_leading(to_string(inv.sequence_number), 3, "0")
+    # wide enough that a run's files sort in step order, and never under three
+    width = max(3, String.length(to_string(run.max_length - 1)))
+    seq = String.pad_leading(to_string(inv.sequence_number), width, "0")
     path = Path.join(dir, "seq_#{seq}.avif")
 
-    File.write!(path, inv.output_image)
+    File.write!(path, image_bytes(inv.id))
 
     write_metadata(path, inv, run, experiment, text_lookup)
+  end
+
+  defp image_bytes(invocation_id) do
+    PanicTda.Invocation
+    |> Ash.Query.filter(id == ^invocation_id)
+    |> Ash.Query.select([:output_image])
+    |> Ash.read_one!()
+    |> Map.fetch!(:output_image)
   end
 
   defp write_metadata(path, inv, run, experiment, text_lookup) do
@@ -180,6 +211,18 @@ defmodule Mix.Tasks.Experiment.ExportImages do
       {output, code} -> raise "exiftool failed (exit #{code}) for #{path}: #{output}"
     end
   end
+
+  @doc """
+  Every `n`th image of each run, starting from its first. Expects invocations
+  sorted by run and then sequence number, and keeps that order.
+  """
+  def every_nth_per_run(invocations, n) when is_integer(n) and n >= 1 do
+    invocations
+    |> Enum.chunk_by(& &1.run_id)
+    |> Enum.flat_map(&Enum.take_every(&1, n))
+  end
+
+  def every_nth_per_run(_invocations, n), do: Mix.raise("--every must be at least 1, got #{n}")
 
   defp maybe_add_timestamp(args, ""), do: args
 

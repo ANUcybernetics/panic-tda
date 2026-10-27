@@ -145,9 +145,10 @@ batch takes roughly two to three times longer than it did under the old
   export mosaic video of an experiment
 - `mise exec -- mix experiment.export --image <invocation-id> [--output image.png]` ---
   export a single invocation's image
-- `mise exec -- mix experiment.export_images <id-prefix> [--output dir] [--limit N]` ---
+- `mise exec -- mix experiment.export_images <id-prefix> [--output dir] [--every N] [--limit N]` ---
   dump every image invocation as an AVIF file (organised by network/prompt/run)
-  with EXIF/XMP metadata (needs `exiftool`)
+  with EXIF/XMP metadata (needs `exiftool`); `--every N` keeps every Nth image
+  of each run
 - `mise exec -- mix experiment.export_data <id-prefix> [<id-prefix> ...] [--output dir] [--embedding-model NAME] [--embed-prompts]` ---
   dump experiment data (everything except image bytes) to parquet, one file per
   table, for analysis in polars/pandas; `--embed-prompts` also embeds each run's

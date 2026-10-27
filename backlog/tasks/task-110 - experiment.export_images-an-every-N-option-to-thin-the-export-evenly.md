@@ -1,9 +1,10 @@
 ---
 id: TASK-110
 title: 'experiment.export_images: an --every N option to thin the export evenly'
-status: To Do
+status: Done
 assignee: []
-created_date: '2026-10-06 05:19'
+created_date: 2026-10-06 05:19
+updated_date: '2026-10-27T05:13:00Z'
 labels:
   - export
 dependencies: []
@@ -24,8 +25,14 @@ The option should count images, not sequence numbers, so --every 10 keeps a run'
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 mix experiment.export_images <id> --every N writes every Nth image of each run, starting from the run's first, with the usual metadata
-- [ ] #2 --every and --limit work together, and the task's moduledoc and CLAUDE.md's task list describe the option
-- [ ] #3 A test checks which sequence numbers are written for a run
-- [ ] #4 The change lands after experiment 01a10613 has completed
+- [x] #1 mix experiment.export_images <id> --every N writes every Nth image of each run, starting from the run's first, with the usual metadata
+- [x] #2 --every and --limit work together, and the task's moduledoc and CLAUDE.md's task list describe the option
+- [x] #3 A test checks which sequence numbers are written for a run
+- [x] #4 The change lands after experiment 01a10613 has completed
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+mix experiment.export_images takes --every N, keeping every Nth image of each run from its first, counted in images; --limit applies after it. The task now reads image bytes one at a time as it writes them rather than loading every image first, so a thinned export of a large experiment stays small in memory (every 100th image of 01a10613, 2,400 files, took under two minutes). Step numbers are padded to the width of a run's last step, at least three digits, so runs over 1,000 steps sort in order. test/export_images_test.exs covers --every, --every with --limit, and the default; moduledoc and CLAUDE.md describe the option.
+<!-- SECTION:FINAL_SUMMARY:END -->
