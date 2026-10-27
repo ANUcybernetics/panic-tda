@@ -1,0 +1,422 @@
+{
+  "experiment": "01a10613",
+  "versions": {
+    "torch": "2.14.0+cu130",
+    "gpu": "NVIDIA RTX 6000 Ada Generation"
+  },
+  "encoder_ceiling": {
+    "ceiling": 512,
+    "captions_read": 239760,
+    "over_512": 1090,
+    "cells": {
+      "[\"Flux2Klein\",\"Gemma4\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 39960,
+        "median": 300,
+        "p99": 448,
+        "max": 1032,
+        "over_512": 114,
+        "over_512_pct": 0.29,
+        "over_512_pct_second_half": 0.57,
+        "median_tokens_cut_when_over": 67
+      },
+      "[\"Flux2Klein\",\"Moondream3\"]": {
+        "tokenizer": "Qwen2TokenizerFast (Qwen3 chat template)",
+        "captions_read": 39960,
+        "median": 77,
+        "p99": 120,
+        "max": 1376,
+        "over_512": 12,
+        "over_512_pct": 0.03,
+        "over_512_pct_second_half": 0.02,
+        "median_tokens_cut_when_over": 531
+      },
+      "[\"SD35Medium\",\"Gemma4\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 39960,
+        "median": 357,
+        "p99": 544,
+        "max": 707,
+        "over_512": 863,
+        "over_512_pct": 2.16,
+        "over_512_pct_second_half": 1.5,
+        "median_tokens_cut_when_over": 29
+      },
+      "[\"SD35Medium\",\"Moondream3\"]": {
+        "tokenizer": "T5 (tokenizer_3)",
+        "captions_read": 39960,
+        "median": 66,
+        "p99": 122,
+        "max": 1841,
+        "over_512": 96,
+        "over_512_pct": 0.24,
+        "over_512_pct_second_half": 0.38,
+        "median_tokens_cut_when_over": 698
+      },
+      "[\"ZImageTurbo\",\"Gemma4\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 39960,
+        "median": 267,
+        "p99": 401,
+        "max": 559,
+        "over_512": 4,
+        "over_512_pct": 0.01,
+        "over_512_pct_second_half": 0.01,
+        "median_tokens_cut_when_over": 8
+      },
+      "[\"ZImageTurbo\",\"Moondream3\"]": {
+        "tokenizer": "Qwen tokenizer (Qwen3 chat template, thinking)",
+        "captions_read": 39960,
+        "median": 66,
+        "p99": 109,
+        "max": 1033,
+        "over_512": 1,
+        "over_512_pct": 0.0,
+        "over_512_pct_second_half": 0.0,
+        "median_tokens_cut_when_over": 521
+      }
+    }
+  },
+  "captions": [
+    {
+      "captioner": "Moondream3",
+      "generator": "ZImageTurbo",
+      "caption_step": 1437,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 2.01,
+      "generation_ceiling": null
+    },
+    {
+      "captioner": "Moondream3",
+      "generator": "Flux2Klein",
+      "caption_step": 399,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 2.21,
+      "generation_ceiling": null
+    },
+    {
+      "captioner": "Gemma4",
+      "generator": "SD35Medium",
+      "caption_step": 1555,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.41,
+      "generation_ceiling": {
+        "captions": 120000,
+        "max_tokens": 1023,
+        "at_or_over_generation_ceiling": 1
+      }
+    },
+    {
+      "captioner": "Gemma4",
+      "generator": "ZImageTurbo",
+      "caption_step": 335,
+      "batch": 40,
+      "identical": 40,
+      "min_similarity": 1.0,
+      "seconds_per_caption": 0.34,
+      "generation_ceiling": {
+        "captions": 120000,
+        "max_tokens": 1023,
+        "at_or_over_generation_ceiling": 1
+      }
+    }
+  ],
+  "embeddings": [
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "run_id": "01a10613-e475-7b61-be48-73ed7f0e16e1",
+      "captions": 1000,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "Gemma4",
+      "run_id": "01a10613-e4b0-7cb0-87f7-b0f9437c7fd6",
+      "captions": 1000,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Gemma4",
+      "run_id": "01a10613-e469-722b-a7c8-457fdd54afec",
+      "captions": 1000,
+      "min_cosine": 1.0,
+      "mean_cosine": 1.0
+    }
+  ],
+  "images": [
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Gemma4",
+      "image_step": 28,
+      "chunk": 3,
+      "why": "before the 4 Oct restart",
+      "seconds_per_image": 3.8,
+      "stored_luma_mean": [
+        72.2,
+        20.8
+      ],
+      "regenerated_luma_mean": [
+        72.1,
+        20.7
+      ],
+      "same_seed_diff": [
+        2.6,
+        1.07
+      ],
+      "other_seed_diff": [
+        19.38,
+        14.72
+      ]
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Gemma4",
+      "image_step": 30,
+      "chunk": 3,
+      "why": "after the 4 Oct restart",
+      "seconds_per_image": 3.5,
+      "stored_luma_mean": [
+        61.0,
+        32.8
+      ],
+      "regenerated_luma_mean": [
+        60.9,
+        32.7
+      ],
+      "same_seed_diff": [
+        2.32,
+        1.63
+      ],
+      "other_seed_diff": [
+        19.8,
+        14.13
+      ]
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "Moondream3",
+      "image_step": 1438,
+      "chunk": 2,
+      "why": "after the 13 Oct OOM kill",
+      "seconds_per_image": 5.8,
+      "stored_luma_mean": [
+        140.2,
+        121.1,
+        113.3,
+        131.1
+      ],
+      "regenerated_luma_mean": [
+        140.1,
+        120.9,
+        113.3,
+        131.0
+      ],
+      "same_seed_diff": [
+        2.1,
+        2.37,
+        2.76,
+        2.12
+      ],
+      "other_seed_diff": [
+        44.54,
+        50.95,
+        55.08,
+        60.41
+      ]
+    },
+    {
+      "generator": "Flux2Klein",
+      "captioner": "Moondream3",
+      "image_step": 398,
+      "chunk": 11,
+      "why": "before the 15 Oct OOM kill",
+      "seconds_per_image": 3.5,
+      "stored_luma_mean": [
+        130.0,
+        173.8
+      ],
+      "regenerated_luma_mean": [
+        130.0,
+        173.7
+      ],
+      "same_seed_diff": [
+        2.74,
+        2.29
+      ],
+      "other_seed_diff": [
+        41.72,
+        54.07
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Gemma4",
+      "image_step": 1556,
+      "chunk": 6,
+      "why": "after the 20 Oct stop",
+      "seconds_per_image": 6.0,
+      "stored_luma_mean": [
+        136.7,
+        30.5,
+        133.1,
+        119.1
+      ],
+      "regenerated_luma_mean": [
+        136.0,
+        30.5,
+        132.7,
+        118.8
+      ],
+      "same_seed_diff": [
+        4.35,
+        2.6,
+        3.6,
+        2.74
+      ],
+      "other_seed_diff": [
+        24.98,
+        16.12,
+        30.01,
+        31.56
+      ]
+    },
+    {
+      "generator": "ZImageTurbo",
+      "captioner": "Gemma4",
+      "image_step": 1388,
+      "chunk": 8,
+      "why": "after the 23 Oct reboot",
+      "seconds_per_image": 6.3,
+      "stored_luma_mean": [
+        92.6,
+        83.3,
+        75.2,
+        78.4
+      ],
+      "regenerated_luma_mean": [
+        92.4,
+        83.1,
+        75.1,
+        78.2
+      ],
+      "same_seed_diff": [
+        3.05,
+        2.94,
+        4.78,
+        1.95
+      ],
+      "other_seed_diff": [
+        34.47,
+        39.38,
+        37.86,
+        11.27
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "image_step": 1998,
+      "chunk": 4,
+      "why": "the cell's last image step",
+      "seconds_per_image": 6.1,
+      "stored_luma_mean": [
+        150.5,
+        97.5,
+        114.3,
+        131.8
+      ],
+      "regenerated_luma_mean": [
+        150.4,
+        97.4,
+        114.1,
+        131.7
+      ],
+      "same_seed_diff": [
+        2.97,
+        2.31,
+        2.21,
+        1.66
+      ],
+      "other_seed_diff": [
+        48.04,
+        106.08,
+        59.39,
+        56.59
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "image_step": 234,
+      "chunk": 0,
+      "why": "flat under a caption asking for apples",
+      "seconds_per_image": 6.1,
+      "stored_luma_mean": [
+        197.8,
+        204.5,
+        183.9,
+        137.6
+      ],
+      "regenerated_luma_mean": [
+        197.7,
+        204.4,
+        183.8,
+        137.4
+      ],
+      "same_seed_diff": [
+        1.44,
+        2.27,
+        2.68,
+        0.67
+      ],
+      "other_seed_diff": [
+        29.61,
+        14.52,
+        52.33,
+        5.45
+      ]
+    },
+    {
+      "generator": "SD35Medium",
+      "captioner": "Moondream3",
+      "image_step": 406,
+      "chunk": 0,
+      "why": "flat under a caption asking for apples",
+      "seconds_per_image": 6.1,
+      "stored_luma_mean": [
+        209.2,
+        169.3,
+        218.5,
+        148.3
+      ],
+      "regenerated_luma_mean": [
+        209.1,
+        169.3,
+        218.5,
+        148.1
+      ],
+      "same_seed_diff": [
+        2.91,
+        0.67,
+        1.03,
+        2.74
+      ],
+      "other_seed_diff": [
+        23.7,
+        9.91,
+        34.95,
+        60.07
+      ]
+    }
+  ]
+}

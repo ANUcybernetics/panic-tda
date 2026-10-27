@@ -98,6 +98,45 @@ TARGETS = {
             ("Flux2Dev", "JoyCaption"),
         ],
     },
+    "01a10613": {
+        # every restart fell between whole steps; each target is the first step
+        # redone after one, or the last stored before it
+        "images": [
+            ("Flux2Klein", "Gemma4", 28, 3, "before the 4 Oct restart"),
+            ("Flux2Klein", "Gemma4", 30, 3, "after the 4 Oct restart"),
+            ("ZImageTurbo", "Moondream3", 1438, 2, "after the 13 Oct OOM kill"),
+            ("Flux2Klein", "Moondream3", 398, 11, "before the 15 Oct OOM kill"),
+            ("SD35Medium", "Gemma4", 1556, 6, "after the 20 Oct stop"),
+            ("ZImageTurbo", "Gemma4", 1388, 8, "after the 23 Oct reboot"),
+            ("SD35Medium", "Moondream3", 1998, 4, "the cell's last image step"),
+            (
+                "SD35Medium",
+                "Moondream3",
+                234,
+                0,
+                "flat under a caption asking for apples",
+            ),
+            (
+                "SD35Medium",
+                "Moondream3",
+                406,
+                0,
+                "flat under a caption asking for apples",
+            ),
+        ],
+        "images_without_control": set(),
+        "captions": [
+            ("Moondream3", "ZImageTurbo", 1437),
+            ("Moondream3", "Flux2Klein", 399),
+            ("Gemma4", "SD35Medium", 1555),
+            ("Gemma4", "ZImageTurbo", 335),
+        ],
+        "embeddings": [
+            ("SD35Medium", "Moondream3"),
+            ("ZImageTurbo", "Gemma4"),
+            ("Flux2Klein", "Gemma4"),
+        ],
+    },
 }
 
 

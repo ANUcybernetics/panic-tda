@@ -1,11 +1,11 @@
 ---
 id: TASK-104
 title: 'Design and run the long follow-up: is a prompt ever forgotten?'
-status: In Progress
+status: Done
 assignee:
   - '@claude'
-created_date: '2026-10-04 07:19'
-updated_date: '2026-10-04 09:40'
+created_date: 2026-10-04 07:19
+updated_date: '2026-10-27T03:55:00Z'
 labels:
   - experiment
   - paper
@@ -37,7 +37,7 @@ LAUNCH TRAPS LEFT BY THE PANEL. logs/long-run.id still holds 01a09e21, and bin/l
 <!-- AC:BEGIN -->
 - [x] #1 The prompts, runs per prompt, networks and horizon are chosen and written down with the GPU-day cost and what each choice is for, and Ben has agreed the design before any GPU time is spent
 - [x] #2 The config is committed and the run is launched detached and resumable, with the experiment id and the expected completion date recorded here
-- [ ] #3 The run completes and the audit that passed on the panel passes on it: every image, caption, seed and embedding checked, and a sample of steps regenerated from their stored inputs
+- [x] #3 The run completes and the audit that passed on the panel passes on it: every image, caption, seed and embedding checked, and a sample of steps regenerated from their stored inputs
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -88,4 +88,12 @@ Suite with the fix: three full runs, 119 tests. The second and third passed. The
 Also done while the run goes: analysis/panel_regenerate.py takes its targets by experiment and can count tokens without the GPU (run that way on the panel it reproduces the stored section exactly); CLAUDE.md says what to leave alone while a long run is live; TASK-106 holds the eight-character id, which cannot be fixed until the run is over.
 
 The path the resumed run takes at the end of a cell was rehearsed too, since it now runs under experiment.resume: EmbeddingsStage.resume and PdStage.resume from nothing, on one run of 1,000 text states. Both passed (embedding 0.4 s with the dummy model, diagram 42 s). What remains unrehearsed is Qwen3Embed itself on 1,000 real captions a run, which needs the GPU the run is using; from the panel's 0.04 s a caption it should take about 40 s against a limit of 1,000.
+
+AUDIT 2026-10-27 (AC#3). The run completed 24 Oct 17:45 AEDT after six resumes (4 Oct restart for d2143d5; out-of-memory kills of host RAM on 13, 15 and 21 Oct, each taking the 46-60 GB model process while another job made the allocation; a stop on 20 Oct; a reboot on 23 Oct that loaded NVIDIA driver 580.196 for ZImageTurbo + Gemma4 steps 1,388-1,999). panel_audit.py over every image, caption, seed, embedding and the log (analysis/follow_up_audit.json): no split, stalled or retried step, no decode failure, no pure black image, no empty or refused caption, every embedding unit length. panel_regenerate.py on the steps either side of each interruption plus two flat images (analysis/follow_up_regenerate.json): 30 images at 0.7-4.8 levels from stored at the same seed against 5.5-106 at another, 160 of 160 captions identical, 3,000 embeddings at cosine 1.0, almost all on the newer driver. Write-up: backlog/docs/follow-up-audit.md. Unit instance disabled.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Designed, launched and audited the long follow-up, experiment 01a10613: six networks (Flux2Klein, SD35Medium, ZImageTurbo with Moondream3 and Gemma4), five prompts, eight runs each, 2,000 invocations a run. It ran 4-24 Oct 2026 through six interruptions without losing or splitting a step. The audit that passed on the panel passes here, and stored images, captions and embeddings regenerate from their stored inputs (backlog/docs/follow-up-audit.md). Ready for TASK-105.
+<!-- SECTION:FINAL_SUMMARY:END -->

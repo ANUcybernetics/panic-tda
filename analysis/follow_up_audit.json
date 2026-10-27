@@ -1,0 +1,1522 @@
+{
+  "experiment": "01a10613",
+  "runs": 240,
+  "images": {
+    "images": 240000,
+    "decode_failures": 0,
+    "dimensions": {
+      "1024x1024": 240000
+    },
+    "modes": {
+      "RGB": 240000
+    },
+    "flat": {
+      "threshold_luma_std": 2.0,
+      "total": 3667,
+      "runs": 10,
+      "by_kind": {
+        "colour": 3667
+      },
+      "by_network": {
+        "[\"Flux2Klein\",\"Gemma4\"]": 15,
+        "[\"SD35Medium\",\"Moondream3\"]": 3652
+      },
+      "caption_does_not_ask_for_it": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11416-6009-737a-9ee8-95a2f1f7f672",
+          "sn": 234,
+          "kind": "colour",
+          "caption_in": "Three green apples are arranged on an orange background. One apple is whole and has a stem. Two other apples are cut in half, revealing their pale yellow flesh. The apples are positioned close together, with the whole apple slightly behind the cut apples. The bright orange background provides a cont"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a1141b-bf00-7f94-9e3d-e04e47ca9835",
+          "sn": 236,
+          "kind": "colour",
+          "caption_in": "A close-up view of a bright yellow surface with horizontal parallel lines. The lines are evenly spaced and run across the entire image, creating a textured appearance. The yellow surface fills the frame, with no objects or patterns visible."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a115d6-ab7c-7b5c-9993-061afac6bad0",
+          "sn": 406,
+          "kind": "colour",
+          "caption_in": "Two identical green apples are positioned side by side against a bright yellow background. Each apple has a stem and a small indentation at the top. The apples are evenly spaced and face forward."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11708-6764-7e9f-aa03-0daf2a059945",
+          "sn": 524,
+          "kind": "colour",
+          "caption_in": "A bright green background with horizontal lines running across it. The lines are evenly spaced and create a consistent pattern across the image."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a117bd-b914-7502-ae60-8a9f75775b15",
+          "sn": 594,
+          "kind": "colour",
+          "caption_in": "A bright yellow background fills the frame. The surface is covered in small dots, creating a textured appearance."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11b24-4c34-70ed-a351-f331bab3b103",
+          "sn": 930,
+          "kind": "colour",
+          "caption_in": "A bright yellow background with diagonal diagonal stripes. The stripes are thin and parallel, creating a textured appearance."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11fb7-bc0f-78fd-8142-23916241b3ef",
+          "sn": 1380,
+          "kind": "colour",
+          "caption_in": "A bright yellow background fills the frame. The surface has a textured, grainy appearance with small, evenly distributed dots or speckles."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a12020-d336-7c3c-a256-f7a38e7e0caa",
+          "sn": 1420,
+          "kind": "colour",
+          "caption_in": "A red apple with a stem sits against a bright yellow background. The apple casts a shadow to its left. The background is uniformly yellow with no other objects or text."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a12139-f28f-7155-a3d9-bea1125a85fe",
+          "sn": 1526,
+          "kind": "colour",
+          "caption_in": "A bright yellow background fills the frame. The surface has a textured, slightly grainy appearance."
+        }
+      ]
+    },
+    "low_detail": {
+      "rule": "an image under 5000 bytes; a run with 333 or more",
+      "images": 5796,
+      "runs": 8,
+      "runs_ending_there": 1,
+      "by_run": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a city slowly turning into a forest",
+          "images": 758,
+          "first_step": 16,
+          "share_of_last_fifty": 0.9,
+          "luma": 215.33491816055178,
+          "flat_images": 652
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a city slowly turning into a forest",
+          "images": 750,
+          "first_step": 60,
+          "share_of_last_fifty": 0.8,
+          "luma": 183.63687649536132,
+          "flat_images": 673
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a red apple on a wooden table",
+          "images": 686,
+          "first_step": 130,
+          "share_of_last_fifty": 0.74,
+          "luma": 201.74018171438323,
+          "flat_images": 634
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a city slowly turning into a forest",
+          "images": 558,
+          "first_step": 162,
+          "share_of_last_fifty": 0.84,
+          "luma": 155.98246966126143,
+          "flat_images": 455
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a red apple on a wooden table",
+          "images": 435,
+          "first_step": 182,
+          "share_of_last_fifty": 0.0,
+          "luma": 214.7308036716505,
+          "flat_images": 372
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a red apple on a wooden table",
+          "images": 422,
+          "first_step": 462,
+          "share_of_last_fifty": 0.84,
+          "luma": 217.7334914365651,
+          "flat_images": 316
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a red apple on a wooden table",
+          "images": 416,
+          "first_step": 220,
+          "share_of_last_fifty": 0.78,
+          "luma": 210.20699108563937,
+          "flat_images": 198
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "prompt": "a red apple on a wooden table",
+          "images": 363,
+          "first_step": 404,
+          "share_of_last_fifty": 0.68,
+          "luma": 163.73854514718383,
+          "flat_images": 172
+        }
+      ]
+    },
+    "pure_black": {
+      "total": 0,
+      "runs": 0,
+      "by_network": {}
+    },
+    "first_flat_image_per_run": [
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "prompt": "a man standing in a doorway",
+        "run_id": "01a10613-e470-7345-ae2c-95541a3a829c",
+        "id": "01a1116a-5d71-7df9-9f3a-4e9897a4dd42",
+        "sn": 1970,
+        "kind": "colour",
+        "mean": 23.646181106567383,
+        "caption_in": "This is a solid, dark red or maroon background with a subtle, faint grid pattern overlaid on it.\n\nHere are some descriptive details:\n\n* **Color:** Deep red, maroon, or burgundy.\n* **Texture/Pattern:** A very fine, light grid pattern is visible across the entire surface, suggesting a digital or texti"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a city slowly turning into a forest",
+        "run_id": "01a10613-e47e-7d29-a249-2770ae88b7d4",
+        "id": "01a11257-c240-7d25-9ef7-46e390dbca5e",
+        "sn": 62,
+        "kind": "colour",
+        "mean": 169.4574432373047,
+        "caption_in": "A bright green gradient fills the frame, transitioning from a darker green at the top to a lighter green at the bottom. The color is uniform and solid, with no visible patterns, textures, or objects."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e477-7043-81f6-1f9935bf70a9",
+        "id": "01a11313-03a2-7ed0-a46f-6fccdca2f8d0",
+        "sn": 134,
+        "kind": "colour",
+        "mean": 223.64071655273438,
+        "caption_in": "A single green apple with a stem sits centrally against a bright yellow background. The apple is smooth and glossy, with subtle highlights and shadows that emphasize its three-dimensional form. The yellow backdrop is uniform and evenly lit, creating a stark contrast with the apple\u2019s vibrant green co"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a city slowly turning into a forest",
+        "run_id": "01a10613-e47e-7116-8a78-e8dc1890dd7b",
+        "id": "01a11384-b458-765d-9e81-b8fd00ed735b",
+        "sn": 178,
+        "kind": "colour",
+        "mean": 225.30816650390625,
+        "caption_in": "A bright green circle is centered on a yellow background. The circle is uniform in color and size, with no visible texture or pattern."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e476-77ec-8fe4-230703893a58",
+        "id": "01a11416-6009-737a-9ee8-95a2f1f7f672",
+        "sn": 234,
+        "kind": "colour",
+        "mean": 168.97265625,
+        "caption_in": "Three green apples are arranged on an orange background. One apple is whole and has a stem. Two other apples are cut in half, revealing their pale yellow flesh. The apples are positioned close together, with the whole apple slightly behind the cut apples. The bright orange background provides a cont"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a city slowly turning into a forest",
+        "run_id": "01a10613-e47e-7922-b8bf-dcbe847319f0",
+        "id": "01a11541-474b-77b2-9197-1a51d3dcac0e",
+        "sn": 348,
+        "kind": "colour",
+        "mean": 116.90667724609375,
+        "caption_in": "A close-up view of a bright orange surface composed of parallel horizontal lines. The lines are evenly spaced and run parallel to each other, creating a consistent pattern across the image. The orange color is uniform and intense, with no visible texture or variation in shade. The image is flat and "
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e475-7f66-82d6-2ab9cf2a6d5d",
+        "id": "01a115d6-ab7c-7b5c-9993-061afac6bad0",
+        "sn": 406,
+        "kind": "colour",
+        "mean": 223.13792419433594,
+        "caption_in": "Two identical green apples are positioned side by side against a bright yellow background. Each apple has a stem and a small indentation at the top. The apples are evenly spaced and face forward."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e477-740a-a0e3-771099824737",
+        "id": "01a1180b-3ffa-784a-af33-6e832a0ba0d9",
+        "sn": 624,
+        "kind": "colour",
+        "mean": 224.88433837890625,
+        "caption_in": "A single, light green apple with a stem sits on a bright yellow background. The apple is positioned slightly off-center, facing forward. The background is a uniform, solid yellow color with no other objects or patterns visible."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e475-7b61-be48-73ed7f0e16e1",
+        "id": "01a11d98-ba2f-75c7-97de-3468608bffb2",
+        "sn": 1172,
+        "kind": "colour",
+        "mean": 211.7096710205078,
+        "caption_in": "Three apples are arranged in a horizontal row on a solid yellow background. The apples are yellow with red and yellow tones, and their stems are visible. The background is a uniform, bright yellow color with no other elements or patterns."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "prompt": "a red apple on a wooden table",
+        "run_id": "01a10613-e476-7c16-8758-d7bfb1851806",
+        "id": "01a12020-d336-7c3c-a256-f7a38e7e0caa",
+        "sn": 1420,
+        "kind": "colour",
+        "mean": 219.36953735351562,
+        "caption_in": "A red apple with a stem sits against a bright yellow background. The apple casts a shadow to its left. The background is uniformly yellow with no other objects or text."
+      }
+    ],
+    "byte_identical": {
+      "groups": 0,
+      "images": 0,
+      "groups_that_are_not_flat": 0,
+      "groups_spanning_runs": 0
+    },
+    "by_model": [
+      {
+        "model": "Flux2Klein",
+        "images": 80000,
+        "luma_median": 132.802001953125,
+        "dark_pct": 0.017499999999999998,
+        "flat_pct": 0.01875,
+        "roughness_median": 4.359221458435059,
+        "roughness_p999": 20.648609161376953,
+        "roughness_max": 30.332256317138672,
+        "bytes_median": 47574.0
+      },
+      {
+        "model": "SD35Medium",
+        "images": 80000,
+        "luma_median": 120.2914810180664,
+        "dark_pct": 0.32,
+        "flat_pct": 4.565,
+        "roughness_median": 2.6639851331710815,
+        "roughness_p999": 24.44902801513672,
+        "roughness_max": 40.996620178222656,
+        "bytes_median": 35669.0
+      },
+      {
+        "model": "ZImageTurbo",
+        "images": 80000,
+        "luma_median": 128.34925079345703,
+        "dark_pct": 0.01875,
+        "flat_pct": 0.0,
+        "roughness_median": 3.2390533685684204,
+        "roughness_p999": 19.136180877685547,
+        "roughness_max": 24.80755615234375,
+        "bytes_median": 42353.0
+      }
+    ],
+    "luma_and_saturation_by_hundred_steps": [
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 118.39397564792633,
+        "saturation": 34.659356693267824
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 121.88945885276794,
+        "saturation": 36.19355410957336
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 123.71357582855225,
+        "saturation": 40.28883462238312
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 3,
+        "luma": 128.30886302375794,
+        "saturation": 41.23948670530319
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 4,
+        "luma": 127.11270596981049,
+        "saturation": 41.88887952184677
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 5,
+        "luma": 128.07949660682678,
+        "saturation": 40.545855887413026
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 6,
+        "luma": 126.956557513237,
+        "saturation": 38.23126904582977
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 7,
+        "luma": 124.45324383163452,
+        "saturation": 38.41889764165878
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 8,
+        "luma": 125.3974043879509,
+        "saturation": 38.09008229827881
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 9,
+        "luma": 124.42592779350281,
+        "saturation": 39.455640867710116
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 10,
+        "luma": 124.92875002574921,
+        "saturation": 36.401634189605716
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 11,
+        "luma": 124.26827309322357,
+        "saturation": 37.770758573532106
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 12,
+        "luma": 119.20007097530365,
+        "saturation": 38.265203882694244
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 13,
+        "luma": 117.3311217098236,
+        "saturation": 40.976130650520325
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 14,
+        "luma": 116.3755831823349,
+        "saturation": 38.74660701560974
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 15,
+        "luma": 118.81664709568024,
+        "saturation": 38.769569477558136
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 16,
+        "luma": 119.48526069259644,
+        "saturation": 37.41324209165573
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 17,
+        "luma": 116.85013979244232,
+        "saturation": 38.58793601417541
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 18,
+        "luma": 117.61534176540374,
+        "saturation": 39.10390960741043
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "third": 19,
+        "luma": 117.82092583084106,
+        "saturation": 39.65840416145325
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 137.34037496376038,
+        "saturation": 37.04064973449707
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 138.2802865447998,
+        "saturation": 32.728969175815585
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 139.08672738075256,
+        "saturation": 30.64039151096344
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 3,
+        "luma": 140.98629973602294,
+        "saturation": 29.731496758461
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 4,
+        "luma": 141.7663923854828,
+        "saturation": 31.127677944660185
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 5,
+        "luma": 144.83260892868043,
+        "saturation": 31.383677433013915
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 6,
+        "luma": 146.73212830924987,
+        "saturation": 31.722136947631835
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 7,
+        "luma": 147.50212502288818,
+        "saturation": 30.350348123550415
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 8,
+        "luma": 144.04848477935792,
+        "saturation": 30.872223091125488
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 9,
+        "luma": 144.52300794601442,
+        "saturation": 31.93633034849167
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 10,
+        "luma": 143.5038332939148,
+        "saturation": 32.62187421703339
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 11,
+        "luma": 146.11088764762877,
+        "saturation": 31.640536972522735
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 12,
+        "luma": 144.64918893814087,
+        "saturation": 30.65483923101425
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 13,
+        "luma": 142.95885111999513,
+        "saturation": 30.820153999328614
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 14,
+        "luma": 143.0399521522522,
+        "saturation": 31.26713588953018
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 15,
+        "luma": 144.64834533691408,
+        "saturation": 30.22044407892227
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 16,
+        "luma": 143.00891379165648,
+        "saturation": 31.168532363414766
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 17,
+        "luma": 144.38169187545776,
+        "saturation": 30.751017179012297
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 18,
+        "luma": 142.67919958114624,
+        "saturation": 29.99142653465271
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "third": 19,
+        "luma": 143.9924790534973,
+        "saturation": 30.469601270198822
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 116.31849261951446,
+        "saturation": 68.06457208633422
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 105.39811815404892,
+        "saturation": 76.02329383134843
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 96.1334891448021,
+        "saturation": 77.88659286737442
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 3,
+        "luma": 94.07822126197814,
+        "saturation": 85.68163883113861
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 4,
+        "luma": 96.40535416555404,
+        "saturation": 85.32673040962219
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 5,
+        "luma": 93.60579730701447,
+        "saturation": 88.96375403547287
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 6,
+        "luma": 90.37875732898712,
+        "saturation": 88.92714120340348
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 7,
+        "luma": 82.2845428276062,
+        "saturation": 80.38220637464524
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 8,
+        "luma": 86.73243484687805,
+        "saturation": 82.50107012701035
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 9,
+        "luma": 83.35277924537658,
+        "saturation": 80.05957140493393
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 10,
+        "luma": 82.62137189102172,
+        "saturation": 80.62606437921524
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 11,
+        "luma": 81.32125488328934,
+        "saturation": 78.46557377815246
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 12,
+        "luma": 81.23905586242675,
+        "saturation": 76.53949674415588
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 13,
+        "luma": 78.5623242149353,
+        "saturation": 74.26911431503297
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 14,
+        "luma": 83.0732960691452,
+        "saturation": 73.85317258024216
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 15,
+        "luma": 84.766131606102,
+        "saturation": 77.1683259882927
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 16,
+        "luma": 83.98102438163757,
+        "saturation": 77.68439186477661
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 17,
+        "luma": 82.8916953701973,
+        "saturation": 80.91352790594101
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 18,
+        "luma": 82.40791298151017,
+        "saturation": 77.8568917002678
+      },
+      {
+        "network": "[\"SD35Medium\",\"Gemma4\"]",
+        "third": 19,
+        "luma": 82.20505832958222,
+        "saturation": 78.3808484711647
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 130.43681521320343,
+        "saturation": 63.2729186296463
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 129.9619860496521,
+        "saturation": 87.06394497156143
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 137.4756446866989,
+        "saturation": 102.93151343488694
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 3,
+        "luma": 141.63309917354584,
+        "saturation": 116.66208677864074
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 4,
+        "luma": 141.0002376804352,
+        "saturation": 120.99325382852554
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 5,
+        "luma": 141.75255122566224,
+        "saturation": 125.30649734640122
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 6,
+        "luma": 139.18074201202393,
+        "saturation": 136.95233093643188
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 7,
+        "luma": 141.3329653453827,
+        "saturation": 136.52833257865905
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 8,
+        "luma": 142.8082045545578,
+        "saturation": 135.72698273849488
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 9,
+        "luma": 147.78282516288758,
+        "saturation": 129.54446985292435
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 10,
+        "luma": 147.13205405330658,
+        "saturation": 127.61172455263137
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 11,
+        "luma": 148.4758396396637,
+        "saturation": 130.09616074752807
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 12,
+        "luma": 150.45872217559815,
+        "saturation": 130.05495789670945
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 13,
+        "luma": 152.21961482238768,
+        "saturation": 130.65833431720733
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 14,
+        "luma": 152.4081118812561,
+        "saturation": 133.63128546285628
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 15,
+        "luma": 152.12461047554015,
+        "saturation": 134.27477899980545
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 16,
+        "luma": 153.88238424873353,
+        "saturation": 125.76693586444854
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 17,
+        "luma": 155.12314711284637,
+        "saturation": 125.19120843696594
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 18,
+        "luma": 159.5236769886017,
+        "saturation": 123.75070043992996
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "third": 19,
+        "luma": 158.82959172058105,
+        "saturation": 130.04786139297485
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 0,
+        "luma": 118.03822546577453,
+        "saturation": 52.12837222194672
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 1,
+        "luma": 113.56436913108826,
+        "saturation": 57.259913491725925
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 2,
+        "luma": 112.83902024650574,
+        "saturation": 54.14536260557175
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 3,
+        "luma": 112.74585469150543,
+        "saturation": 54.03107610464096
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 4,
+        "luma": 109.58089982032776,
+        "saturation": 55.737125589847565
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 5,
+        "luma": 107.31563874149323,
+        "saturation": 52.55789385604859
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 6,
+        "luma": 104.56840852165222,
+        "saturation": 51.68514960670471
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 7,
+        "luma": 107.67301355266571,
+        "saturation": 50.74164365100861
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 8,
+        "luma": 104.87651953792572,
+        "saturation": 51.79777715921402
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 9,
+        "luma": 102.45794685459137,
+        "saturation": 52.26710371685028
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 10,
+        "luma": 101.92872257232666,
+        "saturation": 51.427557845592496
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 11,
+        "luma": 102.47473874378204,
+        "saturation": 51.751647473812106
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 12,
+        "luma": 102.91996087741852,
+        "saturation": 52.01571467399597
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 13,
+        "luma": 102.58865328979492,
+        "saturation": 52.60329612207413
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 14,
+        "luma": 104.18906705379486,
+        "saturation": 52.94296918153763
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 15,
+        "luma": 101.60661362934113,
+        "saturation": 53.80748174953461
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 16,
+        "luma": 101.04564752388,
+        "saturation": 54.40051944351196
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 17,
+        "luma": 101.4960214729309,
+        "saturation": 55.823742402553556
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 18,
+        "luma": 102.33573823833466,
+        "saturation": 56.050180354595184
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Gemma4\"]",
+        "third": 19,
+        "luma": 100.70353606891632,
+        "saturation": 55.31892877531052
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 0,
+        "luma": 142.46419952964783,
+        "saturation": 34.04234387540817
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 1,
+        "luma": 148.56715553283692,
+        "saturation": 35.77134105587005
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 2,
+        "luma": 152.17201978302003,
+        "saturation": 36.46812395954132
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 3,
+        "luma": 151.1205759601593,
+        "saturation": 34.85024801540375
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 4,
+        "luma": 148.60035480690001,
+        "saturation": 33.552349157333374
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 5,
+        "luma": 148.86276439476012,
+        "saturation": 31.936023227214815
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 6,
+        "luma": 149.0661151008606,
+        "saturation": 31.751785307884216
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 7,
+        "luma": 150.55462876701355,
+        "saturation": 32.20230175352096
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 8,
+        "luma": 148.9291635875702,
+        "saturation": 32.74069809770584
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 9,
+        "luma": 151.9362544784546,
+        "saturation": 32.28926673460007
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 10,
+        "luma": 150.81641765594483,
+        "saturation": 33.17586852073669
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 11,
+        "luma": 151.69256619644165,
+        "saturation": 33.68096617269516
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 12,
+        "luma": 150.98061088180543,
+        "saturation": 33.85719385910034
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 13,
+        "luma": 150.05408811569214,
+        "saturation": 33.20381705904007
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 14,
+        "luma": 149.4332046813965,
+        "saturation": 32.95401436853409
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 15,
+        "luma": 151.01780693435668,
+        "saturation": 32.19864361190796
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 16,
+        "luma": 152.5104970588684,
+        "saturation": 33.406940020561215
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 17,
+        "luma": 151.87326890945434,
+        "saturation": 32.94271213912964
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 18,
+        "luma": 152.43390116500854,
+        "saturation": 32.703408076763154
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "third": 19,
+        "luma": 152.48912438964842,
+        "saturation": 32.88590462350845
+      }
+    ]
+  },
+  "captions": {
+    "captions": 240000,
+    "empty_placeholder": 0,
+    "by_model": [
+      {
+        "model": "Gemma4",
+        "captions": 120000,
+        "words_median": 209.0,
+        "words_p99": 323.0,
+        "words_max": 621,
+        "chars_max": 3019,
+        "chars_min": 146,
+        "unterminated": 4,
+        "looping": 0,
+        "special_tokens": 0,
+        "refusals": 0,
+        "with_non_latin_script": 349,
+        "with_ten_or_more_non_latin_characters": 129,
+        "addresses_the_user": 0,
+        "with_markdown_bold": 115300
+      },
+      {
+        "model": "Moondream3",
+        "captions": 120000,
+        "words_median": 51.0,
+        "words_p99": 90.0,
+        "words_max": 736,
+        "chars_max": 5805,
+        "chars_min": 39,
+        "unterminated": 116,
+        "looping": 83,
+        "special_tokens": 8,
+        "refusals": 0,
+        "with_non_latin_script": 163,
+        "with_ten_or_more_non_latin_characters": 30,
+        "addresses_the_user": 0,
+        "with_markdown_bold": 0
+      }
+    ],
+    "unterminated_examples": [
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10fad-f102-72a0-a3d5-cfed30ce66ee",
+        "sn": 1677,
+        "words": 593,
+        "text": "o Da Yao) - Vale: 550\n    *   **Effect Type:** \u5996\u65cf (Yao Zu) - Vale: 550\n    *   **Effect Type:** \u84bc\u832b\u5996\u65cb\u52e2 (Cang Mang Yao Xuan Shi) - Vale: 750\n    *   **Effect Type"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a1104c-8e20-71f8-8320-8ddf7aea335c",
+        "sn": 1781,
+        "words": 171,
+        "text": "\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2\u00e2"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a112bc-4f60-79ed-b39e-89370ce2d2ba",
+        "sn": 101,
+        "words": 46,
+        "text": "\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191\u2191"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a114c0-286a-73eb-87b9-49d294217e82",
+        "sn": 299,
+        "words": 736,
+        "text": "E LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a115fc-8e64-7d9e-afe7-45bac629440e",
+        "sn": 421,
+        "words": 30,
+        "text": "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a11621-11f9-7cec-b071-4544bfa8ca51",
+        "sn": 435,
+        "words": 296,
+        "text": " \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d, \u201c\u221a\u201d,"
+      }
+    ],
+    "longest": [
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10f76-312f-72ec-9796-aed64493fd76",
+        "sn": 1641,
+        "words": 621,
+        "text": "antasy war game. The player is viewing detailed statistics for numerous military units while observing the large-scale naval battle unfolding in the background."
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10fad-f102-72a0-a3d5-cfed30ce66ee",
+        "sn": 1677,
+        "words": 593,
+        "text": "o Da Yao) - Vale: 550\n    *   **Effect Type:** \u5996\u65cf (Yao Zu) - Vale: 550\n    *   **Effect Type:** \u84bc\u832b\u5996\u65cb\u52e2 (Cang Mang Yao Xuan Shi) - Vale: 750\n    *   **Effect Type"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a11056-7c96-728a-9ecd-e3bab085ee2f",
+        "sn": 1787,
+        "words": 563,
+        "text": "*   **Right Card:** Lower numerical identifier (0), Year 1, HP 300, and a more aggressive, fiery aesthetic.\n\nBoth cards share the same resource cost (**\u96c920\u884c**)."
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a114c0-286a-73eb-87b9-49d294217e82",
+        "sn": 299,
+        "words": 736,
+        "text": "E LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a121bd-3b73-7f48-9b4d-51128974c4e1",
+        "sn": 1575,
+        "words": 594,
+        "text": "ore, Videos, Notes, App Store, Videos, Notes, App Store, Videos, Notes, App Store, Videos, Notes, App Store, Videos, Notes, App Store, Videos, Notes, App Store,"
+      },
+      {
+        "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+        "id": "01a12f02-fb8c-7810-8233-79e7a81e68e0",
+        "sn": 877,
+        "words": 684,
+        "text": "own, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown, dark brown,"
+      }
+    ],
+    "looping": {
+      "rule": ">= 60 words and < 0.5 distinct 4-grams",
+      "total": 83,
+      "runs": 8,
+      "by_network": {
+        "[\"Flux2Klein\",\"Moondream3\"]": 9,
+        "[\"SD35Medium\",\"Moondream3\"]": 73,
+        "[\"ZImageTurbo\",\"Moondream3\"]": 1
+      },
+      "examples": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a114c0-286a-73eb-87b9-49d294217e82",
+          "sn": 299,
+          "words": 736,
+          "text": "E LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE IS OF THE BEATLE LOVE"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11771-7267-7e89-9399-cd0d24114670",
+          "sn": 565,
+          "words": 521,
+          "text": ",\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3,\" \"7,\" \"5,\" \"S,\" \"3"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11790-d683-7527-8cde-ffbe0fb066f4",
+          "sn": 577,
+          "words": 357,
+          "text": "E.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O. KE.O."
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a1185a-d6d8-78ec-aeb2-2dea77e89f60",
+          "sn": 655,
+          "words": 370,
+          "text": ", \u00d71, \u00d72, \u00d73, \u00d74, \u00d75, \u00d76, \u00d77, \u00d78, \u00d79, \u00d70, \u00d71, \u00d72, \u00d73, \u00d74, \u00d75, \u00d76, \u00d77, \u00d78, \u00d79, \u00d70, \u00d71, \u00d72, \u00d73, \u00d74, \u00d75, \u00d76, \u00d77, \u00d78, \u00d79, \u00d70, \u00d71, \u00d72, \u00d73, \u00d74, \u00d75, \u00d76, \u00d77, \u00d78, \u00d79, \u00d70"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a11933-8abb-7230-99fc-341f02020e43",
+          "sn": 739,
+          "words": 251,
+          "text": "0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10.0L,\" \"10.0,\" \"10"
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "id": "01a1196c-7bf0-7bcf-ab45-531901b71cb9",
+          "sn": 761,
+          "words": 288,
+          "text": "\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-9\", \"0-"
+        }
+      ]
+    },
+    "special_tokens": {
+      "\ufffd": 8
+    },
+    "special_token_examples": [
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a11af1-5947-7aa0-8ab3-002d3793c5bd",
+        "sn": 911,
+        "words": 19,
+        "text": "A stylized fish illustration is centered on a cream-colored background. Vertical Chinese calligraphy on the left side reads \u201c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c\u9c7c"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a11d66-018c-7c88-8bdc-408dd1603e7b",
+        "sn": 1153,
+        "words": 52,
+        "text": "Two calculators are placed side by side on an orange surface. The calculator on the left is white with a digital display showing \"23.01\" and buttons for basic arithmetic operations. The calculator on the right is blue wi"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a12395-5823-7336-9fb2-191308b90a14",
+        "sn": 1755,
+        "words": 412,
+        "text": "Two black calculators are shown side by side. Both display \u201c200.0.3\u201d on their screens. The calculator on the left has a numeric keypad with standard numbers, while the calculator on the right has a numeric keypad with ad"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a1239a-f0ff-7bd2-8cc4-de2f806d244a",
+        "sn": 1757,
+        "words": 282,
+        "text": "Two black calculators are shown against a white background. Both display \u201c2008.0.0.9\u201d on their digital screens. The left calculator has standard numeric keys and symbols, while the right calculator includes additional fu"
+      },
+      {
+        "network": "[\"SD35Medium\",\"Moondream3\"]",
+        "id": "01a123aa-d8fb-7e0d-9673-e6dd06a54dd0",
+        "sn": 1763,
+        "words": 148,
+        "text": "Two black calculators are shown side by side. Both display \u201c20.010.10\u201d on their screens. The left calculator has red buttons for functions like \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d, \u201c\u6bcf\u63a7\u201d"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Moondream3\"]",
+        "id": "01a13a81-575c-7c02-9c32-c24ee4cdb7dc",
+        "sn": 9,
+        "words": 30,
+        "text": "A green and white train is stopped at a platform under a metal arched roof. The platform is marked with yellow lines and features signs with Japanese text, including \u201c\u53f0\u5317\u5e02\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5\u99c5"
+      }
+    ],
+    "refusal_examples": [],
+    "non_latin_examples": [
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10703-62b9-767e-a32d-4e709c19e169",
+        "sn": 163,
+        "words": 216,
+        "text": "This image captures a dramatic scene of a large volume of water being sprayed from a fire hose, likely during a training exercise or an actual emergency response.\n\nHere's a detailed description:\n\n*   **Foreground/Action:"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10706-4af9-723e-8f82-03ec2b633018",
+        "sn": 165,
+        "words": 247,
+        "text": "This image captures a dynamic scene featuring a powerful stream of water being sprayed from a fire hose, likely during a training exercise or a demonstration.\n\nHere's a detailed description:\n\n**Foreground & Action:**\n*  "
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10714-e13b-7ff7-b48a-7c64eda65fee",
+        "sn": 175,
+        "words": 260,
+        "text": "This image captures a scene of **firefighting training or an emergency response drill**.\n\nHere is a detailed description:\n\n**Foreground & Action:**\n*   The most dominant feature is a massive, powerful **stream of water**"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a10717-c468-7a56-a403-856fbde8d4b1",
+        "sn": 177,
+        "words": 232,
+        "text": "This image captures a scene of a firefighter actively using a hose to spray a large volume of water.\n\nHere's a detailed description:\n\n**Subject:**\nThe main subject is a firefighter, dressed in full protective gear, inclu"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a1071a-ab13-7c5e-94ae-6e5fbdb5ba5e",
+        "sn": 179,
+        "words": 182,
+        "text": "This image captures a scene of firefighting training or an emergency response.\n\n**In the foreground and center-right,** a firefighter is actively operating a hose. The firefighter is wearing full protective gear, includi"
+      },
+      {
+        "network": "[\"Flux2Klein\",\"Gemma4\"]",
+        "id": "01a1071d-a124-7a46-8263-b0e12d4ce909",
+        "sn": 181,
+        "words": 194,
+        "text": "This image captures a scene of firefighting training or an emergency response.\n\n**Key elements in the image:**\n\n*   **Firefighter:** A person dressed in full firefighting gear (bunker gear, helmet) is positioned in the c"
+      }
+    ],
+    "same_caption_in_different_runs": {
+      "distinct_captions": 809,
+      "occurrences": 8228,
+      "by_network": {
+        "[\"Flux2Klein\",\"Gemma4\"]": 7,
+        "[\"SD35Medium\",\"Moondream3\"]": 5090,
+        "[\"ZImageTurbo\",\"Moondream3\"]": 3131
+      },
+      "most_common": [
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "A solid yellow background fills the frame. The color is uniform and bright, with no visible texture, patterns, or objects.",
+          "n": 2040,
+          "runs": 9
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "A solid yellow background fills the frame.",
+          "n": 554,
+          "runs": 9
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "A solid green background fills the frame, uniformly colored and without any visible texture, patterns, or objects.",
+          "n": 288,
+          "runs": 4
+        },
+        {
+          "network": "[\"ZImageTurbo\",\"Moondream3\"]",
+          "text": "The image shows a grid of 36 red apples arranged in 6 rows and 6 columns against a white background. Each apple has a stem and is uniformly colored in red. The ",
+          "n": 152,
+          "runs": 5
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "A solid green background fills the frame. The color is uniform and bright, with no visible patterns, textures, or objects.",
+          "n": 144,
+          "runs": 4
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "The image displays a solid bright green background with no visible patterns, textures, or objects.",
+          "n": 130,
+          "runs": 4
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "A solid yellow background fills the frame. The color is uniform and consistent across the image, with no visible patterns, textures, or objects.",
+          "n": 128,
+          "runs": 8
+        },
+        {
+          "network": "[\"SD35Medium\",\"Moondream3\"]",
+          "text": "The image displays a solid green background with no visible patterns, textures, or objects.",
+          "n": 124,
+          "runs": 4
+        }
+      ]
+    },
+    "first_caption_mentions_its_prompt": [
+      {
+        "prompt": "a city slowly turning into a forest",
+        "mentions": 44,
+        "does_not": 4
+      },
+      {
+        "prompt": "a man standing in a doorway",
+        "mentions": 45,
+        "does_not": 3
+      },
+      {
+        "prompt": "a red apple on a wooden table",
+        "mentions": 48,
+        "does_not": 0
+      },
+      {
+        "prompt": "a train station with travellers carrying colourful luggage",
+        "mentions": 48,
+        "does_not": 0
+      },
+      {
+        "prompt": "firefighters responding to a building fire",
+        "mentions": 48,
+        "does_not": 0
+      }
+    ]
+  },
+  "process": {
+    "steps": 12000,
+    "steps_not_a_single_batch_of_40": [],
+    "invocations_started_before_their_input_completed": 0,
+    "step_seconds_by_model": [
+      {
+        "model": "Flux2Klein",
+        "median": 150.0,
+        "p99": 155.0,
+        "max": 182
+      },
+      {
+        "model": "Gemma4",
+        "median": 20.0,
+        "p99": 32.0,
+        "max": 53
+      },
+      {
+        "model": "Moondream3",
+        "median": 83.0,
+        "p99": 122.0,
+        "max": 254
+      },
+      {
+        "model": "SD35Medium",
+        "median": 246.0,
+        "p99": 256.0,
+        "max": 287
+      },
+      {
+        "model": "ZImageTurbo",
+        "median": 253.0,
+        "p99": 260.0,
+        "max": 418
+      }
+    ],
+    "stalled_steps": [],
+    "seeds": {
+      "images": 240000,
+      "missing": 0,
+      "min": 3583,
+      "max": 4294963636,
+      "values_used_more_than_once": 3,
+      "expected_repeats_for_32_bit_seeds": 6.705522537231445,
+      "sixteenths_min_max": [
+        14853,
+        15209
+      ]
+    }
+  },
+  "embeddings": {
+    "captions": 240000,
+    "without_embedding": 0,
+    "dimension": 256,
+    "non_finite_values": 0,
+    "zero_vectors": 0,
+    "norm_min": 0.9999998807907104,
+    "norm_max": 1.0000001192092896,
+    "identical_caption_pairs": 2477655,
+    "identical_caption_min_cosine": 0.9993988871574402
+  },
+  "log": {
+    "resumes": 6,
+    "tracebacks": 0,
+    "above_debug": [
+      {
+        "near": "2026-10-13",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-13",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-15",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-15",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-20",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-20",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-21",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-21",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-23",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      },
+      {
+        "near": "2026-10-23",
+        "level": "notice",
+        "message": "SIGTERM received - shutting down"
+      }
+    ],
+    "retried_steps": [],
+    "allocator_warnings_by_date": {
+      "2026-10-13": 5
+    }
+  }
+}
