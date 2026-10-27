@@ -6,6 +6,11 @@ with `analysis/drift_memory.py` and `analysis/seed_resample.py`; the numbers
 are in the JSON beside each and the figures in `analysis/drift_memory/`.
 `panel-audit.md` is the check that the data underneath is sound.
 
+The long follow-up (experiment `01a10613`, TASK-105) runs six of the networks
+to 1,000 text states with eight runs per prompt. It is read the same way in
+"What the long follow-up shows" below, which settles some of what the panel
+left open.
+
 This replaces the Markov state model (TASK-76). The panel has no states that
 runs both share and cross, so there was nothing for a transition matrix to
 count. The brief for what replaces it was the simplest formalism that explains
@@ -353,22 +358,211 @@ ceiling is falling while the run moves.
 These runs cannot speak to prompt memory. With prompts that have no content,
 twins and strangers are the same distance apart after the first 250 states.
 
-## What a longer or larger experiment would need to measure
+## What the long follow-up shows
 
-- Whether a prompt is ever forgotten. The twin distance has nearly stopped
-  rising, well short of the stranger distance. Telling a plateau from a slow
-  climb needs runs several times longer: at least 700 text states (1,400
-  invocations) on the arithmetic above. A few prompts on the fast generators
-  would do.
-- How long a run takes to cover its prompt's region. The old runs say the
-  displacement gets there; the panel's networks have covered 23--59% of the way
-  in seventy states, and the same longer runs would time the rest.
-- Where each prompt's centre is. With two runs per prompt the centre is never
-  observed, only inferred from distances. Eight runs on a few prompts would
-  give centres, the spread around them, and whether that spread is one region
-  or several.
+TASK-104 ran the experiment the panel could not: experiment `01a10613`, six
+networks (Flux2Klein, SD35Medium and ZImageTurbo, each with Moondream3 and
+Gemma4), five prompts, eight runs of each and 1,000 text states per run
+(`long-follow-up-design.md`; `follow-up-audit.md` is the check that its data is
+sound). `analysis/long_follow_up.py` reads it with the quantities defined
+above, and the numbers are in `analysis/long_follow_up.json` with the figures
+in `analysis/long_follow_up/`. Intervals resample runs within each prompt, so
+they hold for these five prompts and say nothing about prompts in general.
+
+### Memory keeps falling, slowly, and no prompt is forgotten
+
+Averaged over the six networks, memory is 0.53 over the first hundred text
+states, 0.39 over the second, and 0.25 (0.21--0.30) over the last. The twin
+distance rises from 0.29 to 0.43 while the stranger distance falls from 0.59
+to 0.57. The fall slows with every hundred states but has not stopped: over
+states 400--1,000 memory still loses about 0.05 per doubling of the run's
+length.
+
+![Twin and stranger distance over 1,000 text states, by network](../../analysis/long_follow_up/memory.png)
+
+The design fixed three courses in advance. The fastest, at the rate of the
+panel's last fifty states, would have brought twins to the stranger distance
+by state 840, and in no network has that happened. The other two were memory
+staying at its level and memory keeping its logarithmic course to about 0.16.
+The six cells end between those two, at 0.25 from 0.39 at state 150.
+
+Memory falls because twins keep separating, because strangers converge, or
+both. Each network is judged on its rate per doubling over states 400--1,000.
+The rate is said to show memory still falling if its interval is below zero.
+It is said to show a level if the interval includes zero and the rate is
+slower than the network's own over states 150--400. Otherwise the follow-up
+cannot yet tell the two apart.
+
+| Network | Memory at 150 | Memory at the end (95% interval) | Per doubling, states 400--1,000 | Verdict | Twins per doubling, 400--1,000 | Strangers, end over start |
+| --- | --- | --- | --- | --- | --- | --- |
+| Flux2Klein + Gemma4 | 0.41 | 0.23 (0.14--0.32) | -0.090 (-0.169 to -0.010) | keeps falling | +0.070 | 0.98 (0.93--1.03) |
+| Flux2Klein + Moondream3 | 0.37 | 0.26 (0.18--0.34) | -0.020 (-0.068 to 0.028) | cannot yet be told | +0.003 | 0.93 (0.89--0.97) |
+| SD35Medium + Gemma4 | 0.27 | 0.19 (0.07--0.33) | -0.033 (-0.099 to 0.025) | cannot yet be told | +0.012 | 0.92 (0.85--0.98) |
+| SD35Medium + Moondream3 | 0.32 | 0.12 (0.07--0.18) | -0.076 (-0.158 to 0.010) | cannot yet be told | +0.018 | 0.92 (0.87--0.96) |
+| ZImageTurbo + Gemma4 | 0.46 | 0.27 (0.17--0.38) | -0.067 (-0.133 to -0.009) | keeps falling | +0.034 | 0.97 (0.93--1.01) |
+| ZImageTurbo + Moondream3 | 0.48 | 0.44 (0.36--0.52) | -0.007 (-0.064 to 0.044) | cannot yet be told | +0.004 | 0.95 (0.92--0.99) |
+
+Memory at the end is the mean over states 900--999. In no network does its
+interval reach zero, so no network has forgotten its prompts.
+
+The two Gemma4 networks with falling memory are the two in which twins are
+still separating. On the course of their last 600 states, memory reaches zero
+near state 5,900 in Flux2Klein + Gemma4 and near state 17,000 in ZImageTurbo +
+Gemma4. In the other four, twins have stopped separating as far as the data
+can tell: under 0.02 per doubling, against 0.03--0.05 over the panel's
+horizon. What memory loses there it loses because strangers converge. In none
+of the six can a level be told from a slow fall. A rate per doubling over 1.3
+doublings has an interval 0.10--0.17 wide, which covers both none and the
+rate the network was falling at before.
+
+The stranger distance falls 5--8% over the run in four networks, all of them
+with intervals that exclude no change, and in neither of the other two can
+the change be told from none. The panel saw this only in networks with
+Flux2Dev or JoyCaption. At 1,000 text states, then, runs from different
+prompts do begin to converge, slowly.
+
+The red apple still remembers most, but below it the panel's order has not
+held. Averaged over the six networks, memory at the end is 0.33 for the red
+apple, 0.29 for the man in the doorway, 0.28 for the firefighters, 0.25 for
+the city turning into a forest and 0.10 for the train station. In the panel
+the doorway was second from bottom and the train station in the middle. The city had already
+fallen to 0.25 by state 150 and has not moved since. The train station was at
+0.35 at state 150 and is the one prompt still falling steadily
+(`analysis/long_follow_up/prompts.png`). Within a network a single prompt
+ranges widely: firefighters end at 0.86 in ZImageTurbo + Moondream3 and 0.00
+in Flux2Klein + Gemma4.
+
+### A run has not covered its prompt's region by 500 states
+
+Displacement is measured from state 150 on, past the panel's horizon, out to
+a separation of 500 states. The ceiling it is set against is the distance from
+one run at a state to one of its twins 500 states later, over the same pairs
+of states. At a separation of 500, a run's displacement less the noise is
+42--65% of that ceiling. In no network and in no resample does it reach 90%.
+
+| Network | Reached at 70 | at 150 | at 300 | at 500 (95% interval) | Per doubling of separation | Projected to reach 90% |
+| --- | --- | --- | --- | --- | --- | --- |
+| Flux2Klein + Gemma4 | 19% | 30% | 45% | 59% (49--69%) | 0.16 | 1,900 (1,100--4,700) |
+| Flux2Klein + Moondream3 | 23% | 34% | 47% | 59% (50--68%) | 0.14 | 2,400 (1,300--5,900) |
+| SD35Medium + Gemma4 | 20% | 29% | 41% | 52% (42--64%) | 0.13 | 4,500 (1,700--20,000) |
+| SD35Medium + Moondream3 | 27% | 38% | 52% | 65% (57--73%) | 0.15 | 1,800 (1,100--3,400) |
+| ZImageTurbo + Gemma4 | 13% | 20% | 29% | 42% (32--51%) | 0.11 | 11,000 (3,700--73,000) |
+| ZImageTurbo + Moondream3 | 20% | 29% | 41% | 53% (41--65%) | 0.13 | 4,100 (1,600--24,000) |
+
+The share reached has grown by a steady amount each time the separation
+doubles, from 100 states to 500. The projection carries that course on to
+90%. It is a guess at the order of magnitude: two to twenty times the run's
+length. The lower bound the data does give is 500 states in every network.
+
+![Displacement within a run against the distance to a twin at the same separation](../../analysis/long_follow_up/displacement.png)
+
+Nor has displacement stopped. Accumulated displacement at separations of
+400--500 is 1.31--1.47 times what it is at 200--300, where a plateau would
+give 1 and a random walk 1.8. Movement goes on slowing as a run ages. Two
+states fifty apart are 0.16--0.24 apart in the first hundred states and
+0.06--0.12 in the last hundred. So a run slows down without stopping, inside a
+region it has not yet covered.
+
+The old 5,000-invocation runs reached the distance between runs in 200 to more
+than 1,250 text states. These runs are slower, and they are the ones whose
+prompts have content.
+
+### Each prompt's centre, and whether its runs share one region
+
+A prompt's centre is the mean of its eight runs, over windows of a hundred
+states. It moves early and then stops. Its distance from where it was over
+the first hundred states grows to 0.05 by state 300 and 0.11 by the end, but
+from states 400--499 to the end it moves more than twice what sampling eight
+runs alone would show in only 2 of the 30 prompts and networks. The runs keep
+spreading about it, from 0.11 (states 100--199) to 0.16 (the last hundred).
+
+What sits at a centre can be read off the caption nearest it. "A red apple on a
+wooden table" centres on a single red apple in Flux2Klein + Gemma4 and in
+SD35Medium + Gemma4, and on a grid of 36 identical red apples in ZImageTurbo +
+Moondream3. "Firefighters responding to a building fire" centres on five
+firefighters in front of a fire truck in ZImageTurbo + Moondream3. In Flux2Klein + Gemma4 it centres on railway tracks into a sunset, which is where its memory of
+0.00 comes from.
+
+Whether eight runs sit in one region or several is tested with SigClust (Liu
+et al., JASA 2008). The best split of the eight run means over the last
+hundred states is compared with the best split of eight draws from one
+Gaussian, whose covariance is the network's pooled spread of runs about their
+prompt's centre. 18 of the 30 prompt-and-network pairs are consistent with one
+region. The other twelve split at p < 0.05, against 1.5 expected by chance,
+and they split in two ways.
+
+- **A core and the rest**, in seven. Several runs have gone to the same place,
+  closer to each other than two consecutive captions of one run, and the rest
+  are as spread as any. Five of the eight city runs in SD35Medium + Gemma4
+  are at one spiral galaxy, and five in Flux2Klein + Gemma4 at one road
+  through evergreen trees. Six of the eight apple runs in ZImageTurbo +
+  Moondream3 are at the grid of apples. Three city runs in SD35Medium +
+  Moondream3 are on the flat yellow field the audit found. The train station
+  has a core of two or three in both SD35Medium + Moondream3 and ZImageTurbo +
+  Moondream3. In ZImageTurbo + Moondream3 all eight firefighter runs are
+  within 0.06 of each other: one place, which the test splits into two.
+- **Two regions**, in five. Both groups are as loose as an ordinary prompt's
+  runs, and the groups lie further apart than the runs within them. The
+  doorway and the train station in Flux2Klein + Moondream3, the firefighters in
+  SD35Medium + Gemma4 and in ZImageTurbo + Gemma4, and the city in ZImageTurbo
+  + Gemma4.
+
+Eight of the twelve were already split at states 400--499. So for some prompts
+the region is not one region, and a few have places that take several runs
+and keep them. Twin distance, and so memory, averages over that structure.
+
+### The follow-up at 150 text states beside the panel
+
+For the six networks and five prompts the two share, the follow-up's first 150
+text states are measured exactly as the panel was. If the two are the same
+process, the panel's two runs of a prompt are exchangeable with the
+follow-up's eight. That is tested by shuffling each prompt's ten runs between
+the two and recomputing.
+
+Memory at the start and at state 150, the run's own offset, the prompt gap and
+displacement at seventy states all agree. No network has a p-value under 0.1
+on any of them. Memory at 150 is 0.41 in both for Flux2Klein + Gemma4, and
+otherwise differs by 0.04--0.16 in either direction. The panel had one pair of
+runs per prompt, which is noisy enough to account for that.
+
+Step size and seed noise agree in the Gemma4 networks and not in all of the
+Moondream3 ones. In Flux2Klein + Moondream3 the panel's step is 0.027 against
+the follow-up's 0.037 (p = 0.001, noise p = 0.001). In SD35Medium + Moondream3
+the panel's is higher, 0.061 against 0.050 (p = 0.02). In ZImageTurbo +
+Moondream3 it is higher by 0.009, which is within chance (p = 0.1). Checked and ruled
+out: the code that generates and captions is unchanged between the two
+launches, and the configs differ only in prompts, runs and length.
+Moondream3 captions one image at a time, so what shares its batch cannot touch
+it. Every generator pads its text to a fixed 512 tokens, so a batch's other
+captions cannot touch an image either. The differences point in opposite
+directions under different generators, which a change in Moondream3 itself
+would not do. One cell in six differing beyond chance on one quantity is left
+unexplained. The panel's runs in that cell repeat a caption on 4.2% of late
+steps against the follow-up's 2.3%, but repeats account for little of the
+gap: the panel's runs also move less between them.
+Nothing that depends on the size of a step is affected beyond that cell.
+
+### What is counted separately
+
+Moondream3 runs repeat a caption on 3.3--5.8% of late steps, about as in the
+panel, and no run repeats for half its length. Ten runs reach flat fields of
+one colour, nine of them in SD35Medium + Moondream3 (`follow-up-audit.md`).
+Leaving those runs out moves memory at the end from 0.12 to 0.10 in
+SD35Medium + Moondream3, and from 0.23 to 0.26 in Flux2Klein + Gemma4 for its
+one.
+
+## What is still open
+
+- Whether memory ends above zero. Four networks have stopped losing it to
+  twins separating, and lose it only as strangers converge, and over 1.3
+  doublings that cannot be told from a level. Runs to about 4,000 text states
+  would measure the rate over three doublings rather than 1.3.
+- How long a run takes to cover its region. The lower bound is 500 states,
+  and the logarithmic course of the follow-up's own curve puts it at 1,800 to
+  11,000.
 - Jumps. A count of scene changes per run needs a definition that the
-  embeddings alone may not supply.
+  embeddings alone may not supply. The cores above are where runs jump to and
+  stay.
 - A second embedding model. Every number here is in Qwen3Embed's geometry at
   256 dimensions.
 
@@ -381,6 +575,14 @@ is no shared region that runs from different prompts fall into. The data can
 say how wide the regions are (the run offset) and how far apart (the prompt
 gap). It can also say how fast a run explores its own, which is the
 displacement curve.
+
+The follow-up adds time. Over 1,000 text states no prompt is forgotten, and
+memory keeps falling, more slowly than at first. A run covers no more than
+two-thirds of its region in 500 states. Runs from different prompts begin to
+converge, by 5--8% in four of six networks. Some prompts have places that
+several runs go to and stay, which is the nearest thing in this data to a
+metastable state. They are particular to one prompt in one network and are
+not shared.
 
 RQ2 asked whether the captioner dominates the generator. For where a caption
 ends up, neither dominates once the captioner's way of writing is set aside.

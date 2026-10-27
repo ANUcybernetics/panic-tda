@@ -90,6 +90,32 @@ TASK-103 reads it off distances between embeddings, with no clustering.
 - Seven of the 640 runs spend a third or more of their length on images with
   almost nothing in them, and four end there.
 
+### The long follow-up: memory falls slowly, and no run covers its region
+
+TASK-104 ran six of the panel's networks to 1,000 text states, five prompts by
+eight runs (experiment `01a10613`, `follow-up-audit.md`). TASK-105 read it the
+same way (`drift-and-memory.md`, "What the long follow-up shows").
+
+- No prompt is forgotten. Averaged over the six networks memory is 0.39 at
+  state 150 and 0.25 (0.21--0.30) at 1,000, still falling by about 0.05 per
+  doubling of the run's length. It ends between 0.12 and 0.44 by network.
+- In two Gemma4 networks twins are still separating and memory is still
+  falling. In the other four twins have stopped separating as far as the data
+  can tell, and memory falls only as strangers converge. A level cannot be told
+  from a slow fall in any of the six.
+- Runs from different prompts begin to converge: the stranger distance falls
+  5--8% in four of six networks.
+- A run has not covered its prompt's region in 500 states: 42--65% of the way
+  at a separation of 500, and still climbing. On the course of its own curve
+  it would get to 90% at 1,800--11,000 states.
+- A prompt's centre moves early and is still from state 400 on. In 12 of 30
+  prompt-and-network pairs the eight runs do not share one region. Most of
+  those are a core of several runs at one place, such as a spiral galaxy, a
+  grid of apples or a flat yellow field, with the rest spread as widely as any.
+- At 150 text states the follow-up agrees with the panel on memory, offset and
+  displacement in every network. Step size disagrees in one Moondream3
+  network, unexplained.
+
 ### The Markov state model had nothing to count
 
 A Markov state model estimates escape times from runs crossing between states
@@ -140,6 +166,9 @@ there within 200 text states, and two are still short of it at 1,250. One,
 SDXLTurbo + BLIP2, also converges: the distance between its runs falls from
 0.82 to 0.61 over 2,500 text states.
 
+The long follow-up, with prompts that have content, is slower. In no network
+has a run covered its region by a separation of 500 states.
+
 ### EVoC's outliers are not sparse space, and outlier time is not transit time
 
 TASK-75 (`backlog/docs/outlier-sparsity.md`) measured the reading the
@@ -170,8 +199,8 @@ confirmed the rest. Citations are in the paper skeleton's Related work notes.
 - **Iterated learning says what forgetting would look like.** A chain of
   samplers converges to the learner's prior regardless of where it started
   (Griffiths & Kalish 2007). Prompt memory measures "regardless of where it
-  started" directly, and at 150 text states the panel's chains are not there:
-  memory is 0.35 and has almost stopped falling. "Whose prior does the chain
+  started" directly, and at 1,000 text states the follow-up's chains are not
+  there: memory is 0.25 and falling slowly. "Whose prior does the chain
   sample from?" (TASK-91) asks about a stationary distribution the panel does
   not reach, and needs restating before it is run.
 - **Distance from origin and step size each mislead alone.** Conde et al. track
@@ -207,10 +236,13 @@ states, and that rate has been falling. It is also too short to see a run cover
 its prompt's region, which the old runs say takes from 200 to more than 1,250
 text states.
 
-So the next experiment is fewer prompts, more runs per prompt and a longer
-run. TASK-104 is running it as experiment `01a10613`: five prompts by eight
-runs in six cells, to 1,000 text states, for 20 GPU-days
-(`long-follow-up-design.md`). The panel's own step times priced it. A cell of
+So the next experiment was fewer prompts, more runs per prompt and a longer
+run. TASK-104 ran it as experiment `01a10613`: five prompts by eight runs in
+six cells, to 1,000 text states, for 20 GPU-days (`long-follow-up-design.md`).
+At 1,000 text states memory is still falling, too slowly to tell from a level,
+and runs have not covered their regions. Either question would need runs of
+several thousand text states. TASK-105 projects 1,800--11,000 for a run to
+cover its region. The panel's own step times priced it. A cell of
 40 runs to 1,000 text states costs two to four days with Flux2Klein, SD35Medium
 or ZImageTurbo. With Flux2Dev it costs 21 to 27, which is why Flux2Dev is not
 in it.
@@ -239,8 +271,8 @@ GPU-days estimated (`backlog/docs/long-horizon-design.md`).
 | --------------------------------- | ----------------------- | --------------------------------------------------------------- |
 | TASK-90                           | closed                  | the dataset both RQs need: 640 runs of 300 invocations          |
 | TASK-103 noise, offset and memory | **primary description** | Results I, and both RQs as now stated                           |
-| TASK-104 the long follow-up       | **running**             | whether a prompt is ever forgotten; five prompts, eight runs    |
-| TASK-105 reading the follow-up    | after 104               | memory and displacement over 1,000 text states                  |
+| TASK-104 the long follow-up       | closed                  | six networks, five prompts by eight runs, 1,000 text states     |
+| TASK-105 reading the follow-up    | **primary description** | memory falls slowly; no prompt forgotten, no region covered     |
 | TASK-76 Markov state model        | abandoned               | the panel has no states that runs both share and cross          |
 | TASK-89 drift/noise decomposition | closed                  | the noise floor is most of the step; Null models, and RQ2       |
 | TASK-75 outliers as sparse space  | closed                  | failed: outliers are not sparse, transit time is not observable |
