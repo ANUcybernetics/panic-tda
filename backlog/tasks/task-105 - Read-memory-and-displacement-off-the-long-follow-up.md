@@ -43,7 +43,7 @@ READ 2026-10-27 with analysis/long_follow_up.py (results in analysis/long_follow
 
 Method choices that differ from drift_memory.py: intervals resample runs within each prompt (the five prompts were chosen, not drawn); displacement is taken from state 150 and set against the distance to a twin at the same separation over the same pairs of states, not against the end-of-run twin distance; the memory verdict compares the rate per doubling over states 400-1,000 with the cell's own over 150-400, because a 300-state slope against zero could not tell a level from the logarithmic course; the one-region test is SigClust with the cell's pooled within-prompt covariance as its null (the sample spectrum of eight points gave p near 1 everywhere); the panel comparison is a permutation test shuffling each prompt's ten runs between the two experiments.
 
-Handoff: Ben asked for the follow-up's parquet (01a10613_parquet, exported without --embed-prompts) and an image folder to go to Sungyeon by magic wormhole. mix experiment.export_images 01a10613 writes the full image set (~13 GB) to 01a10613_images. wormhole is not installed on this machine, so the send is left to Ben.
+Handoff: Sungyeon has the follow-up by magic wormhole: the parquet exported with --embed-prompts (01a10613_parquet, with t_0 rows and panel_audit's image_stats cache) and every 10th image of each run (mix experiment.export_images 01a10613 --every 10, 24,000 images, 1.4 GB, kept locally as 01a10613_every10_images).
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
