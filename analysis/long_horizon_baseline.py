@@ -23,6 +23,7 @@ Moondream ran in `short` mode), so they inform the design and are not paper
 data. Results -> analysis/long_horizon_baseline.json, tables to stdout.
 """
 
+import itertools
 import json
 import pathlib
 import sqlite3
@@ -125,7 +126,7 @@ def plateau(con: sqlite3.Connection) -> dict[str, dict]:
     for (network, _run_id), seq in runs.items():
         seq.sort()
         v0 = seq[0][1]
-        for (_s1, a), (s2, b) in zip(seq, seq[1:]):
+        for (_s1, a), (s2, b) in itertools.pairwise(seq):
             for lo, hi in BINS:
                 if lo <= s2 < hi:
                     step[network][(lo, hi)].append(1 - float(a @ b))

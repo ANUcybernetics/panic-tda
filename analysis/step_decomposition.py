@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """What is one loop step made of? Drift, generator noise, and the ruler (TASK-89).
 
 The loop settles into a stationary regime with a persistent step-to-step
@@ -41,17 +40,15 @@ Results -> analysis/step_decomposition.json
 """
 
 import base64
-import io
 import json
 import pathlib
 import sys
 import time
 
 import numpy as np
-import torch
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 IMGDIR = HERE / "step_decomposition"
@@ -296,7 +293,7 @@ def main() -> None:
     db = 1 - b @ b.T
     iu = np.triu_indices(len(idx), 1)
     results["truncation"] = {
-        "n_vectors": int(len(idx)),
+        "n_vectors": len(idx),
         "native_dim": int(src_full.shape[1]),
         "spearman_pairwise_distance": float(spearmanr(da[iu], db[iu]).statistic),
         "pearson_pairwise_distance": float(np.corrcoef(da[iu], db[iu])[0, 1]),

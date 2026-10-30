@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """How much of a loop step is the captioner's own sampling? (TASK-89/TASK-92)
 
 The drift/noise decomposition in TASK-89 attributes all spread among a
@@ -31,7 +30,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 DB = pathlib.Path("/home/ben/projects/panic_tda/priv/panic_tda_dev.db")
@@ -261,7 +260,7 @@ def main() -> None:
         print(
             f"{model:12s} {r['sampled']['mean_noise_cosdist']:8.4f} "
             f"{r['sampled']['mean_pairwise_cosdist']:9.4f}  "
-            f"{str(r['greedy']['deterministic']):10s}  "
+            f"{r['greedy']['deterministic']!s:10s}  "
             f"{r['greedy']['repeat_5gram_frac_max']:.3f}"
         )
     print("DONE", flush=True)

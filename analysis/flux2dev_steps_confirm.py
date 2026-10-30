@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Confirm the Flux2Dev step-count choice on more prompts.
 
 `analysis/step_sweep.py` found caption cosine flat and non-monotone across
@@ -28,7 +27,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 OUT = HERE / "flux2dev_steps_confirm.json"
@@ -85,7 +84,7 @@ pm.unload_model("Gemma3n")
 
 pm.load_model("Qwen3Embed")
 pm.swap_to_gpu("Qwen3Embed")
-dec = lambda b: np.frombuffer(base64.b64decode(b), dtype=np.float32)  # noqa: E731
+dec = lambda b: np.frombuffer(base64.b64decode(b), dtype=np.float32)
 emb = dict(
     zip(keys, (dec(e) for e in pm.embed_text("Qwen3Embed", [caps[k] for k in keys])))
 )

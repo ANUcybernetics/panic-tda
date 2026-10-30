@@ -19,10 +19,8 @@ truncated ones.
 
 import itertools
 import pathlib
-import re
 import sys
 
-import numpy as np
 import polars as pl
 
 ROOT = pathlib.Path(__file__).parent.parent

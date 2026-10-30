@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Does a candidate captioner stay under the 512-token encoder ceiling? (TASK-101)
 
 Qwen3VL left the panel because its captions of early-step images ran past the
@@ -48,7 +47,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 DB = pathlib.Path("/home/ben/projects/panic_tda/priv/panic_tda_dev.db")

@@ -18,10 +18,17 @@ altogether, so caption_cos is the metric the step-count decision turns on.
 Results -> step_sweep.json; images -> step_sweep/<model>/<prompt>_<steps>.png
 """
 
-import base64, json, sqlite3, sys, time, pathlib
+import base64
+import json
+import pathlib
+import sqlite3
+import sys
+import time
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import numpy as np, torch
+import numpy as np
+import torch
+
 import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent

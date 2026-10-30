@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Does truncating Qwen3Embed to 256 dimensions change the dynamics? (TASK-89 AC#6)
 
 Every embedding in the pipeline is Matryoshka-truncated from Qwen3Embed's native
@@ -22,7 +21,6 @@ which confirms the truncation reproduces the pipeline's own.
 Results -> analysis/embedding_dim.json
 """
 
-import base64
 import json
 import pathlib
 import sqlite3
@@ -33,7 +31,9 @@ import numpy as np
 from scipy.stats import spearmanr
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import itertools
+
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 DB = pathlib.Path("/home/ben/projects/panic_tda/priv/panic_tda_dev.db")
@@ -89,7 +89,7 @@ def trajectory_stats(
     for entries in runs.values():
         entries.sort()
         v0 = vecs[entries[0][1]]
-        for (_s1, a), (s2, b) in zip(entries, entries[1:]):
+        for (_s1, a), (s2, b) in itertools.pairwise(entries):
             for lo, hi in BINS:
                 if lo <= s2 < hi:
                     step[(lo, hi)].append(1 - float(vecs[a] @ vecs[b]))
@@ -162,8 +162,8 @@ def main() -> None:
             "mean_cosine": float(np.mean(matched)) if matched else None,
         },
         "pairwise_distance": {
-            "n_vectors": int(len(idx)),
-            "n_pairs": int(len(da)),
+            "n_vectors": len(idx),
+            "n_pairs": len(da),
             "spearman": float(spearmanr(da, db).statistic),
             "pearson": float(np.corrcoef(da, db)[0, 1]),
             "mean_256": float(da.mean()),

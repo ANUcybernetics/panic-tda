@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Does forcing greedy decoding degrade any panel captioner? (TASK-92 AC#4)
 
 `captioner_noise.py` established the cost of the shipped sampling configs on
@@ -37,7 +36,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 DB = pathlib.Path("/home/ben/projects/panic_tda/priv/panic_tda_dev.db")
@@ -83,20 +82,22 @@ def source_images() -> list[dict]:
             # than the same two subjects photographed twelve ways
             for j in range(PROMPTS_PER_CELL):
                 prompt, blob = rows[(cell * PROMPTS_PER_CELL + j) % len(rows)]
-                picked.append({
-                    "generator": gen,
-                    "depth": depth,
-                    "prompt": prompt,
-                    "b64": base64.b64encode(blob).decode("ascii"),
-                })
+                picked.append(
+                    {
+                        "generator": gen,
+                        "depth": depth,
+                        "prompt": prompt,
+                        "b64": base64.b64encode(blob).decode("ascii"),
+                    }
+                )
             cell += 1
     con.close()
     if not picked:
         raise SystemExit("no source images found")
     print(
-        f"{len(picked)} images: {len(set(p['generator'] for p in picked))} generators, "
-        f"{len(set(p['prompt'] for p in picked))} prompts, "
-        f"depths {sorted(set(p['depth'] for p in picked))}",
+        f"{len(picked)} images: {len({p['generator'] for p in picked})} generators, "
+        f"{len({p['prompt'] for p in picked})} prompts, "
+        f"depths {sorted({p['depth'] for p in picked})}",
         flush=True,
     )
     return picked

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Does the tail of a long caption actually condition the image?
 
 The text-to-image encoders read at most 512 tokens by default (SD35Medium
@@ -40,7 +39,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 OUT = HERE / "prompt_tail.json"
@@ -59,7 +58,7 @@ captions = [
 ]
 
 pm.setup()
-from transformers import AutoTokenizer  # noqa: E402
+from transformers import AutoTokenizer
 
 t5 = AutoTokenizer.from_pretrained(
     "stabilityai/stable-diffusion-3.5-medium", subfolder="tokenizer_3"
@@ -107,7 +106,7 @@ pm.unload_model("Gemma3n")
 
 pm.load_model("Qwen3Embed")
 pm.swap_to_gpu("Qwen3Embed")
-dec = lambda b: np.frombuffer(base64.b64decode(b), dtype=np.float32)  # noqa: E731
+dec = lambda b: np.frombuffer(base64.b64decode(b), dtype=np.float32)
 emb = dict(
     zip(keys, (dec(e) for e in pm.embed_text("Qwen3Embed", [caps[k] for k in keys])))
 )

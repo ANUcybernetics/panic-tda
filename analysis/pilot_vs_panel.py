@@ -30,6 +30,7 @@ panel rows, as a check on the method.
 Results -> analysis/pilot_vs_panel.json, summary table to stdout.
 """
 
+import itertools
 import json
 import pathlib
 import re
@@ -143,7 +144,6 @@ report["captions"] = {
 # 2. FTLE, paired over the 20 prompts
 
 
-
 # --------------------------------------------------------------------------
 # 3. cluster occupancy and transitions over the panel's medoid alphabet
 
@@ -181,7 +181,7 @@ for layer_id, layer in layers:
     index = {mid: i for i, mid in enumerate(ids)}
 
     def assign(frame: pl.DataFrame) -> np.ndarray:
-        return (vectors(frame) @ med.T).argmax(axis=1)
+        return (vectors(frame) @ med.T).argmax(axis=1)  # noqa: B023 - called this iteration
 
     panel_sym = assign(panel_c)
     pilot_sym = assign(pilot_c)
@@ -206,7 +206,7 @@ for layer_id, layer in layers:
     )
 
     def structure(frame: pl.DataFrame, sym: np.ndarray) -> dict:
-        k = med.shape[0]
+        k = med.shape[0]  # noqa: B023 - called this iteration
         counts = np.bincount(sym, minlength=k).astype(float)
         occ = counts / counts.sum()
         run_ids = frame["run_id"].to_numpy()
@@ -215,7 +215,7 @@ for layer_id, layer in layers:
         for rid in np.unique(run_ids):
             seq = sym[run_ids == rid]
             distinct.append(len(np.unique(seq)))
-            for x, y in zip(seq[:-1], seq[1:]):
+            for x, y in itertools.pairwise(seq):
                 trans[x, y] += 1
                 self_trans += x == y
                 steps += 1

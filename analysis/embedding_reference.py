@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Do stored vectors reproduce, and pin the scale against a library upgrade.
 
 Two jobs, both for TASK-96.
@@ -28,7 +27,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
-import panic_models as pm  # noqa: E402
+import panic_models as pm
 
 HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent
@@ -44,8 +43,10 @@ PER_EXPERIMENT = 20
 REFERENCE_TEXTS = [
     "A black bicycle leans against a red brick wall.",
     "The stock market closed lower after a volatile trading session.",
-    "A photograph of a cat sitting on a windowsill in afternoon light, "
-    "its fur backlit, with a potted plant just visible behind the glass.",
+    (
+        "A photograph of a cat sitting on a windowsill in afternoon light, "
+        "its fur backlit, with a potted plant just visible behind the glass."
+    ),
 ]
 
 
@@ -76,8 +77,7 @@ def cos(a: np.ndarray, b: np.ndarray) -> float:
 def main() -> None:
     rows = sample_rows()
     print(
-        f"{len(rows)} sampled embeddings from "
-        f"{len(set(r[0] for r in rows))} experiments",
+        f"{len(rows)} sampled embeddings from {len({r[0] for r in rows})} experiments",
         flush=True,
     )
 

@@ -13,11 +13,17 @@ the GPU is free:
 Results -> analysis/natural_lengths.json.
 """
 
-import base64, io, json, sqlite3, sys, time, pathlib, re
+import base64
+import json
+import pathlib
+import re
+import sqlite3
+import sys
+import time
 
 sys.path.insert(0, "/home/ben/projects/panic_tda/priv/python")
+
 import panic_models as pm
-from PIL import Image
 
 OUT = pathlib.Path(__file__).with_suffix(".json")
 con = sqlite3.connect("/home/ben/projects/panic_tda/priv/panic_tda_dev.db")

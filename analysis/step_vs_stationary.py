@@ -102,7 +102,9 @@ def main() -> None:
         )
 
     print("sweep, per generator (fixed caption, 16 seeds)")
-    print(f"{'model':13s} {'step':>7s} {'drift':>7s} {'noise':>7s}  noise share of step")
+    print(
+        f"{'model':13s} {'step':>7s} {'drift':>7s} {'noise':>7s}  noise share of step"
+    )
     for m, v in models.items():
         print(
             f"{m:13s} {v['mean_step_cosdist']:7.4f} {v['mean_drift_cosdist']:7.4f} "
@@ -122,8 +124,15 @@ def main() -> None:
         "late_bin": LATE_BIN,
         "ruler": ruler,
         "sweep": {
-            m: {k: v[k] for k in ("mean_step_cosdist", "mean_drift_cosdist",
-                                  "mean_noise_cosdist", "mean_noise_share")}
+            m: {
+                k: v[k]
+                for k in (
+                    "mean_step_cosdist",
+                    "mean_drift_cosdist",
+                    "mean_noise_cosdist",
+                    "mean_noise_share",
+                )
+            }
             for m, v in models.items()
         },
         "rows": rows,
