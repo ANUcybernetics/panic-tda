@@ -8,6 +8,7 @@ plain JSON-compatible arguments.
 from __future__ import annotations
 
 import base64
+from typing import Any
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -78,7 +79,7 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
 
     import altair as alt
 
-    rows = []
+    rows: list[dict[str, Any]] = []
     with open(csv_path, newline="") as fh:
         reader = csv.DictReader(fh)
         for row in reader:
@@ -92,10 +93,12 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
                 }
             )
 
-    prompts = sorted({r["prompt_or_pair"] for r in rows if r["category"] == "identical"})
+    prompts = sorted(
+        {r["prompt_or_pair"] for r in rows if r["category"] == "identical"}
+    )
     prompt_labels = {p: f"p{i + 1}" for i, p in enumerate(prompts)}
 
-    cells = []
+    cells: list[dict[str, Any]] = []
     for (network, embedding_model), _ in _grouped(
         rows, lambda r: (r["network"], r["embedding_model"])
     ):
@@ -106,7 +109,9 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
         ]
 
         identical = {
-            r["prompt_or_pair"]: r["ftle"] for r in cell_rows if r["category"] == "identical"
+            r["prompt_or_pair"]: r["ftle"]
+            for r in cell_rows
+            if r["category"] == "identical"
         }
         paraphrase = {}
         for r in cell_rows:
@@ -146,7 +151,7 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
     data = alt.Data(values=cells)
 
     heatmap = (
-        alt.Chart(data)
+        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
         .mark_rect()
         .encode(
             x=alt.X(
@@ -173,7 +178,9 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
         )
         .properties(width=140, height=140)
         .facet(
-            facet=alt.Facet("network:N", title=None, header=alt.Header(labelFontSize=9)),
+            facet=alt.Facet(
+                "network:N", title=None, header=alt.Header(labelFontSize=9)
+            ),
             columns=3,
             title=alt.TitleParams(
                 "FTLE heatmap (diagonal = identical prompt, off-diagonal = paraphrase pair)",
@@ -208,7 +215,7 @@ def plot_three_regime_overlay(
     """
     import altair as alt
 
-    rows = []
+    rows: list[dict[str, Any]] = []
     for label, curve in [
         ("1. identical prompt (noise)", identical_curve),
         ("2. close paraphrase", close_curve),
@@ -226,7 +233,7 @@ def plot_three_regime_overlay(
     )
 
     chart = (
-        alt.Chart(data)
+        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
         .mark_line(strokeWidth=2)
         .encode(
             x=alt.X("step:Q", title="invocation step"),
@@ -294,7 +301,7 @@ def plot_divergence_curves(
     title = f"Divergence curve: {network.replace('|', ' → ')}  ·  {embedding_model}"
 
     chart = (
-        alt.Chart(data)
+        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
         .mark_line(strokeWidth=2)
         .encode(
             x=alt.X("step:Q", title="invocation step"),
