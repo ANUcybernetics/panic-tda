@@ -26,13 +26,16 @@ For detailed design rationale, see @DESIGN.md.
 - follow the Ash usage rules below (synced via `usage_rules` hex package)
 - run tests with `mise exec -- mix test`
 - run GPU smoke tests (all real model combinations) with
-  `mise exec -- mix test --include gpu` --- takes ~4h 40m on an RTX 6000 Ada
-  (174 tests, mostly bottlenecked by T2I model invocations)
+  `mise exec -- mix test --include gpu` --- takes ~70 min on an RTX 6000 Ada
+  (172 tests, mostly bottlenecked by T2I model invocations)
 - Python interop is via Snex --- the interpreter maintains persistent state
   across `pyeval` calls. The model registry (loading, invoking, embedding) lives
   in `priv/python/panic_models.py`; Elixir calls into it via short inline
-  `pyeval` glue. The Snex venv spec (dependencies, Python version) is declared
-  inline in `lib/panic_tda/models/python_interpreter.ex`
+  `pyeval` glue. The Snex venv is `priv/python/pyproject.toml`, locked by the
+  tracked `priv/python/uv.lock`: run `uv lock` in `priv/python` after changing
+  it, and commit both
+- check the Python with `uvx ruff check priv/python analysis` and
+  `uvx ty check priv/python --python _build/dev/snex/projects/Elixir.PanicTda.Models.PythonInterpreter/venv`
 - the project uses a separate SQLite database
 - tidewave MCP server is available for dev-time BEAM introspection; start it
   with `mise exec -- mix tidewave` (runs on port 4000)

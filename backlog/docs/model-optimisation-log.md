@@ -398,6 +398,37 @@ GLMImage anomaly that is no longer in the lineup. Keeping both models resident
 would save at most half a GPU-day on the long-horizon panel and needs a memory
 heuristic; the swap costs the pilot noticed were a small-batch artefact.
 
+### 7. Library bump: torch 2.15, transformers 5.22, diffusers 0.42 — KEEP
+
+- **Date:** 2026-10-30
+- **Files touched:** `priv/python/pyproject.toml`, `priv/python/uv.lock`,
+  `priv/python/panic_models.py` (`setup`, loaders)
+- **Change:** torch 2.14 → 2.15 (cu132), transformers 5.16 → 5.22, diffusers
+  0.40 → 0.42.1, sentence-transformers 6.0 → 6.2, huggingface-hub 1.29 → 2.4;
+  `torch_dtype=` → `dtype=`; `setup()`'s library patches deleted, since every
+  one targeted code no longer upstream.
+- **Before → after (per-item wall-clock, `mix gpu.bench --batch-sizes 4 --n 8`,
+  against iteration 4's `--n 4`):**
+
+  | Model       | batch=4 before | batch=4 after | batch=1 after |
+  | ----------- | -------------- | ------------- | ------------- |
+  | Flux2Dev    | 43.4 s         | 43.8 s        | 90.5 s        |
+  | SD35Medium  | 5.5 s          | 5.9 s         | 5.6 s         |
+  | ZImageTurbo | 5.2 s          | 5.35 s        | 4.8 s         |
+  | Flux2Klein  | 3.5 s          | 3.5 s         | 3.3 s         |
+
+  Flux2Dev's batch=1 figure is inflated by its first image paying the warm-up
+  (47 s on the first of twelve steps).
+
+- **Quality parity:** batched-vs-serial parity unchanged (Flux2Dev mean 5.65 /
+  max 12.58, against 5.78 / 12.58). Qwen3Embed still matches
+  `test/fixtures/qwen3embed_reference.json` without regenerating it.
+- **Gate:** full GPU suite twice, 172 tests / 0 failures (69 and 67 min); CPU
+  long-run rehearsal passed.
+- **Decision + rationale:** KEEP. Throughput is within noise for Flux2Dev and
+  Flux2Klein and 3--7% slower for SD35Medium and ZImageTurbo; staying current
+  outweighs that, and it leaves Flux2Dev, the panel's bottleneck, level.
+
 ### Untried / future levers (ranked)
 
 - Batch `HunyuanImage` (sequential offload like Flux2Dev — likely benefits; not

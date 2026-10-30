@@ -74,149 +74,34 @@ def _bnb_4bit_config() -> Any:
 
 
 def setup() -> None:
-    """One-time environment init: suppress warnings, patch libraries."""
-    warnings.filterwarnings("ignore")
-
+    """One-time environment init: quieten library logging and progress bars."""
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
     # Do not set PYTORCH_CUDA_ALLOC_CONF=expandable_segments here: under
     # Flux2Dev's sequential CPU offload it made every image a third slower
     # (57.6 vs 43.4 s/item at batch 4, mix gpu.bench, 2026-09-05).
 
-    try:
-        import transformers
+    import diffusers.utils.logging
+    import transformers
 
-        transformers.logging.set_verbosity_error()
+    transformers.logging.set_verbosity_error()
+    diffusers.utils.logging.set_verbosity_error()
+    # covers component loading; denoising bars are off per pipeline, since a
+    # pipeline passes tqdm an explicit `disable=` that beats the patch below
+    diffusers.utils.logging.disable_progress_bar()
 
-        # huggingface_hub strict dataclass validation rejects float↔int
-        # mismatches in model configs. Some upstream config.json files store
-        # integer-valued fields as floats (e.g. nomic-bert "n_inner": 2048.0).
-        # Patch _validate_simple_type to accept float-for-int and int-for-float
-        # when the value is losslessly convertible.
-        import huggingface_hub.dataclasses as _hhd
+    # Upstream noise we can't act on: persim 0.4.1's docstring escapes, the
+    # bitsandbytes fallback for NF4 layers whose width isn't a multiple of 64,
+    # and Moondream 3's remote code calling flex_attention uncompiled.
+    warnings.filterwarnings("ignore", r"invalid escape sequence", SyntaxWarning)
+    warnings.filterwarnings("ignore", r"inner dimension .* not aligned", UserWarning)
+    warnings.filterwarnings("ignore", r"flex_attention called without", UserWarning)
 
-        _orig_validate_simple = _hhd._validate_simple_type
+    from functools import partialmethod
 
-        def _lenient_validate_simple(
-            name: str, value: Any, expected_type: type
-        ) -> None:
-            try:
-                _orig_validate_simple(name, value, expected_type)
-            except TypeError:
-                if (
-                    expected_type is int
-                    and isinstance(value, float)
-                    and not isinstance(value, bool)
-                    and value == int(value)
-                ):
-                    return
-                if (
-                    expected_type is float
-                    and isinstance(value, int)
-                    and not isinstance(value, bool)
-                ):
-                    return
-                raise
+    from tqdm import tqdm
 
-        _hhd._validate_simple_type = _lenient_validate_simple
-
-        import transformers.modeling_utils as _tmu
-
-        # transformers 5.x passes code_revision through from_config → _from_config
-        # → cls(config, **kwargs), but remote-code model classes (Moondream's,
-        # for one) don't accept it. Strip it — code_revision is only meaningful
-        # for from_pretrained, not from_config.
-        _orig_from_config = _tmu.PreTrainedModel._from_config.__func__
-
-        @classmethod  # type: ignore[misc]
-        def _safe_from_config(cls, config, **kwargs):  # type: ignore[no-untyped-def]
-            kwargs.pop("code_revision", None)
-            return _orig_from_config(cls, config, **kwargs)
-
-        _tmu.PreTrainedModel._from_config = _safe_from_config
-
-        _orig_ptm_init = _tmu.PreTrainedModel.__init__
-
-        def _patched_ptm_init(self: Any, *args: Any, **kwargs: Any) -> None:
-            _orig_ptm_init(self, *args, **kwargs)
-            if not hasattr(self, "all_tied_weights_keys"):
-                self.all_tied_weights_keys = {}
-
-        _tmu.PreTrainedModel.__init__ = _patched_ptm_init
-
-        if hasattr(_tmu.PreTrainedModel, "get_expanded_tied_weights_keys"):
-            _orig_getwk = _tmu.PreTrainedModel.get_expanded_tied_weights_keys
-
-            def _safe_getwk(self: Any, all_submodels: bool = False) -> dict[str, str]:
-                twk = getattr(self, "_tied_weights_keys", None)
-                if isinstance(twk, list):
-                    self._tied_weights_keys = None
-                    try:
-                        return _orig_getwk(self, all_submodels)
-                    finally:
-                        self._tied_weights_keys = twk
-                return _orig_getwk(self, all_submodels)
-
-            _tmu.PreTrainedModel.get_expanded_tied_weights_keys = _safe_getwk
-    except Exception:
-        pass
-
-    try:
-        import transformers.cache_utils as _cu
-
-        if not hasattr(_cu.DynamicCache, "get_usable_length"):
-
-            def _get_usable_length(
-                self: Any, new_seq_length: int = 0, layer_idx: int = 0
-            ) -> int:
-                return self.get_seq_length(layer_idx)
-
-            _cu.DynamicCache.get_usable_length = _get_usable_length
-
-    except Exception:
-        pass
-
-    try:
-        import diffusers
-
-        diffusers.logging.set_verbosity_error()
-
-    except Exception:
-        pass
-
-    try:
-        # transformers 5.5.x has a bug in _convert_peft_config_moe: it runs
-        # for any model that has a checkpoint-conversion mapping, then does a
-        # bracket lookup in _MOE_TARGET_MODULE_MAPPING which only contains
-        # real MoE architectures. A qwen2_5_vl checkpoint (Qwen25VL) maps to
-        # qwen2_vl and crashes with KeyError: 'qwen2_vl'. Patch it to no-op
-        # when the mapped base type isn't a known MoE.
-        import transformers.integrations.peft as _tip
-
-        if hasattr(_tip, "_convert_peft_config_moe") and not getattr(
-            _tip._convert_peft_config_moe, "_panic_patched", False
-        ):
-            _orig_moe = _tip._convert_peft_config_moe
-
-            def _safe_convert_peft_config_moe(peft_config, model_type):
-                try:
-                    return _orig_moe(peft_config, model_type)
-                except KeyError:
-                    return peft_config
-
-            _safe_convert_peft_config_moe._panic_patched = True
-            _tip._convert_peft_config_moe = _safe_convert_peft_config_moe
-    except Exception:
-        pass
-
-    try:
-        from functools import partialmethod
-
-        from tqdm import tqdm
-
-        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-    except Exception:
-        pass
+    tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +110,7 @@ def setup() -> None:
 
 
 class NoSortingSentenceTransformer(SentenceTransformer):
-    def encode(
+    def encode(  # ty: ignore[invalid-method-override] - the subset we call
         self,
         sentences: str | list[str],
         batch_size: int = 32,
@@ -233,7 +118,7 @@ class NoSortingSentenceTransformer(SentenceTransformer):
         output_value: str = "sentence_embedding",
         convert_to_numpy: bool = True,
         convert_to_tensor: bool = False,
-        device: str | None = None,
+        device: str | torch.device | None = None,
         normalize_embeddings: bool = False,
         precision: str = "float32",
         **kwargs: Any,
@@ -254,7 +139,7 @@ class NoSortingSentenceTransformer(SentenceTransformer):
             for i in range(0, len(sentences), batch_size):
                 batch = sentences[i : i + batch_size]
                 features = self.preprocess(batch)
-                features = batch_to_device(features, device)
+                features = batch_to_device(features, torch.device(device))
                 out_features = self.forward(features)
                 embeddings = out_features["sentence_embedding"]
 
@@ -267,7 +152,8 @@ class NoSortingSentenceTransformer(SentenceTransformer):
                     all_embeddings.extend(embeddings)
 
         if convert_to_tensor and not convert_to_numpy and len(all_embeddings) > 0:
-            all_embeddings = torch.stack(all_embeddings)
+            stacked = torch.stack(all_embeddings)
+            return stacked[0] if input_was_string else stacked
 
         if input_was_string:
             return all_embeddings[0]
@@ -335,7 +221,7 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "offload": "model_cpu_offload",
         # T5 is kept (decision-01): without it SD3.5 sees only CLIP's 77 tokens.
         "extra_kwargs": {
-            "torch_dtype": "bfloat16",
+            "dtype": "bfloat16",
             "use_fast": True,
         },
     },
@@ -344,19 +230,19 @@ _T2I_LOADER_CONFIGS: dict[str, dict[str, Any]] = {
         "repo": "black-forest-labs/FLUX.2-dev",
         "offload": "sequential_cpu_offload",
         "offload_only": True,
-        "extra_kwargs": {"torch_dtype": "bfloat16", "token": True},
+        "extra_kwargs": {"dtype": "bfloat16", "token": True},
     },
     "ZImageTurbo": {
         "pipeline_cls": "ZImagePipeline",
         "repo": "Tongyi-MAI/Z-Image-Turbo",
         "offload": "model_cpu_offload",
-        "extra_kwargs": {"torch_dtype": "bfloat16"},
+        "extra_kwargs": {"dtype": "bfloat16"},
     },
     "Flux2Klein": {
         "pipeline_cls": "Flux2KleinPipeline",
         "repo": "black-forest-labs/FLUX.2-klein-9B",
         "offload": "model_cpu_offload",
-        "extra_kwargs": {"torch_dtype": "bfloat16"},
+        "extra_kwargs": {"dtype": "bfloat16"},
     },
 }
 
@@ -384,6 +270,7 @@ def _load_t2i_pipeline(name: str) -> None:
         cfg["repo"], revision=_rev(cfg["repo"]), **kwargs
     )
     getattr(pipe, f"enable_{cfg['offload']}")()
+    pipe.set_progress_bar_config(disable=True)
     _models[name] = pipe
     if cfg.get("offload_only"):
         _models_offload_only.add(name)
@@ -415,9 +302,9 @@ def _load_moondream() -> None:
         _MOONDREAM_REPO,
         revision=_MOONDREAM_REV,
         trust_remote_code=True,
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
     )
-    _models["Moondream3"] = model.to("cuda").eval()
+    _models["Moondream3"] = model.to("cuda").eval()  # ty: ignore[invalid-argument-type]
 
 
 _QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
@@ -442,7 +329,7 @@ def _load_qwen_vl(name: str) -> None:
     model_cls = getattr(transformers, cfg["cls"])
     kwargs: dict[str, Any] = {
         "revision": _rev(repo),
-        "torch_dtype": torch.bfloat16,
+        "dtype": torch.bfloat16,
         "attn_implementation": "sdpa",
         "device_map": "auto",
     }
@@ -462,7 +349,7 @@ def _load_joycaption() -> None:
     model = LlavaForConditionalGeneration.from_pretrained(
         repo,
         revision=_rev(repo),
-        torch_dtype=torch.bfloat16,
+        dtype=torch.bfloat16,
         device_map="auto",
         quantization_config=_bnb_4bit_config(),
     )
@@ -484,9 +371,9 @@ def _load_gemma4() -> None:
     repo = "google/gemma-4-E4B-it"
     model = (
         Gemma4ForConditionalGeneration.from_pretrained(
-            repo, revision=_rev(repo), torch_dtype=torch.bfloat16
+            repo, revision=_rev(repo), dtype=torch.bfloat16
         )
-        .to("cuda")
+        .to("cuda")  # ty: ignore[invalid-argument-type]
         .eval()
     )
     processor = AutoProcessor.from_pretrained(repo, revision=_rev(repo))
@@ -946,7 +833,7 @@ def _invoke_qwen_vl(name: str, img: Image.Image) -> str:
     text = qwen_vl["processor"].apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
-    image_inputs, video_inputs = process_vision_info(messages)
+    image_inputs, video_inputs = process_vision_info(messages)  # ty: ignore[invalid-assignment]
     inputs = qwen_vl["processor"](
         text=[text],
         images=image_inputs,
@@ -985,7 +872,7 @@ def _invoke_qwen_vl_batch(name: str, images: list[Image.Image]) -> list[str]:
                 messages, tokenize=False, add_generation_prompt=True
             )
         )
-        image_inputs, _ = process_vision_info(messages)
+        image_inputs, _ = process_vision_info(messages)  # ty: ignore[invalid-assignment]
         all_images.extend(image_inputs)
     inputs = qwen_vl["processor"](
         text=all_texts,
@@ -1148,7 +1035,7 @@ def probe_max_batch(
             gc.collect()
             results[n] = "oom"
             break
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - surface the failure in the report
             torch.cuda.empty_cache()
             gc.collect()
             results[n] = str(e)
