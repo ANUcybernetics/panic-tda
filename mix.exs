@@ -5,7 +5,7 @@ defmodule PanicTda.MixProject do
     [
       app: :panic_tda,
       version: "0.1.0",
-      elixir: "~> 1.17",
+      elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
       consolidate_protocols: Mix.env() != :dev,
       aliases: aliases(),
