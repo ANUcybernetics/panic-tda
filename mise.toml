@@ -1,6 +1,6 @@
 [tools]
-erlang = "28.5.0.8"
-elixir = "1.20.4-otp-28"
+erlang = "29.1.2"
+elixir = "1.20.5-otp-29"
 python = "3.12"
 sqlite = "latest"
 bun = "latest"
