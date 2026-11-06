@@ -37,8 +37,6 @@ For detailed design rationale, see @DESIGN.md.
 - check the Python with `uvx ruff check priv/python analysis` and
   `uvx ty check priv/python --python _build/dev/snex/projects/Elixir.PanicTda.Models.PythonInterpreter/venv`
 - the project uses a separate SQLite database
-- tidewave MCP server is available for dev-time BEAM introspection; start it
-  with `mise exec -- mix tidewave` (runs on port 4000)
 
 ## Running experiments
 
