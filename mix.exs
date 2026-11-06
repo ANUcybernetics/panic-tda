@@ -39,7 +39,7 @@ defmodule PanicTda.MixProject do
 
   defp usage_rules do
     [
-      file: "CLAUDE.md",
+      file: "AGENTS.md",
       usage_rules: [{:ash, link: :markdown}, {~r/^ash_/, link: :markdown}]
     ]
   end

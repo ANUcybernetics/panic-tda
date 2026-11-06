@@ -35,7 +35,7 @@ CONSTRAINTS. The project has no video style guide; the only one on the machine i
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Ben has set the key idea, who the video is for, its length, where its look comes from and where it lives, including whether it is one video or two
-- [ ] #2 The project has a video style guide that CLAUDE.md points to, with its palette and type taken from named sources
+- [ ] #2 The project has a video style guide that AGENTS.md points to, with its palette and type taken from named sources
 - [ ] #3 The script is Ben's, with a visual direction and approved reads for every stretch of picture
 - [ ] #4 Each distance the analysis uses is shown on a real example from the experiments and as a 2D picture, and the script says what a plane cannot show
 - [ ] #5 Ben has watched a 1080p draft whose outcome section rests on the follow-up's measured result

@@ -9,7 +9,7 @@ Reads one experiment from the dev database and reports, over its trajectory:
 
 - wall-clock per step for each model, from the invocation timestamps (a batch
   step shares one started_at/completed_at across its runs, so the batch time is
-  divided by the batch size to give a per-item figure comparable with CLAUDE.md)
+  divided by the batch size to give a per-item figure comparable with AGENTS.md)
 - caption length by step bin, per run, to see whether captions drift in length
 - step-to-step cosine distance and distance from the first caption by step bin,
   the two plateau diagnostics from analysis/long_horizon_baseline.py

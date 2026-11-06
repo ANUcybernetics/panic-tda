@@ -31,7 +31,7 @@ Fallback if CogView4 is rejected: lodestones/Chroma1-HD (apache-2.0, ~26 GB, 512
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Deterministic given a seed, and free of the fault class that motivated TASK-79, over a run long enough to see it
-- [ ] #2 If adopted: pinned in _REVISIONS, wired into panic_models, genai.ex, gpu.bench, the GPU tests and the panel config, and CLAUDE.md/README updated --- panel back to 5x5
+- [ ] #2 If adopted: pinned in _REVISIONS, wired into panic_models, genai.ex, gpu.bench, the GPU tests and the panel config, and AGENTS.md/README updated --- panel back to 5x5
 - [ ] #3 Seconds per image and VRAM measured at bfloat16 with no quantisation, at batch 1 and at the panel's batch size, and a step-count sweep run the way TASK-83 did --- with the GPU-day cost of adopting it stated before anything else is decided
 - [ ] #4 Confirmed that no prompt text is added or rewritten: the encoded prompt matches the caption, with nothing prepended
 - [ ] #5 The 1024-token context confirmed to accept our longest captions without truncation, measured in the pipeline's own tokenizer rather than by word count

@@ -52,7 +52,7 @@ carrying TASK-89's indicative figures.
 Measured warm per-item times, 150 image and 150 caption steps per run, 20
 prompts, 16 cells. Generators are `mix gpu.bench` at batch 4 on 2026-09-06
 (SD35Medium 5.5 s, ZImageTurbo 5.2, Flux2Klein 3.5, Flux2Dev 43.4);
-captioners are the CLAUDE.md per-caption figures scaled by the measured
+captioners are the AGENTS.md per-caption figures scaled by the measured
 speedup of the batch cap going from 8 to 40 (Qwen25VL 0.64, Gemma4 0.37,
 JoyCaption 0.40, Moondream3 unchanged). The old model predicted
 14.9 days for the panel that took 17, so the second column carries that

@@ -70,7 +70,7 @@ the production `invoke_t2i` / `invoke_t2i_batch` path.
 ## Baseline
 
 Warm per-item wall-clock at batch=1 (harness, `mix gpu.bench`, n=4, 1024px, no
-load/swap overhead — so faster than CLAUDE.md's cold single-invocation column):
+load/swap overhead — so faster than AGENTS.md's cold single-invocation column):
 
 | Model       | batch=1 per-item |
 | ----------- | ---------------- |
@@ -318,7 +318,7 @@ with the ordering scrambled, so the metric genuinely cannot separate 8 from 15.
   Sequential CPU offload allocates and frees every layer's weights on each
   forward pass, and expandable segments make each fresh mapping dearer; the
   resident generators show no such cost, and their figures are in line with the
-  table in CLAUDE.md.
+  table in AGENTS.md.
 
 - **Quality parity:** deterministic lever. Batched-vs-serial parity is
   identical with and without the flag (Flux2Dev mean 5.78 / max 12.58).
