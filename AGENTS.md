@@ -21,10 +21,6 @@ For detailed design rationale, see @DESIGN.md.
 
 ## Development
 
-- use `mise exec --` to prefix all mix/elixir commands (erlang/elixir managed by
-  mise)
-- follow the Ash usage rules below (synced via `usage_rules` hex package)
-- run tests with `mise exec -- mix test`
 - run GPU smoke tests (all real model combinations) with
   `mise exec -- mix test --include gpu` --- takes ~70 min on an RTX 6000 Ada
   (172 tests, mostly bottlenecked by T2I model invocations)
