@@ -110,7 +110,7 @@ def setup() -> None:
 
 
 class NoSortingSentenceTransformer(SentenceTransformer):
-    def encode(  # ty: ignore[invalid-method-override] - the subset we call
+    def encode(  # ty: ignore[incompatible-method-override] - the subset we call
         self,
         sentences: str | list[str],
         batch_size: int = 32,
@@ -304,7 +304,7 @@ def _load_moondream() -> None:
         trust_remote_code=True,
         dtype=torch.bfloat16,
     )
-    _models["Moondream3"] = model.to("cuda").eval()  # ty: ignore[invalid-argument-type]
+    _models["Moondream3"] = model.to("cuda").eval()
 
 
 _QWEN_VL_CONFIGS: dict[str, dict[str, Any]] = {
@@ -373,7 +373,7 @@ def _load_gemma4() -> None:
         Gemma4ForConditionalGeneration.from_pretrained(
             repo, revision=_rev(repo), dtype=torch.bfloat16
         )
-        .to("cuda")  # ty: ignore[invalid-argument-type]
+        .to("cuda")
         .eval()
     )
     processor = AutoProcessor.from_pretrained(repo, revision=_rev(repo))

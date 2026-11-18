@@ -151,7 +151,7 @@ def plot_ftle_heatmap(csv_path: str, out_path: str) -> None:
     data = alt.Data(values=cells)
 
     heatmap = (
-        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
+        alt.Chart(data)  # ty: ignore[missing-attribute] - altair's mark_* typing
         .mark_rect()
         .encode(
             x=alt.X(
@@ -233,7 +233,7 @@ def plot_three_regime_overlay(
     )
 
     chart = (
-        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
+        alt.Chart(data)  # ty: ignore[missing-attribute] - altair's mark_* typing
         .mark_line(strokeWidth=2)
         .encode(
             x=alt.X("step:Q", title="invocation step"),
@@ -301,7 +301,7 @@ def plot_divergence_curves(
     title = f"Divergence curve: {network.replace('|', ' → ')}  ·  {embedding_model}"
 
     chart = (
-        alt.Chart(data)  # ty: ignore[unresolved-attribute] - altair's mark_* typing
+        alt.Chart(data)  # ty: ignore[missing-attribute] - altair's mark_* typing
         .mark_line(strokeWidth=2)
         .encode(
             x=alt.X("step:Q", title="invocation step"),
