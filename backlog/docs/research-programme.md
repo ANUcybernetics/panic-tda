@@ -209,6 +209,14 @@ confirmed the rest. Citations are in the paper skeleton's Related work notes.
   (2026) report the same local-before-cumulative pattern, but a step is
   four-fifths seed noise and says little about the slow part. The curve to
   report is displacement against separation, with the noise removed.
+- **A text-only loop collapses, by its authors' measure.** Kong et al.
+  (arXiv:2605.17193, 2026) run three LLM agents for up to 1,000 rounds with
+  frozen weights. They report semantic collapse that thirteen interventions do
+  not undo, and they separate it from training-time model collapse as this map
+  does. Their measure, distance from a run's own start, cannot tell collapse
+  from memory, and their runs share one start. The follow-up's twins and
+  strangers show memory and little convergence. Whether the image step is the
+  difference is open (`kong-2026-semantic-collapse.md`).
 
 - **TASK-89 has a decision rule and a caveat.** Drift is called real only above
   the Bland--Altman minimal detectable change computed from the seed-resample
