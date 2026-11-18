@@ -357,12 +357,8 @@ def main() -> None:
     rng = np.random.default_rng(SEED)
 
     runs = load(args.export)
-    xs = [
-        (lambda a: a / np.linalg.norm(a, axis=1, keepdims=True))(
-            np.asarray(v.to_list(), dtype=np.float64)
-        )
-        for v in runs["vector"]
-    ]
+    vectors = [np.asarray(v.to_list(), dtype=np.float64) for v in runs["vector"]]
+    xs = [a / np.linalg.norm(a, axis=1, keepdims=True) for a in vectors]
     lengths = {len(x) for x in xs}
     if len(lengths) > 1:
         raise SystemExit(f"runs of different lengths: {sorted(lengths)}")
@@ -428,7 +424,7 @@ def main() -> None:
         # and chunking hands the work to a fraction of the workers.
         process = pool.map(process_null, list(enumerate(xs)), chunksize=1)
     against_process = {"whole": {}, "late": {}}
-    for part in against_process:
+    for part in ("whole", "late"):
         for f in tda:
             draws = np.array([p[part][f] for p in process])
             real = np.array([p[part]["real"][f] for p in process])
