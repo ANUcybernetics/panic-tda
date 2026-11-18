@@ -284,7 +284,7 @@ GPU-days estimated (`backlog/docs/long-horizon-design.md`).
 | TASK-76 Markov state model        | abandoned               | the panel has no states that runs both share and cross          |
 | TASK-89 drift/noise decomposition | closed                  | the noise floor is most of the step; Null models, and RQ2       |
 | TASK-75 outliers as sparse space  | closed                  | failed: outliers are not sparse, transit time is not observable |
-| TASK-77 TDA keep/kill             | **gate**                | Results III, which exists only if this passes; against TASK-103 |
+| TASK-77 TDA keep/kill             | closed                  | killed: no Results III; methods paragraph, distance stats kept  |
 | TASK-91 prior-matching test       | candidate               | needs restating: the panel reaches no stationary distribution   |
 | TASK-100 encoder truncation       | methods                 | share of captions cut at 512 tokens; measured, reporting open   |
 | TASK-88 new model candidates      | instrument              | nothing yet; deferrable until the lineup is in question         |
@@ -304,8 +304,10 @@ nine-tenths by redrawing 528 steps at new seeds. TASK-75 answered negatively: th
 outlier share is an artefact of the clustering procedure and outlier time is
 settled time. TASK-76 was to be the standard MSM pipeline, and was abandoned
 when the panel turned out to have nothing for it to count. TASK-103 replaced it
-with a description that needs no states, and TASK-77 is now measured against
-that. TASK-92 and TASK-93 gated TASK-90 rather than the analysis chain: both
+with a description that needs no states. TASK-77, measured against that, killed
+persistent homology: the diagrams add nothing to distance statistics, and the
+sliding-window loops on 1,000-state runs are rewordings of one settled caption
+(`tda-keep-kill.md`). TASK-92 and TASK-93 gated TASK-90 rather than the analysis chain: both
 change what a recorded step means, and neither can be applied to a run after
 the fact.
 

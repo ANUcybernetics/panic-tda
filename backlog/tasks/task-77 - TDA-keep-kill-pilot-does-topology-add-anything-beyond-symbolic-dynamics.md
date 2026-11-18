@@ -1,11 +1,11 @@
 ---
 id: TASK-77
 title: 'TDA keep/kill pilot: does topology add anything beyond symbolic dynamics?'
-status: In Progress
+status: Done
 assignee:
   - sungyeon-hong
 created_date: '2026-07-10 00:51'
-updated_date: '2026-11-05 11:30'
+updated_date: '2026-11-19 12:00'
 labels:
   - analysis
   - paper
@@ -28,8 +28,8 @@ Decide with data whether TDA earns a place in the next paper or is dropped from 
 <!-- AC:BEGIN -->
 - [x] #1 Recurrence statistics on raw embedding distances (return-time distributions / recurrence plots) computed for a sample of runs and compared against symbol-sequence recurrence, establishing whether geometric recurrence exists that symbols miss
 - [x] #2 Test of whether (normalised) persistence entropy predicts anything not already predicted by duplicate-caption count and dwell statistics (e.g. partial correlation)
-- [ ] #3 If killed: PdStage moved out of the per-experiment hot path (or made opt-in) and docs updated
-- [ ] #4 Documented keep/kill decision: sliding-window PH is adopted only if it shows something the symbol sequences miss AND the result is interpretable in terms of the trajectories (a recurrence or cycle that can be pointed to in the captions); otherwise TDA is dropped from headline analyses with the rationale written up for the paper's methods discussion
+- [x] #3 If killed: PdStage moved out of the per-experiment hot path (or made opt-in) and docs updated
+- [x] #4 Documented keep/kill decision: sliding-window PH is adopted only if it shows something the symbol sequences miss AND the result is interpretable in terms of the trajectories (a recurrence or cycle that can be pointed to in the captions); otherwise TDA is dropped from headline analyses with the rationale written up for the paper's methods discussion
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -57,4 +57,6 @@ LOOP ANATOMY 2026-11-05, analysis/loop_anatomy.py -> analysis/loop_anatomy_01a10
 - So a loop is a hole in the cloud of paraphrases a captioner produces for one settled scene. The excess bar length over the null is real, but it measures that the paraphrase cloud is not shaped like a Gaussian with the same drift. It is not a trajectory going round anything.
 - RECOMMENDATION, for Sungyeon and Ben, unchanged in direction from 2026-10-08 but now for a stated reason rather than for absence of signal: drop persistent homology, Rips and sliding-window both, from the headline analyses. AC#4's first condition is met at 1,000 states and its second is not. If the paraphrase-cloud shape is worth reporting, local intrinsic dimension and clumpiness say it more plainly and are already in the document.
 - Method note for whoever reads this next: the first examples pulled out were ranked by span per hop, which selects the degenerate cycles (seven windows all saying "a large tree engulfed in flames") and overstates the case. loop_anatomy.py picks its examples near the median instead. The population numbers, not the examples, are what the conclusion rests on.
+
+DECISION 2026-11-19 (Ben and Sungyeon): killed, as recommended. Persistent homology, Rips and sliding-window both, leaves the headline analyses; the rationale for the methods discussion is in backlog/docs/tda-keep-kill.md. Local intrinsic dimension, clumpiness and returns to an earlier caption are reported directly as distance statistics. AC#3: the persistence-diagram stage is out of the experiment pipeline and opt-in through `mix experiment.diagrams <id-prefix>` (Engine.compute_persistence_diagrams/2).
 <!-- SECTION:NOTES:END -->
