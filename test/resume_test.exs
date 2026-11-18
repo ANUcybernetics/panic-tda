@@ -335,13 +335,6 @@ defmodule PanicTda.ResumeTest do
         |> Ash.count!()
 
       assert embedding_count == 2
-
-      pd_count =
-        PanicTda.PersistenceDiagram
-        |> Ash.Query.filter(run_id == ^run.id)
-        |> Ash.count!()
-
-      assert pd_count == 1
     end
   end
 end

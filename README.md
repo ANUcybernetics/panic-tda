@@ -14,8 +14,8 @@ to:
    one model in as the input of the next to create a "run" of model invocations
 3. embed each output into a high-dimensional embedding space using one or more
    embedding models
-4. compute persistence diagrams and cluster them to identify topological
-   structure in the trajectories
+4. analyse the trajectories: clustering, distance statistics and (opt-in)
+   persistence diagrams
 
 The results of all the above computations are stored in a local SQLite database
 for further analysis.

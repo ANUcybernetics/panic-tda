@@ -1,14 +1,13 @@
 defmodule PanicTda.Engine do
   @moduledoc """
   Main engine for running PANIC-TDA experiments.
-  Orchestrates the three-stage pipeline:
+  Orchestrates the two-stage pipeline:
   1. Runs stage - batch execute model networks
   2. Embeddings stage - compute embeddings for outputs
-  3. Persistence diagrams stage - TDA computation
 
-  Clustering (global EVoC clustering of raw embeddings, pooled across
-  experiments) is not part of this pipeline; run it separately via
-  `mix cluster.recompute`.
+  Persistence diagrams and clustering are not part of the pipeline. Compute
+  diagrams with `compute_persistence_diagrams/2` (`mix experiment.diagrams`)
+  and cluster with `mix cluster.recompute`.
   """
 
   require Ash.Query
@@ -30,7 +29,7 @@ defmodule PanicTda.Engine do
       |> Enum.each(fn cell ->
         :ok = PythonBridge.unload_all_models(PythonSession.env(session))
         :ok = RunExecutor.execute_batch(session, cell)
-        finish_cell(session, cell, experiment, &EmbeddingsStage.compute/3, &PdStage.compute/3)
+        finish_cell(session, cell, experiment, &EmbeddingsStage.compute/3)
       end)
 
       experiment = PanicTda.complete_experiment!(experiment)
@@ -70,7 +69,7 @@ defmodule PanicTda.Engine do
       |> Enum.each(fn cell ->
         :ok = PythonBridge.unload_all_models(PythonSession.env(session))
         :ok = RunExecutor.resume_batch(session, cell)
-        finish_cell(session, cell, experiment, &EmbeddingsStage.resume/3, &PdStage.resume/3)
+        finish_cell(session, cell, experiment, &EmbeddingsStage.resume/3)
       end)
 
       experiment = PanicTda.complete_experiment!(experiment)
@@ -83,21 +82,37 @@ defmodule PanicTda.Engine do
   # A cell is one network's runs, executed in lockstep. Cells run in the order
   # the config lists them (map iteration would put them in term order), so the
   # fast generators can go first and their cells be analysed while the slow
-  # ones run; each cell is embedded and given its persistence diagrams as soon
-  # as its runs finish, for the same reason.
+  # ones run; each cell is embedded as soon as its runs finish, for the same
+  # reason.
   defp cells_in_config_order(runs, experiment) do
     by_network = Enum.group_by(runs, & &1.network)
     Enum.map(experiment.networks, &Map.fetch!(by_network, &1))
   end
 
-  defp finish_cell(session, cell, experiment, embed, pd) do
+  defp finish_cell(session, cell, experiment, embed) do
     env = PythonSession.env(session)
     :ok = PythonBridge.unload_all_models(env)
+    Enum.each(cell, &(:ok = embed.(env, &1, experiment.embedding_models)))
+  end
 
-    Enum.each(cell, fn run ->
-      :ok = embed.(env, run, experiment.embedding_models)
-      :ok = pd.(env, run, experiment.embedding_models)
-    end)
+  @doc """
+  Computes the persistence diagram of every run of an experiment that lacks
+  one, for each of its embedding models.
+  """
+  def compute_persistence_diagrams(experiment_id, opts \\ []) do
+    experiment = PanicTda.get_experiment!(experiment_id)
+    {:ok, session} = session_from_opts(opts, experiment)
+
+    try do
+      env = PythonSession.env(session)
+
+      PanicTda.Run
+      |> Ash.Query.filter(experiment_id == ^experiment.id)
+      |> Ash.read!()
+      |> Enum.each(&(:ok = PdStage.resume(env, &1, experiment.embedding_models)))
+    after
+      PythonSession.stop(session)
+    end
   end
 
   def init_runs(experiment) do

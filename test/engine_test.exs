@@ -241,7 +241,7 @@ defmodule PanicTda.EngineTest do
       end)
     end
 
-    test "creates persistence diagrams via giotto-ph" do
+    test "persistence diagrams are opt-in, computed after the pipeline via giotto-ph" do
       experiment =
         PanicTda.create_experiment!(%{
           networks: [["DummyT2I", "DummyI2T"]],
@@ -251,6 +251,10 @@ defmodule PanicTda.EngineTest do
         })
 
       {:ok, _} = Engine.perform_experiment(experiment.id)
+      assert PanicTda.list_persistence_diagrams!() == []
+
+      :ok = Engine.compute_persistence_diagrams(experiment.id)
+      :ok = Engine.compute_persistence_diagrams(experiment.id)
 
       pds = PanicTda.list_persistence_diagrams!()
 

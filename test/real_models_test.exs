@@ -166,12 +166,6 @@ defmodule PanicTda.RealModelsTest do
         assert %Nx.Tensor{} = emb.vector
         assert Nx.shape(emb.vector) == {256}
       end)
-
-      pds = Ash.read!(PanicTda.PersistenceDiagram)
-      assert length(pds) == 1
-      pd = hd(pds)
-      assert pd.embedding_model == "Qwen3Embed"
-      assert pd.diagram_data != nil
     end
   end
 
@@ -383,9 +377,6 @@ defmodule PanicTda.RealModelsTest do
           assert length(embeddings) == 2,
                  "expected 2 embeddings for #{model}, got #{length(embeddings)}"
         end
-
-        pds = PanicTda.list_persistence_diagrams!()
-        assert length(pds) == length(@real_text_embedding_models)
       end
     end
   end

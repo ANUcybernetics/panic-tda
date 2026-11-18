@@ -7,15 +7,17 @@ It systematically explores how information flows through networks of generative
 AI models by feeding outputs recursively back as inputs, creating "trajectories"
 through semantic space.
 
-The project implements a three-stage computational pipeline:
+The project implements a two-stage computational pipeline:
 
 1. **Runs stage**: execute networks of genAI models where outputs become inputs
 2. **Embeddings stage**: embed text outputs into high-dimensional semantic space
-3. **TDA stage**: compute persistence diagrams via topological data analysis
 
-Clustering is a separate manual step, not part of the pipeline:
+Two analyses are separate manual steps, not part of the pipeline:
 `mise exec -- mix cluster.recompute` runs global EVoC clustering over all raw
-embeddings for each embedding model, pooled across experiments.
+embeddings for each embedding model, pooled across experiments, and
+`mise exec -- mix experiment.diagrams <id-prefix>` computes each run's
+persistence diagram (opt-in since TASK-77 found they add nothing to distance
+statistics; `backlog/docs/tda-keep-kill.md`).
 
 For detailed design rationale, see @DESIGN.md.
 
@@ -42,8 +44,7 @@ Experiments are configured via JSON files in `config/` and run with:
 mise exec -- mix experiment.run config/my_experiment.json
 ```
 
-The task handles database setup and runs the full three-stage pipeline (runs →
-embeddings → TDA).
+The task handles database setup and runs the full pipeline (runs → embeddings).
 
 ### Configuration format
 
@@ -125,7 +126,7 @@ per-captioner lengths and timings in
   and progress
 - `mise exec -- mix experiment.resume <id-prefix>` --- resume an interrupted
   experiment (picks up where it left off: skips completed runs, computes missing
-  embeddings/PDs; does not recluster)
+  embeddings; does not recluster or compute diagrams)
 - `mise exec -- mix experiment.export <id-prefix> [--output path.mp4] [--fps 10] [--resolution hd|4k]` ---
   export mosaic video of an experiment
 - `mise exec -- mix experiment.export --image <invocation-id> [--output image.png]` ---
@@ -145,8 +146,7 @@ per-captioner lengths and timings in
   (`bin/panic-experiment@.service`) that keeps it alive
 
 Cells (one network's runs, batched in lockstep) execute in the order the config
-lists them, and each cell is embedded and given its persistence diagrams as soon
-as its runs finish, so put the slow generators last and analyse the fast cells
+lists them, and each cell is embedded as soon as its runs finish, so put the slow generators last and analyse the fast cells
 while they run.
 
 While a long run is live (`systemctl --user list-units 'panic-experiment@*'`),

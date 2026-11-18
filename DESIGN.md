@@ -106,7 +106,7 @@ For a given experiment config, the engine first creates all runs --- one for
 each combination of prompt and run number (from `0` to `num_runs - 1`). Each run
 shares the experiment's network and `max_length`.
 
-The computation then proceeds through three stages:
+The computation then proceeds through two stages:
 
 - In the **runs stage** (`RunExecutor.execute_batch/2`) all runs advance through
   the network in lockstep. At each sequence step, the current model is invoked
@@ -122,11 +122,12 @@ The computation then proceeds through three stages:
   caption is itself a representation of the image before it, so the image
   states are observed through the captioner rather than in a parallel space.
 
-- In the **persistence diagram stage** (`PdStage.compute/3`) each run's sequence
-  of embeddings (under a particular embedding model) is processed by the
-  [giotto-ph](https://giotto-ai.github.io/giotto-ph/) library to compute a
-  [persistence diagram](https://en.wikipedia.org/wiki/Persistent_homology).
-  There is one persistence diagram per run per embedding model.
+Persistence diagrams are opt-in: `mix experiment.diagrams`
+(`Engine.compute_persistence_diagrams/2`, which runs `PdStage`) processes each
+run's sequence of embeddings (under a particular embedding model) with the
+[giotto-ph](https://giotto-ai.github.io/giotto-ph/) library to compute a
+[persistence diagram](https://en.wikipedia.org/wiki/Persistent_homology), one
+per run per embedding model.
 
 Clustering is deliberately not part of the per-experiment pipeline. The
 `mix cluster.recompute` task (`ClusteringStage.recompute/2`) clusters all raw
@@ -181,4 +182,11 @@ specs:
 
 ## How does the TDA fit in?
 
-TODO.
+It is no longer part of the headline analysis. TASK-77 tested it against the
+distance description of the runs (`backlog/docs/drift-and-memory.md`). A run's
+Rips diagram is predicted by distance statistics and has fewer loops than a null
+matched to the run's drift. Sliding-window persistence beats that null on
+1,000-state runs, but its loops are a captioner rewording one settled scene, not
+cycles in the trajectory. The full write-up is
+`backlog/docs/tda-keep-kill.md`. The diagrams can still be computed with
+`mix experiment.diagrams`.
