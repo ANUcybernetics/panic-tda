@@ -36,7 +36,14 @@ The embeddings are unit vectors and the diagrams use Euclidean distance, which
 is a monotone function of cosine distance, so the filtration is the cosine one
 reparametrised. Distance numbers below are cosine distances.
 
+Run length is not assumed: the panel's runs are 150 text states, the follow-up
+`01a10613`'s are 1,000. Lengths derived from it (the "late" part of a run) are
+shares of the run, and `--states` takes a stretch of each run instead of all of
+it. The stored diagram is the pipeline's, over the whole run, so it is used only
+when the whole run is analysed; a stretch is given its own diagram.
+
     ./analysis/tda_keep_kill.py long_horizon_panel_01a09e21_parquet
+    ./analysis/tda_keep_kill.py 01a10613_parquet --states 1:150 --workers 60
 
 Results -> analysis/tda_keep_kill.json, summary to stdout.
 """
@@ -60,7 +67,9 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 OUT = pathlib.Path(__file__).with_suffix(".json")
-LATE = 75
+# The "late" part of a run, as a share of its length: the panel's 150-state runs
+# were read from state 75 on.
+LATE_SHARE = 0.5
 FOLDS = 5
 NULL_DRAWS = 3
 PROCESS_DRAWS = 9
@@ -76,7 +85,12 @@ BASELINE = (
 
 
 def load(export_dir: pathlib.Path) -> pl.DataFrame:
-    """One row per run: its labels, embeddings (150 x 256) and captions."""
+    """One row per run: its labels, embeddings (T x 256) and captions.
+
+    The invocation at sequence number -1 is the run's prompt, not a state the
+    loop produced, and is dropped. The pipeline's stored diagrams leave it out
+    too, so keeping it would compare features of different point sets.
+    """
     embeddings = pl.read_parquet(export_dir / "embeddings.parquet").select(
         "invocation_id", "vector"
     )
@@ -91,7 +105,7 @@ def load(export_dir: pathlib.Path) -> pl.DataFrame:
     )
     steps = (
         embeddings.join(invocations, left_on="invocation_id", right_on="id")
-        .filter(pl.col("output_text").is_not_null())
+        .filter(pl.col("output_text").is_not_null() & (pl.col("sequence_number") >= 0))
         .sort("run_id", "sequence_number")
         .group_by("run_id", maintain_order=True)
         .agg("vector", "output_text")
@@ -108,6 +122,20 @@ def load(export_dir: pathlib.Path) -> pl.DataFrame:
         )
         .sort("network", "initial_prompt", "run_number")
     )
+
+
+def stretch(spec: str | None, n: int) -> slice:
+    """`--states FIRST:LAST`, 1-based and inclusive, as a slice of a run."""
+    if not spec:
+        return slice(0, n)
+    first, last = (int(v) for v in spec.split(":"))
+    if not 1 <= first <= last <= n:
+        raise SystemExit(f"--states {spec} outside 1:{n}")
+    return slice(first - 1, last)
+
+
+def late_from(n: int) -> int:
+    return round(LATE_SHARE * n)
 
 
 def bars(dgms: list) -> list[np.ndarray]:
@@ -143,7 +171,7 @@ def diagram_features(dgms: list) -> dict[str, float]:
     return feats
 
 
-def rips(x: np.ndarray, threads: int = 4) -> list:
+def rips(x: np.ndarray, threads: int = 1) -> list:
     return ripser_parallel(x, maxdim=2, n_threads=threads)["dgms"]
 
 
@@ -156,7 +184,7 @@ def process_null(job: tuple) -> dict[str, dict[str, list[float]]]:
 
     index, x = job
     out = {}
-    for name, y in (("whole", x), ("late", x[LATE:])):
+    for name, y in (("whole", x), ("late", x[late_from(len(x)) :])):
         null = Null(y, np.random.default_rng([SEED, index]))
         draws = [diagram_features(rips(null.draw(), threads=1)) for _ in range(PROCESS_DRAWS)]
         out[name] = {k: [d[k] for d in draws] for k in draws[0]} | {
@@ -190,12 +218,13 @@ def twonn(x: np.ndarray) -> float:
 
 
 def baseline_features(x: np.ndarray, twin: np.ndarray, captions: list) -> dict:
-    """TASK-103's vocabulary, per run. x and twin are (150, 256) unit vectors."""
+    """TASK-103's vocabulary, per run. x and twin are (T, 256) unit vectors."""
     d1 = cosine(x[1:], x[:-1]).mean()
     d2 = cosine(x[2:], x[:-2]).mean()
     gram = 1.0 - x @ x.T
     iu = np.triu_indices(len(x), 1)
-    late = gram[LATE:, LATE:][np.triu_indices(len(x) - LATE, 1)]
+    lo = late_from(len(x))
+    late = gram[lo:, lo:][np.triu_indices(len(x) - lo, 1)]
     caps = np.asarray(captions, dtype=object)
     np.fill_diagonal(gram, np.inf)
     nearest = gram.min(axis=1)
@@ -203,21 +232,21 @@ def baseline_features(x: np.ndarray, twin: np.ndarray, captions: list) -> dict:
         "participation": participation(x),
         "twonn": twonn(x),
         "nearest": float(nearest.mean()),
-        "nearest_late": float(nearest[LATE:].mean()),
+        "nearest_late": float(nearest[lo:].mean()),
         "step": float(d1),
         "noise": float(2 * d1 - d2),
         "spread": float(gram[iu].mean()),
         "spread_late": float(late.mean()),
         "displacement": float((1.0 - x[:10] @ x[-10:].T).mean()),
-        "twin_late": float(cosine(x[LATE:], twin[LATE:]).mean()),
+        "twin_late": float(cosine(x[lo:], twin[lo:]).mean()),
         "unique_share": len(set(captions)) / len(captions),
         "repeat_share": float((caps[1:] == caps[:-1]).mean()),
     }
 
 
-def null_features(x: np.ndarray, rng: np.random.Generator) -> dict[str, float]:
-    """Mean diagram features of Gaussian clouds with x's mean and covariance,
-    projected back to the sphere as the real embeddings are."""
+def null_clouds(x: np.ndarray, rng: np.random.Generator) -> list[np.ndarray]:
+    """Gaussian clouds with x's mean and covariance, projected back to the
+    sphere as the real embeddings are."""
     mu = x.mean(axis=0)
     centred = x - mu
     draws = []
@@ -226,8 +255,13 @@ def null_features(x: np.ndarray, rng: np.random.Generator) -> dict[str, float]:
         z = rng.standard_normal((len(x), len(x))) / np.sqrt(len(x) - 1)
         y = mu + z @ centred
         y /= np.linalg.norm(y, axis=1, keepdims=True)
-        draws.append(diagram_features(rips(y)))
-    return {k: float(np.mean([d[k] for d in draws])) for k in draws[0]}
+        draws.append(y)
+    return draws
+
+
+def features_of(y: np.ndarray) -> dict[str, float]:
+    """Diagram features of a point set, on one thread. See `main` on why."""
+    return diagram_features(rips(y, threads=1))
 
 
 def r2(y: np.ndarray, pred: np.ndarray) -> float:
@@ -266,7 +300,11 @@ def added_value(table: pl.DataFrame, tda: list[str], rng) -> dict:
 
     H0's bars are the edges of the minimum spanning tree, so they are a
     statement about spacing between captions rather than about shape. The
-    second gain asks what H1 and H2 add once H0 is in."""
+    second gain asks what H1 and H2 add once H0 is in.
+
+    Chance is one over the number of levels the label actually has (four
+    generators and four captioners in the panel, three and two in follow-up
+    `01a10613`), not a constant."""
     h0 = [c for c in tda if c.startswith("h0_")]
     prompts = table["initial_prompt"].to_numpy()
     unique = np.unique(prompts)
@@ -298,7 +336,7 @@ def added_value(table: pl.DataFrame, tda: list[str], rng) -> dict:
             "gain_h1_h2_over_h0_interval": [
                 float(q) for q in np.percentile(higher, [2.5, 97.5])
             ],
-            "chance": 0.25,
+            "chance": 1 / len(np.unique(truth)),
         }
     return out
 
@@ -306,6 +344,15 @@ def added_value(table: pl.DataFrame, tda: list[str], rng) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("export", type=pathlib.Path)
+    parser.add_argument(
+        "--states", metavar="FIRST:LAST",
+        help="1-based inclusive stretch of each run to analyse (default: all)",
+    )  # fmt: skip
+    parser.add_argument("--workers", type=int, default=WORKERS)
+    parser.add_argument(
+        "--out", type=pathlib.Path, default=OUT,
+        help="where the results go; the per-run table goes beside it",
+    )  # fmt: skip
     args = parser.parse_args()
     rng = np.random.default_rng(SEED)
 
@@ -316,13 +363,47 @@ def main() -> None:
         )
         for v in runs["vector"]
     ]
+    lengths = {len(x) for x in xs}
+    if len(lengths) > 1:
+        raise SystemExit(f"runs of different lengths: {sorted(lengths)}")
+    keep = stretch(args.states, lengths.pop())
+    whole_run = keep.start == 0 and keep.stop == len(xs[0])
+    xs = [x[keep] for x in xs]
     key = list(zip(runs["network"], runs["initial_prompt"], runs["run_number"]))
     where = {k: i for i, k in enumerate(key)}
 
-    rows, stored_vs_recomputed = [], []
+    # Every diagram computed here goes through the pool, one thread each: a
+    # Rips diagram to H2 on 1,000 states is minutes of CPU, and `ripser_parallel`
+    # above one thread loses an H1 bar on about one diagram in 350, which at four
+    # threads made the Gaussian-cloud null differ between runs of this script.
+    # The clouds are drawn in run order, before the pool, so which cloud a run
+    # gets does not depend on how the work is divided.
+    clouds = [y for x in xs for y in null_clouds(x, rng)]
+    check_at = list(range(0, len(xs), 40)) if whole_run else []
+    with Pool(args.workers) as pool:
+        cloud_features = pool.map(features_of, clouds, chunksize=1)
+        # The pipeline's stored diagram is over the whole run, so a stretch of
+        # one is given its own.
+        real = (
+            [diagram_features(json.loads(d)["dgms"]) for d in runs["diagram_data"]]
+            if whole_run
+            else pool.map(features_of, xs, chunksize=1)
+        )
+        # Spot-check that the pipeline's diagrams are the ones this script would
+        # compute from the same embeddings.
+        recomputed = pool.map(features_of, [xs[i] for i in check_at], chunksize=1)
+    del clouds
+
+    stored_vs_recomputed = [
+        max(abs(again[k] - real[i][k]) for k in again if k.endswith("_total"))
+        for i, again in zip(check_at, recomputed)
+    ]
+    rows = []
     for i, (network, prompt, run) in enumerate(key):
-        twin = xs[where[(network, prompt, 1 - run if run in (0, 1) else run)]]
-        stored = json.loads(runs["diagram_data"][i])["dgms"]
+        # Runs come in twins: consecutive run numbers share a prompt and a
+        # network and differ only in seed. The panel had two runs a prompt, the
+        # follow-up has eight, paired 0-1, 2-3, 4-5, 6-7.
+        twin = xs[where[(network, prompt, run ^ 1)]]
         row = {
             "network": network,
             "generator": runs["generator"][i],
@@ -331,22 +412,21 @@ def main() -> None:
             "run_number": run,
         }
         row |= baseline_features(xs[i], twin, runs["output_text"][i].to_list())
-        row |= diagram_features(stored)
-        row |= {f"null_{k}": v for k, v in null_features(xs[i], rng).items()}
-        if i % 40 == 0:
-            again = diagram_features(rips(xs[i]))
-            stored_vs_recomputed.append(
-                max(abs(again[k] - row[k]) for k in again if k.endswith("_total"))
-            )
+        row |= real[i]
+        draws = cloud_features[i * NULL_DRAWS : (i + 1) * NULL_DRAWS]
+        row |= {
+            f"null_{k}": float(np.mean([d[k] for d in draws])) for k in draws[0]
+        }
         rows.append(row)
     table = pl.DataFrame(rows)
-    table.write_parquet(OUT.with_suffix(".parquet"))
+    table.write_parquet(args.out.with_suffix(".parquet"))
 
-    tda = [c for c in diagram_features(json.loads(runs["diagram_data"][0])["dgms"])]
-    tda = [c for c in tda if table[c].std() > 0]
+    tda = [c for c in real[0] if table[c].std() > 0]
 
-    with Pool(WORKERS) as pool:
-        process = pool.map(process_null, list(enumerate(xs)), chunksize=4)
+    with Pool(args.workers) as pool:
+        # One run a chunk: a run's nulls are minutes of CPU at 1,000 states,
+        # and chunking hands the work to a fraction of the workers.
+        process = pool.map(process_null, list(enumerate(xs)), chunksize=1)
     against_process = {"whole": {}, "late": {}}
     for part in against_process:
         for f in tda:
@@ -372,24 +452,33 @@ def main() -> None:
     result = {
         "export": str(args.export),
         "runs": table.height,
-        "late_from_text_state": LATE,
-        "stored_diagram_max_total_difference": float(max(stored_vs_recomputed)),
+        "states_per_run": len(xs[0]),
+        "states": args.states or f"1:{len(xs[0])}",
+        "diagrams": "the pipeline's" if whole_run else "recomputed for this stretch",
+        "late_from_text_state": late_from(len(xs[0])),
+        "stored_diagram_max_total_difference": (
+            float(max(stored_vs_recomputed)) if stored_vs_recomputed else None
+        ),
         "redundancy_r2": redundancy(table, tda),
         "added_value": added_value(table, tda, rng),
         "against_null": null,
         "against_task103_process": against_process,
     }
-    OUT.write_text(json.dumps(result, indent=2) + "\n")
+    args.out.write_text(json.dumps(result, indent=2) + "\n")
 
-    print(f"stored vs recomputed diagrams, worst total-persistence gap: "
-          f"{result['stored_diagram_max_total_difference']:.2e}")
+    print(f"{result['runs']} runs of {result['states_per_run']} states "
+          f"(states {result['states']}), diagrams {result['diagrams']}")
+    if stored_vs_recomputed:
+        print(f"stored vs recomputed diagrams, worst total-persistence gap: "
+              f"{result['stored_diagram_max_total_difference']:.2e}")
     print("\nredundancy: R^2 of each diagram feature from the distance numbers")
     for f, v in result["redundancy_r2"].items():
         print(f"  {f:18s} {v:6.3f}")
-    print("\nadded value: held-out accuracy (chance 0.25)")
+    print("\nadded value: held-out accuracy")
     for label, v in result["added_value"].items():
         lo, hi = v["gain_interval"]
-        print(f"  {label:10s} distances {v['distances']:.3f}  diagram {v['diagram']:.3f}"
+        print(f"  {label:10s} chance {v['chance']:.3f}  distances {v['distances']:.3f}"
+              f"  diagram {v['diagram']:.3f}"
               f"  both {v['both']:.3f}  gain {v['gain']:+.3f} [{lo:+.3f}, {hi:+.3f}]")
         lo, hi = v["gain_h1_h2_over_h0_interval"]
         print(f"  {'':10s} distances+H0 {v['distances_h0']:.3f}  +H1,H2 "

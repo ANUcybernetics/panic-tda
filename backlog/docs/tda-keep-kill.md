@@ -5,6 +5,14 @@ Written 2026-10-08 by Sungyeon Hong for TASK-77, on TASK-90's panel (experiment
 run). Measured with `analysis/tda_keep_kill.py` and
 `analysis/sliding_window.py`; the numbers are in the JSON beside each.
 
+Extended 2026-11-04 with the long follow-up (TASK-104, experiment `01a10613`:
+6 networks, 5 prompts, eight runs per prompt, 1,000 text states per run), in
+"The follow-up at 1,000 states" below. Its numbers are in the JSON suffixed
+`_01a10613`, and `_01a10613_states1-150` for the same runs cut to their first
+150 states. **One finding there reverses on the longer runs**: sliding-window
+persistence beats its null at 1,000 states, though what it finds there is not a
+cycle in the captions.
+
 TASK-77 asks whether topological data analysis (TDA) earns a place in the
 paper. Since the Markov state model was abandoned (TASK-76), the baseline TDA
 has to beat is TASK-103's description: a caption is where its prompt sits, plus
@@ -19,8 +27,10 @@ embeddings (`drift-and-memory.md`).
   and shorter ones than structureless processes with the same drift. Their
   small help in telling captioners apart is local intrinsic dimension seen
   indirectly.
-- **Sliding-window persistence finds no cycles.** Fewer runs show a long
-  loop than chance would give.
+- **Sliding-window persistence finds no cycles at 150 states.** Fewer runs
+  show a long loop than chance would give. At 1,000 states its bars beat the
+  null in about 30% of runs against a chance 5%, but they are paraphrase
+  geometry, not cycles; see below.
 - **There is recurrence, but it is not topological.** Some runs leave a
   caption and later return to a near-verbatim copy of it. A plain recurrence
   count on distances finds this; persistent homology does not.
@@ -30,7 +40,9 @@ embeddings (`drift-and-memory.md`).
   read off distances directly.
 
 **Recommendation:** drop persistent homology from the headline analyses and
-keep it as a negative result in the methods discussion. Report intrinsic
+keep it in the methods discussion: Rips persistence as a negative result,
+sliding-window persistence as a positive one that does not carry the
+interpretation a cycle would (see "What this changes"). Report intrinsic
 dimension and recurrence directly, as distance statistics. This is a
 recommendation for Sungyeon and Ben to decide on, not a decision taken here.
 
@@ -182,9 +194,10 @@ By captioner:
 
 The generators lie between 0.09 and 0.18 for return after excursion.
 
-**Sliding-window persistence finds no cycles.** A delay embedding of a run that
-cycled through the same sequence of captions would show a long loop. Fewer runs
-show one than chance gives, at every window.
+**Sliding-window persistence finds no cycles at this length.** A delay
+embedding of a run that cycled through the same sequence of captions would show
+a long loop. Fewer runs show one than chance gives, at every window. This is
+the finding that does not survive the 1,000-state runs.
 
 **Returns do happen, mostly with Gemma4 and JoyCaption.** For example, in
 SD35Medium + Gemma4, run 0 of "a market stall displaying fruit, flowers, and
@@ -211,17 +224,221 @@ return depth 0.27 against the runs' 0.09), so it overstates excursions. Real run
 steadily than a Gaussian with the same drift, and come back to particular
 captions more often than one.
 
+## The follow-up at 1,000 states
+
+Run 2026-11-04 on the GPU server, on experiment `01a10613`: 240 runs, six
+networks (three generators by two captioners), five prompts, eight runs per
+prompt, 1,000 text states each. Ten runs reach a flat image (nine of them
+SD35Medium + Moondream3) and are left out of Test 4 as before; no run repeats
+its previous caption at half or more of its steps. The pipeline's stored
+diagrams are over the same 1,000 states this script reads, agreeing to
+1.6e-05 in total persistence.
+
+Three readings are available and worth keeping apart: the panel at 150 states,
+these runs cut to their **first 150 states**, and these runs **whole**. The cut
+is the control: same runs, same networks, same captioners, only shorter. Where
+the cut and the whole disagree, the horizon is doing the work.
+
+### Rips persistence: the verdict holds, and hardens
+
+| | panel 150 | follow-up 1:150 | follow-up 1,000 |
+| --- | --- | --- | --- |
+| R^2 of h1_count from the distances | 0.68 | 0.58 | **0.85** |
+| R^2 of h1_entropy | 0.72 | 0.59 | **0.88** |
+| R^2 of h2_count | 0.48 | 0.34 | **0.69** |
+| R^2 of h0_total | 0.98 | 0.97 | 0.99 |
+| generator, gain from adding the diagram | +0.001 | -0.004 | +0.025 [-0.033, +0.083] |
+| captioner, gain from adding the diagram | +0.027 | -0.008 | -0.001 [-0.025, +0.017] |
+
+The diagrams get **more** predictable from the distance numbers as runs get
+longer, not less, and neither gain interval clears zero. Against TASK-103's
+process null the H1 and H2 bars are still mostly **below** what the drift
+alone produces: 90% of runs are below every draw on h1_count, 97% on h1_total,
+80% on h2_count.
+
+One number moves. The **longest H1 bar** beats every draw in 24% of runs at
+1,000 states, against 3-4% at 150 and a chance 10%. It is the only Rips
+feature to rise above chance, and it moves in the same direction as the
+sliding-window result below. Read on its own it is modest; read alongside
+Test 4 it is the same thing seen weakly.
+
+Unchanged from the panel: the longest H0 bar beats every draw in **every**
+run (real 0.52, null 0.30). Runs are clumpier than their drift explains.
+
+### Recurrence: sliding-window bars beat the null at 1,000 states
+
+Nineteen draws per run; a run counts when it beats all of them, which happens
+to 5% by chance (upper 95% bound 7.8% over 230 runs).
+
+| Measure | panel 150 | follow-up 1:150 | follow-up 1,000 |
+| --- | --- | --- | --- |
+| sliding-window H1, window 5 | 0.03 | 0.04 | **0.29** |
+| window 10 | 0.02 | 0.03 | **0.31** |
+| window 20 | 0.01 | 0.03 | **0.27** |
+| recurrence rate | 0.28 | 0.37 | **0.49** |
+| return after excursion | 0.13 | 0.19 | **0.40** |
+| return depth | 0.00 | 0.00 | 0.00 |
+
+**Sliding-window persistence beats the null at 1,000 states and not at 150.**
+The first 150 states of these very runs sit at chance. So this is the horizon,
+not the network set: the effect needs more than 150 steps to appear. What the
+bars are made of is taken up in "What the loops are made of" below.
+
+The two measures come apart, which is worth noticing. Recurrence is a
+**captioner** property and sliding-window H1 is not:
+
+| | Recurrence rate | Return after excursion | Sliding-window H1, window 10 |
+| --- | --- | --- | --- |
+| Gemma4 | 0.78 | 0.66 | 0.30 |
+| Moondream3 | 0.18 | 0.13 | 0.32 |
+
+By network, sliding-window H1 at window 10 runs from 0.19 (SD35Medium +
+Moondream3) to 0.53 (ZImageTurbo + Moondream3), and it is above chance for
+every one of the five prompts (0.26 to 0.40) and every one of the six
+networks. It is a broad effect, not one prompt or one pairing. Recurrence
+rate, by contrast, separates cleanly: all three Gemma4 networks at 0.69 to
+0.95, all three Moondream3 networks at 0.07 to 0.28.
+
+So a near-verbatim return to an earlier caption is something a captioner does,
+while going round a loop is something the longer runs do more generally.
+
+**How far to trust these.** The null's candidate direction counts now run to
+255, and 55 of the 230 runs want the top of that ladder: their local dimension
+is 14.6 and the null reaches 12.8. The ceiling binds for about a quarter of
+runs, a little worse than the panel's 95 of 637. It is conservative in both
+directions. A null that is locally lower dimensional packs its points closer
+together, so it returns to itself more readily, and a real run has to work
+harder to beat it. And the ceiling-bound runs are the **weaker** half on
+sliding-window H1 (0.24 against 0.34 for the rest), so the cycles are not
+coming from the runs whose null is mismatched.
+
+Return depth stays the odd one out, as in the panel: real runs go out less far
+and come back less far than the null (0.15 against 0.41), in every run.
+
+### What the loops are made of
+
+`analysis/loop_anatomy.py`, results in `analysis/loop_anatomy_01a10613.json`.
+TASK-77 adopts sliding-window persistence only if the result is also
+*interpretable in terms of the trajectory*: a cycle that can be pointed to in
+the captions. So the 62 runs whose longest H1 bar beats all nineteen draws at
+window 20 were taken apart. Ripser names the edge whose arrival closes each
+loop and the chord that fills it; the rest of the cycle is the shortest path
+between the closing edge's ends below the birth scale. A vertex is a window, a
+window is a time, and a time has a caption.
+
+**The cycles are real and they can be pointed at. They are not circuits.**
+
+Where they live in time:
+
+| | median | quartiles |
+| --- | --- | --- |
+| closing edge spans | 1 state | 1 to 45 |
+| filling chord spans | 64 states | 29 to 185 |
+| whole cycle spans | 255 states | 101 to 518 |
+| non-adjacent hops in the cycle | 13 | 9 to 19 |
+| closing edge, in median steps | 1.7 | 1.3 to 2.4 |
+
+The edge that closes the loop joins **adjacent** windows in 41 of the 62 runs,
+and is only about 1.7 times a typical step. So the loop is not shut by a
+long-range return. It is shut by one slightly larger than usual step, and the
+far side of it is a route through a dozen or so temporally scattered hops.
+
+What they are made of. A cycle carries a median of 34.5 windows, nearly all
+with distinct captions (33.5), but only **7 distinct caption openings**. The
+states on a cycle sit 0.107 apart on average, against 0.141 across the whole
+run and 0.089 across the run after it settles: a cycle covers roughly the
+extent of the settled run, not a tour of it.
+
+Whether it is a circuit. 55 of 62 cycles visit three or more openings, which
+sounds like a tour. But 60 of 62 **revisit an opening they had already left**,
+a median of eight times, and only 28 return to the one they started from. The
+sequences shuttle rather than circulate. Three runs picked near the median:
+
+| Run | Sequence round the cycle |
+| --- | --- |
+| ZImageTurbo + Gemma4, "a man standing in a doorway" | `ABCDEBCFCECBGABD` |
+| SD35Medium + Gemma4, "firefighters responding to a building fire" | `ABACACADEABDBFAEABAFAGCG` |
+| ZImageTurbo + Gemma4, "a city slowly turning into a forest" | `ABACDACAEBDBFDGDAD` |
+
+And the openings those letters stand for, for the first of them:
+
+- A: "this is a studio photograph featuring"
+- B: "this is a studio portrait of"
+- C: "a full-length studio portrait features a"
+- D: "a full-body shot features a young"
+- E: "a full-length studio photograph features a"
+- F: "a full-length studio shot features a"
+- G: "a young man with dark, curly"
+
+Seven ways of opening the same sentence about the same photograph. The other
+two are the same: seven ways of saying "a dramatic, atmospheric, low-light
+photograph", seven ways of saying "a vibrant autumnal landscape". The count of
+distinct openings reads **phrasing, not subject**, which is why seven looks
+like variety and the text does not.
+
+So a loop is a hole in the cloud of paraphrases a captioner produces for one
+settled scene. The run does not leave a theme, go somewhere else and come back.
+It jitters among ways of wording the same description, and that jitter is not
+shaped like a Gaussian with the same drift, which is what makes the bar beat
+the null.
+
+**A caution about how this was read.** The first examples pulled out were
+chosen by span per hop, which selects the most degenerate cycles: one of them
+was seven windows all saying "a large tree engulfed in flames", another
+nineteen windows all saying "a grid of 36 red apples". Those are real cycles
+but they are the tail, not the middle, and reading them first overstates the
+case. The examples above are picked near the median on purpose, and
+`loop_anatomy.py` picks them that way.
+
+One claim that does **not** hold: cycles are not simply a post-settling
+phenomenon. The share of a cycle's windows after state 300 is bimodal (median
+0.90, quartiles 0.06 to 1.00); 33 of 62 lie mostly after it, the rest straddle
+or precede it.
+
+### What this changes
+
+Rips persistence on a run's state set can be dropped from the headline
+analyses on the evidence of both lengths. **Sliding-window persistence should
+be dropped too, but for a different reason.** It is not that it finds nothing:
+at 1,000 states its bars beat a drift-matched null in about 30% of runs, which
+is a real effect and not one the panel could see. It is that what the bars are
+made of is not what TASK-77 asks for. The cycles are geometry in a captioner's
+paraphrase cloud, not trajectories going round anything, so they will not carry
+the interpretation a Results section would need to put on them.
+
+The distinction that survives is still worth stating: order-blind topology
+(Rips on the state set) says nothing the distances do not, at either length,
+while order-aware topology says nothing at 150 states and something at 1,000.
+The something just is not a cycle in any sense a reader would expect.
+
 ## What this does and does not settle
 
-- It settles TASK-77 for **Rips persistence on 150-state runs**: no loops,
-  and nothing the distances miss.
-- It does **not** test longer runs. The long follow-up (TASK-104, experiment
-  `01a10613`, due about 25 October 2026) has 1,000 text states per run. A
-  trajectory has more room to come round at that length. The scripts take any
-  export, but its diagrams are already computed by the pipeline at that size and
-  the null's Gaussian process is 1,000 by 1,000 per run. Both are affordable.
+- It settles TASK-77 for **Rips persistence** at both 150 and 1,000 states:
+  no loops, and nothing the distances miss. The case is stronger at 1,000,
+  where the diagrams are more redundant, not less.
+- It now settles sliding-window persistence too, and against it. At 1,000
+  states its bars beat the null, but the cycles behind them are paraphrase
+  geometry rather than circuits, so TASK-77's second condition fails. See
+  "What the loops are made of".
+- What has **not** been tested is whether the excess bar length is a property
+  worth reporting under another name. Real paraphrase clouds are not shaped
+  like Gaussians with the same drift, and the H1 bar is one way of noticing
+  that. Local intrinsic dimension and clumpiness, already in this document,
+  are others, and they are easier to explain.
 - The null is matched on drift and local dimension but not on global spread or
   on how evenly distances fluctuate. A better null would be built from the
   runs' own steps rather than from a Gaussian. That would sharpen the
-  recurrence figure and leave the topology result as it is, since real runs
-  are below the null there.
+  recurrence figure and leave the Rips result as it is, since real runs
+  are below the null there. It now also bears on the sliding-window result,
+  which is a positive finding and so rests on the null more heavily than a
+  negative one does.
+- The follow-up's six networks are not the panel's sixteen, and its five
+  prompts are one per group rather than four. Comparisons between the panel
+  and the follow-up carry that confound; comparisons between the follow-up
+  whole and the follow-up cut to 150 states do not.
+- `ripser_parallel` is not deterministic above one thread: at four threads it
+  dropped an H1 bar on about one diagram in 350, enough to make the
+  Gaussian-cloud null differ between two runs of `tda_keep_kill.py` on the
+  same data. Both scripts now compute every diagram on one thread. The panel's
+  committed `null_*` columns were produced at four threads and so are
+  reproducible only to that tolerance.

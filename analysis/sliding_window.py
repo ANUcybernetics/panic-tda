@@ -45,10 +45,20 @@ dimensional than any Gaussian with their spread, which is itself a property
 of the runs the distance description does not cover.
 
 Frozen runs (half or more of their steps repeat the previous caption exactly)
-and the three runs that reach a flat image (`panel_audit.json`) are reported apart: an exact
-repeat is a return no continuous process makes.
+and the runs that reach a flat image are reported apart: an exact repeat is a
+return no continuous process makes. Flat runs come from an audit written by
+`panel_audit.py` (`--audit`), or from the export's own `image_stats.parquet`,
+which is the table that audit is computed from; both apply panel_audit.py's
+threshold on an image's luma standard deviation.
 
-    ./analysis/sliding_window.py long_horizon_panel_01a09e21_parquet
+Run length is not assumed. The displacement curve is fitted over a share of
+each run rather than fixed lags, and the null's candidate direction counts run
+up to what the run's own states allow. `--states` takes a stretch of each run
+instead of all of it.
+
+    ./analysis/sliding_window.py long_horizon_panel_01a09e21_parquet \
+        --audit analysis/panel_audit.json
+    ./analysis/sliding_window.py 01a10613_parquet --workers 60
 
 Results -> analysis/sliding_window.json, summary to stdout.
 """
@@ -64,21 +74,44 @@ for _var in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS"):
     os.environ.setdefault(_var, "1")
 
 import numpy as np
+import polars as pl
 from gph import ripser_parallel
-from tda_keep_kill import load, twonn
+from tda_keep_kill import load, stretch, twonn
 
 OUT = pathlib.Path(__file__).with_suffix(".json")
 WINDOWS = (5, 10, 20)
 FAR = 20
 SURROGATES = 19
-# The displacement curve is measured out to VARIOGRAM_FIT_TO; beyond it a
-# power law fitted from VARIOGRAM_FIT_FROM is used, since few pairs remain.
-VARIOGRAM_FIT_FROM, VARIOGRAM_FIT_TO = 30, 110
-DIRECTIONS = (2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 64, 149)
+# The displacement curve is measured out to VARIOGRAM_FIT_TO; beyond it a power
+# law fitted from VARIOGRAM_FIT_FROM is used, since few pairs remain. Both are
+# shares of the run: the panel's 150-state runs were fitted over lags 30 to 110.
+VARIOGRAM_FIT_FROM, VARIOGRAM_FIT_TO = 0.2, 110 / 150
+# Candidate numbers of directions for the null, the last being every direction
+# the run's own states span: 149 for the panel's 150-state runs.
+DIRECTIONS = (2, 3, 4, 5, 6, 8, 10, 12, 16, 24, 32, 64)
 FROZEN = 0.5
 SEED = 0
 WORKERS = 4
-AUDIT = pathlib.Path(__file__).parent / "panel_audit.json"
+# panel_audit.py's FLAT_STD: an image whose luma barely varies is a flat field.
+FLAT_STD = 2.0
+
+
+def flat_runs(export: pathlib.Path, audit: pathlib.Path | None) -> set[str]:
+    """Runs that reach a flat image, from panel_audit.py's audit when one is
+    given, otherwise from the per-image table in the export. Both are the same
+    threshold on the same statistic, so they agree where both exist."""
+    if audit:
+        entries = json.loads(audit.read_text())["images"]["first_flat_image_per_run"]
+        return {e["run_id"] for e in entries}
+    images = export / "image_stats.parquet"
+    if not images.exists():
+        raise SystemExit(
+            f"no --audit given and no {images}: cannot tell which runs go flat"
+        )
+    table = pl.read_parquet(images).filter(
+        pl.col("decode_error").is_null() & (pl.col("std") < FLAT_STD)
+    )
+    return set(table["run_id"].unique().to_list())
 
 
 def unit(a: np.ndarray) -> np.ndarray:
@@ -91,10 +124,17 @@ def variogram(x: np.ndarray) -> np.ndarray:
     g = 1.0 - x @ x.T
     lag = np.arange(1, n)
     v = np.array([np.diag(g, k).mean() for k in lag])
-    fit = (lag >= VARIOGRAM_FIT_FROM) & (lag <= VARIOGRAM_FIT_TO)
+    fit_from = max(2, round(VARIOGRAM_FIT_FROM * n))
+    fit_to = round(VARIOGRAM_FIT_TO * n)
+    fit = (lag >= fit_from) & (lag <= fit_to)
     b, a = np.polyfit(np.log(lag[fit]), np.log(np.maximum(v[fit], 1e-8)), 1)
-    v[lag > VARIOGRAM_FIT_TO] = np.exp(a) * lag[lag > VARIOGRAM_FIT_TO] ** b
+    v[lag > fit_to] = np.exp(a) * lag[lag > fit_to] ** b
     return np.concatenate([[0.0], v])
+
+
+def directions(m: int) -> tuple[int, ...]:
+    """Candidate direction counts up to the m the run's states span."""
+    return tuple(k for k in DIRECTIONS if k < m) + (m - 1,)
 
 
 class Null:
@@ -119,7 +159,7 @@ class Null:
         self.scale = 1.0
         target = twonn(x)
         self.k = min(
-            (k for k in DIRECTIONS if k <= len(self.s)),
+            directions(len(self.s)),
             key=lambda k: abs(
                 np.mean([twonn(self.draw(k, np.random.default_rng(j))) for j in range(2)])
                 - target
@@ -224,12 +264,27 @@ def summarise(rows: list[dict], names: list[str]) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("export", type=pathlib.Path)
+    parser.add_argument(
+        "--states", metavar="FIRST:LAST",
+        help="1-based inclusive stretch of each run to analyse (default: all)",
+    )  # fmt: skip
+    parser.add_argument(
+        "--audit", type=pathlib.Path,
+        help="panel_audit.py output naming the runs that reach a flat image "
+             "(default: the export's own image_stats.parquet)",
+    )  # fmt: skip
+    parser.add_argument("--workers", type=int, default=WORKERS)
+    parser.add_argument("--out", type=pathlib.Path, default=OUT)
     args = parser.parse_args()
 
     runs = load(args.export)
+    lengths = {len(v) for v in runs["vector"]}
+    if len(lengths) > 1:
+        raise SystemExit(f"runs of different lengths: {sorted(lengths)}")
+    keep = stretch(args.states, lengths.pop())
     jobs = []
     for i in range(runs.height):
-        x = unit(np.asarray(runs["vector"][i].to_list(), dtype=np.float64))
+        x = unit(np.asarray(runs["vector"][i].to_list(), dtype=np.float64))[keep]
         label = {
             "run_id": runs["id"][i],
             "network": runs["network"][i],
@@ -239,19 +294,22 @@ def main() -> None:
             "run_number": int(runs["run_number"][i]),
         }
         jobs.append((i, x, runs["output_text"][i].to_list(), label))
-    with Pool(WORKERS) as pool:
-        rows = pool.map(one_run, jobs, chunksize=4)
+    with Pool(args.workers) as pool:
+        # One run a chunk; see tda_keep_kill.main.
+        rows = pool.map(one_run, jobs, chunksize=1)
 
-    audit = json.loads(AUDIT.read_text())["images"]["first_flat_image_per_run"]
-    flat = {f["run_id"] for f in audit}
+    flat = flat_runs(args.export, args.audit)
     for r in rows:
         r["collapsed"] = r["run_id"] in flat
 
     names = ["recurrence_rate", "return_after_excursion", "return_depth"] + [f"sw_h1_max_L{w}" for w in WINDOWS]
     clean = [r for r in rows if not (r["frozen"] or r["collapsed"])]
     networks = sorted({r["network"] for r in rows})
+    states = keep.stop - keep.start
     result = {
         "export": str(args.export),
+        "states_per_run": states,
+        "states": args.states or f"1:{states}",
         "surrogates_per_run": SURROGATES,
         "far": FAR,
         "windows": list(WINDOWS),
@@ -281,8 +339,9 @@ def main() -> None:
         },
         "runs": rows,
     }
-    OUT.write_text(json.dumps(result, indent=1) + "\n")
+    args.out.write_text(json.dumps(result, indent=1) + "\n")
 
+    print(f"{len(rows)} runs of {states} states (states {result['states']})")
     print(f"null local dimension: real {result['null_fit']['twonn_real']:.2f}, "
           f"null {result['null_fit']['twonn_null']:.2f}, "
           f"r = {result['null_fit']['twonn_correlation']:.2f}")

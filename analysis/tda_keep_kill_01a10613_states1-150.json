@@ -1,0 +1,357 @@
+{
+  "export": "01a10613_parquet",
+  "runs": 240,
+  "states_per_run": 150,
+  "states": "1:150",
+  "diagrams": "recomputed for this stretch",
+  "late_from_text_state": 75,
+  "stored_diagram_max_total_difference": null,
+  "redundancy_r2": {
+    "h0_count": 0.3154065595528782,
+    "h0_total": 0.9695035135465101,
+    "h0_max": 0.42899957924972143,
+    "h0_entropy": 0.6051717018743432,
+    "h0_entropy_norm": 0.6404939106188636,
+    "h1_count": 0.5782468935779945,
+    "h1_total": 0.37927804568491685,
+    "h1_max": 0.1253324547414877,
+    "h1_entropy": 0.5896339816611122,
+    "h1_entropy_norm": 0.14759560312499975,
+    "h2_count": 0.3374860679898113,
+    "h2_total": 0.27396569418761874,
+    "h2_max": 0.06385067547682932,
+    "h2_entropy": 0.3793125626492013,
+    "h2_entropy_norm": 0.10341298846469227
+  },
+  "added_value": {
+    "generator": {
+      "distances": 0.44166666666666665,
+      "diagram": 0.4083333333333333,
+      "both": 0.4375,
+      "distances_h0": 0.4041666666666667,
+      "distances_h0_h1_h2": 0.4375,
+      "gain": -0.004204166666666668,
+      "gain_interval": [
+        -0.06666666666666665,
+        0.04583333333333334
+      ],
+      "gain_h1_h2_over_h0": 0.033075,
+      "gain_h1_h2_over_h0_interval": [
+        0.004166666666666652,
+        0.05416666666666664
+      ],
+      "chance": 0.3333333333333333
+    },
+    "captioner": {
+      "distances": 0.9666666666666667,
+      "diagram": 0.8875,
+      "both": 0.9583333333333334,
+      "distances_h0": 0.975,
+      "distances_h0_h1_h2": 0.9583333333333334,
+      "gain": -0.0078000000000000005,
+      "gain_interval": [
+        -0.03749999999999998,
+        0.016666666666666607
+      ],
+      "gain_h1_h2_over_h0": -0.01639583333333333,
+      "gain_h1_h2_over_h0_interval": [
+        -0.029166666666666674,
+        -0.004166666666666652
+      ],
+      "chance": 0.5
+    }
+  },
+  "against_null": {
+    "h0_count": {
+      "real": 147.30833333333334,
+      "null": 149.0,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_total": {
+      "real": 35.51301441406913,
+      "null": 48.957263091475596,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_max": {
+      "real": 0.48784769624471663,
+      "null": 0.4309260531018177,
+      "share_of_runs_above_null": 0.7916666666666666
+    },
+    "h0_entropy": {
+      "real": 4.917985901647012,
+      "null": 4.999136739277784,
+      "share_of_runs_above_null": 0.0
+    },
+    "h0_entropy_norm": {
+      "real": 0.9850778863694122,
+      "null": 0.9990388452685913,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_count": {
+      "real": 52.604166666666664,
+      "null": 126.06944444444443,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_total": {
+      "real": 0.6865169194992632,
+      "null": 1.9239872470291126,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_max": {
+      "real": 0.05381753028680881,
+      "null": 0.055601875732342404,
+      "share_of_runs_above_null": 0.4583333333333333
+    },
+    "h1_entropy": {
+      "real": 3.5417801564424125,
+      "null": 4.518980434198976,
+      "share_of_runs_above_null": 0.0
+    },
+    "h1_entropy_norm": {
+      "real": 0.9042861969403985,
+      "null": 0.9358369682174063,
+      "share_of_runs_above_null": 0.041666666666666664
+    },
+    "h2_count": {
+      "real": 11.7375,
+      "null": 59.79027777777777,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_total": {
+      "real": 0.05848578959703445,
+      "null": 0.43593363290031745,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_max": {
+      "real": 0.013089656550437211,
+      "null": 0.02617346965190437,
+      "share_of_runs_above_null": 0.0625
+    },
+    "h2_entropy": {
+      "real": 1.8423275293592036,
+      "null": 3.7048901149916778,
+      "share_of_runs_above_null": 0.0
+    },
+    "h2_entropy_norm": {
+      "real": 0.8062777419000454,
+      "null": 0.9160295753193106,
+      "share_of_runs_above_null": 0.15833333333333333
+    }
+  },
+  "against_task103_process": {
+    "whole": {
+      "h0_count": {
+        "real": 147.30833333333334,
+        "null": 149.0,
+        "share_of_runs_above_every_draw": 0.0,
+        "share_of_runs_below_every_draw": 0.2791666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_total": {
+        "real": 35.51301441406913,
+        "null": 30.222382431226624,
+        "share_of_runs_above_every_draw": 0.7958333333333333,
+        "share_of_runs_below_every_draw": 0.04583333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_max": {
+        "real": 0.48784769624471663,
+        "null": 0.3244304936379194,
+        "share_of_runs_above_every_draw": 0.9416666666666667,
+        "share_of_runs_below_every_draw": 0.0,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_entropy": {
+        "real": 4.917985901647013,
+        "null": 4.975949489029039,
+        "share_of_runs_above_every_draw": 0.0,
+        "share_of_runs_below_every_draw": 0.9166666666666666,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_entropy_norm": {
+        "real": 0.9850778863694122,
+        "null": 0.9944050524916394,
+        "share_of_runs_above_every_draw": 0.0,
+        "share_of_runs_below_every_draw": 0.9083333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_count": {
+        "real": 52.604166666666664,
+        "null": 79.87453703703704,
+        "share_of_runs_above_every_draw": 0.004166666666666667,
+        "share_of_runs_below_every_draw": 0.875,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_total": {
+        "real": 0.6865169194992632,
+        "null": 1.562836621724138,
+        "share_of_runs_above_every_draw": 0.008333333333333333,
+        "share_of_runs_below_every_draw": 0.9541666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_max": {
+        "real": 0.05381753028680881,
+        "null": 0.07893379638316454,
+        "share_of_runs_above_every_draw": 0.029166666666666667,
+        "share_of_runs_below_every_draw": 0.6208333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_entropy": {
+        "real": 3.5417801564424125,
+        "null": 3.9992827367622423,
+        "share_of_runs_above_every_draw": 0.008333333333333333,
+        "share_of_runs_below_every_draw": 0.8666666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_entropy_norm": {
+        "real": 0.9042861969403984,
+        "null": 0.9195330801515115,
+        "share_of_runs_above_every_draw": 0.03333333333333333,
+        "share_of_runs_below_every_draw": 0.4166666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_count": {
+        "real": 11.7375,
+        "null": 23.89074074074074,
+        "share_of_runs_above_every_draw": 0.03333333333333333,
+        "share_of_runs_below_every_draw": 0.5708333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_total": {
+        "real": 0.05848578959703445,
+        "null": 0.20400605835710411,
+        "share_of_runs_above_every_draw": 0.025,
+        "share_of_runs_below_every_draw": 0.7333333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_max": {
+        "real": 0.013089656550437211,
+        "null": 0.0264443371720888,
+        "share_of_runs_above_every_draw": 0.020833333333333332,
+        "share_of_runs_below_every_draw": 0.6375,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_entropy": {
+        "real": 1.842327529359204,
+        "null": 2.603873191205431,
+        "share_of_runs_above_every_draw": 0.03333333333333333,
+        "share_of_runs_below_every_draw": 0.5791666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_entropy_norm": {
+        "real": 0.8062777419000453,
+        "null": 0.86384498207872,
+        "share_of_runs_above_every_draw": 0.1125,
+        "share_of_runs_below_every_draw": 0.3333333333333333,
+        "share_expected_by_chance": 0.1
+      }
+    },
+    "late": {
+      "h0_count": {
+        "real": 73.00833333333334,
+        "null": 74.0,
+        "share_of_runs_above_every_draw": 0.0,
+        "share_of_runs_below_every_draw": 0.22083333333333333,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_total": {
+        "real": 16.746035981896192,
+        "null": 14.303379922269515,
+        "share_of_runs_above_every_draw": 0.6916666666666667,
+        "share_of_runs_below_every_draw": 0.075,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_max": {
+        "real": 0.4012420794616143,
+        "null": 0.28875943998702697,
+        "share_of_runs_above_every_draw": 0.775,
+        "share_of_runs_below_every_draw": 0.0,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_entropy": {
+        "real": 4.219992000189123,
+        "null": 4.276411238676102,
+        "share_of_runs_above_every_draw": 0.004166666666666667,
+        "share_of_runs_below_every_draw": 0.8291666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h0_entropy_norm": {
+        "real": 0.9835714082101806,
+        "null": 0.9935749450974309,
+        "share_of_runs_above_every_draw": 0.004166666666666667,
+        "share_of_runs_below_every_draw": 0.8166666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_count": {
+        "real": 24.1625,
+        "null": 36.34537037037037,
+        "share_of_runs_above_every_draw": 0.008333333333333333,
+        "share_of_runs_below_every_draw": 0.7666666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_total": {
+        "real": 0.3016911117204775,
+        "null": 0.6097116376277646,
+        "share_of_runs_above_every_draw": 0.016666666666666666,
+        "share_of_runs_below_every_draw": 0.8166666666666667,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_max": {
+        "real": 0.042183541040867564,
+        "null": 0.05758080366757457,
+        "share_of_runs_above_every_draw": 0.0625,
+        "share_of_runs_below_every_draw": 0.45416666666666666,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_entropy": {
+        "real": 2.7393238247643503,
+        "null": 3.2047529869874114,
+        "share_of_runs_above_every_draw": 0.0125,
+        "share_of_runs_below_every_draw": 0.7375,
+        "share_expected_by_chance": 0.1
+      },
+      "h1_entropy_norm": {
+        "real": 0.8775241772684077,
+        "null": 0.9046875334608163,
+        "share_of_runs_above_every_draw": 0.06666666666666667,
+        "share_of_runs_below_every_draw": 0.39166666666666666,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_count": {
+        "real": 4.575,
+        "null": 9.709259259259259,
+        "share_of_runs_above_every_draw": 0.020833333333333332,
+        "share_of_runs_below_every_draw": 0.44583333333333336,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_total": {
+        "real": 0.02178340246900916,
+        "null": 0.07079426310611543,
+        "share_of_runs_above_every_draw": 0.025,
+        "share_of_runs_below_every_draw": 0.55,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_max": {
+        "real": 0.007847667733828226,
+        "null": 0.017202430275372334,
+        "share_of_runs_above_every_draw": 0.020833333333333332,
+        "share_of_runs_below_every_draw": 0.48333333333333334,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_entropy": {
+        "real": 0.9719124646394022,
+        "null": 1.6573533161563367,
+        "share_of_runs_above_every_draw": 0.029166666666666667,
+        "share_of_runs_below_every_draw": 0.42916666666666664,
+        "share_expected_by_chance": 0.1
+      },
+      "h2_entropy_norm": {
+        "real": 0.604109492338392,
+        "null": 0.7720554220054192,
+        "share_of_runs_above_every_draw": 0.1125,
+        "share_of_runs_below_every_draw": 0.2625,
+        "share_expected_by_chance": 0.1
+      }
+    }
+  }
+}
